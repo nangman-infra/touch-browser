@@ -20,10 +20,11 @@ use touch_browser_contracts::{
     ActionStatus, CompactRefIndexEntry, EvidenceCitation, EvidenceClaimOutcome,
     EvidenceClaimVerdict, EvidenceReport, EvidenceVerificationOutcome, EvidenceVerificationReport,
     EvidenceVerificationVerdict, PolicyProfile, PolicyReport, ReplayTranscript, RiskClass,
-    SearchActionHint, SearchEngine, SearchReport, SearchReportStatus, SearchResultItem,
-    SessionMode, SessionState, SessionSynthesisClaim, SessionSynthesisClaimStatus,
-    SessionSynthesisReport, SnapshotBlock, SnapshotBlockKind, SnapshotBlockRole, SnapshotDocument,
-    SourceRisk, SourceType, UnsupportedClaimReason, CONTRACT_VERSION,
+    SearchActionActor, SearchActionHint, SearchEngine, SearchReport, SearchReportStatus,
+    SearchResultItem, SessionMode, SessionState, SessionSynthesisClaim,
+    SessionSynthesisClaimStatus, SessionSynthesisReport, SnapshotBlock, SnapshotBlockKind,
+    SnapshotBlockRole, SnapshotDocument, SourceRisk, SourceType, UnsupportedClaimReason,
+    CONTRACT_VERSION,
 };
 use touch_browser_memory::{plan_memory_turn, summarize_turns, MemorySessionSummary};
 use touch_browser_observation::{
@@ -783,6 +784,9 @@ fn search_action_hints(
         return vec![SearchActionHint {
             action: "complete-challenge".to_string(),
             detail: status_detail.unwrap_or("The search provider returned a challenge page. Re-run in headed mode, clear the challenge manually, then retry search.").to_string(),
+            actor: SearchActionActor::Human,
+            can_auto_run: false,
+            headed_required: true,
             result_ranks: Vec::new(),
         }];
     }
@@ -791,6 +795,9 @@ fn search_action_hints(
         return vec![SearchActionHint {
             action: "refine-search".to_string(),
             detail: status_detail.unwrap_or("No external results were structured from the current search page. Retry with a narrower query or run in headed mode.").to_string(),
+            actor: SearchActionActor::Ai,
+            can_auto_run: false,
+            headed_required: false,
             result_ranks: Vec::new(),
         }];
     }
@@ -798,6 +805,9 @@ fn search_action_hints(
     let mut hints = vec![SearchActionHint {
         action: "open-top".to_string(),
         detail: "Open the highest-ranked candidate tabs first, then run read-view or extract on the most specific pages.".to_string(),
+        actor: SearchActionActor::Ai,
+        can_auto_run: true,
+        headed_required: false,
         result_ranks: recommended_ranks.to_vec(),
     }];
 
@@ -813,6 +823,9 @@ fn search_action_hints(
             detail:
                 "Prefer documentation-like or official domains before making an evidence judgment."
                     .to_string(),
+            actor: SearchActionActor::Ai,
+            can_auto_run: false,
+            headed_required: false,
             result_ranks: official_ranks,
         });
     }
@@ -821,12 +834,18 @@ fn search_action_hints(
         hints.push(SearchActionHint {
             action: "extract".to_string(),
             detail: "This query looks numeric or limit-sensitive. Prefer limits, pricing, release-note, or reference pages before answering.".to_string(),
+            actor: SearchActionActor::Ai,
+            can_auto_run: true,
+            headed_required: false,
             result_ranks: recommended_ranks.to_vec(),
         });
     } else {
         hints.push(SearchActionHint {
             action: "read-view".to_string(),
             detail: "Use read-view on the most relevant tabs first, then run extract only after the scope looks right.".to_string(),
+            actor: SearchActionActor::Ai,
+            can_auto_run: true,
+            headed_required: false,
             result_ranks: recommended_ranks.to_vec(),
         });
     }
@@ -8146,10 +8165,11 @@ mod tests {
         browser_context_dir_for_session_file, build_search_report, dispatch, parse_command,
         AckRisk, ApproveOptions, CliCommand, ClickOptions, ExpandOptions, ExtractOptions,
         FollowOptions, OutputFormat, PaginateOptions, PaginationDirection, PolicyProfile,
-        SearchEngine, SearchOpenResultOptions, SearchOptions, SearchReportStatus,
-        SessionExtractOptions, SessionFileOptions, SessionProfileSetOptions, SessionReadOptions,
-        SessionRefreshOptions, SessionSynthesizeOptions, SubmitOptions, TargetOptions,
-        TelemetryRecentOptions, TypeOptions, DEFAULT_REQUESTED_TOKENS, DEFAULT_SEARCH_TOKENS,
+        SearchActionActor, SearchEngine, SearchOpenResultOptions, SearchOptions,
+        SearchReportStatus, SessionExtractOptions, SessionFileOptions, SessionProfileSetOptions,
+        SessionReadOptions, SessionRefreshOptions, SessionSynthesizeOptions, SubmitOptions,
+        TargetOptions, TelemetryRecentOptions, TypeOptions, DEFAULT_REQUESTED_TOKENS,
+        DEFAULT_SEARCH_TOKENS,
     };
 
     fn temp_session_path(name: &str) -> PathBuf {
@@ -8403,10 +8423,9 @@ mod tests {
             report.results[0].recommended_surface.as_deref(),
             Some("extract")
         );
-        assert!(report
-            .next_action_hints
-            .iter()
-            .any(|hint| hint.action == "open-top"));
+        assert!(report.next_action_hints.iter().any(|hint| {
+            hint.action == "open-top" && hint.actor == SearchActionActor::Ai && hint.can_auto_run
+        }));
     }
 
     #[test]
@@ -8509,10 +8528,12 @@ mod tests {
 
         assert_eq!(report.status, SearchReportStatus::Challenge);
         assert_eq!(report.result_count, 0);
-        assert!(report
-            .next_action_hints
-            .iter()
-            .any(|hint| hint.action == "complete-challenge"));
+        assert!(report.next_action_hints.iter().any(|hint| {
+            hint.action == "complete-challenge"
+                && hint.actor == SearchActionActor::Human
+                && hint.headed_required
+                && !hint.can_auto_run
+        }));
     }
 
     #[test]

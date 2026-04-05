@@ -101,7 +101,7 @@ Relevant tool inputs:
 - this is a thin MCP proxy, not a full MCP resource or prompt server
 - the tool set is intentionally smaller than the full serve method surface
 - search works browser-first inside touch-browser; the bridge forwards ranked result items and next-action hints rather than pretending the search phase is already resolved
-- search responses also carry `status` and `statusDetail`, so an MCP client can decide whether to open ranked tabs, re-run headed for a CAPTCHA, or refine the query
+- search responses also carry `status`, `statusDetail`, and structured `nextActionHints.actor/canAutoRun/headedRequired`, so an MCP client can decide whether to open ranked tabs, re-run headed for a CAPTCHA, or hand the step back to a human
 - interactive tools only make sense inside allowlisted daemon sessions and still require risk acknowledgement when challenge, MFA, auth, or high-risk-write signals appear
 - the bridge starts `touch-browser serve` as an internal child process and injects `TOUCH_BROWSER_TELEMETRY_SURFACE=mcp`
 - use `verifierCommand` to let a second-pass judge adjudicate the final verdict without replacing the base evidence collector

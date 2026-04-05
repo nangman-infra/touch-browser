@@ -152,6 +152,7 @@ Evidence output terminology:
 - `supportScore`: evidence-match score for the retrieved support
 - `verification`: optional second-pass verifier output supplied by `--verifier-command`, which may refine the final verdict while leaving the collected support trace intact
 - search output includes `results`, `recommendedResultRanks`, and `nextActionHints` so a higher-level AI can decide the next browsing step without pretending the browser already knows the final answer
+- each `nextActionHint` also includes `actor`, `canAutoRun`, and `headedRequired` so touch-browser can separate AI-owned follow-up from human checkpoints
 - search output also includes `status` and optional `statusDetail` so challenge pages and empty result pages are explicit instead of masquerading as normal zero-result searches
 
 ## 7. Validation

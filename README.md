@@ -196,7 +196,7 @@ Query / URL / fixture / browser tab
 - research agents that need citations instead of raw HTML
   Works well for agent frameworks that want a low-token page view plus traceable evidence.
 - search-first browser workflows for AI operators
-  Start with `search`, open the top tabs, and let `nextActionHints` steer read-view or extract on the most relevant sources.
+  Start with `search`, open the top tabs, and let `nextActionHints` steer read-view or extract on the most relevant sources. Each hint now also marks whether the next step belongs to the AI or a human and whether it can auto-run.
 - evidence-linked RAG ingestion pipelines
   Use `read-view` for readable source text and `extract` for claim-level provenance.
 - policy-gated web research in self-hosted environments
@@ -261,7 +261,7 @@ Minimal MCP bridge setup from the repository root:
 ```
 
 The bridge starts `touch-browser serve` underneath and exposes tools like `tb_search`, `tb_search_open_top`, `tb_open`, `tb_read_view`, `tb_extract`, `tb_tab_open`, and `tb_session_synthesize`.
-`tb_read_view` accepts `mainOnly`, `tb_extract` accepts `verifierCommand`, and `tb_search` returns ranked results plus `nextActionHints`.
+`tb_read_view` accepts `mainOnly`, `tb_extract` accepts `verifierCommand`, and `tb_search` returns ranked results plus `nextActionHints` with `actor`, `canAutoRun`, and `headedRequired`.
 
 ## Design Principles
 

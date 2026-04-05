@@ -945,9 +945,21 @@ pub struct SearchResultItem {
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
 #[serde(rename_all = "camelCase")]
+pub enum SearchActionActor {
+    Ai,
+    Human,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
+#[serde(rename_all = "camelCase")]
 pub struct SearchActionHint {
     pub action: String,
     pub detail: String,
+    pub actor: SearchActionActor,
+    #[serde(default)]
+    pub can_auto_run: bool,
+    #[serde(default)]
+    pub headed_required: bool,
     #[serde(skip_serializing_if = "Vec::is_empty", default)]
     pub result_ranks: Vec<usize>,
 }
