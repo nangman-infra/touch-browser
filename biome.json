@@ -4,6 +4,7 @@
     "ignore": [
       "target/**",
       "output/**",
+      "sonar-reports/**",
       "contracts/generated/manifest.json",
       "fixtures/scenarios/**/*.json"
     ],

@@ -47,6 +47,7 @@ This directory is the usage and operations index for the uploaded repository.
 | inspect bounded context and integration boundaries | [CONTEXT_MAP.md](CONTEXT_MAP.md) |
 | align domain terms across code, schema, and docs | [UBIQUITOUS_LANGUAGE.md](UBIQUITOUS_LANGUAGE.md) |
 | inspect DDD-lite completion and quality gate criteria | [DDD_COMPLETION_CRITERIA.md](DDD_COMPLETION_CRITERIA.md) |
+| inspect Sonar SAFE exclusions and rationale | [SONAR_SAFE_BASELINE.md](SONAR_SAFE_BASELINE.md) |
 
 ## Repository Shortcuts
 
