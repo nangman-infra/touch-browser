@@ -2,7 +2,7 @@
 
 - Status: `Experimental`
 - Version: `v1`
-- Last Updated: `2026-03-27`
+- Last Updated: `2026-04-05`
 - Scope: `stdio MCP bridge over touch-browser serve`
 
 ## 1. 목적
@@ -16,6 +16,19 @@
 실행:
 
 - `pnpm run mcp:bridge`
+
+빠른 설정 예시:
+
+```json
+{
+  "mcpServers": {
+    "touch-browser": {
+      "command": "node",
+      "args": ["scripts/touch-browser-mcp-bridge.mjs"]
+    }
+  }
+}
+```
 
 ## 2. 현재 프로토콜 범위
 

@@ -2,7 +2,7 @@
 
 - Status: `Active`
 - Version: `v1`
-- Last Updated: `2026-03-27`
+- Last Updated: `2026-04-05`
 - Scope: `touch-browser binary commands and JSON outputs`
 
 ## 1. 목적
@@ -31,39 +31,41 @@
 
 stable research surface:
 
-- `touch-browser open <target> [--browser] [--headed] [--budget <tokens>] [--session-file <path>] [--allow-domain <host> ...]`
-- `touch-browser snapshot <target> [--browser] [--headed] [--budget <tokens>] [--session-file <path>] [--allow-domain <host> ...]`
-- `touch-browser compact-view <target> [--browser] [--headed] [--budget <tokens>] [--session-file <path>] [--allow-domain <host> ...]`
-- `touch-browser extract <target> --claim <statement> ... [--browser] [--headed] [--budget <tokens>] [--session-file <path>] [--allow-domain <host> ...]`
-- `touch-browser policy <target> [--browser] [--headed] [--budget <tokens>] [--allow-domain <host> ...]`
-- `touch-browser session-snapshot --session-file <path>`
-- `touch-browser session-compact --session-file <path>`
-- `touch-browser refresh --session-file <path> [--headed]`
-- `touch-browser checkpoint --session-file <path>`
-- `touch-browser session-extract --session-file <path> --claim <statement> ...`
-- `touch-browser session-synthesize --session-file <path> [--note-limit <count>]`
-- `touch-browser follow --session-file <path> --ref <stable-ref> [--headed]`
-- `touch-browser paginate --session-file <path> --direction next|prev [--headed]`
-- `touch-browser expand --session-file <path> --ref <stable-ref> [--headed]`
-- `touch-browser browser-replay --session-file <path>`
-- `touch-browser session-close --session-file <path>`
-- `touch-browser telemetry-summary`
-- `touch-browser telemetry-recent [--limit <count>]`
-- `touch-browser replay <scenario-name>`
-- `touch-browser memory-summary [--steps <even-number>]`
-- `touch-browser serve`
+| Command | 설명 |
+| --- | --- |
+| `touch-browser open <target> [--browser] [--headed] [--budget <tokens>] [--session-file <path>] [--allow-domain <host> ...]` | target을 열고 structured snapshot을 만듭니다. |
+| `touch-browser snapshot <target> [--browser] [--headed] [--budget <tokens>] [--session-file <path>] [--allow-domain <host> ...]` | open 결과에서 full snapshot payload를 직접 확인합니다. |
+| `touch-browser compact-view <target> [--browser] [--headed] [--budget <tokens>] [--session-file <path>] [--allow-domain <host> ...]` | AI 입력용 compact semantic text와 `refIndex`를 반환합니다. |
+| `touch-browser extract <target> --claim <statement> ... [--browser] [--headed] [--budget <tokens>] [--session-file <path>] [--allow-domain <host> ...]` | claim별 supported/unsupported evidence와 citation metadata를 반환합니다. |
+| `touch-browser policy <target> [--browser] [--headed] [--budget <tokens>] [--allow-domain <host> ...]` | allow/review/block policy report를 반환합니다. |
+| `touch-browser session-snapshot --session-file <path>` | persisted browser session의 latest snapshot을 조회합니다. |
+| `touch-browser session-compact --session-file <path>` | persisted browser session의 compact semantic view를 반환합니다. |
+| `touch-browser session-extract --session-file <path> --claim <statement> ...` | persisted browser session에 대해 evidence extraction을 수행합니다. |
+| `touch-browser session-synthesize --session-file <path> [--note-limit <count>]` | multi-page session을 structured notes, claims, citations로 종합합니다. |
+| `touch-browser follow --session-file <path> --ref <stable-ref> [--headed]` | stable ref를 따라 persisted browser session을 진행합니다. |
+| `touch-browser paginate --session-file <path> --direction next|prev [--headed]` | persisted browser session에서 pagination action을 수행합니다. |
+| `touch-browser expand --session-file <path> --ref <stable-ref> [--headed]` | persisted browser session에서 expandable block을 엽니다. |
+| `touch-browser browser-replay --session-file <path>` | persisted browser session의 action trace를 replay 관점에서 재구성합니다. |
+| `touch-browser session-close --session-file <path>` | persisted browser session과 browser context를 정리합니다. |
+| `touch-browser telemetry-summary` | pilot telemetry aggregate summary를 반환합니다. |
+| `touch-browser telemetry-recent [--limit <count>]` | 최근 telemetry event 목록을 반환합니다. |
+| `touch-browser replay <scenario-name>` | recorded scenario transcript를 다시 재생합니다. |
+| `touch-browser memory-summary [--steps <even-number>]` | long-session memory compaction 요약을 생성합니다. |
+| `touch-browser serve` | stdio JSON-RPC daemon을 실행합니다. |
 
 experimental supervised surface:
 
-- `touch-browser checkpoint --session-file <path>`
-- `touch-browser session-policy --session-file <path>`
-- `touch-browser session-profile --session-file <path>`
-- `touch-browser set-profile --session-file <path> --profile research-read-only|research-restricted|interactive-review|interactive-supervised-auth|interactive-supervised-write`
-- `touch-browser approve --session-file <path> --risk challenge|mfa|auth|high-risk-write [--risk ...]`
-- `touch-browser click --session-file <path> --ref <stable-ref> [--headed] [--ack-risk challenge|mfa|auth|high-risk-write ...]`
-- `touch-browser type --session-file <path> --ref <stable-ref> --value <text> [--headed] [--sensitive] [--ack-risk challenge|mfa|auth|high-risk-write ...]`
-- `touch-browser submit --session-file <path> --ref <stable-ref> [--headed] [--ack-risk challenge|mfa|auth|high-risk-write ...]`
-- `touch-browser refresh --session-file <path> [--headed]`
+| Command | 설명 |
+| --- | --- |
+| `touch-browser checkpoint --session-file <path>` | 현재 supervised browser state의 risk, provider hint, approval guidance를 반환합니다. |
+| `touch-browser session-policy --session-file <path>` | persisted browser session의 policy report를 직접 조회합니다. |
+| `touch-browser session-profile --session-file <path>` | 현재 supervised policy profile을 조회합니다. |
+| `touch-browser set-profile --session-file <path> --profile research-read-only|research-restricted|interactive-review|interactive-supervised-auth|interactive-supervised-write` | supervised policy profile을 변경합니다. |
+| `touch-browser approve --session-file <path> --risk challenge|mfa|auth|high-risk-write [--risk ...]` | required risk acknowledgement를 session에 기록합니다. |
+| `touch-browser click --session-file <path> --ref <stable-ref> [--headed] [--ack-risk challenge|mfa|auth|high-risk-write ...]` | supervised session 안에서 interactive click을 실행합니다. |
+| `touch-browser type --session-file <path> --ref <stable-ref> --value <text> [--headed] [--sensitive] [--ack-risk challenge|mfa|auth|high-risk-write ...]` | supervised session 안에서 값을 입력합니다. |
+| `touch-browser submit --session-file <path> --ref <stable-ref> [--headed] [--ack-risk challenge|mfa|auth|high-risk-write ...]` | supervised session 안에서 form/control submit을 실행합니다. |
+| `touch-browser refresh --session-file <path> [--headed]` | supervised session을 새 상태로 다시 컴파일합니다. |
 
 이 구분은 제품 경계용 분류이며, 구현 자체는 같은 바이너리 안에 공존합니다.
 
