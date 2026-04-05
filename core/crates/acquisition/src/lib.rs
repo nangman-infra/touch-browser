@@ -1,7 +1,14 @@
-use std::collections::{BTreeMap, HashMap};
+use std::{
+    collections::{hash_map::DefaultHasher, BTreeMap, HashMap},
+    fs,
+    hash::{Hash, Hasher},
+    path::PathBuf,
+    time::{Duration, SystemTime, UNIX_EPOCH},
+};
 
 use reqwest::blocking::{Client, Response};
 use reqwest::header::{CONTENT_TYPE, LOCATION, USER_AGENT};
+use serde::{Deserialize, Serialize};
 use thiserror::Error;
 use touch_browser_contracts::{AcquisitionRecord, CacheStatus, SourceType, CONTRACT_VERSION};
 use url::Url;
@@ -14,6 +21,8 @@ pub fn crate_status() -> &'static str {
 pub struct AcquisitionConfig {
     pub user_agent: String,
     pub max_redirects: usize,
+    pub persistent_cache_dir: Option<PathBuf>,
+    pub persistent_cache_ttl: Duration,
 }
 
 impl Default for AcquisitionConfig {
@@ -21,6 +30,10 @@ impl Default for AcquisitionConfig {
         Self {
             user_agent: "TouchBrowser/0.1".to_string(),
             max_redirects: 5,
+            persistent_cache_dir: Some(
+                std::env::temp_dir().join("touch-browser-acquisition-cache"),
+            ),
+            persistent_cache_ttl: Duration::from_secs(300),
         }
     }
 }
@@ -40,14 +53,21 @@ impl FixtureResource {
     }
 }
 
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
 pub struct AcquiredDocument {
     pub record: AcquisitionRecord,
     pub body: String,
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
 struct CachedDocument {
+    result: AcquiredDocument,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+struct PersistentCachedDocument {
+    cache_key: String,
+    fetched_at_unix_seconds: u64,
     result: AcquiredDocument,
 }
 
@@ -86,6 +106,7 @@ impl AcquisitionEngine {
 
     pub fn fetch(&mut self, url: &str) -> Result<AcquiredDocument, AcquisitionError> {
         let cache_key = normalize_cache_key(url)?;
+        let persistent_cache_allowed = !url.starts_with("fixture://");
 
         if let Some(cached) = self.cache.get(&cache_key) {
             let mut result = cached.result.clone();
@@ -93,14 +114,31 @@ impl AcquisitionEngine {
             return Ok(result);
         }
 
+        if persistent_cache_allowed {
+            if let Some(cached) = self.load_persistent_cache(&cache_key) {
+                self.cache.insert(
+                    cache_key.clone(),
+                    CachedDocument {
+                        result: cached.clone(),
+                    },
+                );
+                self.cache.insert(
+                    cached.record.final_url.clone(),
+                    CachedDocument {
+                        result: cached.clone(),
+                    },
+                );
+                return Ok(cached);
+            }
+        }
+
         let result = if url.starts_with("fixture://") {
             self.fetch_fixture(url)?
         } else {
             self.fetch_http(&cache_key)?
         };
-
         self.cache.insert(
-            cache_key,
+            cache_key.clone(),
             CachedDocument {
                 result: result.clone(),
             },
@@ -111,8 +149,65 @@ impl AcquisitionEngine {
                 result: result.clone(),
             },
         );
+        if persistent_cache_allowed {
+            let _ = self.store_persistent_cache(&cache_key, &result);
+            let _ = self.store_persistent_cache(&result.record.final_url.clone(), &result);
+        }
 
         Ok(result)
+    }
+
+    fn load_persistent_cache(&self, cache_key: &str) -> Option<AcquiredDocument> {
+        let cache_path = self.persistent_cache_path(cache_key)?;
+        let raw = fs::read(&cache_path).ok()?;
+        let cached: PersistentCachedDocument = serde_json::from_slice(&raw).ok()?;
+        if cached.cache_key != cache_key {
+            return None;
+        }
+        if self.cache_entry_expired(cached.fetched_at_unix_seconds) {
+            let _ = fs::remove_file(cache_path);
+            return None;
+        }
+
+        let mut result = cached.result;
+        result.record.cache_status = CacheStatus::Hit;
+        Some(result)
+    }
+
+    fn store_persistent_cache(
+        &self,
+        cache_key: &str,
+        result: &AcquiredDocument,
+    ) -> Result<(), AcquisitionError> {
+        let Some(cache_path) = self.persistent_cache_path(cache_key) else {
+            return Ok(());
+        };
+        if let Some(parent) = cache_path.parent() {
+            fs::create_dir_all(parent).map_err(AcquisitionError::PersistentCacheIo)?;
+        }
+
+        let cached = PersistentCachedDocument {
+            cache_key: cache_key.to_string(),
+            fetched_at_unix_seconds: current_unix_seconds(),
+            result: result.clone(),
+        };
+        fs::write(
+            cache_path,
+            serde_json::to_vec(&cached).map_err(AcquisitionError::PersistentCacheJson)?,
+        )
+        .map_err(AcquisitionError::PersistentCacheIo)?;
+        Ok(())
+    }
+
+    fn persistent_cache_path(&self, cache_key: &str) -> Option<PathBuf> {
+        let cache_dir = self.config.persistent_cache_dir.as_ref()?;
+        Some(cache_dir.join(format!("{:016x}.json", cache_key_hash(cache_key))))
+    }
+
+    fn cache_entry_expired(&self, fetched_at_unix_seconds: u64) -> bool {
+        self.config.persistent_cache_ttl.is_zero()
+            || current_unix_seconds().saturating_sub(fetched_at_unix_seconds)
+                > self.config.persistent_cache_ttl.as_secs()
     }
 
     fn fetch_fixture(&self, url: &str) -> Result<AcquiredDocument, AcquisitionError> {
@@ -274,6 +369,19 @@ fn normalize_cache_key(url: &str) -> Result<String, AcquisitionError> {
     Ok(parsed.to_string())
 }
 
+fn cache_key_hash(cache_key: &str) -> u64 {
+    let mut hasher = DefaultHasher::new();
+    cache_key.hash(&mut hasher);
+    hasher.finish()
+}
+
+fn current_unix_seconds() -> u64 {
+    SystemTime::now()
+        .duration_since(UNIX_EPOCH)
+        .unwrap_or_else(|_| Duration::from_secs(0))
+        .as_secs()
+}
+
 fn parse_robots(body: &str, user_agent: &str) -> RobotsPolicy {
     let mut active = false;
     let mut matched_specific = false;
@@ -341,17 +449,24 @@ pub enum AcquisitionError {
     Http(#[from] reqwest::Error),
     #[error("invalid url: {0}")]
     Url(#[from] url::ParseError),
+    #[error("persistent cache I/O error: {0}")]
+    PersistentCacheIo(std::io::Error),
+    #[error("persistent cache JSON error: {0}")]
+    PersistentCacheJson(serde_json::Error),
 }
 
 #[cfg(test)]
 mod tests {
-    use std::io::Cursor;
     use std::net::TcpListener;
     use std::sync::{
         atomic::{AtomicBool, AtomicUsize, Ordering},
         Arc,
     };
-    use std::thread;
+    use std::{fs, io::Cursor};
+    use std::{
+        thread,
+        time::{SystemTime, UNIX_EPOCH},
+    };
 
     use tiny_http::{Header, Response as TinyResponse, Server, StatusCode};
     use touch_browser_contracts::CacheStatus;
@@ -481,6 +596,42 @@ mod tests {
         assert_eq!(normalized.record.cache_status, CacheStatus::Hit);
         assert_eq!(with_fragment.record.final_url, normalized.record.final_url);
         assert_eq!(requests.load(Ordering::SeqCst), 2);
+    }
+
+    #[test]
+    fn reuses_persistent_cache_across_engine_instances() {
+        let requests = Arc::new(AtomicUsize::new(0));
+        let server = TestServer::start(requests.clone(), false);
+        let cache_dir = std::env::temp_dir().join(format!(
+            "touch-browser-acquisition-cache-test-{}",
+            SystemTime::now()
+                .duration_since(UNIX_EPOCH)
+                .expect("time should be monotonic")
+                .as_nanos()
+        ));
+        let config = AcquisitionConfig {
+            persistent_cache_dir: Some(cache_dir.clone()),
+            ..AcquisitionConfig::default()
+        };
+
+        let first = {
+            let mut engine = AcquisitionEngine::new(config.clone()).expect("engine");
+            engine
+                .fetch(&format!("{}/final", server.base_url()))
+                .expect("first fetch")
+        };
+        let second = {
+            let mut engine = AcquisitionEngine::new(config).expect("engine");
+            engine
+                .fetch(&format!("{}/final", server.base_url()))
+                .expect("second fetch")
+        };
+
+        assert_eq!(first.record.cache_status, CacheStatus::Miss);
+        assert_eq!(second.record.cache_status, CacheStatus::Hit);
+        assert_eq!(requests.load(Ordering::SeqCst), 2);
+
+        let _ = fs::remove_dir_all(cache_dir);
     }
 
     struct TestServer {

@@ -1,5 +1,6 @@
 use std::{
     collections::BTreeSet,
+    fs,
     path::{Path, PathBuf},
 };
 
@@ -28,10 +29,14 @@ fn search_engine_slug(engine: SearchEngine) -> &'static str {
 }
 
 fn default_search_session_file(engine: SearchEngine) -> PathBuf {
-    repo_root().join("output/browser-search").join(format!(
+    default_search_output_dir().join(format!(
         "{}.search-session.json",
         search_engine_slug(engine)
     ))
+}
+
+pub(crate) fn default_search_output_dir() -> PathBuf {
+    repo_root().join("output/browser-search")
 }
 
 pub(crate) fn resolve_search_session_file(
@@ -41,6 +46,46 @@ pub(crate) fn resolve_search_session_file(
     session_file
         .cloned()
         .unwrap_or_else(|| default_search_session_file(engine))
+}
+
+pub(crate) fn resolve_latest_search_session_file(
+    session_file: Option<&PathBuf>,
+) -> Result<PathBuf, CliError> {
+    match session_file {
+        Some(path) => Ok(path.clone()),
+        None => latest_search_session_file_in(&default_search_output_dir())?.ok_or_else(|| {
+            CliError::Usage(
+                "No persisted search session was found. Run `touch-browser search ...` first or pass `--session-file <path>`.".to_string(),
+            )
+        }),
+    }
+}
+
+pub(crate) fn latest_search_session_file_in(
+    search_output_dir: &Path,
+) -> Result<Option<PathBuf>, CliError> {
+    if !search_output_dir.exists() {
+        return Ok(None);
+    }
+
+    let mut candidates = fs::read_dir(search_output_dir)?
+        .filter_map(|entry| {
+            let entry = entry.ok()?;
+            let path = entry.path();
+            if !path.is_file() || path.extension().and_then(|value| value.to_str()) != Some("json")
+            {
+                return None;
+            }
+            let modified = entry
+                .metadata()
+                .ok()
+                .and_then(|metadata| metadata.modified().ok())?;
+            Some((modified, path))
+        })
+        .collect::<Vec<_>>();
+    candidates.sort_by(|left, right| right.0.cmp(&left.0));
+
+    Ok(candidates.into_iter().map(|(_, path)| path).next())
 }
 
 pub(crate) fn derived_search_result_session_file(

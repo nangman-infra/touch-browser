@@ -114,7 +114,7 @@ pub(crate) struct SessionReadOptions {
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub(crate) struct SessionExtractOptions {
-    pub(crate) session_file: PathBuf,
+    pub(crate) session_file: Option<PathBuf>,
     pub(crate) claims: Vec<String>,
     pub(crate) verifier_command: Option<String>,
 }
@@ -380,14 +380,14 @@ impl ReadViewOutput {
         main_only: bool,
     ) -> Self {
         let markdown_text = if main_only {
-            render_main_read_view_markdown(snapshot)
-        } else {
             let preferred_markdown = render_main_read_view_markdown(snapshot);
             if preferred_markdown.is_empty() {
                 render_read_view_markdown(snapshot)
             } else {
                 preferred_markdown
             }
+        } else {
+            render_read_view_markdown(snapshot)
         };
         let line_count = markdown_text.lines().count();
         let char_count = markdown_text.chars().count();

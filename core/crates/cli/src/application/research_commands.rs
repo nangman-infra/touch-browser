@@ -2,6 +2,29 @@ use crate::*;
 
 use serde_json::json;
 
+fn claim_inputs_from_statements(statements: &[String]) -> Result<Vec<ClaimInput>, CliError> {
+    let claims = statements
+        .iter()
+        .map(|statement| statement.trim())
+        .filter(|statement| !statement.is_empty())
+        .enumerate()
+        .map(|(index, statement)| ClaimInput {
+            id: format!("c{}", index + 1),
+            statement: statement.to_string(),
+        })
+        .collect::<Vec<_>>();
+    if claims.is_empty() {
+        return Err(CliError::Usage(
+            "extract requires at least one non-empty `--claim` statement.".to_string(),
+        ));
+    }
+    Ok(claims)
+}
+
+fn shell_quote(value: &str) -> String {
+    format!("'{}'", value.replace('\'', "'\"'\"'"))
+}
+
 pub(crate) fn handle_search(options: SearchOptions) -> Result<Value, CliError> {
     let search_url = build_search_url(options.engine, &options.query)?;
     let session_file = resolve_search_session_file(options.session_file.as_ref(), options.engine);
@@ -149,6 +172,16 @@ pub(crate) fn handle_search_open_result(
         "selectedResult": selected,
         "result": opened,
         "sessionFile": session_file.display().to_string(),
+        "nextCommands": {
+            "sessionExtract": format!(
+                "touch-browser session-extract --session-file {} --claim \"<statement>\"",
+                shell_quote(&session_file.display().to_string())
+            ),
+            "sessionRead": format!(
+                "touch-browser session-read --session-file {} --main-only",
+                shell_quote(&session_file.display().to_string())
+            ),
+        }
     }))
 }
 
@@ -533,15 +566,7 @@ pub(crate) fn handle_extract(options: ExtractOptions) -> Result<Value, CliError>
         ));
     }
 
-    let claims = options
-        .claims
-        .iter()
-        .enumerate()
-        .map(|(index, statement)| ClaimInput {
-            id: format!("c{}", index + 1),
-            statement: statement.clone(),
-        })
-        .collect::<Vec<_>>();
+    let claims = claim_inputs_from_statements(&options.claims)?;
 
     if options.browser {
         let kernel = PolicyKernel;

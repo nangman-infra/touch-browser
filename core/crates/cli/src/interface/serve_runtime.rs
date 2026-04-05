@@ -973,7 +973,7 @@ pub(crate) fn serve_session_extract(
     let (resolved_tab_id, session_file) =
         daemon_state.opened_tab_file(&session_id, tab_id.as_deref())?;
     let result = dispatch(CliCommand::SessionExtract(SessionExtractOptions {
-        session_file,
+        session_file: Some(session_file),
         claims,
         verifier_command,
     }))?;

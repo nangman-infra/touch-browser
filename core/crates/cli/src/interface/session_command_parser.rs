@@ -2,6 +2,19 @@ use std::path::PathBuf;
 
 use crate::*;
 
+fn parse_claim_value(args: &[String], index: usize) -> Result<String, CliError> {
+    let value = args
+        .get(index + 1)
+        .ok_or_else(|| CliError::Usage("--claim requires a statement.".to_string()))?;
+    let trimmed = value.trim();
+    if trimmed.is_empty() {
+        return Err(CliError::Usage(
+            "--claim requires a non-empty statement.".to_string(),
+        ));
+    }
+    Ok(trimmed.to_string())
+}
+
 pub(crate) fn parse_target_options(args: &[String]) -> Result<TargetOptions, CliError> {
     let target = args
         .first()
@@ -158,10 +171,7 @@ pub(crate) fn parse_extract_options(args: &[String]) -> Result<ExtractOptions, C
                 index += 2;
             }
             "--claim" => {
-                let value = args
-                    .get(index + 1)
-                    .ok_or_else(|| CliError::Usage("--claim requires a statement.".to_string()))?;
-                claims.push(value.clone());
+                claims.push(parse_claim_value(args, index)?);
                 index += 2;
             }
             "--verifier-command" => {
@@ -439,10 +449,7 @@ pub(crate) fn parse_session_extract_options(
                 index += 2;
             }
             "--claim" => {
-                let value = args
-                    .get(index + 1)
-                    .ok_or_else(|| CliError::Usage("--claim requires a statement.".to_string()))?;
-                claims.push(value.clone());
+                claims.push(parse_claim_value(args, index)?);
                 index += 2;
             }
             "--verifier-command" => {
@@ -460,9 +467,6 @@ pub(crate) fn parse_session_extract_options(
         }
     }
 
-    let session_file = session_file.ok_or_else(|| {
-        CliError::Usage("session-extract requires `--session-file <path>`.".to_string())
-    })?;
     if claims.is_empty() {
         return Err(CliError::Usage(
             "session-extract requires at least one `--claim` statement.".to_string(),

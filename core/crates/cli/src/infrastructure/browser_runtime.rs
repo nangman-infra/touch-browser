@@ -179,12 +179,22 @@ pub(crate) fn save_browser_cli_session(
         fs::create_dir_all(parent)?;
     }
 
-    fs::write(path, serde_json::to_vec_pretty(&persisted)?)?;
+    fs::write(path, serde_json::to_vec_pretty(&persisted)?).map_err(|source| CliError::IoPath {
+        path: path.display().to_string(),
+        source,
+    })?;
     Ok(())
 }
 
 pub(crate) fn load_browser_cli_session(path: &Path) -> Result<BrowserCliSession, CliError> {
-    serde_json::from_str(&fs::read_to_string(path)?).map_err(CliError::Json)
+    let raw = fs::read_to_string(path).map_err(|source| CliError::IoPath {
+        path: path.display().to_string(),
+        source,
+    })?;
+    serde_json::from_str(&raw).map_err(|source| CliError::JsonPath {
+        path: path.display().to_string(),
+        source,
+    })
 }
 
 pub(crate) fn browser_secret_store_path(path: &Path) -> PathBuf {
@@ -205,7 +215,14 @@ pub(crate) fn load_browser_cli_secrets(path: &Path) -> Result<BTreeMap<String, S
         return Ok(BTreeMap::new());
     }
 
-    serde_json::from_str(&fs::read_to_string(path)?).map_err(CliError::Json)
+    let raw = fs::read_to_string(path).map_err(|source| CliError::IoPath {
+        path: path.display().to_string(),
+        source,
+    })?;
+    serde_json::from_str(&raw).map_err(|source| CliError::JsonPath {
+        path: path.display().to_string(),
+        source,
+    })
 }
 
 pub(crate) fn save_browser_cli_secrets(
@@ -223,7 +240,10 @@ pub(crate) fn save_browser_cli_secrets(
         fs::create_dir_all(parent)?;
     }
 
-    fs::write(path, serde_json::to_vec_pretty(secrets)?)?;
+    fs::write(path, serde_json::to_vec_pretty(secrets)?).map_err(|source| CliError::IoPath {
+        path: path.display().to_string(),
+        source,
+    })?;
     Ok(())
 }
 

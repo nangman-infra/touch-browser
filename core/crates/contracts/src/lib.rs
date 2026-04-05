@@ -65,7 +65,7 @@ pub fn render_main_read_view_markdown(snapshot: &SnapshotDocument) -> String {
     let has_main_zone = snapshot
         .blocks
         .iter()
-        .any(|block| block_zone(block) == Some("main"));
+        .any(|block| block_layout_zone(block) == Some(LayoutZone::Main));
 
     snapshot
         .blocks
@@ -207,16 +207,113 @@ fn keep_main_read_view_block(
         return false;
     }
 
-    let zone = block_zone(block);
+    let zone = block_layout_zone(block);
     if has_main_zone {
-        return matches!(zone, Some("main"));
+        return matches!(zone, Some(LayoutZone::Main));
     }
 
-    !matches!(zone, Some("nav" | "aside" | "header" | "footer"))
+    !matches!(
+        zone,
+        Some(LayoutZone::Nav | LayoutZone::Aside | LayoutZone::Header | LayoutZone::Footer)
+    )
 }
 
-fn block_zone(block: &SnapshotBlock) -> Option<&str> {
-    block.attributes.get("zone").and_then(Value::as_str)
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+enum LayoutZone {
+    Main,
+    Nav,
+    Aside,
+    Header,
+    Footer,
+}
+
+fn block_layout_zone(block: &SnapshotBlock) -> Option<LayoutZone> {
+    explicit_block_zone(block)
+        .or_else(|| inferred_dom_path_zone(block))
+        .or_else(|| inferred_role_zone(block))
+}
+
+fn explicit_block_zone(block: &SnapshotBlock) -> Option<LayoutZone> {
+    match block.attributes.get("zone").and_then(Value::as_str) {
+        Some("main") => Some(LayoutZone::Main),
+        Some("nav") => Some(LayoutZone::Nav),
+        Some("aside") => Some(LayoutZone::Aside),
+        Some("header") => Some(LayoutZone::Header),
+        Some("footer") => Some(LayoutZone::Footer),
+        _ => None,
+    }
+}
+
+fn inferred_role_zone(block: &SnapshotBlock) -> Option<LayoutZone> {
+    match block.role {
+        SnapshotBlockRole::PrimaryNav | SnapshotBlockRole::SecondaryNav => Some(LayoutZone::Nav),
+        _ => None,
+    }
+}
+
+fn inferred_dom_path_zone(block: &SnapshotBlock) -> Option<LayoutZone> {
+    block
+        .evidence
+        .dom_path_hint
+        .as_deref()?
+        .split('>')
+        .map(str::trim)
+        .find_map(layout_zone_for_dom_segment)
+}
+
+fn layout_zone_for_dom_segment(segment: &str) -> Option<LayoutZone> {
+    let normalized = segment.trim().to_ascii_lowercase();
+    if normalized.is_empty() {
+        return None;
+    }
+
+    if segment_matches_zone(&normalized, "footer")
+        || normalized.contains("footer-")
+        || normalized.contains("contentinfo")
+    {
+        return Some(LayoutZone::Footer);
+    }
+    if segment_matches_zone(&normalized, "header")
+        || normalized.contains("masthead")
+        || normalized.contains("banner")
+    {
+        return Some(LayoutZone::Header);
+    }
+    if segment_matches_zone(&normalized, "aside")
+        || normalized.contains("sidebar")
+        || normalized.contains("side-panel")
+        || normalized.contains("mw-panel")
+    {
+        return Some(LayoutZone::Aside);
+    }
+    if segment_matches_zone(&normalized, "nav")
+        || normalized.contains("menu")
+        || normalized.contains("toolbar")
+        || normalized.contains("breadcrumb")
+        || normalized.contains("toc")
+        || normalized.contains("navbox")
+        || normalized.contains("pagination")
+        || normalized.contains("tablist")
+    {
+        return Some(LayoutZone::Nav);
+    }
+    if segment_matches_zone(&normalized, "main")
+        || normalized.contains("main-content")
+        || normalized.contains("bodycontent")
+        || normalized.contains("mw-parser-output")
+        || normalized.contains("article-body")
+    {
+        return Some(LayoutZone::Main);
+    }
+
+    None
+}
+
+fn segment_matches_zone(segment: &str, zone: &str) -> bool {
+    segment == zone
+        || segment.starts_with(&format!("{zone}."))
+        || segment.starts_with(&format!("{zone}#"))
+        || segment.starts_with(&format!("{zone}["))
 }
 
 fn is_salient_text_block(text: &str) -> bool {
@@ -1363,6 +1460,102 @@ mod tests {
             render_read_view_markdown(&snapshot),
             "- Already prefixed item\n- Numbered entry"
         );
+    }
+
+    #[test]
+    fn infers_main_only_boundaries_from_dom_path_when_zone_is_missing() {
+        let snapshot = SnapshotDocument {
+            version: CONTRACT_VERSION.to_string(),
+            stable_ref_version: STABLE_REF_VERSION.to_string(),
+            source: SnapshotSource {
+                source_url: "https://en.wikipedia.org/wiki/Jazz".to_string(),
+                source_type: SourceType::Http,
+                title: Some("Jazz".to_string()),
+            },
+            budget: SnapshotBudget {
+                requested_tokens: 512,
+                estimated_tokens: 32,
+                emitted_tokens: 32,
+                truncated: false,
+            },
+            blocks: vec![
+                SnapshotBlock {
+                    version: CONTRACT_VERSION.to_string(),
+                    id: "b1".to_string(),
+                    kind: SnapshotBlockKind::Link,
+                    stable_ref: "rnav:link:portal".to_string(),
+                    role: SnapshotBlockRole::Content,
+                    text: "Contents".to_string(),
+                    attributes: BTreeMap::from([("href".to_string(), json!("#contents"))]),
+                    evidence: SnapshotEvidence {
+                        source_url: "https://en.wikipedia.org/wiki/Jazz".to_string(),
+                        source_type: SourceType::Http,
+                        dom_path_hint: Some("html > body > nav > a".to_string()),
+                        byte_range_start: None,
+                        byte_range_end: None,
+                    },
+                },
+                SnapshotBlock {
+                    version: CONTRACT_VERSION.to_string(),
+                    id: "b2".to_string(),
+                    kind: SnapshotBlockKind::Heading,
+                    stable_ref: "rmain:heading:title".to_string(),
+                    role: SnapshotBlockRole::Content,
+                    text: "Jazz".to_string(),
+                    attributes: BTreeMap::from([("level".to_string(), json!(1))]),
+                    evidence: SnapshotEvidence {
+                        source_url: "https://en.wikipedia.org/wiki/Jazz".to_string(),
+                        source_type: SourceType::Http,
+                        dom_path_hint: Some("html > body > main > h1".to_string()),
+                        byte_range_start: None,
+                        byte_range_end: None,
+                    },
+                },
+                SnapshotBlock {
+                    version: CONTRACT_VERSION.to_string(),
+                    id: "b3".to_string(),
+                    kind: SnapshotBlockKind::Text,
+                    stable_ref: "rmain:text:intro".to_string(),
+                    role: SnapshotBlockRole::Content,
+                    text: "Jazz originated in African-American communities in New Orleans."
+                        .to_string(),
+                    attributes: BTreeMap::new(),
+                    evidence: SnapshotEvidence {
+                        source_url: "https://en.wikipedia.org/wiki/Jazz".to_string(),
+                        source_type: SourceType::Http,
+                        dom_path_hint: Some("html > body > main > p".to_string()),
+                        byte_range_start: None,
+                        byte_range_end: None,
+                    },
+                },
+                SnapshotBlock {
+                    version: CONTRACT_VERSION.to_string(),
+                    id: "b4".to_string(),
+                    kind: SnapshotBlockKind::Link,
+                    stable_ref: "rfooter:link:privacy".to_string(),
+                    role: SnapshotBlockRole::Content,
+                    text: "Privacy policy".to_string(),
+                    attributes: BTreeMap::from([(
+                        "href".to_string(),
+                        json!("/wiki/Privacy_policy"),
+                    )]),
+                    evidence: SnapshotEvidence {
+                        source_url: "https://en.wikipedia.org/wiki/Jazz".to_string(),
+                        source_type: SourceType::Http,
+                        dom_path_hint: Some("html > body > footer > a".to_string()),
+                        byte_range_start: None,
+                        byte_range_end: None,
+                    },
+                },
+            ],
+        };
+
+        let markdown = render_main_read_view_markdown(&snapshot);
+
+        assert!(markdown.contains("# Jazz"));
+        assert!(markdown.contains("Jazz originated in African-American communities"));
+        assert!(!markdown.contains("Contents"));
+        assert!(!markdown.contains("Privacy policy"));
     }
 }
 

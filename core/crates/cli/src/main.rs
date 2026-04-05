@@ -40,7 +40,8 @@ pub(crate) use application::policy_support::{
 };
 pub(crate) use application::search_support::{
     build_search_report, build_search_url, derived_search_result_session_file,
-    is_search_results_target, resolve_search_session_file, search_engine_source_label,
+    is_search_results_target, resolve_latest_search_session_file, resolve_search_session_file,
+    search_engine_source_label,
 };
 pub(crate) use application::session_reporting::{
     render_session_synthesis_markdown, verify_action_result_if_requested,
@@ -368,7 +369,7 @@ fn usage() -> String {
         "  touch-browser policy <target> [--browser] [--headed] [--budget <tokens>] [--source-risk low|medium|hostile] [--source-label <label>] [--allow-domain <host> ...]",
         "  touch-browser session-snapshot --session-file <path>",
         "  touch-browser session-compact --session-file <path>",
-        "  touch-browser session-extract --session-file <path> --claim <statement> [--claim <statement> ...] [--verifier-command <shell-command>]",
+        "  touch-browser session-extract [--session-file <path>] --claim <statement> [--claim <statement> ...] [--verifier-command <shell-command>]",
         "  touch-browser session-read --session-file <path> [--main-only]",
         "  touch-browser session-synthesize --session-file <path> [--note-limit <count>] [--format json|markdown]",
         "  touch-browser follow --session-file <path> --ref <stable-ref> [--headed]",
@@ -401,8 +402,20 @@ enum CliError {
     Usage(String),
     #[error("I/O error: {0}")]
     Io(#[from] std::io::Error),
+    #[error("I/O error at {path}: {source}")]
+    IoPath {
+        path: String,
+        #[source]
+        source: std::io::Error,
+    },
     #[error("JSON error: {0}")]
     Json(#[from] serde_json::Error),
+    #[error("JSON error in {path}: {source}")]
+    JsonPath {
+        path: String,
+        #[source]
+        source: serde_json::Error,
+    },
     #[error("observation error: {0}")]
     Observation(#[from] touch_browser_observation::ObservationError),
     #[error("runtime error: {0}")]
@@ -432,13 +445,14 @@ mod tests {
     };
 
     use super::{
-        browser_context_dir_for_session_file, build_search_report,
+        browser_context_dir_for_session_file, build_browser_cli_session, build_search_report,
         derived_search_result_session_file, dispatch, load_browser_cli_session, parse_command,
-        save_browser_cli_session, AckRisk, ApproveOptions, CliCommand, ClickOptions, ExpandOptions,
-        ExtractOptions, FollowOptions, OutputFormat, PaginateOptions, PaginationDirection,
-        PolicyProfile, SearchActionActor, SearchEngine, SearchOpenResultOptions,
-        SearchOpenTopOptions, SearchOptions, SearchReportStatus, SessionExtractOptions,
-        SessionFileOptions, SessionProfileSetOptions, SessionReadOptions, SessionRefreshOptions,
+        repo_root, save_browser_cli_session, AckRisk, ApproveOptions, CliCommand, ClickOptions,
+        ExpandOptions, ExtractOptions, FollowOptions, OutputFormat, PaginateOptions,
+        PaginationDirection, PersistedBrowserState, PolicyProfile, ReadViewOutput,
+        SearchActionActor, SearchEngine, SearchOpenResultOptions, SearchOpenTopOptions,
+        SearchOptions, SearchReportStatus, SessionExtractOptions, SessionFileOptions,
+        SessionProfileSetOptions, SessionReadOptions, SessionRefreshOptions,
         SessionSynthesizeOptions, SubmitOptions, TargetOptions, TelemetryRecentOptions,
         TypeOptions, DEFAULT_OPENED_AT, DEFAULT_REQUESTED_TOKENS, DEFAULT_SEARCH_TOKENS,
     };
@@ -481,6 +495,31 @@ mod tests {
                 verifier_command: None,
             })
         );
+    }
+
+    #[test]
+    fn rejects_blank_extract_claims() {
+        let error = parse_command(&[
+            "extract".to_string(),
+            "fixture://research/citation-heavy/pricing".to_string(),
+            "--claim".to_string(),
+            "   ".to_string(),
+        ])
+        .expect_err("blank extract claim should be rejected");
+
+        assert_eq!(error.to_string(), "--claim requires a non-empty statement.");
+    }
+
+    #[test]
+    fn rejects_blank_session_extract_claims() {
+        let error = parse_command(&[
+            "session-extract".to_string(),
+            "--claim".to_string(),
+            "".to_string(),
+        ])
+        .expect_err("blank session extract claim should be rejected");
+
+        assert_eq!(error.to_string(), "--claim requires a non-empty statement.");
     }
 
     #[test]
@@ -648,6 +687,101 @@ mod tests {
         assert!(markdown.starts_with('#'));
         assert!(markdown.contains("Getting Started"));
         assert!(output["approxTokens"].as_u64().unwrap_or(0) > 0);
+    }
+
+    #[test]
+    fn read_view_output_changes_when_main_only_is_enabled() {
+        let snapshot = SnapshotDocument {
+            version: touch_browser_contracts::CONTRACT_VERSION.to_string(),
+            stable_ref_version: touch_browser_contracts::STABLE_REF_VERSION.to_string(),
+            source: SnapshotSource {
+                source_url: "https://example.com/read-view".to_string(),
+                source_type: SourceType::Http,
+                title: Some("Read View".to_string()),
+            },
+            budget: SnapshotBudget {
+                requested_tokens: 128,
+                estimated_tokens: 24,
+                emitted_tokens: 24,
+                truncated: false,
+            },
+            blocks: vec![
+                SnapshotBlock {
+                    version: touch_browser_contracts::CONTRACT_VERSION.to_string(),
+                    id: "b1".to_string(),
+                    kind: SnapshotBlockKind::Link,
+                    stable_ref: "rnav:link:toc".to_string(),
+                    role: SnapshotBlockRole::Content,
+                    text: "Contents".to_string(),
+                    attributes: Default::default(),
+                    evidence: SnapshotEvidence {
+                        source_url: "https://example.com/read-view".to_string(),
+                        source_type: SourceType::Http,
+                        dom_path_hint: Some("html > body > nav > a".to_string()),
+                        byte_range_start: None,
+                        byte_range_end: None,
+                    },
+                },
+                SnapshotBlock {
+                    version: touch_browser_contracts::CONTRACT_VERSION.to_string(),
+                    id: "b2".to_string(),
+                    kind: SnapshotBlockKind::Heading,
+                    stable_ref: "rmain:heading:title".to_string(),
+                    role: SnapshotBlockRole::Content,
+                    text: "Read View".to_string(),
+                    attributes: Default::default(),
+                    evidence: SnapshotEvidence {
+                        source_url: "https://example.com/read-view".to_string(),
+                        source_type: SourceType::Http,
+                        dom_path_hint: Some("html > body > main > h1".to_string()),
+                        byte_range_start: None,
+                        byte_range_end: None,
+                    },
+                },
+                SnapshotBlock {
+                    version: touch_browser_contracts::CONTRACT_VERSION.to_string(),
+                    id: "b3".to_string(),
+                    kind: SnapshotBlockKind::Text,
+                    stable_ref: "rmain:text:body".to_string(),
+                    role: SnapshotBlockRole::Content,
+                    text: "Main article body.".to_string(),
+                    attributes: Default::default(),
+                    evidence: SnapshotEvidence {
+                        source_url: "https://example.com/read-view".to_string(),
+                        source_type: SourceType::Http,
+                        dom_path_hint: Some("html > body > main > p".to_string()),
+                        byte_range_start: None,
+                        byte_range_end: None,
+                    },
+                },
+                SnapshotBlock {
+                    version: touch_browser_contracts::CONTRACT_VERSION.to_string(),
+                    id: "b4".to_string(),
+                    kind: SnapshotBlockKind::Link,
+                    stable_ref: "rfooter:link:privacy".to_string(),
+                    role: SnapshotBlockRole::Content,
+                    text: "Privacy".to_string(),
+                    attributes: Default::default(),
+                    evidence: SnapshotEvidence {
+                        source_url: "https://example.com/read-view".to_string(),
+                        source_type: SourceType::Http,
+                        dom_path_hint: Some("html > body > footer > a".to_string()),
+                        byte_range_start: None,
+                        byte_range_end: None,
+                    },
+                },
+            ],
+        };
+
+        let full = ReadViewOutput::new(&snapshot, None, None, false);
+        let main = ReadViewOutput::new(&snapshot, None, None, true);
+
+        assert!(full.markdown_text.contains("Contents"));
+        assert!(full.markdown_text.contains("Privacy"));
+        assert!(main.markdown_text.contains("Main article body."));
+        assert!(!main.markdown_text.contains("Contents"));
+        assert!(!main.markdown_text.contains("Privacy"));
+        assert!(full.char_count > main.char_count);
     }
 
     #[test]
@@ -900,13 +1034,18 @@ mod tests {
         save_browser_cli_session(&session_file, &persisted)
             .expect("session should save with search state");
 
-        dispatch(CliCommand::SearchOpenResult(SearchOpenResultOptions {
+        let output = dispatch(CliCommand::SearchOpenResult(SearchOpenResultOptions {
             engine: SearchEngine::Google,
             session_file: Some(session_file.clone()),
             rank: 1,
             headed: false,
         }))
         .expect("search-open-result should succeed");
+        assert_eq!(output["sessionFile"], session_file.display().to_string());
+        assert!(output["nextCommands"]["sessionExtract"]
+            .as_str()
+            .expect("session extract hint should exist")
+            .contains("touch-browser session-extract"));
 
         let refreshed =
             load_browser_cli_session(&session_file).expect("session should reload after open");
@@ -1674,7 +1813,7 @@ mod tests {
             .contains("Advanced guide opened for the next research step."));
 
         let extract_output = dispatch(CliCommand::SessionExtract(SessionExtractOptions {
-            session_file: session_file.clone(),
+            session_file: Some(session_file.clone()),
             claims: vec!["Advanced guide opened for the next research step.".to_string()],
             verifier_command: None,
         }))
@@ -1824,7 +1963,7 @@ mod tests {
             .contains("Expanded details confirm"));
 
         let extract_output = dispatch(CliCommand::SessionExtract(SessionExtractOptions {
-            session_file: session_file.clone(),
+            session_file: Some(session_file.clone()),
             claims: vec![
                 "Expanded details confirm that the runtime can reveal collapsed notes.".to_string(),
             ],
@@ -1843,6 +1982,113 @@ mod tests {
         }))
         .expect("session close should succeed");
         assert_eq!(close_output["removed"], true);
+    }
+
+    #[test]
+    fn session_extract_uses_latest_search_session_when_path_is_omitted() {
+        let search_output_dir = repo_root().join("output/browser-search");
+        fs::create_dir_all(&search_output_dir).expect("search output dir should exist");
+        let session_file = search_output_dir.join(format!(
+            "session-extract-default-{}.json",
+            SystemTime::now()
+                .duration_since(UNIX_EPOCH)
+                .expect("time should be monotonic")
+                .as_nanos()
+        ));
+
+        let runtime = touch_browser_runtime::ReadOnlyRuntime::default();
+        let mut session = runtime.start_session("stest-default-extract", DEFAULT_OPENED_AT);
+        let snapshot = SnapshotDocument {
+            version: touch_browser_contracts::CONTRACT_VERSION.to_string(),
+            stable_ref_version: touch_browser_contracts::STABLE_REF_VERSION.to_string(),
+            source: SnapshotSource {
+                source_url: "https://example.com/default-extract".to_string(),
+                source_type: SourceType::Fixture,
+                title: Some("Default Extract".to_string()),
+            },
+            budget: SnapshotBudget {
+                requested_tokens: 128,
+                estimated_tokens: 24,
+                emitted_tokens: 24,
+                truncated: false,
+            },
+            blocks: vec![SnapshotBlock {
+                version: touch_browser_contracts::CONTRACT_VERSION.to_string(),
+                id: "b1".to_string(),
+                kind: SnapshotBlockKind::Text,
+                stable_ref: "rmain:text:default".to_string(),
+                role: SnapshotBlockRole::Content,
+                text: "Latest session extraction target.".to_string(),
+                attributes: Default::default(),
+                evidence: SnapshotEvidence {
+                    source_url: "https://example.com/default-extract".to_string(),
+                    source_type: SourceType::Fixture,
+                    dom_path_hint: Some("html > body > main > p".to_string()),
+                    byte_range_start: None,
+                    byte_range_end: None,
+                },
+            }],
+        };
+        runtime
+            .open_snapshot(
+                &mut session,
+                "https://example.com/default-extract",
+                snapshot,
+                touch_browser_contracts::SourceRisk::Low,
+                None,
+                DEFAULT_OPENED_AT,
+            )
+            .expect("snapshot should open");
+        save_browser_cli_session(
+            &session_file,
+            &build_browser_cli_session(
+                &session,
+                128,
+                true,
+                Some(PersistedBrowserState {
+                    current_url: "https://example.com/default-extract".to_string(),
+                    current_html: "<html><body><main><p>Latest session extraction target.</p></main></body></html>".to_string(),
+                }),
+                None,
+                None,
+                None,
+                Vec::new(),
+                Vec::new(),
+                None,
+            ),
+        )
+        .expect("session file should save");
+
+        let extract_output = dispatch(CliCommand::SessionExtract(SessionExtractOptions {
+            session_file: None,
+            claims: vec!["Latest session extraction target.".to_string()],
+            verifier_command: None,
+        }))
+        .expect("session extract should use latest search session");
+
+        assert_eq!(
+            extract_output["sessionFile"],
+            session_file.display().to_string()
+        );
+        assert_eq!(
+            extract_output["extract"]["output"]["evidenceSupportedClaims"][0]["statement"],
+            "Latest session extraction target."
+        );
+
+        fs::remove_file(&session_file).expect("session file should be removable");
+    }
+
+    #[test]
+    fn missing_session_file_error_includes_path() {
+        let missing = temp_session_path("missing-session-error");
+        let error = dispatch(CliCommand::SessionSnapshot(SessionFileOptions {
+            session_file: missing.clone(),
+        }))
+        .expect_err("missing session file should fail");
+
+        let message = error.to_string();
+        assert!(message.contains(&missing.display().to_string()));
+        assert!(message.contains("No such file or directory"));
     }
 
     #[test]

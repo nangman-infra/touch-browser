@@ -4,6 +4,25 @@ use serde_json::json;
 use std::{fs, path::PathBuf};
 use touch_browser_contracts::render_compact_snapshot;
 
+fn claim_inputs_from_statements(statements: &[String]) -> Result<Vec<ClaimInput>, CliError> {
+    let claims = statements
+        .iter()
+        .map(|statement| statement.trim())
+        .filter(|statement| !statement.is_empty())
+        .enumerate()
+        .map(|(index, statement)| ClaimInput {
+            id: format!("c{}", index + 1),
+            statement: statement.to_string(),
+        })
+        .collect::<Vec<_>>();
+    if claims.is_empty() {
+        return Err(CliError::Usage(
+            "session-extract requires at least one non-empty `--claim` statement.".to_string(),
+        ));
+    }
+    Ok(claims)
+}
+
 pub(crate) fn handle_session_snapshot(options: SessionFileOptions) -> Result<Value, CliError> {
     let kernel = PolicyKernel;
     let persisted = load_browser_cli_session(&options.session_file)?;
@@ -155,17 +174,10 @@ pub(crate) fn handle_session_refresh(options: SessionRefreshOptions) -> Result<V
 pub(crate) fn handle_session_extract(options: SessionExtractOptions) -> Result<Value, CliError> {
     let runtime = ReadOnlyRuntime::default();
     let kernel = PolicyKernel;
-    let mut persisted = load_browser_cli_session(&options.session_file)?;
+    let session_file = resolve_latest_search_session_file(options.session_file.as_ref())?;
+    let mut persisted = load_browser_cli_session(&session_file)?;
     let timestamp = next_session_timestamp(&persisted.session);
-    let claims = options
-        .claims
-        .iter()
-        .enumerate()
-        .map(|(index, statement)| ClaimInput {
-            id: format!("c{}", index + 1),
-            statement: statement.clone(),
-        })
-        .collect::<Vec<_>>();
+    let claims = claim_inputs_from_statements(&options.claims)?;
     let report = runtime.extract(&mut persisted.session, claims.clone(), &timestamp)?;
     let extract_result = succeed_action(
         ActionName::Extract,
@@ -181,13 +193,13 @@ pub(crate) fn handle_session_extract(options: SessionExtractOptions) -> Result<V
         options.verifier_command.as_deref(),
         &timestamp,
     )?;
-    save_browser_cli_session(&options.session_file, &persisted)?;
+    save_browser_cli_session(&session_file, &persisted)?;
 
     Ok(json!(SessionExtractCommandOutput {
         extract: extract_result.clone(),
         result: extract_result,
         session_state: persisted.session.state,
-        session_file: options.session_file.display().to_string(),
+        session_file: session_file.display().to_string(),
     }))
 }
 
