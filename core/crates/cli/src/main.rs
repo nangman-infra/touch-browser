@@ -5442,7 +5442,7 @@ fn parse_search_options(args: &[String]) -> Result<SearchOptions, CliError> {
         query,
         engine: SearchEngine::Google,
         budget: DEFAULT_SEARCH_TOKENS,
-        headed: true,
+        headed: false,
         session_file: None,
     };
     let mut index = 1;
@@ -5500,7 +5500,7 @@ fn parse_search_open_result_options(args: &[String]) -> Result<SearchOpenResultO
     let mut session_file = None;
     let mut engine = SearchEngine::Google;
     let mut rank = None;
-    let mut headed = true;
+    let mut headed = false;
     let mut index = 0;
 
     while index < args.len() {
@@ -5564,7 +5564,7 @@ fn parse_search_open_top_options(args: &[String]) -> Result<SearchOpenTopOptions
     let mut session_file = None;
     let mut engine = SearchEngine::Google;
     let mut limit = 3usize;
-    let mut headed = true;
+    let mut headed = false;
     let mut index = 0;
 
     while index < args.len() {
@@ -7444,9 +7444,9 @@ fn usage() -> String {
     [
         "Usage:",
         "  Stable research commands:",
-        "  touch-browser search <query> [--engine google|brave] [--headless] [--budget <tokens>] [--session-file <path>]",
-        "  touch-browser search-open-result --rank <number> [--engine google|brave] [--session-file <path>] [--headless]",
-        "  touch-browser search-open-top [--limit <count>] [--engine google|brave] [--session-file <path>] [--headless]",
+        "  touch-browser search <query> [--engine google|brave] [--headed] [--budget <tokens>] [--session-file <path>]",
+        "  touch-browser search-open-result --rank <number> [--engine google|brave] [--session-file <path>] [--headed]",
+        "  touch-browser search-open-top [--limit <count>] [--engine google|brave] [--session-file <path>] [--headed]",
         "  touch-browser open <target> [--browser] [--headed] [--budget <tokens>] [--session-file <path>] [--source-risk low|medium|hostile] [--source-label <label>] [--allow-domain <host> ...]",
         "  touch-browser snapshot <target> [--browser] [--headed] [--budget <tokens>] [--session-file <path>] [--source-risk low|medium|hostile] [--source-label <label>] [--allow-domain <host> ...]",
         "  touch-browser compact-view <target> [--browser] [--headed] [--budget <tokens>] [--session-file <path>] [--source-risk low|medium|hostile] [--source-label <label>] [--allow-domain <host> ...]",
@@ -8474,7 +8474,7 @@ mod tests {
                 engine: SearchEngine::Google,
                 session_file: Some(PathBuf::from("/tmp/search-session.json")),
                 rank: 2,
-                headed: true,
+                headed: false,
             })
         );
     }

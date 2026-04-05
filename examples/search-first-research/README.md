@@ -8,12 +8,13 @@ This example shows the intended browser-first workflow:
 4. switch to `read-view` or `extract`
 
 ```bash
-# Search now uses a persistent browser-backed profile by default and
+# Search now uses a persistent embedded browser-backed profile by default and
 # stores the search session under output/browser-search/google.search-session.json.
 cargo run -q -p touch-browser-cli -- search "lambda timeout" --engine google
 
-# If the result reports `status: "challenge"`, clear the provider checkpoint
-# in that same browser profile, then repeat the search.
+# If the result reports `status: "challenge"`, rerun with --headed,
+# clear the provider checkpoint in that same browser profile,
+# then repeat the search.
 
 # Open the first ranked result from that search session
 cargo run -q -p touch-browser-cli -- search-open-result --rank 1

@@ -144,7 +144,7 @@ Prerequisites: [rustup](https://rustup.rs), Node.js 18+, `pnpm`.
 bash scripts/bootstrap-local.sh
 
 # Search inside touch-browser.
-# Search now uses a persistent browser-backed profile by default and
+# Search now uses a persistent embedded browser-backed profile by default and
 # saves the session under output/browser-search/<engine>.search-session.json.
 cargo run -q -p touch-browser-cli -- search "lambda timeout" --engine google
 
@@ -172,10 +172,10 @@ cargo run -q -p touch-browser-cli -- extract https://www.iana.org/help/example-d
 
 If you already built the binary, replace `cargo run -q -p touch-browser-cli --` with `touch-browser`.
 
-`search` now reports an explicit provider state and defaults to a persistent headed browser profile:
+`search` now reports an explicit provider state and defaults to a persistent embedded browser profile:
 
 - `ready`: ranked results are available for `search-open-result` or `search-open-top`
-- `challenge`: the provider returned CAPTCHA / bot-check UI; clear it in the headed browser profile and then repeat the search
+- `challenge`: the provider returned CAPTCHA / bot-check UI; rerun with `--headed`, clear it in that same browser profile, and then repeat the search
 - `no-results`: the page loaded but no external results were structured from it yet
 
 ## Architecture
@@ -211,7 +211,7 @@ Stable research surface:
 
 | Command | What it does |
 | --- | --- |
-| `search` | open Google or Brave inside touch-browser with a persistent browser-backed search profile and structure the results for follow-up browsing |
+| `search` | open Google or Brave inside touch-browser with a persistent embedded browser-backed search profile and structure the results for follow-up browsing |
 | `search-open-result` | open one ranked result from the current engine search session or an explicit saved search session |
 | `search-open-top` | open the top recommended ranked results into separate persisted browser sessions for side-by-side follow-up |
 | `open` | open a target and compile a structured snapshot |
@@ -238,7 +238,7 @@ The full command table lives in [doc/CLI_SURFACE_SPEC.md](doc/CLI_SURFACE_SPEC.m
 
 The example second-pass verifier lives at [scripts/example-verifier.mjs](scripts/example-verifier.mjs).
 
-When `search` returns `status: "challenge"`, do not call `search-open-result` yet. `search` already runs with a headed persistent profile by default, so clear the provider checkpoint in that same browser profile and then repeat the search. Use `--headless` only when you intentionally want a lower-fidelity automation run and accept more provider friction.
+When `search` returns `status: "challenge"`, do not call `search-open-result` yet. Re-run `search` with `--headed`, clear the provider checkpoint in that same persistent browser profile, and then repeat the search.
 
 ## Examples, Benchmarks, And Integrations
 

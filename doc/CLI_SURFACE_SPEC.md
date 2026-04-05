@@ -29,9 +29,9 @@ Evidence extraction is intentionally phrased as support retrieval, not final tru
 
 | Command | Description |
 | --- | --- |
-| `touch-browser search <query> [--engine google\|brave] [--headless] [--budget <tokens>] [--session-file <path>]` | Open a Google or Brave search results page inside the browser runtime with a persistent browser-backed search profile and return `ready`, `challenge`, or `no-results` status plus structured result items and next-action hints. If `--session-file` is omitted, touch-browser stores the search session under `output/browser-search/<engine>.search-session.json`. |
-| `touch-browser search-open-result --rank <number> [--engine google\|brave] [--session-file <path>] [--headless]` | Open one saved search result from the current engine search session or an explicit persisted browser search session when the latest saved search is `ready`. |
-| `touch-browser search-open-top [--limit <count>] [--engine google\|brave] [--session-file <path>] [--headless]` | Open the top recommended ranked results into separate persisted browser sessions derived from the saved search session. |
+| `touch-browser search <query> [--engine google\|brave] [--headed] [--budget <tokens>] [--session-file <path>]` | Open a Google or Brave search results page inside the browser runtime with a persistent embedded browser-backed search profile and return `ready`, `challenge`, or `no-results` status plus structured result items and next-action hints. If `--session-file` is omitted, touch-browser stores the search session under `output/browser-search/<engine>.search-session.json`. |
+| `touch-browser search-open-result --rank <number> [--engine google\|brave] [--session-file <path>] [--headed]` | Open one saved search result from the current engine search session or an explicit persisted browser search session when the latest saved search is `ready`. |
+| `touch-browser search-open-top [--limit <count>] [--engine google\|brave] [--session-file <path>] [--headed]` | Open the top recommended ranked results into separate persisted browser sessions derived from the saved search session. |
 | `touch-browser open <target> [--browser] [--headed] [--budget <tokens>] [--session-file <path>] [--allow-domain <host> ...]` | Open a target and compile a structured snapshot. |
 | `touch-browser snapshot <target> [--browser] [--headed] [--budget <tokens>] [--session-file <path>] [--allow-domain <host> ...]` | Return the full snapshot payload for the target. |
 | `touch-browser read-view <target> [--browser] [--headed] [--main-only] [--budget <tokens>] [--session-file <path>] [--allow-domain <host> ...]` | Return a readable Markdown rendering of the target. By default the renderer prefers main-content blocks when available; `--main-only` makes that filter explicit. |
@@ -74,7 +74,7 @@ Evidence extraction is intentionally phrased as support retrieval, not final tru
 - live targets run through `ReadOnlyRuntime + AcquisitionEngine + PolicyKernel`
 - browser targets run through `Playwright stdio adapter -> ObservationCompiler -> ReadOnlyRuntime.open_snapshot -> Policy/Evidence`
 - the observation compiler now also summarizes JSON-LD and common hydration blobs so JS-heavy pages expose more than just visible DOM text
-- search targets run through `query -> engine URL builder -> persistent real-browser search profile -> semantic SERP structuring -> ranked result items + next-action hints`
+- search targets run through `query -> engine URL builder -> persistent embedded real-browser search profile -> semantic SERP structuring -> ranked result items + next-action hints`
 - persisted browser sessions run through `session-file JSON -> ReadOnlySession + persisted browser state + browser context dir + browser trace + requested budget restore -> stable-ref hints -> Playwright action -> runtime append -> session-file save`
 - search result opening now preserves the saved search report in the originating search session so repeated ranked opens do not erase the search state
 - verifier hooks run only when `--verifier-command` is set and execute after evidence retrieval, with the ability to adjudicate the final claim verdict
@@ -162,7 +162,7 @@ Evidence output terminology:
 Rust tests cover:
 
 - search CLI parsing
-- search default persistence and default headed browser mode
+- search default persistence and default embedded browser mode
 - search result structuring
 - HTML-based search result recovery when snapshot blocks are sparse
 - search challenge detection for provider verification pages
