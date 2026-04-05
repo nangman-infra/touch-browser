@@ -1,13 +1,12 @@
-import { spawn } from "node:child_process";
-
 import { repoRoot } from "./live-sample-server.mjs";
+import { spawnShell } from "./shell-command.mjs";
 
 export function createServeRpcClient({
   cwd = repoRoot,
   serveCommand = "target/debug/touch-browser serve",
   requestTimeoutMs = 120_000,
 } = {}) {
-  const child = spawn("zsh", ["-lic", serveCommand], {
+  const child = spawnShell(serveCommand, {
     cwd,
     stdio: ["pipe", "pipe", "pipe"],
   });

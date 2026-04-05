@@ -1,7 +1,8 @@
-import { spawn } from "node:child_process";
 import { mkdir, readFile, readdir, writeFile } from "node:fs/promises";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
+
+import { spawnShell } from "./lib/shell-command.mjs";
 
 const currentDir = path.dirname(fileURLToPath(import.meta.url));
 const repoRoot = path.resolve(currentDir, "..");
@@ -44,17 +45,13 @@ async function listFixtureMetadataPaths(rootPath) {
 }
 
 async function renderSnapshot(htmlPath, sourceUri) {
-  const child = spawn(
-    "zsh",
+  const child = spawnShell(
     [
-      "-lic",
-      [
-        "cargo run -q -p touch-browser-observation --example render_fixture",
-        shellEscape(htmlPath),
-        shellEscape(sourceUri),
-        "512",
-      ].join(" "),
-    ],
+      "cargo run -q -p touch-browser-observation --example render_fixture",
+      shellEscape(htmlPath),
+      shellEscape(sourceUri),
+      "512",
+    ].join(" "),
     {
       cwd: repoRoot,
       stdio: ["ignore", "pipe", "pipe"],

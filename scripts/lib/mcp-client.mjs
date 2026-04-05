@@ -1,4 +1,4 @@
-import { spawn } from "node:child_process";
+import { spawnShell } from "./shell-command.mjs";
 
 export function createMcpClient({
   cwd,
@@ -6,7 +6,7 @@ export function createMcpClient({
   clientInfo,
   requestTimeoutMs = 120_000,
 }) {
-  const child = spawn("zsh", ["-lic", bridgeCommand], {
+  const child = spawnShell(bridgeCommand, {
     cwd,
     stdio: ["pipe", "pipe", "pipe"],
   });

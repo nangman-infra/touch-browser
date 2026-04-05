@@ -1,8 +1,9 @@
-import { type ChildProcessWithoutNullStreams, spawn } from "node:child_process";
+import type { ChildProcessWithoutNullStreams } from "node:child_process";
 
 import { afterEach, describe, expect, it } from "vitest";
 
 import { repoRoot } from "../support/paths.js";
+import { spawnShellCommand } from "../support/shell.js";
 
 describe("mcp bridge smoke", () => {
   const clients: ChildProcessWithoutNullStreams[] = [];
@@ -30,14 +31,13 @@ describe("mcp bridge smoke", () => {
   });
 
   it("exposes touch-browser tools over MCP stdio", async () => {
-    const child = spawn(
-      "zsh",
-      ["-lic", "node scripts/touch-browser-mcp-bridge.mjs"],
+    const child = spawnShellCommand(
+      "node scripts/touch-browser-mcp-bridge.mjs",
       {
         cwd: repoRoot,
         stdio: ["pipe", "pipe", "pipe"],
       },
-    );
+    ) as ChildProcessWithoutNullStreams;
     clients.push(child);
 
     const call = createRpcCaller(child);

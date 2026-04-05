@@ -1,8 +1,9 @@
-import { type ChildProcessWithoutNullStreams, spawn } from "node:child_process";
+import type { ChildProcessWithoutNullStreams } from "node:child_process";
 
 import { afterEach, describe, expect, it } from "vitest";
 
 import { repoRoot } from "../support/paths.js";
+import { spawnShellCommand } from "../support/shell.js";
 
 type RpcClient = {
   readonly child: ChildProcessWithoutNullStreams;
@@ -468,14 +469,13 @@ describe("serve daemon session registry", () => {
 });
 
 function createRpcClient(): RpcClient {
-  const child = spawn(
-    "zsh",
-    ["-lic", "cargo run -q -p touch-browser-cli -- serve"],
+  const child = spawnShellCommand(
+    "cargo run -q -p touch-browser-cli -- serve",
     {
       cwd: repoRoot,
       stdio: ["pipe", "pipe", "pipe"],
     },
-  );
+  ) as ChildProcessWithoutNullStreams;
 
   const pending = new Map<
     number,

@@ -1,14 +1,12 @@
-import { spawn } from "node:child_process";
-
 import { describe, expect, it } from "vitest";
 
 import { repoRoot } from "../support/paths.js";
+import { spawnShellCommand } from "../support/shell.js";
 
 describe("serve mode smoke", () => {
   it("serves stdio JSON-RPC for pilot integrations", async () => {
-    const child = spawn(
-      "zsh",
-      ["-lic", "cargo run -q -p touch-browser-cli -- serve"],
+    const child = spawnShellCommand(
+      "cargo run -q -p touch-browser-cli -- serve",
       {
         cwd: repoRoot,
         stdio: ["pipe", "pipe", "pipe"],

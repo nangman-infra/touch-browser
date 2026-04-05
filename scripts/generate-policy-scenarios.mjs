@@ -1,7 +1,8 @@
-import { spawn } from "node:child_process";
 import { mkdir, writeFile } from "node:fs/promises";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
+
+import { spawnShell } from "./lib/shell-command.mjs";
 
 const currentDir = path.dirname(fileURLToPath(import.meta.url));
 const repoRoot = path.resolve(currentDir, "..");
@@ -48,9 +49,8 @@ async function main() {
 }
 
 async function runPolicyCommand(target) {
-  const child = spawn(
-    "zsh",
-    ["-lic", `cargo run -q -p touch-browser-cli -- policy '${target}'`],
+  const child = spawnShell(
+    `cargo run -q -p touch-browser-cli -- policy '${target}'`,
     {
       cwd: repoRoot,
       stdio: ["ignore", "pipe", "pipe"],

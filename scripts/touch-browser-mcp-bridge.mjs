@@ -1,5 +1,6 @@
-import { spawn } from "node:child_process";
 import readline from "node:readline";
+
+import { spawnShell } from "./lib/shell-command.mjs";
 
 const protocolVersion = "2025-06-18";
 const implementation = {
@@ -670,18 +671,14 @@ async function handleToolCall(id, params) {
 }
 
 function createServeClient() {
-  const child = spawn(
-    "zsh",
-    ["-lic", "cargo run -q -p touch-browser-cli -- serve"],
-    {
-      cwd: process.cwd(),
-      env: {
-        ...process.env,
-        TOUCH_BROWSER_TELEMETRY_SURFACE: "mcp",
-      },
-      stdio: ["pipe", "pipe", "pipe"],
+  const child = spawnShell("cargo run -q -p touch-browser-cli -- serve", {
+    cwd: process.cwd(),
+    env: {
+      ...process.env,
+      TOUCH_BROWSER_TELEMETRY_SURFACE: "mcp",
     },
-  );
+    stdio: ["pipe", "pipe", "pipe"],
+  });
 
   const pending = new Map();
   let nextId = 0;

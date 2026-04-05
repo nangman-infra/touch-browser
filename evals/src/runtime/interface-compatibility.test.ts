@@ -1,8 +1,7 @@
-import { spawn } from "node:child_process";
-
 import { describe, expect, it } from "vitest";
 
 import { repoRoot } from "../support/paths.js";
+import { spawnShellCommand } from "../support/shell.js";
 
 type RpcEnvelope<T> = {
   readonly id: number | string | null;
@@ -166,7 +165,7 @@ describe("interface compatibility", () => {
 });
 
 async function runShell(command: string) {
-  const child = spawn("zsh", ["-lic", command], {
+  const child = spawnShellCommand(command, {
     cwd: repoRoot,
     stdio: ["ignore", "pipe", "pipe"],
   });
@@ -192,9 +191,8 @@ async function runServeCall<T>(
   method: string,
   params: Record<string, unknown>,
 ): Promise<T> {
-  const child = spawn(
-    "zsh",
-    ["-lic", "cargo run -q -p touch-browser-cli -- serve"],
+  const child = spawnShellCommand(
+    "cargo run -q -p touch-browser-cli -- serve",
     {
       cwd: repoRoot,
       stdio: ["pipe", "pipe", "pipe"],
@@ -249,14 +247,10 @@ async function runMcpCall<T>(
   method: string,
   params: Record<string, unknown>,
 ): Promise<T> {
-  const child = spawn(
-    "zsh",
-    ["-lic", "node scripts/touch-browser-mcp-bridge.mjs"],
-    {
-      cwd: repoRoot,
-      stdio: ["pipe", "pipe", "pipe"],
-    },
-  );
+  const child = spawnShellCommand("node scripts/touch-browser-mcp-bridge.mjs", {
+    cwd: repoRoot,
+    stdio: ["pipe", "pipe", "pipe"],
+  });
 
   const initialize = {
     jsonrpc: "2.0",

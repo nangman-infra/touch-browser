@@ -1,4 +1,3 @@
-import { spawn } from "node:child_process";
 import { createServer } from "node:http";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
@@ -7,6 +6,7 @@ export {
   renderCompactSnapshot,
   renderReadingCompactSnapshot,
 } from "./compact-snapshot.mjs";
+import { spawnShell } from "./shell-command.mjs";
 
 export const currentDir = path.dirname(fileURLToPath(import.meta.url));
 export const repoRoot = path.resolve(currentDir, "../..");
@@ -132,7 +132,7 @@ export async function ensureCliBuilt() {
 }
 
 export async function runShell(command) {
-  const child = spawn("zsh", ["-lic", command], {
+  const child = spawnShell(command, {
     cwd: repoRoot,
     stdio: ["ignore", "pipe", "pipe"],
   });

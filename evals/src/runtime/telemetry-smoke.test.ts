@@ -1,4 +1,3 @@
-import { spawn } from "node:child_process";
 import { mkdtempSync } from "node:fs";
 import { tmpdir } from "node:os";
 import path from "node:path";
@@ -6,6 +5,7 @@ import path from "node:path";
 import { describe, expect, it } from "vitest";
 
 import { repoRoot } from "../support/paths.js";
+import { spawnShellCommand } from "../support/shell.js";
 
 describe("pilot telemetry smoke", () => {
   it("records CLI operations and exposes summary/recent views", async () => {
@@ -51,7 +51,7 @@ describe("pilot telemetry smoke", () => {
 });
 
 async function runShell(command: string, env: NodeJS.ProcessEnv) {
-  const child = spawn("zsh", ["-lic", command], {
+  const child = spawnShellCommand(command, {
     cwd: repoRoot,
     env,
     stdio: ["ignore", "pipe", "pipe"],

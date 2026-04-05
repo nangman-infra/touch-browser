@@ -1,7 +1,8 @@
-import { spawn } from "node:child_process";
 import { mkdir, readFile, readdir, writeFile } from "node:fs/promises";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
+
+import { spawnShell } from "./lib/shell-command.mjs";
 
 const currentDir = path.dirname(fileURLToPath(import.meta.url));
 const repoRoot = path.resolve(currentDir, "..");
@@ -47,15 +48,11 @@ async function listFixtureMetadataPaths(rootPath) {
 }
 
 async function renderEvidence(metadataPath) {
-  const child = spawn(
-    "zsh",
+  const child = spawnShell(
     [
-      "-lic",
-      [
-        "cargo run -q -p touch-browser-evidence --example render_fixture_evidence",
-        shellEscape(metadataPath),
-      ].join(" "),
-    ],
+      "cargo run -q -p touch-browser-evidence --example render_fixture_evidence",
+      shellEscape(metadataPath),
+    ].join(" "),
     {
       cwd: repoRoot,
       stdio: ["ignore", "pipe", "pipe"],
@@ -90,15 +87,11 @@ async function formatGeneratedEvidence(filePaths) {
     return;
   }
 
-  const child = spawn(
-    "zsh",
+  const child = spawnShell(
     [
-      "-lic",
-      [
-        "pnpm exec biome format --write",
-        ...filePaths.map((filePath) => shellEscape(filePath)),
-      ].join(" "),
-    ],
+      "pnpm exec biome format --write",
+      ...filePaths.map((filePath) => shellEscape(filePath)),
+    ].join(" "),
     {
       cwd: repoRoot,
       stdio: ["ignore", "pipe", "pipe"],

@@ -1,7 +1,8 @@
-import { spawn } from "node:child_process";
 import { mkdir, writeFile } from "node:fs/promises";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
+
+import { spawnShell } from "./lib/shell-command.mjs";
 
 const currentDir = path.dirname(fileURLToPath(import.meta.url));
 const repoRoot = path.resolve(currentDir, "..");
@@ -32,12 +33,8 @@ async function main() {
 }
 
 async function runMemoryScenarioExample(actions) {
-  const child = spawn(
-    "zsh",
-    [
-      "-lic",
-      `TOUCH_BROWSER_MEMORY_ACTIONS=${actions} cargo run -q -p touch-browser-runtime --example run_memory_session`,
-    ],
+  const child = spawnShell(
+    `TOUCH_BROWSER_MEMORY_ACTIONS=${actions} cargo run -q -p touch-browser-runtime --example run_memory_session`,
     {
       cwd: repoRoot,
       stdio: ["ignore", "pipe", "pipe"],
