@@ -2,6 +2,7 @@ use crate::*;
 
 use serde_json::json;
 use std::{fs, path::PathBuf};
+use touch_browser_contracts::render_compact_snapshot;
 
 pub(crate) fn handle_session_snapshot(options: SessionFileOptions) -> Result<Value, CliError> {
     let kernel = PolicyKernel;
