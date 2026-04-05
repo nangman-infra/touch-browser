@@ -2,28 +2,28 @@
 
 - Status: `Active`
 - Version: `v1`
-- Last Updated: `2026-03-18`
+- Last Updated: `2026-04-05`
 - Scope: `stdio JSON-RPC fallback adapter surface`
 
-## 1. 목적
+## 1. Overview
 
-이 문서는 현재 Playwright adapter의 구현과 CLI 연결 지점을 고정합니다.
+This document defines the current Playwright adapter implementation and the CLI handoff points that use it.
 
-현재 범위:
+Included scope:
 
 - stdio JSON-RPC request handling
 - browser-backed `browser.snapshot`
-- `touch-browser --browser` 경로와의 handoff
+- the `touch-browser --browser` handoff path
 - adapter capability discovery
-- low-risk and allowlisted interactive action execution (`browser.follow`, `browser.click`, `browser.type`, `browser.submit`, `browser.paginate`, `browser.expand`)
-- `contextDir` 기반 persistent browser context 재사용
+- low-risk and allowlisted interactive execution for `browser.follow`, `browser.click`, `browser.type`, `browser.submit`, `browser.paginate`, and `browser.expand`
+- persistent browser context reuse through `contextDir`
 
-아직 범위 밖:
+Out of scope:
 
-- screenshot / DOM / accessibility capture
-- standalone browser daemon
+- screenshot, raw DOM, or accessibility capture as first-class outputs
+- a standalone browser daemon separate from the current adapter process
 
-## 2. 현재 메서드
+## 2. Supported Methods
 
 - `adapter.status`
 - `browser.snapshot`
@@ -34,68 +34,64 @@
 - `browser.paginate`
 - `browser.expand`
 
-## 3. 현재 의미
+## 3. Method Semantics
 
 - `adapter.status`
-  - adapter 상태와 capability 목록을 반환
+  - returns adapter state and capability metadata
 - `browser.snapshot`
-  - Playwright Chromium을 실제로 launch해 `url`, `html`, 또는 `contextDir` 입력을 캡처
-  - `contextDir`만 주어져도 persistent context를 재사용해 현재 페이지 상태를 다시 읽을 수 있으며, 이 경로를 CLI `refresh`가 사용합니다.
-  - `finalUrl`, `title`, `visibleText`, `html`, `linkCount`, `buttonCount`, `inputCount`를 반환
+  - launches Playwright Chromium and captures a `url`, `html`, or `contextDir` input
+  - can reuse a persistent context from `contextDir`, which is how CLI `refresh` reloads the current page state
+  - returns `finalUrl`, `title`, `visibleText`, `html`, `linkCount`, `buttonCount`, and `inputCount`
 - `browser.paginate`
-  - `url` 또는 `html`을 열고 next/prev pagination target을 실제로 click
-  - updated `html`, `visibleText`, `finalUrl`, `clickedText`, `page`를 반환
+  - opens `url` or `html`, performs a next or previous pagination click, and returns updated `html`, `visibleText`, `finalUrl`, `clickedText`, and `page`
 - `browser.follow`
-  - `url` 또는 `html`을 열고 지정된 링크 target text/href/ref에 대응하는 anchor를 실제로 click
-  - CLI stable ref는 `targetText`, `targetHref`, `targetTagName`, `targetDomPathHint`, `targetOrdinalHint` 힌트로 변환되어 duplicate link를 더 정확히 고릅니다.
-  - visible locator를 찾지 못하더라도 same-origin/internal `href`가 있으면 안전한 직접 navigation fallback으로 follow를 계속 시도합니다.
-  - updated `html`, `visibleText`, `finalUrl`, `clickedText`를 반환
+  - opens `url` or `html`, clicks the matching anchor for the requested target text, href, or ref-derived hint set
+  - stable refs from the CLI are translated into `targetText`, `targetHref`, `targetTagName`, `targetDomPathHint`, and `targetOrdinalHint`
+  - falls back to safe same-origin navigation when a visible locator cannot be resolved but a safe internal href exists
+  - returns updated `html`, `visibleText`, `finalUrl`, and `clickedText`
 - `browser.click`
-  - `url` 또는 `html`을 열고 지정된 button/link/control target을 실제로 click
-  - CLI stable ref는 `targetText`, `targetHref`, `targetTagName`, `targetDomPathHint`, `targetOrdinalHint` 힌트로 변환됩니다.
-  - updated `html`, `visibleText`, `finalUrl`, `clickedText`를 반환
+  - opens `url` or `html`, clicks the requested button, link, or control target, and returns updated `html`, `visibleText`, `finalUrl`, and `clickedText`
 - `browser.type`
-  - `url` 또는 `html`을 열고 지정된 input/textarea/contenteditable target에 값을 입력합니다.
-  - CLI stable ref는 `targetText`, `targetTagName`, `targetDomPathHint`, `targetOrdinalHint`, `targetName`, `targetInputType` 힌트로 변환됩니다.
-  - `sensitive` 입력은 adapter 결과에 raw value를 남기지 않습니다.
-  - updated `html`, `visibleText`, `finalUrl`, `typedLength`를 반환
+  - opens `url` or `html`, types into the requested input, textarea, or contenteditable target
+  - uses the stable-ref hint set plus name, type, placeholder, value, and aria-label signals
+  - never returns raw secret values for `sensitive` input
+  - returns updated `html`, `visibleText`, `finalUrl`, and `typedLength`
 - `browser.submit`
-  - `url` 또는 `html`을 열고 지정된 form 또는 submit control을 실제로 제출합니다.
-  - CLI stable ref는 `targetText`, `targetTagName`, `targetDomPathHint`, `targetOrdinalHint` 힌트로 변환됩니다.
-  - `prefill`이 주어지면 submit 전에 같은 browser pass 안에서 non-sensitive 또는 supervised secret input 값을 다시 채웁니다.
-  - form target이면 `requestSubmit()` 우선, 아니면 submit control click으로 처리합니다.
-  - submit 직후 navigation race가 발생하더라도 최종 DOM과 URL을 다시 수집해 반환합니다.
-  - updated `html`, `visibleText`, `finalUrl`을 반환
+  - opens `url` or `html`, submits the requested form or submit control
+  - can apply `prefill` values inside the same browser pass before submit
+  - prefers `requestSubmit()` for form targets and falls back to a submit-control click otherwise
+  - recollects the final DOM and URL after navigation races
+  - returns updated `html`, `visibleText`, and `finalUrl`
 - `browser.expand`
-  - `url` 또는 `html`을 열고 지정된 target text/ref에 대응하는 버튼/링크를 실제로 click
-  - CLI stable ref는 `targetText`, `targetTagName`, `targetDomPathHint`, `targetOrdinalHint` 힌트로 변환되어 duplicate button/control을 더 정확히 고릅니다.
-  - updated `html`, `visibleText`, `finalUrl`, `clickedText`를 반환
+  - opens `url` or `html`, clicks the requested expandable button or link target
+  - uses stable-ref hint translation to disambiguate duplicate controls
+  - returns updated `html`, `visibleText`, `finalUrl`, and `clickedText`
 
-## 4. 현재 보장
+## 4. Guarantees
 
-- transport는 `stdio-json-rpc`
-- malformed request는 JSON-RPC error로 거절
-- browser-backed snapshot은 headless Chromium을 기본 사용
-- Rust CLI에서 adapter subprocess를 직접 호출해 semantic snapshot/evidence/policy 루프에 연결 가능
-- dynamic action은 `limitedDynamicAction: true`로 명시
-- CLI-managed persisted session이 current DOM/URL과 browser context dir을 저장하므로 multi-command browser loop와 native browser replay에 연결 가능
-- persistent context만 가진 세션도 `browser.snapshot` 재호출로 DOM/URL을 다시 동기화할 수 있습니다.
-- 같은 `contextDir`에 대한 concurrent adapter 요청은 cross-process lock으로 직렬화됩니다.
-- duplicate text/href candidate는 stable ref ordinal 힌트까지 사용해 DOM order 기준으로 재선택 가능
-- hidden duplicate candidate는 visible filter로 제외됩니다.
-- visible locator를 찾지 못하는 live site nav는 same-origin `href` fallback으로 일부 복구됩니다.
-- input locator는 placeholder/name/type/value/aria-label 조합으로도 점수화되어 login/search form에서 더 안정적으로 선택됩니다.
+- transport: `stdio-json-rpc`
+- malformed requests are rejected with JSON-RPC errors
+- browser-backed snapshots use headless Chromium by default
+- the Rust CLI can call the adapter subprocess directly and feed the result into the semantic snapshot, evidence, and policy pipeline
+- dynamic actions are exposed as `limitedDynamicAction: true`
+- CLI-managed persisted sessions keep the current DOM, URL, and context directory so multi-command browser loops and browser replay can resume cleanly
+- sessions that only retain a persistent context can still resync through `browser.snapshot`
+- concurrent access to the same `contextDir` is serialized through a cross-process lock
+- duplicate candidate selection uses stable-ref ordinal hints as well as DOM order
+- hidden duplicate candidates are excluded through visible filtering
+- some live-site navigation can recover through same-origin href fallback
+- input locator scoring uses placeholder, name, type, value, and aria-label signals
 
-## 5. 현재 검증 범위
+## 5. Validation
 
 Vitest:
 
 - adapter status contract
 - status request handling
 - browser-backed snapshot request handling
-- follow/paginate/expand handling
-- click/type/submit handling
-- duplicate link/button disambiguation handling
+- follow, paginate, and expand handling
+- click, type, and submit handling
+- duplicate link and button disambiguation
 - safe href follow fallback handling
 - malformed request rejection
 
@@ -104,21 +100,21 @@ Rust CLI:
 - browser-backed fixture open
 - browser-backed extract
 - browser-backed hostile policy
-- browser session follow / session-extract
-- browser session duplicate-follow stable ref ordinal test
+- browser session follow and session-extract
+- browser session duplicate-follow stable-ref ordinal behavior
 - browser session paginate
 - browser session double-paginate DOM persistence
-- browser session expand / session-extract
-- browser replay CLI test
-- browser context cleanup test
+- browser session expand and session-extract
+- browser replay CLI
+- browser context cleanup
 
-## 6. 현재 한계
+## 6. Notes
 
-- runtime observation handoff는 완료됨
-- low-risk dynamic action은 browser-backed execution과 persistent context replay까지 올라왔지만 standalone daemon과 multi-tab orchestration은 아직 없음
-- interactive type/click/submit은 CLI/daemon에서 allowlist, policy preflight, supervised ack-risk를 거친 제한적 지원입니다.
-- persistent context live submit은 page reload를 피해서 직전 interactive DOM state를 최대한 유지합니다.
-- direct CLI가 같은 persistent context를 연속 호출할 때 profile lock 충돌을 줄이기 위해 adapter가 session directory 단위 lock을 사용합니다.
-- adapter는 native DOM node handle에 stable ref를 직접 매핑하지 않고, stable ref를 selector 힌트 집합으로 변환해 사용합니다.
-- large live sites에서는 snapshot에 보이는 actionable item과 현재 viewport/DOM의 clickability가 완전히 일치하지 않을 수 있습니다.
-- anti-bot/CAPTCHA/MFA를 직접 우회하지는 않으며, 현재 역할은 해당 경계 이후 상태를 안전하게 재동기화하는 것입니다.
+- the adapter already completes the runtime observation handoff
+- low-risk dynamic action supports browser-backed execution and persistent-context replay, but not a standalone daemon or native shared-context multi-tab
+- interactive type, click, and submit remain restricted behind allowlists, policy preflight, and supervised risk acknowledgement
+- live submit tries to preserve the most recent interactive DOM state instead of forcing a full reload first
+- the adapter uses a session-directory lock to reduce profile lock conflicts across repeated direct CLI calls
+- stable refs are translated into selector hints rather than mapped directly to native DOM node handles
+- on large live sites, a visible actionable item in the snapshot may still diverge from the current viewport clickability
+- anti-bot, CAPTCHA, and MFA are not bypass targets; the adapter’s role is to resync safely around those boundaries

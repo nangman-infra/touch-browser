@@ -1,21 +1,21 @@
 # Contracts
 
-이 디렉터리는 프로세스 간 계약의 기준 위치입니다.
+This directory is the canonical home for cross-process contracts.
 
-원칙:
+Principles:
 
-- canonical source는 `contracts/schemas/` 아래의 JSON Schema입니다.
-- TypeScript와 Rust는 이 계약을 소비하는 구현입니다.
-- 생성 산출물은 `contracts/generated/`에 둡니다.
+- the canonical source is the JSON Schema set under [contracts/schemas](schemas/README.md)
+- Rust and TypeScript are consumer implementations of those contracts
+- generated artifacts belong under `contracts/generated/`
 
-현재 단계에서는 아래 흐름을 고정합니다.
+Current workflow:
 
-1. JSON Schema 작성
-2. `contracts:check`로 레이아웃 검증
-3. `contracts:manifest`로 schema manifest 생성
-4. 이후 Rust/TS 타입 생성기 연결
+1. author or update JSON Schema
+2. validate layout with `pnpm run contracts:check`
+3. generate the schema manifest with `pnpm run contracts:manifest`
+4. wire schema consumers in Rust and TypeScript
 
-향후 예상 산출물:
+Expected generated artifacts:
 
 - `contracts/generated/manifest.json`
 - `contracts/generated/ts/*`

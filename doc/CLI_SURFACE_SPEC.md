@@ -5,85 +5,85 @@
 - Last Updated: `2026-04-05`
 - Scope: `touch-browser binary commands and JSON outputs`
 
-## 1. 목적
+## 1. Overview
 
-이 문서는 현재 `touch-browser` CLI의 실제 명령 표면을 고정합니다.
+This document fixes the current `touch-browser` CLI surface.
 
-현재 범위:
+Included scope:
 
 - stable research surface
 - experimental supervised surface
-- fixture 대상 read-only browsing
-- live URL open/extract/policy
-- Playwright browser-backed open/extract/policy
+- read-only fixture browsing
+- live URL open, extract, and policy
+- Playwright browser-backed open, extract, and policy
 - persisted browser session commands
 - allowlisted interactive browser session commands
 - compact snapshot commands
-- session synthesis command
-- browser replay command
+- session synthesis
+- browser replay
 - stdio JSON-RPC serve mode
 - long-lived daemon session registry
 - multi-tab daemon orchestration
-- replay / memory summary utilities
-- JSON-only stdout contract
+- replay and memory summary utilities
+- JSON-only stdout contracts
 
-## 2. 현재 명령
+## 2. Commands
 
-stable research surface:
+Stable research surface:
 
-| Command | 설명 |
+| Command | Description |
 | --- | --- |
-| `touch-browser open <target> [--browser] [--headed] [--budget <tokens>] [--session-file <path>] [--allow-domain <host> ...]` | target을 열고 structured snapshot을 만듭니다. |
-| `touch-browser snapshot <target> [--browser] [--headed] [--budget <tokens>] [--session-file <path>] [--allow-domain <host> ...]` | open 결과에서 full snapshot payload를 직접 확인합니다. |
-| `touch-browser compact-view <target> [--browser] [--headed] [--budget <tokens>] [--session-file <path>] [--allow-domain <host> ...]` | AI 입력용 compact semantic text와 `refIndex`를 반환합니다. |
-| `touch-browser extract <target> --claim <statement> ... [--browser] [--headed] [--budget <tokens>] [--session-file <path>] [--allow-domain <host> ...]` | claim별 supported/unsupported evidence와 citation metadata를 반환합니다. |
-| `touch-browser policy <target> [--browser] [--headed] [--budget <tokens>] [--allow-domain <host> ...]` | allow/review/block policy report를 반환합니다. |
-| `touch-browser session-snapshot --session-file <path>` | persisted browser session의 latest snapshot을 조회합니다. |
-| `touch-browser session-compact --session-file <path>` | persisted browser session의 compact semantic view를 반환합니다. |
-| `touch-browser session-extract --session-file <path> --claim <statement> ...` | persisted browser session에 대해 evidence extraction을 수행합니다. |
-| `touch-browser session-synthesize --session-file <path> [--note-limit <count>]` | multi-page session을 structured notes, claims, citations로 종합합니다. |
-| `touch-browser follow --session-file <path> --ref <stable-ref> [--headed]` | stable ref를 따라 persisted browser session을 진행합니다. |
-| `touch-browser paginate --session-file <path> --direction next|prev [--headed]` | persisted browser session에서 pagination action을 수행합니다. |
-| `touch-browser expand --session-file <path> --ref <stable-ref> [--headed]` | persisted browser session에서 expandable block을 엽니다. |
-| `touch-browser browser-replay --session-file <path>` | persisted browser session의 action trace를 replay 관점에서 재구성합니다. |
-| `touch-browser session-close --session-file <path>` | persisted browser session과 browser context를 정리합니다. |
-| `touch-browser telemetry-summary` | pilot telemetry aggregate summary를 반환합니다. |
-| `touch-browser telemetry-recent [--limit <count>]` | 최근 telemetry event 목록을 반환합니다. |
-| `touch-browser replay <scenario-name>` | recorded scenario transcript를 다시 재생합니다. |
-| `touch-browser memory-summary [--steps <even-number>]` | long-session memory compaction 요약을 생성합니다. |
-| `touch-browser serve` | stdio JSON-RPC daemon을 실행합니다. |
+| `touch-browser open <target> [--browser] [--headed] [--budget <tokens>] [--session-file <path>] [--allow-domain <host> ...]` | Open a target and compile a structured snapshot. |
+| `touch-browser snapshot <target> [--browser] [--headed] [--budget <tokens>] [--session-file <path>] [--allow-domain <host> ...]` | Return the full snapshot payload for the target. |
+| `touch-browser compact-view <target> [--browser] [--headed] [--budget <tokens>] [--session-file <path>] [--allow-domain <host> ...]` | Return compact semantic text plus the `refIndex`. |
+| `touch-browser extract <target> --claim <statement> ... [--browser] [--headed] [--budget <tokens>] [--session-file <path>] [--allow-domain <host> ...]` | Return supported and unsupported evidence with citation metadata. |
+| `touch-browser policy <target> [--browser] [--headed] [--budget <tokens>] [--allow-domain <host> ...]` | Return the allow, review, or block policy report. |
+| `touch-browser session-snapshot --session-file <path>` | Read the latest snapshot from a persisted browser session. |
+| `touch-browser session-compact --session-file <path>` | Return the compact semantic view for a persisted browser session. |
+| `touch-browser session-extract --session-file <path> --claim <statement> ...` | Run evidence extraction against a persisted browser session. |
+| `touch-browser session-synthesize --session-file <path> [--note-limit <count>]` | Combine a multi-page session into structured notes, claims, and citations. |
+| `touch-browser follow --session-file <path> --ref <stable-ref> [--headed]` | Continue a persisted browser session by following a stable ref. |
+| `touch-browser paginate --session-file <path> --direction next|prev [--headed]` | Paginate inside a persisted browser session. |
+| `touch-browser expand --session-file <path> --ref <stable-ref> [--headed]` | Expand a target block inside a persisted browser session. |
+| `touch-browser browser-replay --session-file <path>` | Reconstruct the persisted browser session from the replay perspective. |
+| `touch-browser session-close --session-file <path>` | Close a persisted browser session and clean up its browser context. |
+| `touch-browser telemetry-summary` | Return the aggregate pilot telemetry summary. |
+| `touch-browser telemetry-recent [--limit <count>]` | Return recent telemetry events. |
+| `touch-browser replay <scenario-name>` | Replay a recorded scenario transcript. |
+| `touch-browser memory-summary [--steps <even-number>]` | Generate a long-session memory compaction summary. |
+| `touch-browser serve` | Start the stdio JSON-RPC daemon. |
 
-experimental supervised surface:
+Experimental supervised surface:
 
-| Command | 설명 |
+| Command | Description |
 | --- | --- |
-| `touch-browser checkpoint --session-file <path>` | 현재 supervised browser state의 risk, provider hint, approval guidance를 반환합니다. |
-| `touch-browser session-policy --session-file <path>` | persisted browser session의 policy report를 직접 조회합니다. |
-| `touch-browser session-profile --session-file <path>` | 현재 supervised policy profile을 조회합니다. |
-| `touch-browser set-profile --session-file <path> --profile research-read-only|research-restricted|interactive-review|interactive-supervised-auth|interactive-supervised-write` | supervised policy profile을 변경합니다. |
-| `touch-browser approve --session-file <path> --risk challenge|mfa|auth|high-risk-write [--risk ...]` | required risk acknowledgement를 session에 기록합니다. |
-| `touch-browser click --session-file <path> --ref <stable-ref> [--headed] [--ack-risk challenge|mfa|auth|high-risk-write ...]` | supervised session 안에서 interactive click을 실행합니다. |
-| `touch-browser type --session-file <path> --ref <stable-ref> --value <text> [--headed] [--sensitive] [--ack-risk challenge|mfa|auth|high-risk-write ...]` | supervised session 안에서 값을 입력합니다. |
-| `touch-browser submit --session-file <path> --ref <stable-ref> [--headed] [--ack-risk challenge|mfa|auth|high-risk-write ...]` | supervised session 안에서 form/control submit을 실행합니다. |
-| `touch-browser refresh --session-file <path> [--headed]` | supervised session을 새 상태로 다시 컴파일합니다. |
+| `touch-browser checkpoint --session-file <path>` | Return the current supervised browser risk state, provider hint, and approval guidance. |
+| `touch-browser session-policy --session-file <path>` | Read the policy report for a persisted browser session. |
+| `touch-browser session-profile --session-file <path>` | Read the active supervised policy profile. |
+| `touch-browser set-profile --session-file <path> --profile research-read-only|research-restricted|interactive-review|interactive-supervised-auth|interactive-supervised-write` | Set the supervised policy profile. |
+| `touch-browser approve --session-file <path> --risk challenge|mfa|auth|high-risk-write [--risk ...]` | Record required risk acknowledgements on the session. |
+| `touch-browser click --session-file <path> --ref <stable-ref> [--headed] [--ack-risk challenge|mfa|auth|high-risk-write ...]` | Execute an interactive click inside a supervised session. |
+| `touch-browser type --session-file <path> --ref <stable-ref> --value <text> [--headed] [--sensitive] [--ack-risk challenge|mfa|auth|high-risk-write ...]` | Type into a field inside a supervised session. |
+| `touch-browser submit --session-file <path> --ref <stable-ref> [--headed] [--ack-risk challenge|mfa|auth|high-risk-write ...]` | Submit a form or control inside a supervised session. |
+| `touch-browser refresh --session-file <path> [--headed]` | Recompile a supervised session after interaction. |
 
-이 구분은 제품 경계용 분류이며, 구현 자체는 같은 바이너리 안에 공존합니다.
+These are product-boundary categories. The implementation still lives in the same binary.
 
-## 3. 현재 경로 분리
+## 3. Execution Paths
 
-- fixture target은 `ReadOnlyActionVm`을 통해 실행
-- live target은 `ReadOnlyRuntime + AcquisitionEngine + PolicyKernel` handoff를 통해 실행
-- browser target은 `Playwright stdio adapter -> ObservationCompiler -> ReadOnlyRuntime.open_snapshot -> Policy/Evidence` 경로로 실행
-- persisted browser session은 `session-file JSON -> ReadOnlySession + persisted browser state/browser context dir/browser trace/requested budget restore -> stable ref -> adapter hint(targetTagName/targetHref/targetDomPathHint/targetOrdinalHint) -> Playwright action -> Runtime append -> session-file save` 경로로 실행
-- browser interactive action은 현재 `allowlist + policy preflight + sensitive field opt-in`을 통과한 경우에만 type/click/submit을 허용
-- supervised browser action은 추가로 `ack-risk`와 live site일 때 `--headed` 조건을 통과해야 계속 진행됩니다.
-- `checkpoint`는 현재 live page에 대해 provider hint, required ack risk, active/recommended policy profile, approval panel, provider-specific playbook, 후보 control을 반환합니다.
-- `approve`는 session file에 승인된 risk를 저장해 이후 interactive 명령에서 같은 `--ack-risk`를 반복하지 않게 하고, supervised auth/write profile로 승격할 수 있습니다.
-- `session-profile` / `set-profile`은 persisted browser session의 정책 프로필을 직접 조회/변경합니다.
-- `telemetry-summary` / `telemetry-recent`는 pilot telemetry SQLite를 직접 조회합니다.
-- 같은 `--session-file`을 공유하는 browser action은 persistent context lock으로 직렬화됩니다.
+- fixture targets run through `ReadOnlyActionVm`
+- live targets run through `ReadOnlyRuntime + AcquisitionEngine + PolicyKernel`
+- browser targets run through `Playwright stdio adapter -> ObservationCompiler -> ReadOnlyRuntime.open_snapshot -> Policy/Evidence`
+- persisted browser sessions run through `session-file JSON -> ReadOnlySession + persisted browser state + browser context dir + browser trace + requested budget restore -> stable-ref hints -> Playwright action -> runtime append -> session-file save`
+- browser interactive actions require allowlist, policy preflight, and explicit sensitive-field opt-in where relevant
+- supervised browser actions additionally require `ack-risk`, and live sites currently require `--headed`
+- `checkpoint` returns provider hints, required acknowledgement risks, active and recommended policy profiles, an approval panel, a provider playbook, and candidate controls
+- `approve` stores approved risks in the session file so repeated acknowledgements do not need to be passed on every command and can also promote the policy profile for supervised auth or write paths
+- `session-profile` and `set-profile` read and write the persisted browser session policy profile directly
+- `telemetry-summary` and `telemetry-recent` query the pilot telemetry SQLite store directly
+- commands sharing the same `--session-file` are serialized through the persistent context lock
 
-현재 live/browser에서 하는 것:
+Live and browser paths currently support:
 
 - `open`
 - `extract`
@@ -95,7 +95,7 @@ experimental supervised surface:
 - `paginate`
 - `expand`
 
-serve daemon에서 하는 것:
+Serve daemon methods:
 
 - `runtime.session.create`
 - `runtime.session.open`
@@ -127,22 +127,16 @@ serve daemon에서 하는 것:
 - `runtime.tab.select`
 - `runtime.tab.close`
 
-아직 하지 않는 것:
+## 4. Output Contract
 
-- live `follow`
-- live dynamic actions
-- native shared browser context multi-tab
+- stdout is always JSON
+- the CLI does not emit human-friendly prose on stdout
+- failures use stderr plus a non-zero exit code
 
-## 4. 출력 원칙
+Primary output shapes:
 
-- stdout은 항상 JSON
-- human-friendly prose 출력 없음
-- 실패는 stderr + non-zero exit code
-
-주요 출력 형태:
-
-- `open` / `snapshot` -> `ActionResult`
-- `compact-view` / `session-compact` -> compact snapshot payload + `refIndex`
+- `open` and `snapshot` -> `ActionResult`
+- `compact-view` and `session-compact` -> compact snapshot payload plus `refIndex`
 - `extract` -> `open` + `extract` + `sessionState`
 - `policy` -> `policy` + `sessionState`
 - `session-synthesize` -> `report` + `sessionState` + `sessionFile`
@@ -151,51 +145,67 @@ serve daemon에서 하는 것:
 - `memory-summary` -> `requestedActions` + `actionCount` + `sessionState` + `memorySummary`
 - `serve` -> line-delimited JSON-RPC responses only
 
-interactive action 계열(`click`, `type`, `submit`, `refresh`)은 현재:
+Interactive action outputs such as `click`, `type`, `submit`, and `refresh` return:
 
 - `action`
 - `policy`
 - `sessionState`
 - `result`
 
-형태를 함께 반환합니다. `result`는 상위 호환 alias이고, 실제 실행 결과 해석은 `action` 필드를 기준으로 합니다.
+`result` is a compatibility alias. Consumers should interpret the action output through `action`.
 
-`checkpoint`는 `checkpoint`, `policy`, `result`, `sessionState`를 반환하고, `checkpoint.approvalPanel` / `checkpoint.playbook` / `checkpoint.activePolicyProfile` / `checkpoint.recommendedPolicyProfile`까지 포함합니다. `approve`는 `approvedRisks`, `policyProfile`, `result`, `sessionState`, `sessionFile`을 반환합니다. `telemetry-summary`는 aggregate summary를, `telemetry-recent`는 최근 event 목록을 반환합니다.
+`checkpoint` returns `checkpoint`, `policy`, `result`, and `sessionState`, including:
 
-## 5. 현재 검증 범위
+- `checkpoint.approvalPanel`
+- `checkpoint.playbook`
+- `checkpoint.activePolicyProfile`
+- `checkpoint.recommendedPolicyProfile`
 
-Rust 테스트:
+`approve` returns:
 
-- fixture open CLI test
-- hostile policy CLI test
-- browser-backed fixture open CLI test
-- browser-backed extract CLI test
-- browser-backed hostile policy CLI test
-- browser session snapshot persistence test
-- browser session paginate test
-- browser session double-paginate DOM persistence test
-- browser session follow + session-extract test
-- browser session duplicate-follow stable ref ordinal test
-- browser session requested budget persistence test
-- browser session expand + session-extract test
-- browser session interactive type test
-- browser session sensitive input rejection test
-- browser session interactive click test
-- browser session interactive submit test
-- browser session supervised MFA submit test
-- browser session supervised high-risk submit test
-- browser session refresh test
-- browser session checkpoint / approve persistence test
-- session profile parse/set tests
-- telemetry store / summary tests
-- compact-view CLI test
-- session-compact CLI test
-- browser-replay CLI test
-- session-close browser context cleanup test
-- replay CLI test
-- 50-action memory CLI test
+- `approvedRisks`
+- `policyProfile`
+- `result`
+- `sessionState`
+- `sessionFile`
 
-직접 실행 검증:
+`telemetry-summary` returns the aggregate summary.
+`telemetry-recent` returns the recent event list.
+
+## 5. Validation
+
+Rust tests cover:
+
+- fixture open CLI
+- hostile policy CLI
+- browser-backed fixture open CLI
+- browser-backed extract CLI
+- browser-backed hostile policy CLI
+- browser session snapshot persistence
+- browser session paginate
+- browser session double-paginate DOM persistence
+- browser session follow and session-extract
+- browser session duplicate-follow stable-ref ordinal behavior
+- browser session requested-budget persistence
+- browser session expand and session-extract
+- browser session interactive type
+- browser session sensitive input rejection
+- browser session interactive click
+- browser session interactive submit
+- browser session supervised MFA submit
+- browser session supervised high-risk submit
+- browser session refresh
+- browser session checkpoint and approve persistence
+- session profile parse and set behavior
+- telemetry store and summary behavior
+- compact-view CLI
+- session-compact CLI
+- browser-replay CLI
+- session-close browser context cleanup
+- replay CLI
+- 50-action memory CLI
+
+Direct execution validation covers:
 
 - fixture `open --browser`
 - pricing `extract --browser`
@@ -204,7 +214,7 @@ Rust 테스트:
 - browser session `open -> type -> click -> session-close`
 - browser session `open -> type -> submit -> session-close`
 - browser session `open -> sensitive type -> supervised submit -> refresh -> session-close`
-- browser session `open -> checkpoint -> approve -> supervised auth type/submit -> refresh -> session-close`
+- browser session `open -> checkpoint -> approve -> supervised auth type and submit -> refresh -> session-close`
 - real-site `open -> checkpoint -> approve -> type/typeSecret -> submit -> refresh` GitHub auth smoke
 - browser session `open -> paginate -> session-close`
 - browser session `open -> expand -> session-extract -> session-close`
@@ -215,27 +225,26 @@ Rust 테스트:
 - stdio JSON-RPC `serve -> runtime.session.profile.get|set -> runtime.telemetry.summary|recent`
 - MCP bridge `initialize -> tools/list -> tools/call(tb_status)`
 
-## 6. 현재 한계
+## 6. Notes
 
-- compact text는 token 효율을 위해 `block id`를 제거하고 kind + 짧은 digest만 유지하며, action용 stable ref는 `refIndex`로 분리합니다.
-- serve daemon은 장기 프로세스 안에 session registry와 tab registry를 유지하지만, 각 tab은 별도 persistent browser context/session-file을 사용합니다.
-- browser-backed `follow`는 persisted session 경로에서만 지원하며 live multi-step replay는 아직 없음
-- `--budget`은 live/browser open 계열에서 observation requested token budget을 제어하고, browser session 안에서 follow/paginate/expand 재컴파일에도 그대로 유지됩니다.
-- interactive action은 아직 allowlisted browser session 안에서만 지원합니다.
-- sensitive credential-like input은 `--sensitive` 없이 type할 수 없습니다.
-- submit은 form stable ref 또는 submit control stable ref를 기준으로 동작합니다.
-- submit은 같은 세션에서 입력된 non-sensitive type 값을 같은 browser pass 안에 다시 적용한 뒤 form/control submit을 수행합니다.
-- sensitive value는 출력과 replay에서 계속 redacted됩니다.
-- direct CLI는 session-file 옆 secret sidecar를 사용해 같은 세션 submit/replay에만 sensitive value를 재적용합니다.
-- serve daemon은 session memory의 secret store를 사용하고 `runtime.session.typeSecret` / `runtime.session.secret.store`로 값을 주입합니다.
-- CAPTCHA, MFA, sensitive auth, high-risk write는 우회 대상이 아니라 감독형 `review-gated` 흐름입니다.
-- interactive action은 해당 signal이 감지되면 필요한 `--ack-risk` 없이 실행되지 않습니다.
-- `checkpoint -> approve` 경로를 쓰면 같은 session 안에서는 필요한 risk 승인을 반복해서 넘기지 않아도 됩니다.
-- supervised flow는 provider-specific playbook과 approval panel을 반환해 GitHub/Google/Auth0/Okta/Microsoft 계열 auth와 bot challenge를 구조적으로 안내합니다.
-- policy profile은 현재 `research-read-only`, `research-restricted`, `interactive-review`, `interactive-supervised-auth`, `interactive-supervised-write`를 지원합니다.
-- pilot telemetry는 기본적으로 `output/pilot/telemetry.sqlite`에 기록되며 `TOUCH_BROWSER_TELEMETRY_DB` / `TOUCH_BROWSER_TELEMETRY_SURFACE`로 override할 수 있습니다.
-- live non-fixture site에서 supervised interactive action을 계속하려면 현재 `--headed`가 필요합니다.
-- persistent context는 cross-process lock으로 보호되며, 다른 명령이 같은 session을 이미 사용 중이면 잠시 대기하거나 busy error를 반환합니다.
-- allowlist는 현재 domain boundary와 ref preflight 차단까지 지원합니다.
-- subcommand별 schema 분리 없음
-- stdout contract는 안정적이지만 아직 JSON Schema로 개별 명령마다 고정되지 않음
+- compact text removes block IDs for token efficiency and keeps action refs in `refIndex`
+- the serve daemon keeps long-lived session and tab registries, but each tab still uses its own persisted browser context and session file
+- browser-backed `follow` is supported on persisted sessions, not as general live multi-step replay
+- `--budget` controls the observation budget for live and browser open paths and is reused during follow, paginate, and expand recompilation inside a browser session
+- interactive actions are only supported inside allowlisted browser sessions
+- credential-like sensitive input requires `--sensitive`
+- submit works against either a form stable ref or a submit-control stable ref
+- non-sensitive typed values are reapplied in the same browser pass immediately before submit
+- sensitive values stay redacted in output and replay
+- direct CLI secret replay uses the secret sidecar next to the session file
+- the serve daemon uses the in-memory secret store through `runtime.session.typeSecret` and `runtime.session.secret.store`
+- CAPTCHA, MFA, sensitive auth, and high-risk write are supervised review-gated paths, not bypass paths
+- interactive actions stop when those signals appear unless the required acknowledgement is present
+- once `checkpoint -> approve` has run, later commands in the same session do not need to repeat the same acknowledgement flags
+- supervised flows can return provider-specific playbooks and approval panels for GitHub, Google, Auth0, Okta, Microsoft, and generic auth or challenge flows
+- supported policy profiles are `research-read-only`, `research-restricted`, `interactive-review`, `interactive-supervised-auth`, and `interactive-supervised-write`
+- pilot telemetry is stored in `output/pilot/telemetry.sqlite` by default and can be overridden with `TOUCH_BROWSER_TELEMETRY_DB` and `TOUCH_BROWSER_TELEMETRY_SURFACE`
+- live non-fixture supervised interaction currently requires `--headed`
+- persistent contexts are protected by a cross-process lock and may wait or return a busy error if another command is already using the same session
+- allowlists currently enforce both domain boundaries and ref preflight blocking
+- per-subcommand JSON Schema is not yet split out even though the stdout contract is stable

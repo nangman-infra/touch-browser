@@ -2,44 +2,45 @@
 
 - Status: `Active`
 - Version: `v1`
-- Last Updated: `2026-03-16`
+- Last Updated: `2026-04-05`
 - Scope: `sample MCP-backed research workflow`
 
-## 1. 목적
+## 1. Overview
 
-이 문서는 외부 agent가 `touch-browser`를 어떻게 붙여 쓸 수 있는지 보여주는 reference workflow를 고정합니다.
+This document defines a reference workflow that shows how an external agent can integrate with `touch-browser`.
 
-실행 파일:
+Runner:
 
 - [run-reference-research-workflow.mjs](../scripts/run-reference-research-workflow.mjs)
 
-실행:
+Run:
 
 - `pnpm run pilot:reference-workflow`
 
-## 2. 현재 흐름
+## 2. Flow
 
-1. MCP bridge initialize
-2. `tb_session_create`
-3. `tb_open`으로 pricing fixture open
-4. `tb_extract`로 가격 claim 검증
-5. `tb_tab_open`으로 docs fixture open
-6. `tb_extract`로 docs claim 검증
-7. `tb_session_synthesize`
-8. `tb_session_close`
+1. initialize the MCP bridge
+2. call `tb_session_create`
+3. use `tb_open` to open the pricing fixture
+4. use `tb_extract` to validate the pricing claim
+5. use `tb_tab_open` to open the docs fixture
+6. use `tb_extract` to validate the docs claim
+7. use `tb_session_synthesize`
+8. call `tb_session_close`
 
-## 3. 산출물
+## 3. Artifact
 
-generated report:
+Generated report:
 
 - [report.json](../fixtures/scenarios/reference-research-workflow/report.json)
 
-## 4. 현재 검증
+## 4. Validation
 
 - [reference-workflow-smoke.test.ts](../evals/src/runtime/reference-workflow-smoke.test.ts)
-- MCP-backed reference workflow artifact 생성과 핵심 claim extraction 검증 완료
+- MCP-backed reference workflow artifact generation
+- core claim extraction validation on the generated artifact
 
-## 5. 현재 한계
+## 5. Notes
 
-- 실제 고객 에이전트 프레임워크와의 통합이 아니라 sample workflow입니다.
-- fixture 기반으로 고정되어 있어 실전 live-web variability는 포함하지 않습니다.
+- this is a reference integration workflow, not a production customer-agent integration
+- it is fixture-backed by design, so it does not measure live-web variability

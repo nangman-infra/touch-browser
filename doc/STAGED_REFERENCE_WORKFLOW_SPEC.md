@@ -2,48 +2,48 @@
 
 - Status: `Active`
 - Version: `v1`
-- Last Updated: `2026-03-27`
-- Scope: `sample MCP-backed public/trusted staged research workflow`
+- Last Updated: `2026-04-05`
+- Scope: `sample MCP-backed staged public/trusted research workflow`
 
-## 1. 목적
+## 1. Overview
 
-이 문서는 외부 agent가 `touch-browser`와 MCP bridge를 사용해 public source에서 trusted source로 단계를 넘겨 가며 research task를 수행하는 기준 workflow를 고정합니다.
+This document defines a staged workflow where an external agent uses `touch-browser` through the MCP bridge to move from a public source to a trusted source during the same research task.
 
-실행 파일:
+Runner:
 
 - [run-staged-reference-workflow.mjs](../scripts/run-staged-reference-workflow.mjs)
 
-실행:
+Run:
 
 - `pnpm run pilot:staged-reference-workflow`
 
-## 2. 현재 흐름
+## 2. Flow
 
-1. MCP bridge initialize
-2. `tb_session_create` with public allowlist
-3. `tb_open`으로 local live public pricing page open
-4. `tb_extract`로 public claim 검증
-5. `tb_tab_open`으로 trusted fixture open
-6. `tb_extract`로 trusted-source claim 검증
-7. `tb_tab_list` / `tb_tab_select`로 tab orchestration 검증
-8. `tb_session_synthesize`
-9. `tb_tab_close`
-10. `tb_session_close`
+1. initialize the MCP bridge
+2. call `tb_session_create` with the public allowlist
+3. use `tb_open` to open the local live public pricing page
+4. use `tb_extract` to validate the public claim
+5. use `tb_tab_open` to open the trusted fixture
+6. use `tb_extract` to validate the trusted-source claim
+7. use `tb_tab_list` and `tb_tab_select` to validate tab orchestration
+8. use `tb_session_synthesize`
+9. call `tb_tab_close`
+10. call `tb_session_close`
 
-## 3. 산출물
+## 3. Artifact
 
-generated report:
+Generated report:
 
 - [report.json](../fixtures/scenarios/staged-reference-workflow/report.json)
 
-## 4. 현재 검증
+## 4. Validation
 
 - [staged-reference-workflow-smoke.test.ts](../evals/src/runtime/staged-reference-workflow-smoke.test.ts)
-- mixed public/trusted-source workflow artifact 생성 검증 완료
-- MCP bridge tab list/select/close 표면을 실제 artifact 생성 경로에서 검증
+- mixed public/trusted workflow artifact generation
+- validation of `tb_tab_list`, `tb_tab_select`, and `tb_tab_close` on the artifact path itself
 
-## 5. 현재 한계
+## 5. Notes
 
-- public stage는 deterministic local live server로 고정되어 있어 실제 인터넷 변동성은 포함하지 않습니다.
-- trusted stage는 fixture source를 사용하므로 real internal connector variability는 포함하지 않습니다.
-- sample workflow이며 실제 고객 agent framework와의 production integration은 아닙니다.
+- the public stage uses a deterministic local live server, so it does not try to measure open internet variability
+- the trusted stage uses fixtures rather than a live internal connector
+- this is a staged integration reference, not a full production customer-agent integration package

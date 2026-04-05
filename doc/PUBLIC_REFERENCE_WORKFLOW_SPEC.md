@@ -2,46 +2,46 @@
 
 - Status: `Pilot-validated`
 - Version: `v1`
-- Last Updated: `2026-03-27`
+- Last Updated: `2026-04-05`
 - Scope: `sample MCP-backed public-web research workflow`
 
-## 1. 목적
+## 1. Overview
 
-이 문서는 외부 agent가 `touch-browser`와 MCP bridge를 사용해 공개 웹 research task를 실제로 수행하는 reference workflow를 고정합니다.
+This document defines a reference workflow where an external agent uses `touch-browser` through the MCP bridge to execute a public-web research task.
 
-실행 파일:
+Runner:
 
 - [run-public-reference-workflow.mjs](../scripts/run-public-reference-workflow.mjs)
 
-실행:
+Run:
 
 - `pnpm run pilot:public-reference-workflow`
 
-## 2. 현재 흐름
+## 2. Flow
 
-1. MCP bridge initialize
-2. `tb_session_create` with allowlist
-3. `tb_open` / `tb_tab_open`으로 public documentation pages open
-4. `tb_extract`로 public claims 검증
-5. `tb_session_synthesize`
-6. `tb_session_close`
+1. initialize the MCP bridge
+2. call `tb_session_create` with an allowlist
+3. use `tb_open` and `tb_tab_open` to open public documentation pages
+4. use `tb_extract` to retrieve public claims with citations
+5. use `tb_session_synthesize`
+6. call `tb_session_close`
 
-## 3. 산출물
+## 3. Artifact
 
-generated report:
+Generated report:
 
 - [report.json](../fixtures/scenarios/public-reference-workflow/report.json)
 
-## 4. 현재 검증
+## 4. Validation
 
-- explicit script execution으로 artifact 생성 검증
-- eval smoke test로 generated artifact contract 검증
-- release-readiness / eval-harness gate에서 public proof 경로를 요구
-- public web benchmark와 동일한 claim/task 계열을 MCP bridge 경유로 재수행
-- 현재 workflow는 `5`개 public tabs와 `4`개 extracted claims를 포함합니다.
-- 최신 artifact 기준 supported claim rate는 `1.00`입니다.
+- explicit script execution generates the artifact
+- the eval smoke test validates the generated artifact contract
+- the release-readiness and eval-harness gates require this public proof path
+- the workflow reruns the same claim family used in the public web benchmark through the MCP bridge
+- the current workflow includes `5` public tabs and `4` extracted claims
+- the latest generated artifact reports a supported-claim rate of `1.00`
 
-## 5. 현재 한계
+## 5. Notes
 
-- 네트워크 변동성은 남아 있지만, 현재는 pilot-quality proof gate 일부로 자동 실행합니다.
-- sample workflow이며, 실제 고객 에이전트 프레임워크와의 production integration은 아닙니다.
+- network variability still exists, but this workflow now participates in the pilot-quality proof path
+- this is a reference workflow for integration, not a full production customer-agent integration package

@@ -5,42 +5,42 @@
 - Last Updated: `2026-04-05`
 - Scope: `public multi-task proof for user-like AI research workflows`
 
-## 1. 목적
+## 1. Overview
 
-이 문서는 `sample workflow` 수준을 넘어서, 실제 사용자가 AI research agent에 던질 법한 공개 문서형 질문 세트를 MCP 기반 multi-tab workflow로 반복 검증합니다.
+This benchmark goes beyond a sample workflow and repeatedly exercises public-document research questions that a real user might hand to an AI research agent.
 
-핵심은 `검색엔진 랭킹`이 아니라 아래를 증명하는 것입니다.
+The goal is not search-engine ranking quality. The goal is to prove:
 
-- 실제 public URL 대상
-- 질문 기반 multi-source research
-- MCP 경유 외부 agent surface
+- real public URLs
+- question-driven multi-source research
+- an external-agent surface through MCP
 - multi-tab control
-- extract + synthesize + close까지 이어지는 end-to-end task proof
+- end-to-end extract, synthesize, and close behavior
 
-## 2. 산출물
+## 2. Artifacts
 
-generated report:
+Generated report:
 
 - [report.json](../fixtures/scenarios/real-user-research-benchmark/report.json)
 
-실행 파일:
+Runner:
 
 - [run-real-user-research-benchmark.mjs](../scripts/run-real-user-research-benchmark.mjs)
 
-실행:
+Run:
 
 - `pnpm run fixtures:real-user-research`
 - `pnpm run pilot:real-user-research`
 
-## 3. 현재 기준선
+## 3. Current Baseline
 
-이 benchmark는 현재 아래 질문군을 포함합니다.
+The benchmark currently covers:
 
 - public standards research
-- public web API docs research
-- public Node.js runtime docs research
+- public web API documentation research
+- public Node.js runtime documentation research
 
-2026-04-05 generated baseline:
+Generated baseline on `2026-04-05`:
 
 - scenario count: `3`
 - passed scenario count: `3`
@@ -50,24 +50,24 @@ generated report:
 - average listed tab count: `3.00`
 - unique public domains: `4`
 
-기준 통과 조건:
+Passing conditions:
 
 - scenario count `3+`
-- passed scenario count == scenario count
+- passed scenario count equals scenario count
 - average supported claim rate `1.00`
 - average listed tab count `2+`
 - unique public domains `4+`
-- 각 scenario가 session close까지 완료
+- each scenario closes the session cleanly
 
-## 4. 해석
+## 4. Interpretation
 
-- 이 artifact는 로컬 sample app이 아니라 실제 public documentation sources를 대상으로 합니다.
-- 따라서 `실사용 AI research 환경`에 더 가까운 public browsing proof 역할을 합니다.
-- 현재 기준선은 IANA / RFC Editor / MDN / Node.js docs까지 포함하므로 단일 도메인 sample보다 source diversity가 높습니다.
-- 다만 여전히 curated task suite이며, uncontrolled consumer traffic이나 arbitrary search ranking 자체를 증명하는 것은 아닙니다.
+- this artifact targets real public documentation sources rather than a local sample app
+- it is therefore closer to a real AI research environment than a fixture-only proof
+- the current baseline spans IANA, RFC Editor, MDN, and Node.js docs, which gives it more source diversity than a single-domain demo
+- it is still a curated task suite rather than a proof of arbitrary consumer search traffic
 
-## 5. 현재 한계
+## 5. Notes
 
-- 검색 쿼리 discovery 레이어 자체는 제품 범위가 아니므로 URL/domain-curated research benchmark입니다.
-- authenticated app, anti-bot page, private enterprise system은 포함하지 않습니다.
-- public documentation source의 내용 변경이나 네트워크 변동성은 남아 있습니다.
+- the benchmark is URL- and domain-curated because search-query discovery is not the product surface being measured
+- authenticated apps, anti-bot pages, and private enterprise systems are intentionally excluded
+- public documentation content and network behavior can still change underneath the benchmark
