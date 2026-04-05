@@ -11,7 +11,7 @@
 
 실행 파일:
 
-- [run-reference-research-workflow.mjs](/Volumes/WD/Developments/touch-browser/scripts/run-reference-research-workflow.mjs)
+- [run-reference-research-workflow.mjs](../scripts/run-reference-research-workflow.mjs)
 
 실행:
 
@@ -32,11 +32,11 @@
 
 generated report:
 
-- [report.json](/Volumes/WD/Developments/touch-browser/fixtures/scenarios/reference-research-workflow/report.json)
+- [report.json](../fixtures/scenarios/reference-research-workflow/report.json)
 
 ## 4. 현재 검증
 
-- [reference-workflow-smoke.test.ts](/Volumes/WD/Developments/touch-browser/evals/src/runtime/reference-workflow-smoke.test.ts)
+- [reference-workflow-smoke.test.ts](../evals/src/runtime/reference-workflow-smoke.test.ts)
 - MCP-backed reference workflow artifact 생성과 핵심 claim extraction 검증 완료
 
 ## 5. 현재 한계

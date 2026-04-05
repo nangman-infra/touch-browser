@@ -11,7 +11,7 @@
 
 실행 파일:
 
-- [run-public-reference-workflow.mjs](/Volumes/WD/Developments/touch-browser/scripts/run-public-reference-workflow.mjs)
+- [run-public-reference-workflow.mjs](../scripts/run-public-reference-workflow.mjs)
 
 실행:
 
@@ -30,7 +30,7 @@
 
 generated report:
 
-- [report.json](/Volumes/WD/Developments/touch-browser/fixtures/scenarios/public-reference-workflow/report.json)
+- [report.json](../fixtures/scenarios/public-reference-workflow/report.json)
 
 ## 4. 현재 검증
 

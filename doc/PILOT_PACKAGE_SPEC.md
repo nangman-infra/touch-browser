@@ -51,11 +51,11 @@
 
 ## 3. 현재 검증
 
-- [serve-smoke.test.ts](/Volumes/WD/Developments/touch-browser/evals/src/runtime/serve-smoke.test.ts)
-- [serve-daemon.test.ts](/Volumes/WD/Developments/touch-browser/evals/src/runtime/serve-daemon.test.ts)
-- [mcp-bridge-smoke.test.ts](/Volumes/WD/Developments/touch-browser/evals/src/runtime/mcp-bridge-smoke.test.ts)
-- [reference-workflow-smoke.test.ts](/Volumes/WD/Developments/touch-browser/evals/src/runtime/reference-workflow-smoke.test.ts)
-- [interface-compatibility.test.ts](/Volumes/WD/Developments/touch-browser/evals/src/runtime/interface-compatibility.test.ts)
+- [serve-smoke.test.ts](../evals/src/runtime/serve-smoke.test.ts)
+- [serve-daemon.test.ts](../evals/src/runtime/serve-daemon.test.ts)
+- [mcp-bridge-smoke.test.ts](../evals/src/runtime/mcp-bridge-smoke.test.ts)
+- [reference-workflow-smoke.test.ts](../evals/src/runtime/reference-workflow-smoke.test.ts)
+- [interface-compatibility.test.ts](../evals/src/runtime/interface-compatibility.test.ts)
 - `runtime.status`와 `runtime.open` round-trip 검증 완료
 - daemon `session.create -> session.open -> tab.open -> session.synthesize -> session.close` round-trip 검증 완료
 - MCP `initialize -> tools/list -> tools/call(tb_status)` round-trip 검증 완료

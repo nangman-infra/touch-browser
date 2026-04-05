@@ -11,7 +11,7 @@
 
 현재 제공 파일:
 
-- [touch-browser-mcp-bridge.mjs](/Volumes/WD/Developments/touch-browser/scripts/touch-browser-mcp-bridge.mjs)
+- [touch-browser-mcp-bridge.mjs](../scripts/touch-browser-mcp-bridge.mjs)
 
 실행:
 
@@ -57,9 +57,9 @@ bridge는 MCP stdio JSON-RPC의 최소 subset만 구현합니다.
 
 ## 3. 현재 검증
 
-- [mcp-bridge-smoke.test.ts](/Volumes/WD/Developments/touch-browser/evals/src/runtime/mcp-bridge-smoke.test.ts)
-- [interface-compatibility.test.ts](/Volumes/WD/Developments/touch-browser/evals/src/runtime/interface-compatibility.test.ts)
-- [serve-daemon.test.ts](/Volumes/WD/Developments/touch-browser/evals/src/runtime/serve-daemon.test.ts)
+- [mcp-bridge-smoke.test.ts](../evals/src/runtime/mcp-bridge-smoke.test.ts)
+- [interface-compatibility.test.ts](../evals/src/runtime/interface-compatibility.test.ts)
+- [serve-daemon.test.ts](../evals/src/runtime/serve-daemon.test.ts)
 - `initialize -> tools/list -> tools/call(tb_status)` round-trip 검증 완료
 - `runtime.session.click` / `runtime.session.type` / `runtime.session.submit` daemon 경로 검증 완료
 - `runtime.session.typeSecret` / `runtime.session.secret.store` / `runtime.session.refresh` daemon 경로 검증 완료

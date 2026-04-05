@@ -23,10 +23,10 @@
 
 제공 아티팩트:
 
-- [deploy/Dockerfile](/Volumes/WD/Developments/touch-browser/deploy/Dockerfile)
-- [deploy/docker-compose.pilot.yml](/Volumes/WD/Developments/touch-browser/deploy/docker-compose.pilot.yml)
-- [deploy/touch-browser.env.example](/Volumes/WD/Developments/touch-browser/deploy/touch-browser.env.example)
-- [scripts/pilot-healthcheck.mjs](/Volumes/WD/Developments/touch-browser/scripts/pilot-healthcheck.mjs)
+- [deploy/Dockerfile](../deploy/Dockerfile)
+- [deploy/docker-compose.pilot.yml](../deploy/docker-compose.pilot.yml)
+- [deploy/touch-browser.env.example](../deploy/touch-browser.env.example)
+- [scripts/pilot-healthcheck.mjs](../scripts/pilot-healthcheck.mjs)
 
 기본 build:
 

@@ -67,10 +67,10 @@ cargo run -q -p touch-browser-cli -- compact-view fixture://research/static-docs
 
 More detail lives in:
 
-- [/Volumes/WD/Developments/touch-browser/doc/README.md](/Volumes/WD/Developments/touch-browser/doc/README.md)
-- [/Volumes/WD/Developments/touch-browser/doc/INSTALL_AND_OPERATIONS.md](/Volumes/WD/Developments/touch-browser/doc/INSTALL_AND_OPERATIONS.md)
-- [/Volumes/WD/Developments/touch-browser/doc/CLI_SURFACE_SPEC.md](/Volumes/WD/Developments/touch-browser/doc/CLI_SURFACE_SPEC.md)
-- [/Volumes/WD/Developments/touch-browser/doc/PILOT_PACKAGE_SPEC.md](/Volumes/WD/Developments/touch-browser/doc/PILOT_PACKAGE_SPEC.md)
-- [/Volumes/WD/Developments/touch-browser/doc/MCP_BRIDGE_SPEC.md](/Volumes/WD/Developments/touch-browser/doc/MCP_BRIDGE_SPEC.md)
-- [/Volumes/WD/Developments/touch-browser/doc/OPERATIONS_SECURITY_PACKAGE_SPEC.md](/Volumes/WD/Developments/touch-browser/doc/OPERATIONS_SECURITY_PACKAGE_SPEC.md)
-- [/Volumes/WD/Developments/touch-browser/doc/REAL_USER_RESEARCH_BENCHMARK_SPEC.md](/Volumes/WD/Developments/touch-browser/doc/REAL_USER_RESEARCH_BENCHMARK_SPEC.md)
+- [doc/README.md](doc/README.md)
+- [doc/INSTALL_AND_OPERATIONS.md](doc/INSTALL_AND_OPERATIONS.md)
+- [doc/CLI_SURFACE_SPEC.md](doc/CLI_SURFACE_SPEC.md)
+- [doc/PILOT_PACKAGE_SPEC.md](doc/PILOT_PACKAGE_SPEC.md)
+- [doc/MCP_BRIDGE_SPEC.md](doc/MCP_BRIDGE_SPEC.md)
+- [doc/OPERATIONS_SECURITY_PACKAGE_SPEC.md](doc/OPERATIONS_SECURITY_PACKAGE_SPEC.md)
+- [doc/REAL_USER_RESEARCH_BENCHMARK_SPEC.md](doc/REAL_USER_RESEARCH_BENCHMARK_SPEC.md)

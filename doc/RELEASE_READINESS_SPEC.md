@@ -11,7 +11,7 @@
 
 ## 2. 산출물
 
-- [report.json](/Volumes/WD/Developments/touch-browser/fixtures/scenarios/release-readiness/report.json)
+- [report.json](../fixtures/scenarios/release-readiness/report.json)
 
 생성 경로:
 

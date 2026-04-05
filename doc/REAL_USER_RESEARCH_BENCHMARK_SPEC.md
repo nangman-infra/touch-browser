@@ -21,11 +21,11 @@
 
 generated report:
 
-- [report.json](/Volumes/WD/Developments/touch-browser/fixtures/scenarios/real-user-research-benchmark/report.json)
+- [report.json](../fixtures/scenarios/real-user-research-benchmark/report.json)
 
 실행 파일:
 
-- [run-real-user-research-benchmark.mjs](/Volumes/WD/Developments/touch-browser/scripts/run-real-user-research-benchmark.mjs)
+- [run-real-user-research-benchmark.mjs](../scripts/run-real-user-research-benchmark.mjs)
 
 실행:
 

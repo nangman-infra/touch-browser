@@ -11,7 +11,7 @@
 
 실행 파일:
 
-- [run-staged-reference-workflow.mjs](/Volumes/WD/Developments/touch-browser/scripts/run-staged-reference-workflow.mjs)
+- [run-staged-reference-workflow.mjs](../scripts/run-staged-reference-workflow.mjs)
 
 실행:
 
@@ -34,11 +34,11 @@
 
 generated report:
 
-- [report.json](/Volumes/WD/Developments/touch-browser/fixtures/scenarios/staged-reference-workflow/report.json)
+- [report.json](../fixtures/scenarios/staged-reference-workflow/report.json)
 
 ## 4. 현재 검증
 
-- [staged-reference-workflow-smoke.test.ts](/Volumes/WD/Developments/touch-browser/evals/src/runtime/staged-reference-workflow-smoke.test.ts)
+- [staged-reference-workflow-smoke.test.ts](../evals/src/runtime/staged-reference-workflow-smoke.test.ts)
 - mixed public/trusted-source workflow artifact 생성 검증 완료
 - MCP bridge tab list/select/close 표면을 실제 artifact 생성 경로에서 검증
 

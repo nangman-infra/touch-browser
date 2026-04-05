@@ -18,7 +18,7 @@
 
 ## 2. 저장소
 
-- crate: [storage-sqlite](/Volumes/WD/Developments/touch-browser/core/crates/storage-sqlite/src/lib.rs)
+- crate: [storage-sqlite](../core/crates/storage-sqlite/src/lib.rs)
 - 기본 경로: `output/pilot/telemetry.sqlite`
 - override:
   - `TOUCH_BROWSER_TELEMETRY_DB`
@@ -60,8 +60,8 @@ MCP:
 
 ## 4. 현재 검증
 
-- [telemetry-smoke.test.ts](/Volumes/WD/Developments/touch-browser/evals/src/runtime/telemetry-smoke.test.ts)
-- [serve-daemon.test.ts](/Volumes/WD/Developments/touch-browser/evals/src/runtime/serve-daemon.test.ts)
+- [telemetry-smoke.test.ts](../evals/src/runtime/telemetry-smoke.test.ts)
+- [serve-daemon.test.ts](../evals/src/runtime/serve-daemon.test.ts)
 - CLI direct path에서 telemetry summary/recent 조회 검증 완료
 - serve daemon 경로에서 telemetry summary 조회 검증 완료
 - MCP bridge는 telemetry tools를 공개하고 serve surface를 그대로 위임

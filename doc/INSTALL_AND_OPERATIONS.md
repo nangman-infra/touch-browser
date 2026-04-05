@@ -82,8 +82,8 @@ pnpm run pilot:healthcheck
 
 관련 운영 패키지:
 
-- [OPERATIONS_SECURITY_PACKAGE_SPEC.md](/Volumes/WD/Developments/touch-browser/doc/OPERATIONS_SECURITY_PACKAGE_SPEC.md)
-- env example: [deploy/touch-browser.env.example](/Volumes/WD/Developments/touch-browser/deploy/touch-browser.env.example)
+- [OPERATIONS_SECURITY_PACKAGE_SPEC.md](OPERATIONS_SECURITY_PACKAGE_SPEC.md)
+- env example: [deploy/touch-browser.env.example](../deploy/touch-browser.env.example)
 
 ## 3. 운영 체크
 
