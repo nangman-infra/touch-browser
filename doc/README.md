@@ -40,6 +40,14 @@ This directory is the usage and operations index for the uploaded repository.
 | --- | --- |
 | pilot readiness gate | [RELEASE_READINESS_SPEC.md](RELEASE_READINESS_SPEC.md) |
 
+## Architecture And Quality
+
+| Need | Document |
+| --- | --- |
+| inspect bounded context and integration boundaries | [CONTEXT_MAP.md](CONTEXT_MAP.md) |
+| align domain terms across code, schema, and docs | [UBIQUITOUS_LANGUAGE.md](UBIQUITOUS_LANGUAGE.md) |
+| inspect DDD-lite completion and quality gate criteria | [DDD_COMPLETION_CRITERIA.md](DDD_COMPLETION_CRITERIA.md) |
+
 ## Repository Shortcuts
 
 | Need | Path |

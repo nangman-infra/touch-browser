@@ -1,12 +1,15 @@
 use std::path::PathBuf;
 
-use serde::{Deserialize, Serialize};
-use touch_browser_contracts::{
+use super::presentation_support::{
     compact_ref_index, navigation_ref_index, render_compact_snapshot,
     render_main_read_view_markdown, render_navigation_compact_snapshot, render_read_view_markdown,
-    render_reading_compact_snapshot, ActionResult, CompactRefIndexEntry, PolicyProfile,
-    PolicyReport, ReplayTranscript, SearchEngine, SearchReport, SearchResultItem, SessionState,
-    SessionSynthesisReport, SnapshotDocument, SourceRisk,
+    render_reading_compact_snapshot,
+};
+use serde::{Deserialize, Serialize};
+use touch_browser_contracts::{
+    ActionResult, CompactRefIndexEntry, PolicyProfile, PolicyReport, ReplayTranscript,
+    SearchEngine, SearchReport, SearchResultItem, SessionState, SessionSynthesisReport,
+    SnapshotDocument, SourceRisk,
 };
 use touch_browser_memory::MemorySessionSummary;
 use touch_browser_storage_sqlite::{PilotTelemetryEvent, PilotTelemetrySummary};

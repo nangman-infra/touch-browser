@@ -128,7 +128,7 @@ pub(crate) fn is_search_results_target(target: &str) -> bool {
         return false;
     };
     let path = url.path();
-    (is_google_host(host) && path == "/search") || (is_brave_host(host) && path == "/search")
+    (is_google_host(host) || is_brave_host(host)) && path == "/search"
 }
 
 pub(crate) fn build_search_report(
@@ -289,7 +289,7 @@ fn extract_search_results_from_html(
             continue;
         }
         let domain = url_domain(&url);
-        let snippet = search_result_snippet_from_anchor(&anchor.as_node(), &title);
+        let snippet = search_result_snippet_from_anchor(anchor.as_node(), &title);
 
         results.push(SearchResultItem {
             rank: results.len() + 1,

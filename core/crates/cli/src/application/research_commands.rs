@@ -20,8 +20,7 @@ use crate::{
     SearchResultItem, SnapshotBlock, SnapshotBlockKind, SnapshotDocument, SourceRisk, SourceType,
     TargetOptions, CONTRACT_VERSION, DEFAULT_OPENED_AT,
 };
-
-use serde_json::json;
+use serde::Serialize;
 
 const JS_PLACEHOLDER_HINTS: &[&str] = &[
     "enable javascript",
@@ -31,6 +30,12 @@ const JS_PLACEHOLDER_HINTS: &[&str] = &[
     "javascript is disabled",
     "you need to enable javascript",
 ];
+
+#[derive(Serialize)]
+#[serde(rename_all = "camelCase")]
+struct ExtractActionInput<'a> {
+    claims: &'a [ClaimInput],
+}
 
 fn claim_inputs_from_statements(statements: &[String]) -> Result<Vec<ClaimInput>, CliError> {
     let claims = statements
@@ -816,6 +821,7 @@ pub(crate) fn handle_extract(
             ),
         );
         let extract_result = verify_action_result_if_requested(
+            ports.verifier,
             extract_result?,
             &mut session,
             &claims,
@@ -883,11 +889,14 @@ pub(crate) fn handle_extract(
                     target_url: current_url,
                     risk_class: RiskClass::Low,
                     reason: "Extract evidence for requested claims.".to_string(),
-                    input: Some(json!({ "claims": claims })),
+                    input: Some(serde_json::to_value(ExtractActionInput {
+                        claims: &claims,
+                    })?),
                 },
                 &slot_timestamp(1, 30),
             );
             verify_action_result_if_requested(
+                ports.verifier,
                 extract_result,
                 &mut session,
                 &claims,
@@ -950,6 +959,7 @@ pub(crate) fn handle_extract(
         current_policy_with_allowlist(&session, ctx.policy_kernel, &options.allowlisted_domains),
     );
     let extract_result = verify_action_result_if_requested(
+        ports.verifier,
         extract_result?,
         &mut session,
         &claims,

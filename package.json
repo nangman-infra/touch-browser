@@ -6,6 +6,7 @@
   "scripts": {
     "lint": "pnpm exec biome check .",
     "format": "pnpm exec biome format --write .",
+    "architecture:check": "node scripts/check-architecture-boundaries.mjs",
     "contracts:check": "node scripts/validate-contract-layout.mjs",
     "contracts:manifest": "node scripts/generate-contract-manifest.mjs",
     "fixtures:snapshot": "node scripts/generate-fixture-snapshots.mjs",
@@ -35,7 +36,9 @@
     "fixtures:public-reference-workflow": "node scripts/run-public-reference-workflow.mjs",
     "test:rust": "zsh -lic 'cargo test --workspace'",
     "typecheck": "pnpm exec tsc -p adapters/playwright/tsconfig.json --noEmit && pnpm exec tsc -p evals/tsconfig.json --noEmit",
-    "test": "pnpm run contracts:check && pnpm run contracts:manifest && pnpm run fixtures:evidence && pnpm run fixtures:session && pnpm run fixtures:memory && pnpm run fixtures:policy && pnpm run fixtures:safety && pnpm run fixtures:metrics && pnpm run fixtures:browser-metrics && pnpm run fixtures:live-metrics && pnpm run fixtures:citation-metrics && pnpm run fixtures:session-synthesis && pnpm run fixtures:action-surface && pnpm run fixtures:latency-cost && pnpm run fixtures:doc-links && pnpm run fixtures:tool-comparison && pnpm run fixtures:adversarial && pnpm run fixtures:reference-workflow && pnpm run fixtures:staged-reference-workflow && pnpm run fixtures:public-reference-workflow && pnpm run fixtures:real-user-research && pnpm run fixtures:customer-fit && pnpm run fixtures:customer-proxy && pnpm run fixtures:ops-package && pnpm run fixtures:release-readiness && pnpm run test:rust && pnpm exec vitest run --config adapters/playwright/vitest.config.ts && pnpm exec vitest run --config evals/vitest.config.ts",
+    "test": "pnpm run contracts:check && pnpm run contracts:manifest && pnpm run architecture:check && pnpm run fixtures:evidence && pnpm run fixtures:session && pnpm run fixtures:memory && pnpm run fixtures:policy && pnpm run fixtures:safety && pnpm run fixtures:metrics && pnpm run fixtures:browser-metrics && pnpm run fixtures:live-metrics && pnpm run fixtures:citation-metrics && pnpm run fixtures:session-synthesis && pnpm run fixtures:action-surface && pnpm run fixtures:latency-cost && pnpm run fixtures:doc-links && pnpm run fixtures:tool-comparison && pnpm run fixtures:adversarial && pnpm run fixtures:reference-workflow && pnpm run fixtures:staged-reference-workflow && pnpm run fixtures:public-reference-workflow && pnpm run fixtures:real-user-research && pnpm run fixtures:customer-fit && pnpm run fixtures:customer-proxy && pnpm run fixtures:ops-package && pnpm run fixtures:release-readiness && pnpm run test:rust && pnpm exec vitest run --config adapters/playwright/vitest.config.ts && pnpm exec vitest run --config evals/vitest.config.ts",
+    "quality:ci": "pnpm run lint && cargo fmt --all --check && pnpm run architecture:check && pnpm run typecheck && cargo clippy --workspace --all-targets -- -D warnings && pnpm run test",
+    "quality:sonar-reports": "mkdir -p sonar-reports && cargo clippy --workspace --all-targets --message-format=json --quiet > sonar-reports/clippy.json",
     "adapter:playwright": "pnpm exec tsx adapters/playwright/src/index.ts",
     "evals:smoke": "pnpm exec tsx evals/src/index.ts",
     "mcp:bridge": "node scripts/touch-browser-mcp-bridge.mjs",

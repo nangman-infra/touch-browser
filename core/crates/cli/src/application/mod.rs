@@ -3,6 +3,7 @@ pub(super) mod context;
 pub(super) mod models;
 pub(super) mod policy_support;
 pub(super) mod ports;
+pub(super) mod presentation_support;
 pub(super) mod research_commands;
 pub(super) mod search_support;
 pub(super) mod session_commands;

@@ -75,5 +75,7 @@ fn successful_json_output_stays_on_stdout() {
 
     assert!(output.status.success());
     assert!(String::from_utf8_lossy(&output.stderr).trim().is_empty());
-    assert!(String::from_utf8_lossy(&output.stdout).contains("\"payloadType\": \"snapshot-document\""));
+    assert!(
+        String::from_utf8_lossy(&output.stdout).contains("\"payloadType\": \"snapshot-document\"")
+    );
 }

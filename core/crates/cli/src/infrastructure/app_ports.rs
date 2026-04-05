@@ -11,12 +11,14 @@ pub(crate) struct DefaultSessionStore;
 pub(crate) struct DefaultBrowserAutomation;
 pub(crate) struct DefaultFixtureCatalog;
 pub(crate) struct DefaultAcquisitionFactory;
+pub(crate) struct DefaultEvidenceVerifier;
 
 pub(crate) static DEFAULT_SESSION_STORE: DefaultSessionStore = DefaultSessionStore;
 pub(crate) static DEFAULT_BROWSER_AUTOMATION: DefaultBrowserAutomation = DefaultBrowserAutomation;
 pub(crate) static DEFAULT_FIXTURE_CATALOG: DefaultFixtureCatalog = DefaultFixtureCatalog;
 pub(crate) static DEFAULT_ACQUISITION_FACTORY: DefaultAcquisitionFactory =
     DefaultAcquisitionFactory;
+pub(crate) static DEFAULT_EVIDENCE_VERIFIER: DefaultEvidenceVerifier = DefaultEvidenceVerifier;
 
 impl SessionStorePort for DefaultSessionStore {
     fn save_session(&self, path: &Path, persisted: &BrowserCliSession) -> Result<(), CliError> {
@@ -368,5 +370,24 @@ impl FixtureCatalogPort for DefaultFixtureCatalog {
 impl AcquisitionFactoryPort for DefaultAcquisitionFactory {
     fn create_engine(&self) -> Result<AcquisitionEngine, CliError> {
         AcquisitionEngine::new(AcquisitionConfig::default()).map_err(CliError::Acquisition)
+    }
+}
+
+impl EvidenceVerifierPort for DefaultEvidenceVerifier {
+    fn run_verifier(
+        &self,
+        verifier_command: &str,
+        claims: &[ClaimInput],
+        snapshot: &SnapshotDocument,
+        report: &EvidenceReport,
+        generated_at: &str,
+    ) -> Result<EvidenceVerificationReport, CliError> {
+        super::verifier::run_verifier_command(
+            verifier_command,
+            claims,
+            snapshot,
+            report,
+            generated_at,
+        )
     }
 }

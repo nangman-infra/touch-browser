@@ -1,26 +1,28 @@
-use super::{context::CliAppContext, ports::BrowserSnapshotCaptureRequest};
+use super::{
+    context::CliAppContext,
+    ports::BrowserSnapshotCaptureRequest,
+    presentation_support::{render_compact_snapshot, render_session_synthesis_markdown},
+};
 use crate::{
     approved_risk_labels, checkpoint_approval_panel, checkpoint_candidates, checkpoint_playbook,
     checkpoint_provider_hints, current_policy_with_allowlist, is_fixture_target,
     is_search_results_target, policy_profile_label, promoted_policy_profile_for_risks,
-    recommend_requested_tokens, recommended_policy_profile, render_session_synthesis_markdown,
-    required_ack_risks, resolve_latest_search_session_file, slot_timestamp, succeed_action,
-    telemetry_store, verify_action_result_if_requested, ActionName, ApproveOptions,
-    BrowserReplayCommandOutput, ClaimInput, CliError, ClickOptions, CompactSnapshotOutput,
-    ExpandOptions, FollowOptions, OutputFormat, PaginateOptions, PaginationDirection,
-    PersistedBrowserState, ReadViewOutput, RuntimeError, SessionApprovalCommandOutput,
-    SessionApprovalValue, SessionCheckpointCommandOutput, SessionCheckpointReport,
-    SessionCloseCommandOutput, SessionCloseResultValue, SessionCommandOutput,
-    SessionExtractCommandOutput, SessionExtractOptions, SessionFileOptions,
-    SessionPolicyCommandOutput, SessionProfileCommandOutput, SessionProfileSetOptions,
-    SessionProfileValue, SessionReadOptions, SessionRefreshOptions, SessionSynthesisCommandOutput,
-    SessionSynthesizeOptions, SourceRisk, SubmitOptions, TargetOptions,
-    TelemetryRecentCommandOutput, TelemetryRecentOptions, TelemetrySummaryCommandOutput,
-    TypeOptions,
+    recommend_requested_tokens, recommended_policy_profile, required_ack_risks,
+    resolve_latest_search_session_file, slot_timestamp, succeed_action, telemetry_store,
+    verify_action_result_if_requested, ActionName, ApproveOptions, BrowserReplayCommandOutput,
+    ClaimInput, CliError, ClickOptions, CompactSnapshotOutput, ExpandOptions, FollowOptions,
+    OutputFormat, PaginateOptions, PaginationDirection, PersistedBrowserState, ReadViewOutput,
+    RuntimeError, SessionApprovalCommandOutput, SessionApprovalValue,
+    SessionCheckpointCommandOutput, SessionCheckpointReport, SessionCloseCommandOutput,
+    SessionCloseResultValue, SessionCommandOutput, SessionExtractCommandOutput,
+    SessionExtractOptions, SessionFileOptions, SessionPolicyCommandOutput,
+    SessionProfileCommandOutput, SessionProfileSetOptions, SessionProfileValue, SessionReadOptions,
+    SessionRefreshOptions, SessionSynthesisCommandOutput, SessionSynthesizeOptions, SourceRisk,
+    SubmitOptions, TargetOptions, TelemetryRecentCommandOutput, TelemetryRecentOptions,
+    TelemetrySummaryCommandOutput, TypeOptions,
 };
 
 use std::{fs, path::PathBuf};
-use touch_browser_contracts::render_compact_snapshot;
 
 fn claim_inputs_from_statements(statements: &[String]) -> Result<Vec<ClaimInput>, CliError> {
     let claims = statements
@@ -246,6 +248,7 @@ pub(crate) fn handle_session_extract(
         ),
     );
     let extract_result = verify_action_result_if_requested(
+        ports.verifier,
         extract_result?,
         &mut persisted.session,
         &claims,

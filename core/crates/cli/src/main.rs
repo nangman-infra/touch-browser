@@ -39,12 +39,11 @@ pub(crate) use application::policy_support::{
     preflight_session_block, promoted_policy_profile_for_risks, recommended_policy_profile,
     reject_action, required_ack_risks, succeed_action, InteractivePreflightOptions,
 };
+pub(crate) use application::presentation_support::render_session_synthesis_markdown;
 pub(crate) use application::search_support::{
     is_search_results_target, resolve_latest_search_session_file,
 };
-pub(crate) use application::session_reporting::{
-    render_session_synthesis_markdown, verify_action_result_if_requested,
-};
+pub(crate) use application::session_reporting::verify_action_result_if_requested;
 pub(crate) use infrastructure::fixtures::load_fixture_catalog;
 pub(crate) use infrastructure::{browser_models::*, browser_runtime::*, telemetry::*};
 pub(crate) use interface::cli_models::*;
@@ -150,8 +149,27 @@ fn serialize_output<T: Serialize>(output: T) -> Result<Value, CliError> {
     Ok(serde_json::to_value(output)?)
 }
 
+fn default_cli_ports() -> application::ports::CliPorts<'static> {
+    application::ports::CliPorts {
+        session_store: &infrastructure::app_ports::DEFAULT_SESSION_STORE,
+        browser: &infrastructure::app_ports::DEFAULT_BROWSER_AUTOMATION,
+        fixtures: &infrastructure::app_ports::DEFAULT_FIXTURE_CATALOG,
+        acquisition: &infrastructure::app_ports::DEFAULT_ACQUISITION_FACTORY,
+        verifier: &infrastructure::app_ports::DEFAULT_EVIDENCE_VERIFIER,
+    }
+}
+
+fn default_app_context() -> application::context::CliAppContext<'static> {
+    application::context::CliAppContext::new(
+        default_cli_ports(),
+        application::context::default_runtime(),
+        application::context::default_action_vm(),
+        application::context::default_policy_kernel(),
+    )
+}
+
 fn dispatch(command: CliCommand) -> Result<Value, CliError> {
-    let ctx = application::context::default_app_context();
+    let ctx = default_app_context();
     match command {
         CliCommand::Search(options) => handle_search(&ctx, options),
         CliCommand::SearchOpenResult(options) => handle_search_open_result(&ctx, options),
@@ -3324,7 +3342,7 @@ mod tests {
         assert!(replay_output["compactText"]
             .as_str()
             .expect("compact text should exist")
-            .contains("Advanced opened"));
+            .contains("Advanced guide opened"));
         assert_eq!(
             replay_output["sessionState"]["currentUrl"],
             "fixture://research/navigation/browser-follow"

@@ -7,8 +7,9 @@ use touch_browser_acquisition::AcquisitionEngine;
 
 use crate::{
     BrowserActionSource, BrowserActionTraceEntry, BrowserCliSession, BrowserOrigin,
-    BrowserSessionContext, CliError, FixtureCatalog, PersistedBrowserState, ReadOnlySession,
-    SearchReport, SecretPrefill, SnapshotDocument, SourceRisk,
+    BrowserSessionContext, ClaimInput, CliError, EvidenceVerificationReport, FixtureCatalog,
+    PersistedBrowserState, ReadOnlySession, SearchReport, SecretPrefill, SnapshotDocument,
+    SourceRisk,
 };
 
 #[derive(Debug, Clone)]
@@ -221,6 +222,7 @@ pub(crate) trait BrowserAutomationPort {
     ) -> Result<BrowserPaginateResult, CliError>;
     fn invoke_expand(&self, request: BrowserExpandRequest)
         -> Result<BrowserExpandResult, CliError>;
+    #[allow(clippy::too_many_arguments)]
     fn build_browser_cli_session(
         &self,
         session: &ReadOnlySession,
@@ -251,19 +253,22 @@ pub(crate) trait AcquisitionFactoryPort {
     fn create_engine(&self) -> Result<AcquisitionEngine, CliError>;
 }
 
+pub(crate) trait EvidenceVerifierPort {
+    fn run_verifier(
+        &self,
+        verifier_command: &str,
+        claims: &[ClaimInput],
+        snapshot: &SnapshotDocument,
+        report: &crate::EvidenceReport,
+        generated_at: &str,
+    ) -> Result<EvidenceVerificationReport, CliError>;
+}
+
 #[derive(Clone, Copy)]
 pub(crate) struct CliPorts<'a> {
     pub(crate) session_store: &'a dyn SessionStorePort,
     pub(crate) browser: &'a dyn BrowserAutomationPort,
     pub(crate) fixtures: &'a dyn FixtureCatalogPort,
     pub(crate) acquisition: &'a dyn AcquisitionFactoryPort,
-}
-
-pub(crate) fn default_cli_ports() -> CliPorts<'static> {
-    CliPorts {
-        session_store: &crate::infrastructure::app_ports::DEFAULT_SESSION_STORE,
-        browser: &crate::infrastructure::app_ports::DEFAULT_BROWSER_AUTOMATION,
-        fixtures: &crate::infrastructure::app_ports::DEFAULT_FIXTURE_CATALOG,
-        acquisition: &crate::infrastructure::app_ports::DEFAULT_ACQUISITION_FACTORY,
-    }
+    pub(crate) verifier: &'a dyn EvidenceVerifierPort,
 }

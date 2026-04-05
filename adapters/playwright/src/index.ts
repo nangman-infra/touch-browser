@@ -1114,7 +1114,9 @@ function browserSource(
   };
 }
 
-async function resolveSearchBrowserExecutablePath(): Promise<string | undefined> {
+async function resolveSearchBrowserExecutablePath(): Promise<
+  string | undefined
+> {
   cachedSearchExecutablePath ??= (async () => {
     const candidates = [
       process.env.TOUCH_BROWSER_SEARCH_CHROME_EXECUTABLE,
@@ -1253,133 +1255,130 @@ async function installSearchIdentity(context: BrowserContext): Promise<void> {
 
   await context.addInitScript(
     ({ languages, userAgent, browserVersion, userAgentDataBrands }) => {
-    const patch = (target: object, key: PropertyKey, value: unknown) => {
-      const define = (receiver: object) => {
-        Object.defineProperty(receiver, key, {
-          configurable: true,
-          get: () => value,
-        });
-      };
-      try {
-        define(target);
-      } catch {
-        try {
-          const prototype = Object.getPrototypeOf(target);
-          if (prototype) {
-            define(prototype);
-          }
-        } catch {
-          // Ignore immutable browser fields.
-        }
-      }
-    };
-
-    patch(window.navigator, "webdriver", undefined);
-    patch(window.navigator, "userAgent", userAgent);
-    patch(window.navigator, "vendor", "Google Inc.");
-    patch(window.navigator, "platform", "MacIntel");
-    patch(window.navigator, "hardwareConcurrency", 8);
-    patch(window.navigator, "deviceMemory", 8);
-    patch(window.navigator, "maxTouchPoints", 0);
-    patch(window.navigator, "language", languages[0] ?? "en-US");
-    patch(window.navigator, "languages", languages);
-    patch(window.navigator, "plugins", [
-      { name: "Chrome PDF Plugin", filename: "internal-pdf-viewer" },
-      {
-        name: "Chrome PDF Viewer",
-        filename: "mhjfbmdgcfjbbpaeojofohoefgiehjai",
-      },
-      { name: "Native Client", filename: "internal-nacl-plugin" },
-    ]);
-    patch(window.navigator, "mimeTypes", [
-      { type: "application/pdf", suffixes: "pdf" },
-      { type: "text/pdf", suffixes: "pdf" },
-    ]);
-    patch(window.navigator, "userAgentData", {
-      brands: userAgentDataBrands,
-      mobile: false,
-      platform: "macOS",
-      getHighEntropyValues: async (hints: readonly string[]) => {
-        const values: Record<string, unknown> = {
-          architecture: "x86",
-          bitness: "64",
-          mobile: false,
-          model: "",
-          platform: "macOS",
-          platformVersion: "14.0.0",
-          uaFullVersion: browserVersion,
-          fullVersionList: userAgentDataBrands,
-          wow64: false,
+      const patch = (target: object, key: PropertyKey, value: unknown) => {
+        const define = (receiver: object) => {
+          Object.defineProperty(receiver, key, {
+            configurable: true,
+            get: () => value,
+          });
         };
-        return hints.reduce<Record<string, unknown>>((result, hint) => {
-          if (hint in values) {
-            result[hint] = values[hint];
+        try {
+          define(target);
+        } catch {
+          try {
+            const prototype = Object.getPrototypeOf(target);
+            if (prototype) {
+              define(prototype);
+            }
+          } catch {
+            // Ignore immutable browser fields.
           }
-          return result;
-        }, {});
-      },
-      toJSON: () => ({
+        }
+      };
+
+      patch(window.navigator, "webdriver", undefined);
+      patch(window.navigator, "userAgent", userAgent);
+      patch(window.navigator, "vendor", "Google Inc.");
+      patch(window.navigator, "platform", "MacIntel");
+      patch(window.navigator, "hardwareConcurrency", 8);
+      patch(window.navigator, "deviceMemory", 8);
+      patch(window.navigator, "maxTouchPoints", 0);
+      patch(window.navigator, "language", languages[0] ?? "en-US");
+      patch(window.navigator, "languages", languages);
+      patch(window.navigator, "plugins", [
+        { name: "Chrome PDF Plugin", filename: "internal-pdf-viewer" },
+        {
+          name: "Chrome PDF Viewer",
+          filename: "mhjfbmdgcfjbbpaeojofohoefgiehjai",
+        },
+        { name: "Native Client", filename: "internal-nacl-plugin" },
+      ]);
+      patch(window.navigator, "mimeTypes", [
+        { type: "application/pdf", suffixes: "pdf" },
+        { type: "text/pdf", suffixes: "pdf" },
+      ]);
+      patch(window.navigator, "userAgentData", {
         brands: userAgentDataBrands,
         mobile: false,
         platform: "macOS",
-      }),
-    });
-
-    if (!("chrome" in window)) {
-      Object.defineProperty(window, "chrome", {
-        configurable: true,
-        value: {
-          runtime: {},
-          app: {},
-          loadTimes: () => undefined,
-          csi: () => undefined,
+        getHighEntropyValues: async (hints: readonly string[]) => {
+          const values: Record<string, unknown> = {
+            architecture: "x86",
+            bitness: "64",
+            mobile: false,
+            model: "",
+            platform: "macOS",
+            platformVersion: "14.0.0",
+            uaFullVersion: browserVersion,
+            fullVersionList: userAgentDataBrands,
+            wow64: false,
+          };
+          return hints.reduce<Record<string, unknown>>((result, hint) => {
+            if (hint in values) {
+              result[hint] = values[hint];
+            }
+            return result;
+          }, {});
         },
+        toJSON: () => ({
+          brands: userAgentDataBrands,
+          mobile: false,
+          platform: "macOS",
+        }),
       });
-    }
 
-    const patchWebGl = (
-      prototype:
-        | WebGLRenderingContext
-        | WebGL2RenderingContext
-        | undefined,
-    ) => {
-      if (!prototype || typeof prototype.getParameter !== "function") {
-        return;
+      if (!("chrome" in window)) {
+        Object.defineProperty(window, "chrome", {
+          configurable: true,
+          value: {
+            runtime: {},
+            app: {},
+            loadTimes: () => undefined,
+            csi: () => undefined,
+          },
+        });
       }
-      const originalGetParameter = prototype.getParameter;
-      prototype.getParameter = function (parameter: number) {
-        if (parameter === 37445) {
-          return "Intel Inc.";
+
+      const patchWebGl = (
+        prototype: WebGLRenderingContext | WebGL2RenderingContext | undefined,
+      ) => {
+        if (!prototype || typeof prototype.getParameter !== "function") {
+          return;
         }
-        if (parameter === 37446) {
-          return "Intel Iris OpenGL Engine";
-        }
-        return originalGetParameter.call(this, parameter);
+        const originalGetParameter = prototype.getParameter;
+        prototype.getParameter = function (parameter: number) {
+          if (parameter === 37445) {
+            return "Intel Inc.";
+          }
+          if (parameter === 37446) {
+            return "Intel Iris OpenGL Engine";
+          }
+          return originalGetParameter.call(this, parameter);
+        };
       };
-    };
 
-    patchWebGl(window.WebGLRenderingContext?.prototype);
-    patchWebGl(window.WebGL2RenderingContext?.prototype);
+      patchWebGl(window.WebGLRenderingContext?.prototype);
+      patchWebGl(window.WebGL2RenderingContext?.prototype);
 
-    const permissions = window.navigator.permissions;
-    if (permissions && typeof permissions.query === "function") {
-      const originalQuery = permissions.query.bind(permissions);
-      permissions.query = ((parameters: PermissionDescriptor) => {
-        if (parameters.name === "notifications") {
-          return Promise.resolve({
-            name: "notifications",
-            state: Notification.permission,
-            onchange: null,
-            addEventListener() {},
-            removeEventListener() {},
-            dispatchEvent() {
-              return false;
-            },
-          } as unknown as PermissionStatus);
-        }
-        return originalQuery(parameters);
-      }) as typeof permissions.query;
-    }
+      const permissions = window.navigator.permissions;
+      if (permissions && typeof permissions.query === "function") {
+        const originalQuery = permissions.query.bind(permissions);
+        permissions.query = ((parameters: PermissionDescriptor) => {
+          if (parameters.name === "notifications") {
+            return Promise.resolve({
+              name: "notifications",
+              state: Notification.permission,
+              onchange: null,
+              addEventListener() {},
+              removeEventListener() {},
+              dispatchEvent() {
+                return false;
+              },
+            } as unknown as PermissionStatus);
+          }
+          return originalQuery(parameters);
+        }) as typeof permissions.query;
+      }
     },
     { languages, userAgent, browserVersion, userAgentDataBrands },
   );

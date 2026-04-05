@@ -6,6 +6,7 @@ coverage/
 target/
 output/
 fixtures/scenarios/
+sonar-reports/
 
 *.sqlite
 *.sqlite3
@@ -32,3 +33,6 @@ doc/*.md
 !doc/DOC_LINK_INTEGRITY_SPEC.md
 !doc/TOOL_COMPARISON_BENCHMARK_SPEC.md
 !doc/ADVERSARIAL_BENCHMARK_SPEC.md
+!doc/CONTEXT_MAP.md
+!doc/UBIQUITOUS_LANGUAGE.md
+!doc/DDD_COMPLETION_CRITERIA.md

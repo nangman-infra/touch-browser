@@ -30,6 +30,8 @@
   - raw JSON shape 조립
   - Playwright request/response 타입 의존
   - 파일 시스템 세부 구현 의존
+  - shell/process spawn
+  - infrastructure default wiring
 
 ### infrastructure
 
@@ -70,7 +72,10 @@ interface -> application -> ports <- infrastructure
 ## Review Checklist
 
 - `application`에 `use crate::*;`가 없는가
+- `application`에 `crate::infrastructure::` 또는 `default_cli_ports(`가 없는가
 - `application`에서 `json!` 또는 `serde_json::Value`를 직접 만들지 않는가
+- `application`에서 `Command::new` 또는 `Stdio::`를 직접 호출하지 않는가
 - `ports.rs`가 adapter 스키마 대신 역할 중심 계약을 노출하는가
 - `serve` 응답이 presenter에서만 직렬화되는가
 - 새 기능 추가 시 test가 CLI/serve 회귀를 잡는가
+- `pnpm run architecture:check`가 위 조건을 자동으로 막는가
