@@ -17,10 +17,20 @@ use crate::{
     ReplayTranscript, RiskClass, SearchCommandOutput, SearchEngine, SearchNextCommands,
     SearchOpenResultCommandOutput, SearchOpenResultOptions, SearchOpenTopCommandOutput,
     SearchOpenTopItem, SearchOpenTopOptions, SearchOptions, SearchReport, SearchReportStatus,
-    SearchResultItem, SourceRisk, TargetOptions, CONTRACT_VERSION, DEFAULT_OPENED_AT,
+    SearchResultItem, SnapshotBlock, SnapshotBlockKind, SnapshotDocument, SourceRisk, SourceType,
+    TargetOptions, CONTRACT_VERSION, DEFAULT_OPENED_AT,
 };
 
 use serde_json::json;
+
+const JS_PLACEHOLDER_HINTS: &[&str] = &[
+    "enable javascript",
+    "requires javascript",
+    "javascript to run this app",
+    "turn javascript on",
+    "javascript is disabled",
+    "you need to enable javascript",
+];
 
 fn claim_inputs_from_statements(statements: &[String]) -> Result<Vec<ClaimInput>, CliError> {
     let claims = statements
@@ -43,6 +53,87 @@ fn claim_inputs_from_statements(statements: &[String]) -> Result<Vec<ClaimInput>
 
 fn shell_quote(value: &str) -> String {
     format!("'{}'", value.replace('\'', "'\"'\"'"))
+}
+
+fn target_requires_browser_session(options: &TargetOptions) -> bool {
+    options.browser || options.session_file.is_some()
+}
+
+fn extract_requires_browser_session(options: &ExtractOptions) -> bool {
+    options.browser || options.session_file.is_some()
+}
+
+fn browser_fallback_target_options(options: &TargetOptions) -> TargetOptions {
+    let mut fallback = options.clone();
+    fallback.browser = true;
+    fallback
+}
+
+fn browser_fallback_extract_options(options: &ExtractOptions) -> ExtractOptions {
+    let mut fallback = options.clone();
+    fallback.browser = true;
+    fallback
+}
+
+fn normalized_block_text(text: &str) -> String {
+    text.split_whitespace()
+        .collect::<Vec<_>>()
+        .join(" ")
+        .to_ascii_lowercase()
+}
+
+fn is_meaningful_snapshot_block(block: &SnapshotBlock) -> bool {
+    let char_count = block.text.trim().chars().count();
+    match block.kind {
+        SnapshotBlockKind::Heading => char_count >= 4,
+        SnapshotBlockKind::Text => char_count >= 32,
+        SnapshotBlockKind::List | SnapshotBlockKind::Table => char_count >= 24,
+        SnapshotBlockKind::Link => block.stable_ref.starts_with("rmain:") && char_count >= 48,
+        SnapshotBlockKind::Metadata
+        | SnapshotBlockKind::Form
+        | SnapshotBlockKind::Button
+        | SnapshotBlockKind::Input => false,
+    }
+}
+
+fn snapshot_requires_browser_fallback(snapshot: &SnapshotDocument) -> bool {
+    if snapshot.source.source_type != SourceType::Http {
+        return false;
+    }
+
+    if snapshot.blocks.is_empty() {
+        return true;
+    }
+
+    let normalized_blocks = snapshot
+        .blocks
+        .iter()
+        .map(|block| normalized_block_text(&block.text))
+        .filter(|text| !text.is_empty())
+        .collect::<Vec<_>>();
+
+    if normalized_blocks
+        .iter()
+        .any(|text| JS_PLACEHOLDER_HINTS.iter().any(|hint| text.contains(hint)))
+    {
+        return true;
+    }
+
+    let meaningful_blocks = snapshot
+        .blocks
+        .iter()
+        .filter(|block| is_meaningful_snapshot_block(block))
+        .collect::<Vec<_>>();
+    let main_blocks = meaningful_blocks
+        .iter()
+        .filter(|block| block.stable_ref.starts_with("rmain:"))
+        .count();
+    let meaningful_chars = meaningful_blocks
+        .iter()
+        .map(|block| block.text.trim().chars().count())
+        .sum::<usize>();
+
+    main_blocks == 0 && meaningful_blocks.len() <= 2 && meaningful_chars < 240
 }
 
 pub(crate) fn selected_search_result(
@@ -369,13 +460,7 @@ pub(crate) fn handle_open(
     options: TargetOptions,
 ) -> Result<ActionResult, CliError> {
     let ports = ctx.ports;
-    if options.session_file.is_some() && !options.browser {
-        return Err(CliError::Usage(
-            "`--session-file` is currently supported only with `--browser`.".to_string(),
-        ));
-    }
-
-    if options.browser {
+    if target_requires_browser_session(&options) {
         return handle_browser_open(ctx, options);
     }
 
@@ -401,16 +486,19 @@ pub(crate) fn handle_open(
 
     let mut acquisition = ports.acquisition.create_engine()?;
     let mut session = ctx.runtime.start_session("scliopen001", DEFAULT_OPENED_AT);
-    let source_risk = options.source_risk.unwrap_or(SourceRisk::Low);
+    let source_risk = options.source_risk.clone().unwrap_or(SourceRisk::Low);
     let snapshot = ctx.runtime.open_live(
         &mut session,
         &mut acquisition,
         &options.target,
         options.budget,
         source_risk.clone(),
-        options.source_label,
+        options.source_label.clone(),
         DEFAULT_OPENED_AT,
     )?;
+    if snapshot_requires_browser_fallback(&snapshot) {
+        return handle_browser_open(ctx, browser_fallback_target_options(&options));
+    }
     let policy =
         current_policy_with_allowlist(&session, ctx.policy_kernel, &options.allowlisted_domains);
 
@@ -488,7 +576,7 @@ pub(crate) fn handle_compact_view(
     options: TargetOptions,
 ) -> Result<CompactSnapshotOutput, CliError> {
     let ports = ctx.ports;
-    if options.browser {
+    if target_requires_browser_session(&options) {
         let browser_context_dir = options
             .session_file
             .as_ref()
@@ -563,10 +651,13 @@ pub(crate) fn handle_compact_view(
         &mut acquisition,
         &options.target,
         options.budget,
-        options.source_risk.unwrap_or(SourceRisk::Low),
-        options.source_label,
+        options.source_risk.clone().unwrap_or(SourceRisk::Low),
+        options.source_label.clone(),
         DEFAULT_OPENED_AT,
     )?;
+    if snapshot_requires_browser_fallback(&snapshot) {
+        return handle_compact_view(ctx, browser_fallback_target_options(&options));
+    }
 
     Ok(CompactSnapshotOutput::new(
         &snapshot,
@@ -580,7 +671,7 @@ pub(crate) fn handle_read_view(
     options: TargetOptions,
 ) -> Result<ReadViewOutput, CliError> {
     let ports = ctx.ports;
-    if options.browser {
+    if target_requires_browser_session(&options) {
         let browser_context_dir = options
             .session_file
             .as_ref()
@@ -653,10 +744,13 @@ pub(crate) fn handle_read_view(
         &mut acquisition,
         &options.target,
         options.budget,
-        options.source_risk.unwrap_or(SourceRisk::Low),
-        options.source_label,
+        options.source_risk.clone().unwrap_or(SourceRisk::Low),
+        options.source_label.clone(),
         DEFAULT_OPENED_AT,
     )?;
+    if snapshot_requires_browser_fallback(&snapshot) {
+        return handle_read_view(ctx, browser_fallback_target_options(&options));
+    }
 
     Ok(ReadViewOutput::new(
         &snapshot,
@@ -671,15 +765,9 @@ pub(crate) fn handle_extract(
     options: ExtractOptions,
 ) -> Result<ExtractCommandOutput, CliError> {
     let ports = ctx.ports;
-    if options.session_file.is_some() && !options.browser {
-        return Err(CliError::Usage(
-            "`--session-file` is currently supported only with `--browser` on target commands. Use `session-extract` for persisted sessions.".to_string(),
-        ));
-    }
-
     let claims = claim_inputs_from_statements(&options.claims)?;
 
-    if options.browser {
+    if extract_requires_browser_session(&options) {
         let browser_context_dir = options
             .session_file
             .as_ref()
@@ -826,7 +914,7 @@ pub(crate) fn handle_extract(
     let mut session = ctx
         .runtime
         .start_session("scliextract001", DEFAULT_OPENED_AT);
-    let source_risk = options.source_risk.unwrap_or(SourceRisk::Low);
+    let source_risk = options.source_risk.clone().unwrap_or(SourceRisk::Low);
 
     let snapshot = ctx.runtime.open_live(
         &mut session,
@@ -834,9 +922,12 @@ pub(crate) fn handle_extract(
         &options.target,
         options.budget,
         source_risk,
-        options.source_label,
+        options.source_label.clone(),
         DEFAULT_OPENED_AT,
     )?;
+    if snapshot_requires_browser_fallback(&snapshot) {
+        return handle_extract(ctx, browser_fallback_extract_options(&options));
+    }
     let open_policy =
         current_policy_with_allowlist(&session, ctx.policy_kernel, &options.allowlisted_domains);
     let open_result = succeed_action(
@@ -942,15 +1033,18 @@ pub(crate) fn handle_policy(
     let mut session = ctx
         .runtime
         .start_session("sclipolicy001", DEFAULT_OPENED_AT);
-    ctx.runtime.open_live(
+    let snapshot = ctx.runtime.open_live(
         &mut session,
         &mut acquisition,
         &options.target,
         options.budget,
-        options.source_risk.unwrap_or(SourceRisk::Low),
-        options.source_label,
+        options.source_risk.clone().unwrap_or(SourceRisk::Low),
+        options.source_label.clone(),
         DEFAULT_OPENED_AT,
     )?;
+    if snapshot_requires_browser_fallback(&snapshot) {
+        return handle_policy(ctx, browser_fallback_target_options(&options));
+    }
     let report =
         current_policy_with_allowlist(&session, ctx.policy_kernel, &options.allowlisted_domains)
             .ok_or_else(|| {

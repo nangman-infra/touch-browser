@@ -1531,6 +1531,7 @@ dependencies = [
  "serde",
  "serde_json",
  "thiserror",
+ "tiny_http",
  "touch-browser-acquisition",
  "touch-browser-action-vm",
  "touch-browser-contracts",

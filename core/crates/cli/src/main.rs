@@ -519,6 +519,7 @@ fn usage() -> String {
         "  touch-browser read-view <target> [--browser] [--headed] [--main-only] [--budget <tokens>] [--session-file <path>] [--source-risk low|medium|hostile] [--source-label <label>] [--allow-domain <host> ...]",
         "  touch-browser extract <target> --claim <statement> [--claim <statement> ...] [--verifier-command <shell-command>] [--browser] [--headed] [--budget <tokens>] [--session-file <path>] [--source-risk low|medium|hostile] [--source-label <label>] [--allow-domain <host> ...]",
         "  touch-browser policy <target> [--browser] [--headed] [--budget <tokens>] [--source-risk low|medium|hostile] [--source-label <label>] [--allow-domain <host> ...]",
+        "    Target commands use HTTP first by default and automatically retry with browser rendering when the page looks JS-dependent. Use --browser to force browser-backed capture.",
         "  touch-browser session-snapshot --session-file <path>",
         "  touch-browser session-compact --session-file <path>",
         "  touch-browser session-extract [--session-file <path>] [--engine google|brave] --claim <statement> [--claim <statement> ...] [--verifier-command <shell-command>]",
@@ -586,11 +587,19 @@ enum CliError {
 mod tests {
     use std::{
         fs,
+        io::Cursor,
+        net::TcpListener,
         path::PathBuf,
+        sync::{
+            atomic::{AtomicBool, Ordering},
+            Arc,
+        },
+        thread,
         time::{SystemTime, UNIX_EPOCH},
     };
 
     use serde_json::json;
+    use tiny_http::{Header, Response as TinyResponse, Server, StatusCode};
     use touch_browser_contracts::{
         SearchReport, SearchResultItem, SnapshotBlock, SnapshotBlockKind, SnapshotBlockRole,
         SnapshotBudget, SnapshotDocument, SnapshotEvidence, SnapshotSource, SourceType,
@@ -618,6 +627,106 @@ mod tests {
             .expect("time should be monotonic")
             .as_nanos();
         std::env::temp_dir().join(format!("touch-browser-{name}-{nanos}.json"))
+    }
+
+    struct CliTestServer {
+        base_url: String,
+        stop_flag: Arc<AtomicBool>,
+        handle: Option<thread::JoinHandle<()>>,
+    }
+
+    impl CliTestServer {
+        fn start() -> Self {
+            let listener = TcpListener::bind("127.0.0.1:0").expect("listener bind");
+            let address = listener.local_addr().expect("local addr");
+            let server = Server::from_listener(listener, None).expect("server");
+            let stop_flag = Arc::new(AtomicBool::new(false));
+            let stop_flag_thread = stop_flag.clone();
+            let base_url = format!("http://{}", address);
+
+            let handle = thread::spawn(move || {
+                while !stop_flag_thread.load(Ordering::SeqCst) {
+                    let Ok(Some(request)) =
+                        server.recv_timeout(std::time::Duration::from_millis(100))
+                    else {
+                        continue;
+                    };
+
+                    let response = match request.url() {
+                        "/robots.txt" => text_response(
+                            "User-agent: *\nDisallow:\n",
+                            "text/plain; charset=utf-8",
+                            200,
+                        ),
+                        "/static" => html_response(
+                            r#"<!doctype html>
+                            <html>
+                              <head><title>Static Docs</title></head>
+                              <body>
+                                <main>
+                                  <h1>Static Docs</h1>
+                                  <p>Static content works over HTTP without client-side rendering.</p>
+                                </main>
+                              </body>
+                            </html>"#,
+                            200,
+                        ),
+                        "/spa" => html_response(
+                            r#"<!doctype html>
+                            <html>
+                              <head><title>SPA Shell</title></head>
+                              <body>
+                                <noscript>Please enable JavaScript to run this app.</noscript>
+                                <div id="app"></div>
+                                <script>
+                                  document.getElementById('app').innerHTML =
+                                    '<main><h1>Client Rendered Docs</h1><p>The browser runtime can read JS apps.</p></main>';
+                                </script>
+                              </body>
+                            </html>"#,
+                            200,
+                        ),
+                        _ => html_response("<html><body>missing</body></html>", 404),
+                    };
+
+                    let _ = request.respond(response);
+                }
+            });
+
+            Self {
+                base_url,
+                stop_flag,
+                handle: Some(handle),
+            }
+        }
+
+        fn url(&self, path: &str) -> String {
+            format!("{}{}", self.base_url, path)
+        }
+    }
+
+    impl Drop for CliTestServer {
+        fn drop(&mut self) {
+            self.stop_flag.store(true, Ordering::SeqCst);
+            if let Some(handle) = self.handle.take() {
+                let _ = handle.join();
+            }
+        }
+    }
+
+    fn text_response(body: &str, content_type: &str, status: u16) -> TinyResponse<Cursor<Vec<u8>>> {
+        let header = Header::from_bytes("Content-Type", content_type).expect("header");
+        TinyResponse::new(
+            StatusCode(status),
+            vec![header],
+            Cursor::new(body.as_bytes().to_vec()),
+            Some(body.len()),
+            None,
+        )
+    }
+
+    fn html_response(body: &str, status: u16) -> TinyResponse<Cursor<Vec<u8>>> {
+        text_response(body, "text/html; charset=utf-8", status)
     }
 
     #[test]
@@ -1874,6 +1983,76 @@ mod tests {
         assert_eq!(output["status"], "succeeded");
         assert_eq!(output["output"]["source"]["sourceType"], "playwright");
         assert_eq!(output["policy"]["decision"], "allow");
+    }
+
+    #[test]
+    fn open_stays_on_http_for_static_pages_by_default() {
+        let server = CliTestServer::start();
+        let output = dispatch(CliCommand::Open(TargetOptions {
+            target: server.url("/static"),
+            budget: DEFAULT_REQUESTED_TOKENS,
+            source_risk: None,
+            source_label: None,
+            allowlisted_domains: Vec::new(),
+            browser: false,
+            headed: false,
+            main_only: false,
+            session_file: None,
+        }))
+        .expect("static page should open over http");
+
+        assert_eq!(output["output"]["source"]["sourceType"], "http");
+        assert_eq!(output["output"]["source"]["title"], "Static Docs");
+    }
+
+    #[test]
+    fn read_view_auto_falls_back_to_browser_for_js_shell_pages() {
+        let server = CliTestServer::start();
+        let output = dispatch(CliCommand::ReadView(TargetOptions {
+            target: server.url("/spa"),
+            budget: DEFAULT_REQUESTED_TOKENS,
+            source_risk: None,
+            source_label: None,
+            allowlisted_domains: Vec::new(),
+            browser: false,
+            headed: false,
+            main_only: false,
+            session_file: None,
+        }))
+        .expect("js shell read-view should fallback to browser");
+
+        let markdown = output["markdownText"]
+            .as_str()
+            .expect("markdown text should be present");
+        assert!(markdown.contains("Client Rendered Docs"));
+        assert!(markdown.contains("The browser runtime can read JS apps."));
+    }
+
+    #[test]
+    fn extract_auto_falls_back_to_browser_for_js_shell_pages() {
+        let server = CliTestServer::start();
+        let output = dispatch(CliCommand::Extract(ExtractOptions {
+            target: server.url("/spa"),
+            budget: DEFAULT_REQUESTED_TOKENS,
+            source_risk: None,
+            source_label: None,
+            allowlisted_domains: Vec::new(),
+            browser: false,
+            headed: false,
+            session_file: None,
+            claims: vec!["The browser runtime can read JS apps.".to_string()],
+            verifier_command: None,
+        }))
+        .expect("js shell extract should fallback to browser");
+
+        assert_eq!(
+            output["open"]["output"]["source"]["sourceType"],
+            "playwright"
+        );
+        assert_eq!(
+            output["extract"]["output"]["evidenceSupportedClaims"][0]["statement"],
+            "The browser runtime can read JS apps."
+        );
     }
 
     #[test]

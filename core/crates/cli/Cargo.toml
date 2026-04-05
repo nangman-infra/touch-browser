@@ -22,3 +22,6 @@ touch-browser-policy = { path = "../policy" }
 touch-browser-runtime = { path = "../runtime" }
 touch-browser-storage-sqlite = { path = "../storage-sqlite" }
 url.workspace = true
+
+[dev-dependencies]
+tiny_http.workspace = true

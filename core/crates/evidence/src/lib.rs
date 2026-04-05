@@ -281,6 +281,15 @@ fn analyze_claim<'a>(claim: &ClaimRequest, blocks: &'a [SnapshotBlock]) -> Claim
         &claim_anchor_tokens,
         &claim_qualifier_tokens,
     );
+    let aggregated_score = aggregate_support_score(
+        claim,
+        &normalized_claim,
+        &claim_tokens,
+        &claim_numeric_tokens,
+        &top_support,
+        blocks,
+    );
+    let effective_score = best_score.max(aggregated_score);
 
     if let Some(reason) = assessment.contradiction_reason.clone() {
         return ClaimResolution {
@@ -294,8 +303,8 @@ fn analyze_claim<'a>(claim: &ClaimRequest, blocks: &'a [SnapshotBlock]) -> Claim
         };
     }
 
-    if best_score < 0.52 || !assessment.guard_failures.is_empty() {
-        let verdict = if should_keep_browsing(best_score, &assessment, claim) {
+    if effective_score < 0.52 || !assessment.guard_failures.is_empty() {
+        let verdict = if should_keep_browsing(effective_score, &assessment, claim) {
             EvidenceClaimVerdict::NeedsMoreBrowsing
         } else {
             EvidenceClaimVerdict::InsufficientEvidence
@@ -827,6 +836,12 @@ fn aggregate_support_text(top_support: &[ScoredCandidate<'_>], blocks: &[Snapsho
     let mut seen_blocks = BTreeSet::new();
     let mut parts = Vec::new();
 
+    if let Some(primary_heading) = primary_heading_context(blocks) {
+        if seen_blocks.insert(primary_heading.id.clone()) {
+            parts.push(block_search_text(primary_heading));
+        }
+    }
+
     for candidate in top_support {
         if seen_blocks.insert(candidate.block.id.clone()) {
             parts.push(block_search_text(candidate.block));
@@ -842,6 +857,68 @@ fn aggregate_support_text(top_support: &[ScoredCandidate<'_>], blocks: &[Snapsho
     parts.join(" ")
 }
 
+fn aggregate_support_score(
+    claim: &ClaimRequest,
+    normalized_claim: &str,
+    claim_tokens: &[String],
+    claim_numeric_tokens: &[String],
+    top_support: &[ScoredCandidate<'_>],
+    blocks: &[SnapshotBlock],
+) -> f64 {
+    let claim_anchor_tokens = anchor_tokens(&tokenize_significant(&claim.statement));
+    let narrative_support_count = top_support
+        .iter()
+        .filter(|candidate| is_narrative_aggregate_block(candidate.block))
+        .count();
+    let relevant_primary_heading = primary_heading_context(blocks)
+        .filter(|heading| primary_heading_supports_claim(heading, &claim_anchor_tokens));
+
+    if narrative_support_count < 2
+        && !(narrative_support_count >= 1 && relevant_primary_heading.is_some())
+    {
+        return 0.0;
+    }
+
+    let aggregated_text = aggregate_support_text(top_support, blocks);
+    if aggregated_text.is_empty() {
+        return 0.0;
+    }
+
+    let aggregated_tokens = tokenize_significant(&aggregated_text);
+    if aggregated_tokens.is_empty() {
+        return 0.0;
+    }
+
+    let lexical_overlap = token_overlap_ratio(claim_tokens, &aggregated_tokens);
+    let exact_bonus = exact_match_bonus(normalized_claim, &normalize_text(&aggregated_text));
+    let numeric_overlap = numeric_overlap_ratio(claim_numeric_tokens, &aggregated_text);
+    let title_bonus = relevant_primary_heading.map(|_| 0.04).unwrap_or(0.0);
+
+    ((lexical_overlap * 0.74) + (exact_bonus * 0.18) + (numeric_overlap * 0.08) + title_bonus)
+        .min(1.0)
+}
+
+fn is_narrative_aggregate_block(block: &SnapshotBlock) -> bool {
+    match block.kind {
+        SnapshotBlockKind::Text
+        | SnapshotBlockKind::List
+        | SnapshotBlockKind::Table
+        | SnapshotBlockKind::Metadata => block.text.chars().count() >= 12,
+        SnapshotBlockKind::Heading => block.text.chars().count() >= 8,
+        SnapshotBlockKind::Link => block.text.chars().count() >= 16,
+        SnapshotBlockKind::Button | SnapshotBlockKind::Form | SnapshotBlockKind::Input => false,
+    }
+}
+
+fn primary_heading_supports_claim(heading: &SnapshotBlock, claim_anchor_tokens: &[String]) -> bool {
+    if claim_anchor_tokens.is_empty() {
+        return false;
+    }
+
+    let heading_tokens = tokenize_significant(&heading.text);
+    !heading_tokens.is_empty() && token_overlap_ratio(claim_anchor_tokens, &heading_tokens) >= 0.5
+}
+
 fn nearest_heading_context<'a>(
     blocks: &'a [SnapshotBlock],
     block: &SnapshotBlock,
@@ -854,6 +931,24 @@ fn nearest_heading_context<'a>(
         .iter()
         .rev()
         .find(|candidate| matches!(candidate.kind, SnapshotBlockKind::Heading))
+}
+
+fn primary_heading_context(blocks: &[SnapshotBlock]) -> Option<&SnapshotBlock> {
+    blocks
+        .iter()
+        .find(|candidate| {
+            matches!(candidate.kind, SnapshotBlockKind::Heading)
+                && candidate
+                    .attributes
+                    .get("level")
+                    .and_then(serde_json::Value::as_u64)
+                    == Some(1)
+        })
+        .or_else(|| {
+            blocks
+                .iter()
+                .find(|candidate| matches!(candidate.kind, SnapshotBlockKind::Heading))
+        })
 }
 
 fn required_anchor_coverage(anchor_count: usize) -> f64 {
@@ -1466,6 +1561,197 @@ mod tests {
             .needs_more_browsing_claims
             .iter()
             .all(|claim| claim.reason == UnsupportedClaimReason::NeedsMoreBrowsing));
+    }
+
+    #[test]
+    fn supports_claims_when_evidence_is_split_across_heading_and_body_blocks() {
+        let snapshot = SnapshotDocument {
+            version: "1.0.0".to_string(),
+            stable_ref_version: "1".to_string(),
+            source: touch_browser_contracts::SnapshotSource {
+                source_url: "https://docs.aws.example/ecs/welcome".to_string(),
+                source_type: touch_browser_contracts::SourceType::Http,
+                title: Some("What is Amazon Elastic Container Service?".to_string()),
+            },
+            budget: touch_browser_contracts::SnapshotBudget {
+                requested_tokens: 1024,
+                estimated_tokens: 128,
+                emitted_tokens: 128,
+                truncated: false,
+            },
+            blocks: vec![
+                touch_browser_contracts::SnapshotBlock {
+                    version: "1.0.0".to_string(),
+                    id: "b1".to_string(),
+                    kind: touch_browser_contracts::SnapshotBlockKind::Heading,
+                    stable_ref: "rmain:heading:welcome".to_string(),
+                    role: touch_browser_contracts::SnapshotBlockRole::Content,
+                    text: "What is Amazon Elastic Container Service?".to_string(),
+                    attributes: serde_json::from_str(r#"{"level":1}"#)
+                        .expect("heading attributes should deserialize"),
+                    evidence: touch_browser_contracts::SnapshotEvidence {
+                        source_url: "https://docs.aws.example/ecs/welcome".to_string(),
+                        source_type: touch_browser_contracts::SourceType::Http,
+                        dom_path_hint: Some("html > body > main > h1".to_string()),
+                        byte_range_start: None,
+                        byte_range_end: None,
+                    },
+                },
+                touch_browser_contracts::SnapshotBlock {
+                    version: "1.0.0".to_string(),
+                    id: "b2".to_string(),
+                    kind: touch_browser_contracts::SnapshotBlockKind::Text,
+                    stable_ref: "rmain:text:controller".to_string(),
+                    role: touch_browser_contracts::SnapshotBlockRole::Content,
+                    text: "Controller - Deploy and manage your applications that run on the containers."
+                        .to_string(),
+                    attributes: Default::default(),
+                    evidence: touch_browser_contracts::SnapshotEvidence {
+                        source_url: "https://docs.aws.example/ecs/welcome".to_string(),
+                        source_type: touch_browser_contracts::SourceType::Http,
+                        dom_path_hint: Some("html > body > main > p:nth-of-type(1)".to_string()),
+                        byte_range_start: None,
+                        byte_range_end: None,
+                    },
+                },
+                touch_browser_contracts::SnapshotBlock {
+                    version: "1.0.0".to_string(),
+                    id: "b3".to_string(),
+                    kind: touch_browser_contracts::SnapshotBlockKind::Text,
+                    stable_ref: "rmain:text:managed".to_string(),
+                    role: touch_browser_contracts::SnapshotBlockRole::Content,
+                    text: "Amazon ECS Managed Instances offloads infrastructure management to AWS for containerized workloads."
+                        .to_string(),
+                    attributes: Default::default(),
+                    evidence: touch_browser_contracts::SnapshotEvidence {
+                        source_url: "https://docs.aws.example/ecs/welcome".to_string(),
+                        source_type: touch_browser_contracts::SourceType::Http,
+                        dom_path_hint: Some("html > body > main > p:nth-of-type(2)".to_string()),
+                        byte_range_start: None,
+                        byte_range_end: None,
+                    },
+                },
+            ],
+        };
+
+        let report = EvidenceExtractor
+            .extract(&EvidenceInput::new(
+                snapshot,
+                vec![ClaimRequest::new(
+                    "c1",
+                    "Amazon ECS is a fully managed container orchestration service.",
+                )],
+                "2026-04-05T00:00:00+09:00",
+                SourceRisk::Low,
+                Some("What is Amazon Elastic Container Service?".to_string()),
+            ))
+            .expect("evidence extraction should succeed");
+
+        assert_eq!(report.supported_claims.len(), 1);
+        assert!(report.contradicted_claims.is_empty());
+        assert!(report.needs_more_browsing_claims.is_empty());
+        assert!(report.unsupported_claims.is_empty());
+    }
+
+    #[test]
+    fn does_not_promote_interaction_claims_from_single_button_context() {
+        let snapshot = SnapshotDocument {
+            version: "1.0.0".to_string(),
+            stable_ref_version: "1".to_string(),
+            source: touch_browser_contracts::SnapshotSource {
+                source_url: "fixture://research/navigation/browser-pagination".to_string(),
+                source_type: touch_browser_contracts::SourceType::Fixture,
+                title: Some("Browser Pagination".to_string()),
+            },
+            budget: touch_browser_contracts::SnapshotBudget {
+                requested_tokens: 512,
+                estimated_tokens: 32,
+                emitted_tokens: 32,
+                truncated: false,
+            },
+            blocks: vec![
+                touch_browser_contracts::SnapshotBlock {
+                    version: "1.0.0".to_string(),
+                    id: "b1".to_string(),
+                    kind: touch_browser_contracts::SnapshotBlockKind::Heading,
+                    stable_ref: "rmain:heading:browser-pagination".to_string(),
+                    role: touch_browser_contracts::SnapshotBlockRole::Content,
+                    text: "Browser Pagination".to_string(),
+                    attributes: serde_json::from_str(r#"{"level":1}"#)
+                        .expect("heading attributes should deserialize"),
+                    evidence: touch_browser_contracts::SnapshotEvidence {
+                        source_url: "fixture://research/navigation/browser-pagination".to_string(),
+                        source_type: touch_browser_contracts::SourceType::Fixture,
+                        dom_path_hint: Some("html > body > main > h1".to_string()),
+                        byte_range_start: None,
+                        byte_range_end: None,
+                    },
+                },
+                touch_browser_contracts::SnapshotBlock {
+                    version: "1.0.0".to_string(),
+                    id: "b2".to_string(),
+                    kind: touch_browser_contracts::SnapshotBlockKind::Text,
+                    stable_ref: "rmain:text:page-label".to_string(),
+                    role: touch_browser_contracts::SnapshotBlockRole::Content,
+                    text: "Page 1".to_string(),
+                    attributes: Default::default(),
+                    evidence: touch_browser_contracts::SnapshotEvidence {
+                        source_url: "fixture://research/navigation/browser-pagination".to_string(),
+                        source_type: touch_browser_contracts::SourceType::Fixture,
+                        dom_path_hint: Some("html > body > main > p:nth-of-type(1)".to_string()),
+                        byte_range_start: None,
+                        byte_range_end: None,
+                    },
+                },
+                touch_browser_contracts::SnapshotBlock {
+                    version: "1.0.0".to_string(),
+                    id: "b3".to_string(),
+                    kind: touch_browser_contracts::SnapshotBlockKind::Text,
+                    stable_ref: "rmain:text:page-content".to_string(),
+                    role: touch_browser_contracts::SnapshotBlockRole::Content,
+                    text: "Page 1 collects the first batch of release highlights.".to_string(),
+                    attributes: Default::default(),
+                    evidence: touch_browser_contracts::SnapshotEvidence {
+                        source_url: "fixture://research/navigation/browser-pagination".to_string(),
+                        source_type: touch_browser_contracts::SourceType::Fixture,
+                        dom_path_hint: Some("html > body > main > p:nth-of-type(2)".to_string()),
+                        byte_range_start: None,
+                        byte_range_end: None,
+                    },
+                },
+                touch_browser_contracts::SnapshotBlock {
+                    version: "1.0.0".to_string(),
+                    id: "b4".to_string(),
+                    kind: touch_browser_contracts::SnapshotBlockKind::Button,
+                    stable_ref: "rmain:button:next".to_string(),
+                    role: touch_browser_contracts::SnapshotBlockRole::FormControl,
+                    text: "Next".to_string(),
+                    attributes: Default::default(),
+                    evidence: touch_browser_contracts::SnapshotEvidence {
+                        source_url: "fixture://research/navigation/browser-pagination".to_string(),
+                        source_type: touch_browser_contracts::SourceType::Fixture,
+                        dom_path_hint: Some("html > body > main > button".to_string()),
+                        byte_range_start: None,
+                        byte_range_end: None,
+                    },
+                },
+            ],
+        };
+
+        let report = EvidenceExtractor
+            .extract(&EvidenceInput::new(
+                snapshot,
+                vec![ClaimRequest::new("c1", "Page 1 includes a Next button.")],
+                "2026-04-05T00:00:00+09:00",
+                SourceRisk::Low,
+                Some("Browser Pagination".to_string()),
+            ))
+            .expect("evidence extraction should succeed");
+
+        assert!(report.supported_claims.is_empty());
+        assert!(report.contradicted_claims.is_empty());
+        assert_eq!(report.needs_more_browsing_claims.len(), 1);
+        assert!(report.unsupported_claims.is_empty());
     }
 
     #[test]
