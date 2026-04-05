@@ -68,6 +68,11 @@ describe("mcp bridge smoke", () => {
     ).toBe(true);
     expect(
       tools.tools.some(
+        (tool: { readonly name: string }) => tool.name === "tb_read_view",
+      ),
+    ).toBe(true);
+    expect(
+      tools.tools.some(
         (tool: { readonly name: string }) => tool.name === "tb_tab_list",
       ),
     ).toBe(true);

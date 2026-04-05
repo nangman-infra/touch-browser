@@ -23,7 +23,7 @@ type McpToolListResult = {
 };
 
 describe("interface compatibility", () => {
-  it("keeps CLI JSON surfaces stable for open and compact-view", async () => {
+  it("keeps CLI JSON surfaces stable for open and compact-view, and raw Markdown stable for read-view", async () => {
     const open = JSON.parse(
       await runShell(
         "cargo run -q -p touch-browser-cli -- open fixture://research/static-docs/getting-started",
@@ -33,6 +33,9 @@ describe("interface compatibility", () => {
       await runShell(
         "cargo run -q -p touch-browser-cli -- compact-view fixture://research/static-docs/getting-started",
       ),
+    );
+    const readView = await runShell(
+      "cargo run -q -p touch-browser-cli -- read-view fixture://research/static-docs/getting-started",
     );
 
     expect(open.version).toBe("1.0.0");
@@ -48,6 +51,8 @@ describe("interface compatibility", () => {
     expect(compact.lineCount).toBeGreaterThan(0);
     expect(Array.isArray(compact.refIndex)).toBe(true);
     expect(compact.refIndex.length).toBeGreaterThan(0);
+    expect(readView.startsWith("# ")).toBe(true);
+    expect(readView).toContain("Getting Started");
   }, 20_000);
 
   it("keeps serve and MCP minimal contracts stable", async () => {
@@ -57,6 +62,7 @@ describe("interface compatibility", () => {
     );
     expect(serveStatus.status).toBe("ready");
     expect(serveStatus.methods).toContain("runtime.open");
+    expect(serveStatus.methods).toContain("runtime.readView");
     expect(serveStatus.methods).toContain("runtime.session.click");
     expect(serveStatus.methods).toContain("runtime.session.type");
     expect(serveStatus.methods).toContain("runtime.session.submit");
@@ -80,6 +86,11 @@ describe("interface compatibility", () => {
     expect(
       mcpToolList.tools.some(
         (tool: { readonly name: string }) => tool.name === "tb_extract",
+      ),
+    ).toBe(true);
+    expect(
+      mcpToolList.tools.some(
+        (tool: { readonly name: string }) => tool.name === "tb_read_view",
       ),
     ).toBe(true);
     expect(

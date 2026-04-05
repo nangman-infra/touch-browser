@@ -7,13 +7,13 @@
     "sourceRisk": "low",
     "sourceLabel": "Static docs troubleshooting page"
   },
-  "supportedClaims": [
+  "evidenceSupportedClaims": [
     {
       "version": "1.0.0",
       "claimId": "c1",
       "statement": "If stable refs go stale after a page change, capture a new semantic snapshot before acting again.",
       "support": ["b6"],
-      "confidence": 0.93,
+      "supportScore": 0.93,
       "citation": {
         "url": "fixture://research/static-docs/troubleshooting",
         "retrievedAt": "2026-03-14T00:00:00+09:00",
@@ -27,7 +27,7 @@
       "claimId": "c2",
       "statement": "Memory compaction keeps the working set bounded during long research sessions.",
       "support": ["b7"],
-      "confidence": 0.93,
+      "supportScore": 0.93,
       "citation": {
         "url": "fixture://research/static-docs/troubleshooting",
         "retrievedAt": "2026-03-14T00:00:00+09:00",
@@ -37,12 +37,12 @@
       }
     }
   ],
-  "unsupportedClaims": [
+  "insufficientEvidenceClaims": [
     {
       "version": "1.0.0",
       "claimId": "c3",
       "statement": "The troubleshooting guide documents a checkout recovery flow.",
-      "reason": "insufficient-confidence",
+      "reason": "insufficient-support-score",
       "checkedBlockRefs": [
         "rnav:link:troubleshooting",
         "rmain:heading:troubleshooting",

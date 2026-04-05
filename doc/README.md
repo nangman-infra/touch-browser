@@ -13,6 +13,7 @@ This directory is the usage and operations index for the uploaded repository.
 | connect an external agent over MCP | [MCP_BRIDGE_SPEC.md](MCP_BRIDGE_SPEC.md) |
 | run the pilot package | [PILOT_PACKAGE_SPEC.md](PILOT_PACKAGE_SPEC.md) |
 | deploy the self-hosted operations package | [OPERATIONS_SECURITY_PACKAGE_SPEC.md](OPERATIONS_SECURITY_PACKAGE_SPEC.md) |
+| understand license boundaries | [../LICENSE-POLICY.md](../LICENSE-POLICY.md) |
 
 ## Workflows And Integrations
 

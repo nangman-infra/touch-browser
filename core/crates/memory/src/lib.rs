@@ -317,6 +317,7 @@ mod tests {
                 },
             }],
             unsupported_claims: Vec::new(),
+            verification: None,
         };
 
         let compacted = compact_working_set(
@@ -369,6 +370,7 @@ mod tests {
                 },
             }],
             unsupported_claims: Vec::new(),
+            verification: None,
         };
 
         let turn = plan_memory_turn(1, "snap_1", &snapshot, Some(&evidence), &[], 3);

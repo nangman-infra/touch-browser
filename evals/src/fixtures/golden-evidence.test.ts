@@ -33,18 +33,22 @@ describe("golden evidence", () => {
           readonly sourceUrl: string;
           readonly sourceRisk: string;
         };
-        readonly supportedClaims: ReadonlyArray<{ readonly claimId: string }>;
-        readonly unsupportedClaims: ReadonlyArray<{ readonly claimId: string }>;
+        readonly evidenceSupportedClaims: ReadonlyArray<{
+          readonly claimId: string;
+        }>;
+        readonly insufficientEvidenceClaims: ReadonlyArray<{
+          readonly claimId: string;
+        }>;
       }>(resolveFixtureEvidencePath(fixture));
 
       expect(evidence.source.sourceUrl).toBe(fixture.sourceUri);
       expect(evidence.source.sourceRisk).toBe(fixture.risk);
 
       const supportedIds = new Set(
-        evidence.supportedClaims.map((claim) => claim.claimId),
+        evidence.evidenceSupportedClaims.map((claim) => claim.claimId),
       );
       const unsupportedIds = new Set(
-        evidence.unsupportedClaims.map((claim) => claim.claimId),
+        evidence.insufficientEvidenceClaims.map((claim) => claim.claimId),
       );
 
       for (const claimCheck of fixture.expectations.claimChecks) {

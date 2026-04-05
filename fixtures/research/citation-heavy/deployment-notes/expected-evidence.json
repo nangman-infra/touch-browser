@@ -7,13 +7,13 @@
     "sourceRisk": "low",
     "sourceLabel": "Deployment notes summary"
   },
-  "supportedClaims": [
+  "evidenceSupportedClaims": [
     {
       "version": "1.0.0",
       "claimId": "c1",
       "statement": "Deployment notes record that blue-green rollouts cut recovery time to 8 minutes.",
       "support": ["b3", "b4"],
-      "confidence": 0.95,
+      "supportScore": 0.95,
       "citation": {
         "url": "fixture://research/citation-heavy/deployment-notes",
         "retrievedAt": "2026-03-14T00:00:00+09:00",
@@ -27,7 +27,7 @@
       "claimId": "c2",
       "statement": "Rollback | 8 minutes | Automatic",
       "support": ["b4", "b3"],
-      "confidence": 0.95,
+      "supportScore": 0.95,
       "citation": {
         "url": "fixture://research/citation-heavy/deployment-notes",
         "retrievedAt": "2026-03-14T00:00:00+09:00",
@@ -37,12 +37,12 @@
       }
     }
   ],
-  "unsupportedClaims": [
+  "insufficientEvidenceClaims": [
     {
       "version": "1.0.0",
       "claimId": "c3",
       "statement": "The deployment notes include a billing calculator.",
-      "reason": "insufficient-confidence",
+      "reason": "insufficient-support-score",
       "checkedBlockRefs": [
         "rmain:text:deployment-notes-record-that-blue-green-rollouts",
         "rmain:heading:deployment-notes",

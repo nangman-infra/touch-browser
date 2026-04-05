@@ -7,13 +7,13 @@
     "sourceRisk": "low",
     "sourceLabel": "Navigation-heavy API reference page"
   },
-  "supportedClaims": [
+  "evidenceSupportedClaims": [
     {
       "version": "1.0.0",
       "claimId": "c1",
       "statement": "The runtime exposes open, snapshot, extract, diff, compact, and replay commands.",
       "support": ["b6"],
-      "confidence": 0.93,
+      "supportScore": 0.93,
       "citation": {
         "url": "fixture://research/navigation/api-reference",
         "retrievedAt": "2026-03-14T00:00:00+09:00",
@@ -27,7 +27,7 @@
       "claimId": "c2",
       "statement": "Snapshot responses include stable refs and evidence metadata.",
       "support": ["b8"],
-      "confidence": 0.93,
+      "supportScore": 0.93,
       "citation": {
         "url": "fixture://research/navigation/api-reference",
         "retrievedAt": "2026-03-14T00:00:00+09:00",
@@ -37,12 +37,12 @@
       }
     }
   ],
-  "unsupportedClaims": [
+  "insufficientEvidenceClaims": [
     {
       "version": "1.0.0",
       "claimId": "c3",
       "statement": "The API reference documents a purchase command.",
-      "reason": "insufficient-confidence",
+      "reason": "insufficient-support-score",
       "checkedBlockRefs": [
         "rmain:heading:overview",
         "rhead:metadata:api-reference",

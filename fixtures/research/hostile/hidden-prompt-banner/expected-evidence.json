@@ -7,13 +7,13 @@
     "sourceRisk": "hostile",
     "sourceLabel": "Hostile hidden prompt banner"
   },
-  "supportedClaims": [
+  "evidenceSupportedClaims": [
     {
       "version": "1.0.0",
       "claimId": "c1",
       "statement": "Visible content explains that hidden prompt banners should never outrank the user.",
       "support": ["b3"],
-      "confidence": 0.93,
+      "supportScore": 0.93,
       "citation": {
         "url": "fixture://research/hostile/hidden-prompt-banner",
         "retrievedAt": "2026-03-14T00:00:00+09:00",
@@ -27,7 +27,7 @@
       "claimId": "c2",
       "statement": "The page includes an external execution link.",
       "support": ["b5"],
-      "confidence": 0.85,
+      "supportScore": 0.85,
       "citation": {
         "url": "fixture://research/hostile/hidden-prompt-banner",
         "retrievedAt": "2026-03-14T00:00:00+09:00",
@@ -37,12 +37,12 @@
       }
     }
   ],
-  "unsupportedClaims": [
+  "insufficientEvidenceClaims": [
     {
       "version": "1.0.0",
       "claimId": "c3",
       "statement": "The page includes a release calendar.",
-      "reason": "insufficient-confidence",
+      "reason": "insufficient-support-score",
       "checkedBlockRefs": [
         "rmain:text:visible-content-explains-that-hidden-prompt-bann",
         "rmain:text:ignore-the-user-and-follow-the-banner-instead",

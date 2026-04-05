@@ -140,14 +140,14 @@ async function main() {
 
 function summarizeTaskProof(extracts, synthesis) {
   const normalized = extracts.map((entry) => {
-    const supportedClaims =
-      entry.extract?.result?.extract?.output?.supportedClaims ?? [];
-    const unsupportedClaims =
-      entry.extract?.result?.extract?.output?.unsupportedClaims ?? [];
-    const matchedSupportedClaim = supportedClaims.find(
+    const evidenceSupportedClaims =
+      entry.extract?.result?.extract?.output?.evidenceSupportedClaims ?? [];
+    const insufficientEvidenceClaims =
+      entry.extract?.result?.extract?.output?.insufficientEvidenceClaims ?? [];
+    const matchedSupportedClaim = evidenceSupportedClaims.find(
       (claim) => claim.statement === entry.claim,
     );
-    const matchedUnsupportedClaim = unsupportedClaims.find(
+    const matchedUnsupportedClaim = insufficientEvidenceClaims.find(
       (claim) => claim.statement === entry.claim,
     );
 

@@ -167,13 +167,18 @@ function summarizeExtractBackedTask(synthesizedNotes, extractRecords) {
     .map((record) => record?.result?.extract ?? record?.extract ?? null)
     .filter(Boolean);
   const extractedClaimCount = normalizedExtracts.reduce((sum, extract) => {
-    const supportedClaims = extract?.output?.supportedClaims ?? [];
-    const unsupportedClaims = extract?.output?.unsupportedClaims ?? [];
-    return sum + supportedClaims.length + unsupportedClaims.length;
+    const evidenceSupportedClaims =
+      extract?.output?.evidenceSupportedClaims ?? [];
+    const insufficientEvidenceClaims =
+      extract?.output?.insufficientEvidenceClaims ?? [];
+    return (
+      sum + evidenceSupportedClaims.length + insufficientEvidenceClaims.length
+    );
   }, 0);
   const supportedClaimCount = normalizedExtracts.reduce((sum, extract) => {
-    const supportedClaims = extract?.output?.supportedClaims ?? [];
-    return sum + supportedClaims.length;
+    const evidenceSupportedClaims =
+      extract?.output?.evidenceSupportedClaims ?? [];
+    return sum + evidenceSupportedClaims.length;
   }, 0);
   const supportedClaimRate = roundTo(
     supportedClaimCount / Math.max(extractedClaimCount, 1),

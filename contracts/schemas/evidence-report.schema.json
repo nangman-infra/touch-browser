@@ -8,8 +8,8 @@
     "version",
     "generatedAt",
     "source",
-    "supportedClaims",
-    "unsupportedClaims"
+    "evidenceSupportedClaims",
+    "insufficientEvidenceClaims"
   ],
   "properties": {
     "version": {
@@ -42,16 +42,68 @@
         }
       }
     },
-    "supportedClaims": {
+    "evidenceSupportedClaims": {
       "type": "array",
       "items": {
         "$ref": "evidence-block.schema.json"
       }
     },
-    "unsupportedClaims": {
+    "insufficientEvidenceClaims": {
       "type": "array",
       "items": {
         "$ref": "unsupported-claim.schema.json"
+      }
+    },
+    "verification": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["version", "verifier", "generatedAt", "outcomes"],
+      "properties": {
+        "version": {
+          "const": "1.0.0"
+        },
+        "verifier": {
+          "type": "string",
+          "minLength": 1
+        },
+        "generatedAt": {
+          "type": "string",
+          "pattern": "^\\d{4}-\\d{2}-\\d{2}T\\d{2}:\\d{2}:\\d{2}(?:\\.\\d+)?(?:Z|[+-]\\d{2}:\\d{2})$"
+        },
+        "outcomes": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["version", "claimId", "statement", "verdict"],
+            "properties": {
+              "version": {
+                "const": "1.0.0"
+              },
+              "claimId": {
+                "type": "string",
+                "pattern": "^c[0-9]+$"
+              },
+              "statement": {
+                "type": "string",
+                "minLength": 1
+              },
+              "verdict": {
+                "type": "string",
+                "enum": ["verified", "contradicted", "unresolved"]
+              },
+              "verifierScore": {
+                "type": "number",
+                "minimum": 0,
+                "maximum": 1
+              },
+              "notes": {
+                "type": "string",
+                "minLength": 1
+              }
+            }
+          }
+        }
       }
     }
   }

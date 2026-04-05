@@ -7,11 +7,11 @@
 
 ## 1. Quick Start
 
-Requirements:
+Prerequisites:
 
-- Rust toolchain with `rustfmt` and `clippy`
+- [rustup](https://rustup.rs)
+- Node.js 18+
 - `pnpm`
-- Node.js LTS
 
 Bootstrap:
 
@@ -32,24 +32,30 @@ pnpm test
 
 ## 2. Core Commands
 
-CLI:
+Read a real page:
+
+```bash
+cargo run -q -p touch-browser-cli -- read-view https://www.iana.org/help/example-domains
+```
+
+Generate the low-token agent view:
 
 ```bash
 cargo run -q -p touch-browser-cli -- compact-view https://www.iana.org/help/example-domains
 ```
 
-Supervised interactive example:
+Extract evidence with an optional verifier hook:
 
 ```bash
-cargo run -q -p touch-browser-cli -- open https://github.com/login --browser --headed --allow-domain github.com --session-file /tmp/tb-login.json
-cargo run -q -p touch-browser-cli -- checkpoint --session-file /tmp/tb-login.json
-cargo run -q -p touch-browser-cli -- session-profile --session-file /tmp/tb-login.json
-cargo run -q -p touch-browser-cli -- approve --session-file /tmp/tb-login.json --risk auth
-cargo run -q -p touch-browser-cli -- type --session-file /tmp/tb-login.json --ref <user-ref> --value <user> --headed
-cargo run -q -p touch-browser-cli -- type --session-file /tmp/tb-login.json --ref <password-ref> --value <secret> --headed --sensitive
-cargo run -q -p touch-browser-cli -- submit --session-file /tmp/tb-login.json --ref <form-ref> --headed
-cargo run -q -p touch-browser-cli -- refresh --session-file /tmp/tb-login.json --headed
-cargo run -q -p touch-browser-cli -- telemetry-summary
+cargo run -q -p touch-browser-cli -- extract https://www.iana.org/help/example-domains \
+  --claim "As described in RFC 2606 and RFC 6761, a number of domains such as example.com and example.org are maintained for documentation purposes." \
+  --verifier-command '<your verifier shell command>'
+```
+
+Render a multi-page session as Markdown:
+
+```bash
+cargo run -q -p touch-browser-cli -- session-synthesize --session-file /tmp/tb-session.json --format markdown
 ```
 
 Serve daemon:
@@ -64,14 +70,6 @@ MCP bridge:
 node scripts/touch-browser-mcp-bridge.mjs
 ```
 
-Public proof runs:
-
-```bash
-pnpm run fixtures:public-web
-pnpm run pilot:public-reference-workflow
-pnpm run pilot:real-user-research
-```
-
 Self-hosted pilot package:
 
 ```bash
@@ -80,12 +78,15 @@ docker compose -f deploy/docker-compose.pilot.yml up --build
 pnpm run pilot:healthcheck
 ```
 
-Related operations package:
+## 3. Public Proof Runs
 
-- [OPERATIONS_SECURITY_PACKAGE_SPEC.md](OPERATIONS_SECURITY_PACKAGE_SPEC.md)
-- environment example: [deploy/touch-browser.env.example](../deploy/touch-browser.env.example)
+```bash
+pnpm run fixtures:public-web
+pnpm run pilot:public-reference-workflow
+pnpm run pilot:real-user-research
+```
 
-## 3. Operational Checks
+## 4. Operational Checks
 
 - `cargo clippy --workspace --all-targets -- -D warnings`
 - `pnpm typecheck`
@@ -95,7 +96,7 @@ Related operations package:
 - optionally `pnpm run pilot:public-reference-workflow`
 - optionally `pnpm run fixtures:safety`
 
-## 4. Troubleshooting
+## 5. Troubleshooting
 
 - browser launch failure:
   - run `pnpm exec playwright install chromium`
@@ -105,6 +106,8 @@ Related operations package:
   - check network access and remote site availability
 - MCP bridge failure:
   - verify `cargo run -q -p touch-browser-cli -- serve` works on its own
+- verifier hook failure:
+  - run the verifier command directly and confirm it returns JSON with an `outcomes` array
 - supervised interactive action rejected:
   - confirm the allowlisted host
   - use `--headed` for live non-fixture targets
@@ -112,18 +115,22 @@ Related operations package:
   - inspect provider hints and the recommended profile in `checkpoint.approvalPanel` and `checkpoint.playbook`
   - use `--sensitive` or the daemon secret store for secret input
   - confirm no other CLI process is holding the same `--session-file`
-- pin a supervised auth or write profile explicitly:
-  - `touch-browser set-profile --session-file <path> --profile interactive-supervised-auth|interactive-supervised-write`
-- split pilot telemetry into a separate database:
-  - `TOUCH_BROWSER_TELEMETRY_DB=/tmp/tb-pilot.sqlite`
-  - `TOUCH_BROWSER_TELEMETRY_SURFACE=cli|serve|mcp`
 
-## 5. Notes
+## 6. Notes
 
-- credential-like typing and form submit are only supported inside allowlisted interactive sessions
+- `read-view` and `session-read` emit raw Markdown in direct CLI mode
+- `session-synthesize --format markdown` emits raw Markdown in direct CLI mode
+- `serve` and MCP keep returning structured JSON
 - non-sensitive typed values are replayed in the same browser pass right before submit
 - sensitive values are replayed only through the direct CLI secret sidecar or the daemon in-memory secret store
 - anti-bot, MFA, payment, and other high-risk write actions are handled as supervised flows, not bypass flows
 - the default supervised operating procedure is `checkpoint -> approve -> headed continuation -> refresh`
-- provider-specific auth and challenge guidance is exposed through `checkpoint.playbook`
-- pilot telemetry is stored in `output/pilot/telemetry.sqlite` by default and can be queried directly with the summary and recent commands
+- pilot telemetry is stored in `output/pilot/telemetry.sqlite` by default
+
+## 7. License
+
+This repository is distributed under `BUSL-1.1`.
+
+- allowed without a commercial license: self-hosted evaluation, development, testing
+- production, hosted, or commercial operation requires a commercial license
+- see [LICENSE](../LICENSE) and [LICENSE-POLICY.md](../LICENSE-POLICY.md)

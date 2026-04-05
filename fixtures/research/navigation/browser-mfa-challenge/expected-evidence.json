@@ -7,13 +7,13 @@
     "sourceRisk": "low",
     "sourceLabel": "Browser MFA challenge seed"
   },
-  "supportedClaims": [
+  "evidenceSupportedClaims": [
     {
       "version": "1.0.0",
       "claimId": "c1",
       "statement": "The page asks for a verification code.",
       "support": ["b4", "b3", "b7"],
-      "confidence": 0.77,
+      "supportScore": 0.77,
       "citation": {
         "url": "fixture://research/navigation/browser-mfa-challenge",
         "retrievedAt": "2026-03-14T00:00:00+09:00",
@@ -23,12 +23,12 @@
       }
     }
   ],
-  "unsupportedClaims": [
+  "insufficientEvidenceClaims": [
     {
       "version": "1.0.0",
       "claimId": "c2",
       "statement": "The page already shows a signed-in dashboard.",
-      "reason": "insufficient-confidence",
+      "reason": "insufficient-support-score",
       "checkedBlockRefs": [
         "rmain:form:verify-form",
         "rmain:text:enter-the-6-digit-verification-code-from-your-au",

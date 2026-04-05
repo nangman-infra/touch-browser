@@ -15,7 +15,9 @@ describe("reference workflow smoke", () => {
         readonly result: {
           readonly extract: {
             readonly output: {
-              readonly supportedClaims: Array<{ readonly statement: string }>;
+              readonly evidenceSupportedClaims: Array<{
+                readonly statement: string;
+              }>;
             };
           };
         };
@@ -37,7 +39,8 @@ describe("reference workflow smoke", () => {
     expect(report.tools).toContain("tb_session_synthesize");
     expect(report.sessionId).toMatch(/^srvsess-/);
     expect(
-      report.pricingExtract.result.extract.output.supportedClaims[0]?.statement,
+      report.pricingExtract.result.extract.output.evidenceSupportedClaims[0]
+        ?.statement,
     ).toBe("The Starter plan costs $29 per month.");
     expect(report.synthesis.activeTabId).toMatch(/^tab-/);
     expect(report.synthesis.report.snapshotCount).toBeGreaterThanOrEqual(2);

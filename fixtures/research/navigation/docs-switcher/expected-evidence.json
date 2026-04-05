@@ -7,13 +7,13 @@
     "sourceRisk": "low",
     "sourceLabel": "Docs switcher"
   },
-  "supportedClaims": [
+  "evidenceSupportedClaims": [
     {
       "version": "1.0.0",
       "claimId": "c1",
       "statement": "Docs Switcher links architecture, policy, and replay references from one index.",
       "support": ["b3", "b4"],
-      "confidence": 0.93,
+      "supportScore": 0.93,
       "citation": {
         "url": "fixture://research/navigation/docs-switcher",
         "retrievedAt": "2026-03-14T00:00:00+09:00",
@@ -27,7 +27,7 @@
       "claimId": "c2",
       "statement": "Replay reference",
       "support": ["b4", "b3", "b7"],
-      "confidence": 0.94,
+      "supportScore": 0.94,
       "citation": {
         "url": "fixture://research/navigation/docs-switcher",
         "retrievedAt": "2026-03-14T00:00:00+09:00",
@@ -37,12 +37,12 @@
       }
     }
   ],
-  "unsupportedClaims": [
+  "insufficientEvidenceClaims": [
     {
       "version": "1.0.0",
       "claimId": "c3",
       "statement": "The docs switcher submits a purchase form.",
-      "reason": "insufficient-confidence",
+      "reason": "insufficient-support-score",
       "checkedBlockRefs": [
         "rmain:text:docs-switcher-links-architecture-policy-and-repl",
         "rmain:heading:docs-switcher",

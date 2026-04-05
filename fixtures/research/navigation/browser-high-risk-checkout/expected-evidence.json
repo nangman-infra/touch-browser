@@ -7,13 +7,13 @@
     "sourceRisk": "low",
     "sourceLabel": "Browser high-risk checkout seed"
   },
-  "supportedClaims": [
+  "evidenceSupportedClaims": [
     {
       "version": "1.0.0",
       "claimId": "c1",
       "statement": "The page contains a Confirm purchase button.",
       "support": ["b6", "b4"],
-      "confidence": 0.84,
+      "supportScore": 0.84,
       "citation": {
         "url": "fixture://research/navigation/browser-high-risk-checkout",
         "retrievedAt": "2026-03-14T00:00:00+09:00",
@@ -23,12 +23,12 @@
       }
     }
   ],
-  "unsupportedClaims": [
+  "insufficientEvidenceClaims": [
     {
       "version": "1.0.0",
       "claimId": "c2",
       "statement": "The page is a read-only documentation article.",
-      "reason": "insufficient-confidence",
+      "reason": "insufficient-support-score",
       "checkedBlockRefs": [
         "rmain:form:checkout-form",
         "rmain:text:confirm-payment-to-place-order-for-the-research-",

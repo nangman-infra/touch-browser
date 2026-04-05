@@ -150,18 +150,18 @@ function summarizeTaskProof({
   closedTab,
 }) {
   const normalized = extracts.map((entry) => {
-    const supportedClaims =
-      entry?.result?.extract?.output?.supportedClaims ??
-      entry?.extract?.output?.supportedClaims ??
+    const evidenceSupportedClaims =
+      entry?.result?.extract?.output?.evidenceSupportedClaims ??
+      entry?.extract?.output?.evidenceSupportedClaims ??
       [];
-    const unsupportedClaims =
-      entry?.result?.extract?.output?.unsupportedClaims ??
-      entry?.extract?.output?.unsupportedClaims ??
+    const insufficientEvidenceClaims =
+      entry?.result?.extract?.output?.insufficientEvidenceClaims ??
+      entry?.extract?.output?.insufficientEvidenceClaims ??
       [];
 
     return {
-      supportedClaimCount: supportedClaims.length,
-      unsupportedClaimCount: unsupportedClaims.length,
+      supportedClaimCount: evidenceSupportedClaims.length,
+      unsupportedClaimCount: insufficientEvidenceClaims.length,
     };
   });
 

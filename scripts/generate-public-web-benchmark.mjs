@@ -300,19 +300,21 @@ async function runServeBenchmark(samples) {
 
 function summarizeTaskExtract(sample, tabId, extractResult) {
   const output = extractResult?.result?.extract?.output ?? {};
-  const supportedClaims = Array.isArray(output.supportedClaims)
-    ? output.supportedClaims
+  const evidenceSupportedClaims = Array.isArray(output.evidenceSupportedClaims)
+    ? output.evidenceSupportedClaims
     : [];
-  const unsupportedClaims = Array.isArray(output.unsupportedClaims)
-    ? output.unsupportedClaims
+  const insufficientEvidenceClaims = Array.isArray(
+    output.insufficientEvidenceClaims,
+  )
+    ? output.insufficientEvidenceClaims
     : [];
-  const supported = supportedClaims.some(
+  const supported = evidenceSupportedClaims.some(
     (claim) => claim.statement === sample.claim,
   );
-  const unsupported = unsupportedClaims.some(
+  const unsupported = insufficientEvidenceClaims.some(
     (claim) => claim.statement === sample.claim,
   );
-  const matchedSupportedClaim = supportedClaims.find(
+  const matchedSupportedClaim = evidenceSupportedClaims.find(
     (claim) => claim.statement === sample.claim,
   );
 

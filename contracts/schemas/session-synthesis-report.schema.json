@@ -13,8 +13,8 @@
     "visitedUrls",
     "workingSetRefs",
     "synthesizedNotes",
-    "supportedClaims",
-    "unsupportedClaims"
+    "evidenceSupportedClaims",
+    "insufficientEvidenceClaims"
   ],
   "properties": {
     "version": {
@@ -59,13 +59,13 @@
         "minLength": 1
       }
     },
-    "supportedClaims": {
+    "evidenceSupportedClaims": {
       "type": "array",
       "items": {
         "$ref": "#/$defs/synthesisClaim"
       }
     },
-    "unsupportedClaims": {
+    "insufficientEvidenceClaims": {
       "type": "array",
       "items": {
         "$ref": "#/$defs/synthesisClaim"
@@ -118,7 +118,7 @@
         },
         "status": {
           "type": "string",
-          "enum": ["supported", "unsupported"]
+          "enum": ["evidence-supported", "insufficient-evidence"]
         },
         "snapshotIds": {
           "type": "array",

@@ -41,6 +41,22 @@ pub fn render_reading_compact_snapshot(snapshot: &SnapshotDocument) -> String {
         .join("\n")
 }
 
+pub fn render_read_view_markdown(snapshot: &SnapshotDocument) -> String {
+    let has_heading = snapshot
+        .blocks
+        .iter()
+        .any(|block| matches!(block.kind, SnapshotBlockKind::Heading));
+
+    snapshot
+        .blocks
+        .iter()
+        .filter(|block| keep_read_view_block(block, has_heading))
+        .map(render_markdown_block)
+        .filter(|block| !block.is_empty())
+        .collect::<Vec<_>>()
+        .join("\n\n")
+}
+
 pub fn render_navigation_compact_snapshot(snapshot: &SnapshotDocument) -> String {
     snapshot
         .blocks
@@ -136,6 +152,30 @@ fn keep_navigation_block(block: &SnapshotBlock) -> bool {
     )
 }
 
+fn keep_read_view_block(block: &SnapshotBlock, has_heading: bool) -> bool {
+    if has_heading && matches!(block.kind, SnapshotBlockKind::Metadata) {
+        return false;
+    }
+
+    if block.text.trim().is_empty() {
+        return false;
+    }
+
+    match block.kind {
+        SnapshotBlockKind::Metadata
+        | SnapshotBlockKind::Heading
+        | SnapshotBlockKind::Text
+        | SnapshotBlockKind::Table
+        | SnapshotBlockKind::List => true,
+        SnapshotBlockKind::Link => matches!(
+            block.role,
+            SnapshotBlockRole::Content | SnapshotBlockRole::Supporting | SnapshotBlockRole::Cta
+        ),
+        SnapshotBlockKind::Button => matches!(block.role, SnapshotBlockRole::Cta),
+        SnapshotBlockKind::Form | SnapshotBlockKind::Input => false,
+    }
+}
+
 fn is_salient_text_block(text: &str) -> bool {
     let word_count = text.split_whitespace().count();
     let lowered = text.to_ascii_lowercase();
@@ -162,6 +202,80 @@ fn render_compact_block(block: &SnapshotBlock) -> String {
         parts.push(digest);
     }
     parts.join(" ")
+}
+
+fn render_markdown_block(block: &SnapshotBlock) -> String {
+    let text = normalize_markdown_text(&block.text);
+    if text.is_empty() {
+        return String::new();
+    }
+
+    match block.kind {
+        SnapshotBlockKind::Heading => format!(
+            "{} {}",
+            "#".repeat(
+                block
+                    .attributes
+                    .get("level")
+                    .and_then(Value::as_u64)
+                    .unwrap_or(1)
+                    .clamp(1, 6) as usize,
+            ),
+            text
+        ),
+        SnapshotBlockKind::Text | SnapshotBlockKind::Metadata => text,
+        SnapshotBlockKind::List => render_markdown_list(&text),
+        SnapshotBlockKind::Table => render_markdown_table(block, &text),
+        SnapshotBlockKind::Link => render_markdown_link(block, &text),
+        SnapshotBlockKind::Button => format!("- {text}"),
+        SnapshotBlockKind::Form | SnapshotBlockKind::Input => String::new(),
+    }
+}
+
+fn normalize_markdown_text(text: &str) -> String {
+    text.lines()
+        .map(str::trim)
+        .filter(|line| !line.is_empty())
+        .collect::<Vec<_>>()
+        .join("\n")
+}
+
+fn render_markdown_list(text: &str) -> String {
+    let items = text
+        .lines()
+        .map(str::trim)
+        .filter(|line| !line.is_empty())
+        .collect::<Vec<_>>();
+
+    if items.len() <= 1 {
+        return format!("- {text}");
+    }
+
+    items
+        .into_iter()
+        .map(|item| format!("- {item}"))
+        .collect::<Vec<_>>()
+        .join("\n")
+}
+
+fn render_markdown_table(block: &SnapshotBlock, text: &str) -> String {
+    let rows = block.attributes.get("rows").and_then(Value::as_u64);
+    let columns = block.attributes.get("columns").and_then(Value::as_u64);
+    let label = match (rows, columns) {
+        (Some(rows), Some(columns)) => format!("Table ({rows} rows x {columns} columns)"),
+        (Some(rows), None) => format!("Table ({rows} rows)"),
+        (None, Some(columns)) => format!("Table ({columns} columns)"),
+        (None, None) => "Table".to_string(),
+    };
+
+    format!("{label}\n{text}")
+}
+
+fn render_markdown_link(block: &SnapshotBlock, text: &str) -> String {
+    match block.attributes.get("href").and_then(Value::as_str) {
+        Some(href) => format!("- [{text}]({href})"),
+        None => format!("- {text}"),
+    }
 }
 
 fn compact_attr_fragment(block: &SnapshotBlock) -> Option<String> {
@@ -501,6 +615,7 @@ pub struct EvidenceBlock {
     pub claim_id: String,
     pub statement: String,
     pub support: Vec<String>,
+    #[serde(rename = "supportScore", alias = "confidence")]
     pub confidence: f64,
     pub citation: EvidenceCitation,
 }
@@ -509,6 +624,7 @@ pub struct EvidenceBlock {
 #[serde(rename_all = "kebab-case")]
 pub enum UnsupportedClaimReason {
     NoSupportingBlock,
+    #[serde(rename = "insufficient-support-score", alias = "insufficient-confidence")]
     InsufficientConfidence,
     ContradictoryEvidence,
 }
@@ -540,8 +656,42 @@ pub struct EvidenceReport {
     pub version: String,
     pub generated_at: String,
     pub source: EvidenceSource,
+    #[serde(rename = "evidenceSupportedClaims", alias = "supportedClaims")]
     pub supported_claims: Vec<EvidenceBlock>,
+    #[serde(rename = "insufficientEvidenceClaims", alias = "unsupportedClaims")]
     pub unsupported_claims: Vec<UnsupportedClaim>,
+    #[serde(skip_serializing_if = "Option::is_none", default)]
+    pub verification: Option<EvidenceVerificationReport>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
+#[serde(rename_all = "kebab-case")]
+pub enum EvidenceVerificationVerdict {
+    Verified,
+    Contradicted,
+    Unresolved,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
+#[serde(rename_all = "camelCase")]
+pub struct EvidenceVerificationOutcome {
+    pub version: String,
+    pub claim_id: String,
+    pub statement: String,
+    pub verdict: EvidenceVerificationVerdict,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub verifier_score: Option<f64>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub notes: Option<String>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
+#[serde(rename_all = "camelCase")]
+pub struct EvidenceVerificationReport {
+    pub version: String,
+    pub verifier: String,
+    pub generated_at: String,
+    pub outcomes: Vec<EvidenceVerificationOutcome>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
@@ -632,9 +782,9 @@ pub struct ActionCommand {
 #[cfg(test)]
 mod tests {
     use super::{
-        compact_ref_index, render_compact_snapshot, SnapshotBlock, SnapshotBlockKind,
-        SnapshotBlockRole, SnapshotBudget, SnapshotDocument, SnapshotEvidence, SnapshotSource,
-        SourceType, CONTRACT_VERSION, STABLE_REF_VERSION,
+        compact_ref_index, render_compact_snapshot, render_read_view_markdown, SnapshotBlock,
+        SnapshotBlockKind, SnapshotBlockRole, SnapshotBudget, SnapshotDocument, SnapshotEvidence,
+        SnapshotSource, SourceType, CONTRACT_VERSION, STABLE_REF_VERSION,
     };
     use serde_json::json;
     use std::collections::BTreeMap;
@@ -704,6 +854,83 @@ mod tests {
                 ("b1".to_string(), "rmain:heading:browser-follow".to_string()),
                 ("b2".to_string(), "rmain:link:docs".to_string()),
             ]
+        );
+    }
+
+    #[test]
+    fn renders_read_view_markdown_with_full_text() {
+        let snapshot = SnapshotDocument {
+            version: CONTRACT_VERSION.to_string(),
+            stable_ref_version: STABLE_REF_VERSION.to_string(),
+            source: SnapshotSource {
+                source_url: "fixture://research/navigation/browser-follow".to_string(),
+                source_type: SourceType::Fixture,
+                title: Some("Browser Follow".to_string()),
+            },
+            budget: SnapshotBudget {
+                requested_tokens: 512,
+                estimated_tokens: 24,
+                emitted_tokens: 24,
+                truncated: false,
+            },
+            blocks: vec![
+                SnapshotBlock {
+                    version: CONTRACT_VERSION.to_string(),
+                    id: "b1".to_string(),
+                    kind: SnapshotBlockKind::Heading,
+                    stable_ref: "rmain:heading:browser-follow".to_string(),
+                    role: SnapshotBlockRole::Content,
+                    text: "Browser Follow".to_string(),
+                    attributes: BTreeMap::from([("level".to_string(), json!(1))]),
+                    evidence: SnapshotEvidence {
+                        source_url: "fixture://research/navigation/browser-follow".to_string(),
+                        source_type: SourceType::Fixture,
+                        dom_path_hint: Some("html > body > main".to_string()),
+                        byte_range_start: None,
+                        byte_range_end: None,
+                    },
+                },
+                SnapshotBlock {
+                    version: CONTRACT_VERSION.to_string(),
+                    id: "b2".to_string(),
+                    kind: SnapshotBlockKind::Text,
+                    stable_ref: "rmain:text:details".to_string(),
+                    role: SnapshotBlockRole::Content,
+                    text: "This page explains how the browser-backed runtime keeps evidence links intact across steps.".to_string(),
+                    attributes: BTreeMap::new(),
+                    evidence: SnapshotEvidence {
+                        source_url: "fixture://research/navigation/browser-follow".to_string(),
+                        source_type: SourceType::Fixture,
+                        dom_path_hint: Some("html > body > main > p:nth-of-type(1)".to_string()),
+                        byte_range_start: None,
+                        byte_range_end: None,
+                    },
+                },
+                SnapshotBlock {
+                    version: CONTRACT_VERSION.to_string(),
+                    id: "b3".to_string(),
+                    kind: SnapshotBlockKind::Link,
+                    stable_ref: "rmain:link:docs".to_string(),
+                    role: SnapshotBlockRole::Content,
+                    text: "Open docs".to_string(),
+                    attributes: BTreeMap::from([(
+                        "href".to_string(),
+                        json!("https://example.com/docs"),
+                    )]),
+                    evidence: SnapshotEvidence {
+                        source_url: "fixture://research/navigation/browser-follow".to_string(),
+                        source_type: SourceType::Fixture,
+                        dom_path_hint: Some("html > body > main > a".to_string()),
+                        byte_range_start: None,
+                        byte_range_end: None,
+                    },
+                },
+            ],
+        };
+
+        assert_eq!(
+            render_read_view_markdown(&snapshot),
+            "# Browser Follow\n\nThis page explains how the browser-backed runtime keeps evidence links intact across steps.\n\n- [Open docs](https://example.com/docs)"
         );
     }
 }
@@ -793,7 +1020,9 @@ pub struct SessionState {
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
 #[serde(rename_all = "lowercase")]
 pub enum SessionSynthesisClaimStatus {
+    #[serde(rename = "evidence-supported", alias = "supported")]
     Supported,
+    #[serde(rename = "insufficient-evidence", alias = "unsupported")]
     Unsupported,
 }
 
@@ -823,7 +1052,9 @@ pub struct SessionSynthesisReport {
     pub visited_urls: Vec<String>,
     pub working_set_refs: Vec<String>,
     pub synthesized_notes: Vec<String>,
+    #[serde(rename = "evidenceSupportedClaims", alias = "supportedClaims")]
     pub supported_claims: Vec<SessionSynthesisClaim>,
+    #[serde(rename = "insufficientEvidenceClaims", alias = "unsupportedClaims")]
     pub unsupported_claims: Vec<SessionSynthesisClaim>,
 }
 

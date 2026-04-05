@@ -7,13 +7,13 @@
     "sourceRisk": "low",
     "sourceLabel": "Browser-backed login form seed"
   },
-  "supportedClaims": [
+  "evidenceSupportedClaims": [
     {
       "version": "1.0.0",
       "claimId": "c1",
       "statement": "The page contains a work email field.",
       "support": ["b4", "b5"],
-      "confidence": 0.87,
+      "supportScore": 0.87,
       "citation": {
         "url": "fixture://research/navigation/browser-login-form",
         "retrievedAt": "2026-03-14T00:00:00+09:00",
@@ -27,7 +27,7 @@
       "claimId": "c2",
       "statement": "The page includes a Sign in button.",
       "support": ["b8", "b4"],
-      "confidence": 0.84,
+      "supportScore": 0.84,
       "citation": {
         "url": "fixture://research/navigation/browser-login-form",
         "retrievedAt": "2026-03-14T00:00:00+09:00",
@@ -37,12 +37,12 @@
       }
     }
   ],
-  "unsupportedClaims": [
+  "insufficientEvidenceClaims": [
     {
       "version": "1.0.0",
       "claimId": "c3",
       "statement": "The page starts with an authenticated dashboard.",
-      "reason": "insufficient-confidence",
+      "reason": "insufficient-support-score",
       "checkedBlockRefs": [
         "rmain:form:work-email-password-no-email-typed-yet-sign-in",
         "rmain:text:login-status",

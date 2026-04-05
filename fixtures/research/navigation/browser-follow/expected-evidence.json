@@ -7,13 +7,13 @@
     "sourceRisk": "low",
     "sourceLabel": "Browser-backed follow seed"
   },
-  "supportedClaims": [
+  "evidenceSupportedClaims": [
     {
       "version": "1.0.0",
       "claimId": "c1",
       "statement": "The page asks the runtime to follow the Advanced guide link.",
       "support": ["b3", "b4"],
-      "confidence": 0.8,
+      "supportScore": 0.8,
       "citation": {
         "url": "fixture://research/navigation/browser-follow",
         "retrievedAt": "2026-03-14T00:00:00+09:00",
@@ -27,7 +27,7 @@
       "claimId": "c2",
       "statement": "The page includes an Advanced guide link.",
       "support": ["b3", "b4"],
-      "confidence": 0.86,
+      "supportScore": 0.86,
       "citation": {
         "url": "fixture://research/navigation/browser-follow",
         "retrievedAt": "2026-03-14T00:00:00+09:00",
@@ -37,12 +37,12 @@
       }
     }
   ],
-  "unsupportedClaims": [
+  "insufficientEvidenceClaims": [
     {
       "version": "1.0.0",
       "claimId": "c3",
       "statement": "The page contains a payment form.",
-      "reason": "insufficient-confidence",
+      "reason": "insufficient-support-score",
       "checkedBlockRefs": [
         "rmain:text:follow-content",
         "rmain:heading:browser-follow",

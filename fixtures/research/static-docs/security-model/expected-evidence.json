@@ -7,13 +7,13 @@
     "sourceRisk": "low",
     "sourceLabel": "Static docs security model page"
   },
-  "supportedClaims": [
+  "evidenceSupportedClaims": [
     {
       "version": "1.0.0",
       "claimId": "c1",
       "statement": "The runtime separates page content, policy state, and action inputs into distinct channels.",
       "support": ["b6"],
-      "confidence": 0.93,
+      "supportScore": 0.93,
       "citation": {
         "url": "fixture://research/static-docs/security-model",
         "retrievedAt": "2026-03-14T00:00:00+09:00",
@@ -27,7 +27,7 @@
       "claimId": "c2",
       "statement": "Replayable sessions emit audit logs that can be reviewed after each action.",
       "support": ["b7"],
-      "confidence": 0.93,
+      "supportScore": 0.93,
       "citation": {
         "url": "fixture://research/static-docs/security-model",
         "retrievedAt": "2026-03-14T00:00:00+09:00",
@@ -37,12 +37,12 @@
       }
     }
   ],
-  "unsupportedClaims": [
+  "insufficientEvidenceClaims": [
     {
       "version": "1.0.0",
       "claimId": "c3",
       "statement": "The security model includes automatic form submission.",
-      "reason": "insufficient-confidence",
+      "reason": "insufficient-support-score",
       "checkedBlockRefs": [
         "rnav:link:security-model",
         "rmain:heading:security-model",

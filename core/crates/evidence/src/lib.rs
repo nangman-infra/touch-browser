@@ -123,6 +123,7 @@ impl EvidenceExtractor {
             },
             supported_claims,
             unsupported_claims,
+            verification: None,
         })
     }
 }

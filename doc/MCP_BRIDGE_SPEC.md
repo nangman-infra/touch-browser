@@ -7,7 +7,7 @@
 
 ## 1. Overview
 
-This document defines the thin MCP bridge that sits on top of `touch-browser serve` so external agents can use touch-browser as an MCP tool server.
+This document defines the thin MCP bridge that sits on top of `touch-browser serve` so external agents can use `touch-browser` as an MCP tool server.
 
 Provided file:
 
@@ -17,7 +17,7 @@ Run:
 
 - `pnpm run mcp:bridge`
 
-Quick setup example:
+Minimal setup:
 
 ```json
 {
@@ -30,9 +30,9 @@ Quick setup example:
 }
 ```
 
-## 2. Protocol Coverage
+## 2. Tool Coverage
 
-The bridge implements a minimal subset of MCP stdio JSON-RPC.
+The bridge implements a thin subset of MCP stdio JSON-RPC and proxies into `touch-browser serve`.
 
 Supported methods:
 
@@ -46,6 +46,7 @@ Current tool set:
 - `tb_status`
 - `tb_session_create`
 - `tb_open`
+- `tb_read_view`
 - `tb_extract`
 - `tb_policy`
 - `tb_tab_open`
@@ -68,28 +69,24 @@ Current tool set:
 - `tb_session_synthesize`
 - `tb_session_close`
 
-## 3. Validation
+## 3. Intended Use
+
+- `tb_read_view` is the readable surface for higher-level review or verifier models
+- `tb_extract` is the evidence retrieval surface for structured claims and citations
+- `tb_session_synthesize` combines multi-page session traces into a single report
+- supervised tools remain available for allowlisted, review-gated browser sessions
+
+## 4. Validation
 
 - [mcp-bridge-smoke.test.ts](../evals/src/runtime/mcp-bridge-smoke.test.ts)
 - [interface-compatibility.test.ts](../evals/src/runtime/interface-compatibility.test.ts)
 - [serve-daemon.test.ts](../evals/src/runtime/serve-daemon.test.ts)
 - round-trip validation for `initialize -> tools/list -> tools/call(tb_status)`
-- daemon-path validation for `runtime.session.click`, `runtime.session.type`, and `runtime.session.submit`
-- daemon-path validation for `runtime.session.typeSecret`, `runtime.session.secret.store`, and `runtime.session.refresh`
-- daemon-path validation for `runtime.session.checkpoint` and `runtime.session.approve`
-- daemon-path validation for `runtime.session.profile.get` and `runtime.session.profile.set`
-- daemon-path validation for `runtime.telemetry.summary` and `runtime.telemetry.recent`
-- reference workflow artifact generation
-- staged public/trusted workflow artifact generation
-- public-web workflow artifact generation
+- daemon-path validation for read, extract, session synthesis, and supervised interaction flows
 
-## 4. Notes
+## 5. Notes
 
 - this is a thin MCP proxy, not a full MCP resource or prompt server
 - the tool set is intentionally smaller than the full serve method surface
 - interactive tools only make sense inside allowlisted daemon sessions and still require risk acknowledgement when challenge, MFA, auth, or high-risk-write signals appear
-- `tb_checkpoint` can return provider hints, required acknowledgement risks, approval panels, recommended profiles, and provider playbooks
-- `tb_profile` and `tb_profile_set` directly inspect and control the supervised policy profile
-- `tb_approve` stores approval state in daemon session memory
-- `tb_telemetry_summary` and `tb_telemetry_recent` expose serve telemetry without exposing raw secrets
 - the bridge starts `touch-browser serve` as an internal child process and injects `TOUCH_BROWSER_TELEMETRY_SURFACE=mcp`

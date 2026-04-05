@@ -1,6 +1,7 @@
 {
   "name": "touch-browser",
   "private": true,
+  "license": "BUSL-1.1",
   "packageManager": "pnpm@10.24.0",
   "scripts": {
     "lint": "pnpm exec biome check .",
@@ -31,7 +32,7 @@
     "fixtures:public-reference-workflow": "node scripts/run-public-reference-workflow.mjs",
     "test:rust": "zsh -lic 'cargo test --workspace'",
     "typecheck": "pnpm exec tsc -p adapters/playwright/tsconfig.json --noEmit && pnpm exec tsc -p evals/tsconfig.json --noEmit",
-    "test": "pnpm run contracts:check && pnpm run contracts:manifest && pnpm run fixtures:session && pnpm run fixtures:memory && pnpm run fixtures:policy && pnpm run fixtures:safety && pnpm run fixtures:metrics && pnpm run fixtures:browser-metrics && pnpm run fixtures:live-metrics && pnpm run fixtures:citation-metrics && pnpm run fixtures:session-synthesis && pnpm run fixtures:action-surface && pnpm run fixtures:latency-cost && pnpm run fixtures:reference-workflow && pnpm run fixtures:staged-reference-workflow && pnpm run fixtures:public-reference-workflow && pnpm run fixtures:real-user-research && pnpm run fixtures:customer-fit && pnpm run fixtures:customer-proxy && pnpm run fixtures:ops-package && pnpm run fixtures:release-readiness && pnpm run test:rust && pnpm exec vitest run --config adapters/playwright/vitest.config.ts && pnpm exec vitest run --config evals/vitest.config.ts",
+    "test": "pnpm run contracts:check && pnpm run contracts:manifest && pnpm run fixtures:evidence && pnpm run fixtures:session && pnpm run fixtures:memory && pnpm run fixtures:policy && pnpm run fixtures:safety && pnpm run fixtures:metrics && pnpm run fixtures:browser-metrics && pnpm run fixtures:live-metrics && pnpm run fixtures:citation-metrics && pnpm run fixtures:session-synthesis && pnpm run fixtures:action-surface && pnpm run fixtures:latency-cost && pnpm run fixtures:reference-workflow && pnpm run fixtures:staged-reference-workflow && pnpm run fixtures:public-reference-workflow && pnpm run fixtures:real-user-research && pnpm run fixtures:customer-fit && pnpm run fixtures:customer-proxy && pnpm run fixtures:ops-package && pnpm run fixtures:release-readiness && pnpm run test:rust && pnpm exec vitest run --config adapters/playwright/vitest.config.ts && pnpm exec vitest run --config evals/vitest.config.ts",
     "adapter:playwright": "pnpm exec tsx adapters/playwright/src/index.ts",
     "evals:smoke": "pnpm exec tsx evals/src/index.ts",
     "mcp:bridge": "node scripts/touch-browser-mcp-bridge.mjs",

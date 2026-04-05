@@ -68,8 +68,8 @@ function analyzeFixture(fixture, evidence, snapshot) {
       .filter((claim) => claim.expectedStatus === "unsupported")
       .map((claim) => claim.id),
   );
-  const actualSupported = evidence.supportedClaims ?? [];
-  const actualUnsupported = evidence.unsupportedClaims ?? [];
+  const actualSupported = evidence.evidenceSupportedClaims ?? [];
+  const actualUnsupported = evidence.insufficientEvidenceClaims ?? [];
   const actualSupportedIds = new Set(
     actualSupported.map((claim) => claim.claimId),
   );

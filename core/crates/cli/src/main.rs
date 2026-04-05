@@ -14,11 +14,13 @@ use touch_browser_acquisition::{AcquisitionConfig, AcquisitionEngine, Acquisitio
 use touch_browser_action_vm::ReadOnlyActionVm;
 use touch_browser_contracts::{
     compact_ref_index, navigation_ref_index, render_compact_snapshot,
-    render_navigation_compact_snapshot, render_reading_compact_snapshot, ActionCommand,
-    ActionFailureKind, ActionName, ActionResult, ActionStatus, CompactRefIndexEntry,
-    EvidenceCitation, PolicyProfile, PolicyReport, ReplayTranscript, RiskClass, SessionMode,
-    SessionState, SessionSynthesisClaim, SessionSynthesisClaimStatus, SessionSynthesisReport,
-    SnapshotBlock, SnapshotDocument, SourceRisk, SourceType, CONTRACT_VERSION,
+    render_navigation_compact_snapshot, render_read_view_markdown,
+    render_reading_compact_snapshot, ActionCommand, ActionFailureKind, ActionName, ActionResult,
+    ActionStatus, CompactRefIndexEntry, EvidenceCitation, EvidenceReport,
+    EvidenceVerificationOutcome, EvidenceVerificationReport, EvidenceVerificationVerdict,
+    PolicyProfile, PolicyReport, ReplayTranscript, RiskClass, SessionMode, SessionState,
+    SessionSynthesisClaim, SessionSynthesisClaimStatus, SessionSynthesisReport, SnapshotBlock,
+    SnapshotDocument, SourceRisk, SourceType, CONTRACT_VERSION,
 };
 use touch_browser_memory::{plan_memory_turn, summarize_turns, MemorySessionSummary};
 use touch_browser_observation::{
@@ -62,6 +64,8 @@ fn main() {
         return;
     }
 
+    let stdout_mode = stdout_mode_for_command(&command);
+
     match dispatch(command) {
         Ok(output) => {
             let _ = log_telemetry_success(
@@ -70,10 +74,18 @@ fn main() {
                 &output,
                 &Value::Null,
             );
-            println!(
-                "{}",
-                serde_json::to_string_pretty(&output).expect("cli output should serialize")
-            );
+            match stdout_mode {
+                CliStdoutMode::Json => println!(
+                    "{}",
+                    serde_json::to_string_pretty(&output).expect("cli output should serialize")
+                ),
+                CliStdoutMode::ReadMarkdown => {
+                    println!("{}", required_output_string(&output, "markdownText"))
+                }
+                CliStdoutMode::SynthesisMarkdown => {
+                    println!("{}", required_output_string(&output, "markdown"))
+                }
+            }
         }
         Err(error) => {
             let _ = log_telemetry_error(
@@ -89,15 +101,41 @@ fn main() {
     }
 }
 
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+enum CliStdoutMode {
+    Json,
+    ReadMarkdown,
+    SynthesisMarkdown,
+}
+
+fn stdout_mode_for_command(command: &CliCommand) -> CliStdoutMode {
+    match command {
+        CliCommand::ReadView(_) | CliCommand::SessionRead(_) => CliStdoutMode::ReadMarkdown,
+        CliCommand::SessionSynthesize(options) if options.format == OutputFormat::Markdown => {
+            CliStdoutMode::SynthesisMarkdown
+        }
+        _ => CliStdoutMode::Json,
+    }
+}
+
+fn required_output_string<'a>(output: &'a Value, field: &str) -> &'a str {
+    output
+        .get(field)
+        .and_then(Value::as_str)
+        .unwrap_or_else(|| panic!("expected `{field}` string output"))
+}
+
 fn dispatch(command: CliCommand) -> Result<Value, CliError> {
     match command {
         CliCommand::Open(options) => handle_open(options),
         CliCommand::Snapshot(options) => handle_open(options),
         CliCommand::CompactView(options) => handle_compact_view(options),
+        CliCommand::ReadView(options) => handle_read_view(options),
         CliCommand::Extract(options) => handle_extract(options),
         CliCommand::Policy(options) => handle_policy(options),
         CliCommand::SessionSnapshot(options) => handle_session_snapshot(options),
         CliCommand::SessionCompact(options) => handle_session_compact(options),
+        CliCommand::SessionRead(options) => handle_session_read(options),
         CliCommand::SessionRefresh(options) => handle_session_refresh(options),
         CliCommand::SessionExtract(options) => handle_session_extract(options),
         CliCommand::SessionCheckpoint(options) => handle_session_checkpoint(options),
@@ -305,6 +343,83 @@ fn handle_compact_view(options: TargetOptions) -> Result<Value, CliError> {
     )))
 }
 
+fn handle_read_view(options: TargetOptions) -> Result<Value, CliError> {
+    if options.browser {
+        let browser_context_dir = options
+            .session_file
+            .as_ref()
+            .map(|path| browser_context_dir_for_session_file(path.as_path()))
+            .map(|path| path.display().to_string());
+        let context = open_browser_session(
+            &options.target,
+            options.budget,
+            options.source_risk.clone(),
+            options.source_label.clone(),
+            options.headed,
+            browser_context_dir.clone(),
+            "scliread001",
+            DEFAULT_OPENED_AT,
+        )?;
+
+        if let Some(session_file) = options.session_file.as_ref() {
+            save_browser_cli_session(
+                session_file,
+                &build_browser_cli_session(
+                    &context.session,
+                    context.snapshot.budget.requested_tokens,
+                    !options.headed,
+                    Some(context.browser_state.clone()),
+                    context.browser_context_dir.clone(),
+                    Some(BrowserOrigin {
+                        target: options.target.clone(),
+                        source_risk: options.source_risk,
+                        source_label: options.source_label.clone(),
+                    }),
+                    options.allowlisted_domains.clone(),
+                    Vec::new(),
+                ),
+            )?;
+        }
+
+        return Ok(json!(ReadViewOutput::new(
+            &context.snapshot,
+            Some(context.session.state),
+            options.session_file.map(|path| path.display().to_string()),
+        )));
+    }
+
+    if is_fixture_target(&options.target) {
+        let catalog = load_fixture_catalog()?;
+        let runtime = ReadOnlyRuntime::default();
+        let mut session = runtime.start_session("scliread001", DEFAULT_OPENED_AT);
+        let snapshot = runtime.open(&mut session, &catalog, &options.target, DEFAULT_OPENED_AT)?;
+        return Ok(json!(ReadViewOutput::new(
+            &snapshot,
+            Some(session.state),
+            None,
+        )));
+    }
+
+    let runtime = ReadOnlyRuntime::default();
+    let mut acquisition = AcquisitionEngine::new(AcquisitionConfig::default())?;
+    let mut session = runtime.start_session("scliread001", DEFAULT_OPENED_AT);
+    let snapshot = runtime.open_live(
+        &mut session,
+        &mut acquisition,
+        &options.target,
+        options.budget,
+        options.source_risk.unwrap_or(SourceRisk::Low),
+        options.source_label,
+        DEFAULT_OPENED_AT,
+    )?;
+
+    Ok(json!(ReadViewOutput::new(
+        &snapshot,
+        Some(session.state),
+        None,
+    )))
+}
+
 fn handle_extract(options: ExtractOptions) -> Result<Value, CliError> {
     if options.session_file.is_some() && !options.browser {
         return Err(CliError::Usage(
@@ -347,10 +462,11 @@ fn handle_extract(options: ExtractOptions) -> Result<Value, CliError> {
             current_policy_with_allowlist(&context.session, &kernel, &options.allowlisted_domains),
         );
         let mut session = context.session;
+        let extract_timestamp = slot_timestamp(1, 30);
         let report =
             context
                 .runtime
-                .extract(&mut session, claims, slot_timestamp(1, 30).as_str())?;
+                .extract(&mut session, claims.clone(), &extract_timestamp)?;
         let extract_result = succeed_action(
             ActionName::Extract,
             "evidence-report",
@@ -358,6 +474,13 @@ fn handle_extract(options: ExtractOptions) -> Result<Value, CliError> {
             "Extracted evidence report from browser-backed snapshot.",
             current_policy_with_allowlist(&session, &kernel, &options.allowlisted_domains),
         );
+        let extract_result = verify_action_result_if_requested(
+            extract_result,
+            &mut session,
+            &claims,
+            options.verifier_command.as_deref(),
+            &extract_timestamp,
+        )?;
         if let Some(session_file) = options.session_file.as_ref() {
             save_browser_cli_session(
                 session_file,
@@ -407,7 +530,7 @@ fn handle_extract(options: ExtractOptions) -> Result<Value, CliError> {
         );
         let extract_result = if open_result.status == ActionStatus::Succeeded {
             let current_url = session.state.current_url.clone();
-            vm.execute_fixture(
+            let extract_result = vm.execute_fixture(
                 &mut session,
                 &catalog,
                 ActionCommand {
@@ -420,7 +543,14 @@ fn handle_extract(options: ExtractOptions) -> Result<Value, CliError> {
                     input: Some(json!({ "claims": claims })),
                 },
                 &slot_timestamp(1, 30),
-            )
+            );
+            verify_action_result_if_requested(
+                extract_result,
+                &mut session,
+                &claims,
+                options.verifier_command.as_deref(),
+                &slot_timestamp(1, 30),
+            )?
         } else {
             fail_action(
                 ActionName::Extract,
@@ -462,7 +592,8 @@ fn handle_extract(options: ExtractOptions) -> Result<Value, CliError> {
         open_policy.clone(),
     );
 
-    let report = runtime.extract(&mut session, claims, slot_timestamp(1, 30).as_str())?;
+    let extract_timestamp = slot_timestamp(1, 30);
+    let report = runtime.extract(&mut session, claims.clone(), &extract_timestamp)?;
     let extract_result = succeed_action(
         ActionName::Extract,
         "evidence-report",
@@ -470,6 +601,13 @@ fn handle_extract(options: ExtractOptions) -> Result<Value, CliError> {
         "Extracted evidence report.",
         current_policy_with_allowlist(&session, &kernel, &options.allowlisted_domains),
     );
+    let extract_result = verify_action_result_if_requested(
+        extract_result,
+        &mut session,
+        &claims,
+        options.verifier_command.as_deref(),
+        &extract_timestamp,
+    )?;
 
     Ok(json!(ExtractCommandOutput {
         open: open_result,
@@ -697,6 +835,22 @@ fn handle_session_compact(options: SessionFileOptions) -> Result<Value, CliError
     )))
 }
 
+fn handle_session_read(options: SessionFileOptions) -> Result<Value, CliError> {
+    let persisted = load_browser_cli_session(&options.session_file)?;
+    let snapshot = persisted
+        .session
+        .current_snapshot_record()
+        .ok_or(RuntimeError::NoCurrentSnapshot)?
+        .snapshot
+        .clone();
+
+    Ok(json!(ReadViewOutput::new(
+        &snapshot,
+        Some(persisted.session.state),
+        Some(options.session_file.display().to_string()),
+    )))
+}
+
 fn handle_session_refresh(options: SessionRefreshOptions) -> Result<Value, CliError> {
     let runtime = ReadOnlyRuntime::default();
     let kernel = PolicyKernel;
@@ -792,9 +946,7 @@ fn handle_session_extract(options: SessionExtractOptions) -> Result<Value, CliEr
             statement: statement.clone(),
         })
         .collect::<Vec<_>>();
-    let report = runtime.extract(&mut persisted.session, claims, &timestamp)?;
-    save_browser_cli_session(&options.session_file, &persisted)?;
-
+    let report = runtime.extract(&mut persisted.session, claims.clone(), &timestamp)?;
     let extract_result = succeed_action(
         ActionName::Extract,
         "evidence-report",
@@ -802,6 +954,14 @@ fn handle_session_extract(options: SessionExtractOptions) -> Result<Value, CliEr
         "Extracted evidence report from persisted browser session.",
         current_policy_with_allowlist(&persisted.session, &kernel, &persisted.allowlisted_domains),
     );
+    let extract_result = verify_action_result_if_requested(
+        extract_result,
+        &mut persisted.session,
+        &claims,
+        options.verifier_command.as_deref(),
+        &timestamp,
+    )?;
+    save_browser_cli_session(&options.session_file, &persisted)?;
 
     Ok(json!(SessionExtractCommandOutput {
         extract: extract_result.clone(),
@@ -913,13 +1073,241 @@ fn handle_session_synthesize(options: SessionSynthesizeOptions) -> Result<Value,
         &slot_timestamp(persisted.session.transcript.entries.len() + 1, 45),
         options.note_limit,
     )?;
+    let markdown = (options.format == OutputFormat::Markdown)
+        .then(|| render_session_synthesis_markdown(&report));
 
     Ok(json!(SessionSynthesisCommandOutput {
         report: report.clone(),
         result: report,
+        format: options.format,
+        markdown,
         session_state: persisted.session.state,
         session_file: options.session_file.display().to_string(),
     }))
+}
+
+#[derive(Debug, Serialize)]
+#[serde(rename_all = "camelCase")]
+struct VerifierCommandRequest<'a> {
+    version: &'static str,
+    generated_at: &'a str,
+    claims: &'a [ClaimInput],
+    snapshot: &'a SnapshotDocument,
+    evidence_report: &'a EvidenceReport,
+}
+
+#[derive(Debug, Deserialize)]
+#[serde(rename_all = "camelCase")]
+struct VerifierCommandResponse {
+    #[serde(default)]
+    outcomes: Vec<VerifierCommandOutcome>,
+}
+
+#[derive(Debug, Deserialize)]
+#[serde(rename_all = "camelCase")]
+struct VerifierCommandOutcome {
+    claim_id: String,
+    verdict: EvidenceVerificationVerdict,
+    #[serde(default)]
+    verifier_score: Option<f64>,
+    #[serde(default)]
+    notes: Option<String>,
+    #[serde(default)]
+    statement: Option<String>,
+}
+
+fn verify_action_result_if_requested(
+    mut action_result: ActionResult,
+    session: &mut ReadOnlySession,
+    claims: &[ClaimInput],
+    verifier_command: Option<&str>,
+    generated_at: &str,
+) -> Result<ActionResult, CliError> {
+    let Some(verifier_command) = verifier_command else {
+        return Ok(action_result);
+    };
+
+    let output = action_result.output.take().ok_or_else(|| {
+        CliError::Verifier("Verifier requested but extract action had no output payload.".to_string())
+    })?;
+    let report: EvidenceReport = serde_json::from_value(output)?;
+    let snapshot = session
+        .current_snapshot_record()
+        .ok_or(RuntimeError::NoCurrentSnapshot)?
+        .snapshot
+        .clone();
+    let report = run_verifier_hook(verifier_command, claims, &snapshot, &report, generated_at)?;
+    replace_latest_evidence_report(session, &report)?;
+    action_result.output = Some(json!(report));
+    Ok(action_result)
+}
+
+fn replace_latest_evidence_report(
+    session: &mut ReadOnlySession,
+    report: &EvidenceReport,
+) -> Result<(), CliError> {
+    let Some(record) = session.evidence_reports.last_mut() else {
+        return Err(CliError::Verifier(
+            "Verifier requested but the session has no evidence report to update.".to_string(),
+        ));
+    };
+
+    record.report = report.clone();
+    Ok(())
+}
+
+fn run_verifier_hook(
+    verifier_command: &str,
+    claims: &[ClaimInput],
+    snapshot: &SnapshotDocument,
+    report: &EvidenceReport,
+    generated_at: &str,
+) -> Result<EvidenceReport, CliError> {
+    let request = VerifierCommandRequest {
+        version: CONTRACT_VERSION,
+        generated_at,
+        claims,
+        snapshot,
+        evidence_report: report,
+    };
+    let request_body = serde_json::to_vec(&request)?;
+    let mut child = Command::new("sh")
+        .args(["-lc", verifier_command])
+        .current_dir(repo_root())
+        .stdin(Stdio::piped())
+        .stdout(Stdio::piped())
+        .stderr(Stdio::piped())
+        .spawn()?;
+
+    {
+        let stdin = child.stdin.as_mut().ok_or_else(|| {
+            CliError::Verifier("Failed to open verifier stdin.".to_string())
+        })?;
+        stdin.write_all(&request_body)?;
+    }
+    let _ = child.stdin.take();
+
+    let output = child.wait_with_output()?;
+    if !output.status.success() {
+        let stderr = String::from_utf8_lossy(&output.stderr).trim().to_string();
+        let stdout = String::from_utf8_lossy(&output.stdout).trim().to_string();
+        let detail = if !stderr.is_empty() { stderr } else { stdout };
+        return Err(CliError::Verifier(format!(
+            "Verifier command failed with status {}: {detail}",
+            output.status
+        )));
+    }
+
+    let response: VerifierCommandResponse = serde_json::from_slice(&output.stdout)?;
+    let statements = claims
+        .iter()
+        .map(|claim| (claim.id.as_str(), claim.statement.as_str()))
+        .collect::<BTreeMap<_, _>>();
+    let outcomes = response
+        .outcomes
+        .into_iter()
+        .map(|outcome| {
+            if let Some(score) = outcome.verifier_score {
+                if !(0.0..=1.0).contains(&score) {
+                    return Err(CliError::Verifier(format!(
+                        "Verifier score for `{}` must be between 0 and 1.",
+                        outcome.claim_id
+                    )));
+                }
+            }
+
+            let statement = outcome.statement.or_else(|| {
+                statements
+                    .get(outcome.claim_id.as_str())
+                    .map(|statement| (*statement).to_string())
+            });
+            let statement = statement.ok_or_else(|| {
+                CliError::Verifier(format!(
+                    "Verifier returned unknown claim id `{}`.",
+                    outcome.claim_id
+                ))
+            })?;
+
+            Ok(EvidenceVerificationOutcome {
+                version: CONTRACT_VERSION.to_string(),
+                claim_id: outcome.claim_id,
+                statement,
+                verdict: outcome.verdict,
+                verifier_score: outcome.verifier_score,
+                notes: outcome.notes,
+            })
+        })
+        .collect::<Result<Vec<_>, CliError>>()?;
+
+    let mut verified = report.clone();
+    verified.verification = Some(EvidenceVerificationReport {
+        version: CONTRACT_VERSION.to_string(),
+        verifier: verifier_command.to_string(),
+        generated_at: generated_at.to_string(),
+        outcomes,
+    });
+    Ok(verified)
+}
+
+fn render_session_synthesis_markdown(report: &SessionSynthesisReport) -> String {
+    let mut sections = vec![
+        "# Session Synthesis".to_string(),
+        String::new(),
+        format!("- Session ID: {}", report.session_id),
+        format!("- Snapshots: {}", report.snapshot_count),
+        format!("- Evidence Reports: {}", report.evidence_report_count),
+    ];
+
+    if !report.visited_urls.is_empty() {
+        sections.push(format!("- Visited URLs: {}", report.visited_urls.join(", ")));
+    }
+
+    if !report.synthesized_notes.is_empty() {
+        sections.push(String::new());
+        sections.push("## Synthesized Notes".to_string());
+        for note in &report.synthesized_notes {
+            sections.push(format!("- {note}"));
+        }
+    }
+
+    if !report.supported_claims.is_empty() {
+        sections.push(String::new());
+        sections.push("## Evidence-Supported Claims".to_string());
+        for claim in &report.supported_claims {
+            sections.push(render_session_claim_markdown(claim));
+        }
+    }
+
+    if !report.unsupported_claims.is_empty() {
+        sections.push(String::new());
+        sections.push("## Insufficient Evidence Claims".to_string());
+        for claim in &report.unsupported_claims {
+            sections.push(render_session_claim_markdown(claim));
+        }
+    }
+
+    sections.join("\n")
+}
+
+fn render_session_claim_markdown(claim: &SessionSynthesisClaim) -> String {
+    let mut lines = vec![format!("- {}", claim.statement)];
+
+    if !claim.citations.is_empty() {
+        let citations = claim
+            .citations
+            .iter()
+            .map(|citation| citation.url.clone())
+            .collect::<BTreeSet<_>>()
+            .into_iter()
+            .collect::<Vec<_>>();
+        lines.push(format!("  Citations: {}", citations.join(", ")));
+    }
+
+    if !claim.support_refs.is_empty() {
+        lines.push(format!("  Refs: {}", claim.support_refs.join(", ")));
+    }
+
+    lines.join("\n")
 }
 
 fn handle_approve(options: ApproveOptions) -> Result<Value, CliError> {
@@ -1775,6 +2163,7 @@ fn serve_dispatch(request: ServeJsonRpcRequest, daemon_state: &mut ServeDaemonSt
                 "methods": [
                     "runtime.status",
                     "runtime.open",
+                    "runtime.readView",
                     "runtime.extract",
                     "runtime.policy",
                     "runtime.compactView",
@@ -1782,6 +2171,7 @@ fn serve_dispatch(request: ServeJsonRpcRequest, daemon_state: &mut ServeDaemonSt
                     "runtime.session.open",
                     "runtime.session.snapshot",
                     "runtime.session.compactView",
+                    "runtime.session.readView",
                     "runtime.session.refresh",
                     "runtime.session.extract",
                     "runtime.session.checkpoint",
@@ -1812,6 +2202,8 @@ fn serve_dispatch(request: ServeJsonRpcRequest, daemon_state: &mut ServeDaemonSt
             "runtime.open" => {
                 json_target_options(&params).and_then(|options| dispatch(CliCommand::Open(options)))
             }
+            "runtime.readView" => json_target_options(&params)
+                .and_then(|options| dispatch(CliCommand::ReadView(options))),
             "runtime.extract" => json_extract_options(&params)
                 .and_then(|options| dispatch(CliCommand::Extract(options))),
             "runtime.policy" => json_target_options(&params)
@@ -1822,6 +2214,7 @@ fn serve_dispatch(request: ServeJsonRpcRequest, daemon_state: &mut ServeDaemonSt
             "runtime.session.open" => serve_session_open(&params, daemon_state),
             "runtime.session.snapshot" => serve_session_snapshot(&params, daemon_state),
             "runtime.session.compactView" => serve_session_compact_view(&params, daemon_state),
+            "runtime.session.readView" => serve_session_read_view(&params, daemon_state),
             "runtime.session.refresh" => serve_session_refresh(&params, daemon_state),
             "runtime.session.extract" => serve_session_extract(&params, daemon_state),
             "runtime.session.checkpoint" => serve_session_checkpoint(&params, daemon_state),
@@ -1942,6 +2335,7 @@ fn json_extract_options(params: &Value) -> Result<ExtractOptions, CliError> {
         headed: json_bool(params, "headed").unwrap_or(false),
         session_file: optional_json_string(params, "sessionFile").map(PathBuf::from),
         claims,
+        verifier_command: optional_json_string(params, "verifierCommand"),
     })
 }
 
@@ -1955,6 +2349,10 @@ fn json_session_synthesize_options(params: &Value) -> Result<SessionSynthesizeOp
     Ok(SessionSynthesizeOptions {
         session_file: PathBuf::from(required_json_string(params, "sessionFile")?),
         note_limit: json_usize(params, "noteLimit").unwrap_or(12),
+        format: optional_json_string(params, "format")
+            .map(|value| parse_output_format(&value))
+            .transpose()?
+            .unwrap_or(OutputFormat::Json),
     })
 }
 
@@ -2092,6 +2490,24 @@ fn serve_session_compact_view(
     }))
 }
 
+fn serve_session_read_view(
+    params: &Value,
+    daemon_state: &mut ServeDaemonState,
+) -> Result<Value, CliError> {
+    let session_id = required_json_string(params, "sessionId")?;
+    let tab_id = optional_json_string(params, "tabId");
+    let (resolved_tab_id, session_file) =
+        daemon_state.opened_tab_file(&session_id, tab_id.as_deref())?;
+    let result = dispatch(CliCommand::SessionRead(SessionFileOptions {
+        session_file,
+    }))?;
+    Ok(json!({
+        "sessionId": session_id,
+        "tabId": resolved_tab_id,
+        "result": result,
+    }))
+}
+
 fn serve_session_refresh(
     params: &Value,
     daemon_state: &mut ServeDaemonState,
@@ -2124,11 +2540,13 @@ fn serve_session_extract(
             "serve params `claims` must include at least one statement.".to_string(),
         ));
     }
+    let verifier_command = optional_json_string(params, "verifierCommand");
     let (resolved_tab_id, session_file) =
         daemon_state.opened_tab_file(&session_id, tab_id.as_deref())?;
     let result = dispatch(CliCommand::SessionExtract(SessionExtractOptions {
         session_file,
         claims,
+        verifier_command,
     }))?;
     Ok(json!({
         "sessionId": session_id,
@@ -2227,6 +2645,10 @@ fn serve_session_synthesize(
 ) -> Result<Value, CliError> {
     let session_id = required_json_string(params, "sessionId")?;
     let note_limit = json_usize(params, "noteLimit").unwrap_or(12);
+    let format = optional_json_string(params, "format")
+        .map(|value| parse_output_format(&value))
+        .transpose()?
+        .unwrap_or(OutputFormat::Json);
     let session = daemon_state.session(&session_id)?;
 
     let runtime = ReadOnlyRuntime::default();
@@ -2266,6 +2688,8 @@ fn serve_session_synthesize(
         "sessionId": session_id,
         "activeTabId": session.active_tab_id,
         "tabCount": session.tabs.len(),
+        "format": format,
+        "markdown": (format == OutputFormat::Markdown).then(|| render_session_synthesis_markdown(&report)),
         "report": report,
         "tabReports": tab_reports_json,
     }))
@@ -3673,6 +4097,7 @@ fn parse_command(args: &[String]) -> Result<CliCommand, CliError> {
         "open" => Ok(CliCommand::Open(parse_target_options(&args[1..])?)),
         "snapshot" => Ok(CliCommand::Snapshot(parse_target_options(&args[1..])?)),
         "compact-view" => Ok(CliCommand::CompactView(parse_target_options(&args[1..])?)),
+        "read-view" => Ok(CliCommand::ReadView(parse_target_options(&args[1..])?)),
         "extract" => Ok(CliCommand::Extract(parse_extract_options(&args[1..])?)),
         "policy" => Ok(CliCommand::Policy(parse_target_options(&args[1..])?)),
         "session-snapshot" => Ok(CliCommand::SessionSnapshot(parse_session_file_options(
@@ -3688,6 +4113,10 @@ fn parse_command(args: &[String]) -> Result<CliCommand, CliError> {
         )?)),
         "session-extract" => Ok(CliCommand::SessionExtract(parse_session_extract_options(
             &args[1..],
+        )?)),
+        "session-read" => Ok(CliCommand::SessionRead(parse_session_file_options(
+            &args[1..],
+            "session-read",
         )?)),
         "checkpoint" => Ok(CliCommand::SessionCheckpoint(parse_session_file_options(
             &args[1..],
@@ -3840,6 +4269,7 @@ fn parse_extract_options(args: &[String]) -> Result<ExtractOptions, CliError> {
     let mut browser = false;
     let mut headed = false;
     let mut session_file = None;
+    let mut verifier_command = None;
 
     while index < args.len() {
         match args[index].as_str() {
@@ -3900,6 +4330,13 @@ fn parse_extract_options(args: &[String]) -> Result<ExtractOptions, CliError> {
                 claims.push(value.clone());
                 index += 2;
             }
+            "--verifier-command" => {
+                let value = args.get(index + 1).ok_or_else(|| {
+                    CliError::Usage("--verifier-command requires a shell command.".to_string())
+                })?;
+                verifier_command = Some(value.clone());
+                index += 2;
+            }
             other => {
                 return Err(CliError::Usage(format!(
                     "Unknown option `{other}` for extract command."
@@ -3924,6 +4361,7 @@ fn parse_extract_options(args: &[String]) -> Result<ExtractOptions, CliError> {
         headed,
         session_file,
         claims,
+        verifier_command,
     })
 }
 
@@ -4112,6 +4550,7 @@ fn parse_telemetry_recent_options(args: &[String]) -> Result<TelemetryRecentOpti
 fn parse_session_extract_options(args: &[String]) -> Result<SessionExtractOptions, CliError> {
     let mut session_file = None;
     let mut claims = Vec::new();
+    let mut verifier_command = None;
     let mut index = 0;
 
     while index < args.len() {
@@ -4128,6 +4567,13 @@ fn parse_session_extract_options(args: &[String]) -> Result<SessionExtractOption
                     .get(index + 1)
                     .ok_or_else(|| CliError::Usage("--claim requires a statement.".to_string()))?;
                 claims.push(value.clone());
+                index += 2;
+            }
+            "--verifier-command" => {
+                let value = args.get(index + 1).ok_or_else(|| {
+                    CliError::Usage("--verifier-command requires a shell command.".to_string())
+                })?;
+                verifier_command = Some(value.clone());
                 index += 2;
             }
             other => {
@@ -4150,12 +4596,14 @@ fn parse_session_extract_options(args: &[String]) -> Result<SessionExtractOption
     Ok(SessionExtractOptions {
         session_file,
         claims,
+        verifier_command,
     })
 }
 
 fn parse_session_synthesize_options(args: &[String]) -> Result<SessionSynthesizeOptions, CliError> {
     let mut session_file = None;
     let mut note_limit = 12;
+    let mut format = OutputFormat::Json;
     let mut index = 0;
 
     while index < args.len() {
@@ -4176,6 +4624,13 @@ fn parse_session_synthesize_options(args: &[String]) -> Result<SessionSynthesize
                 })?;
                 index += 2;
             }
+            "--format" => {
+                let value = args.get(index + 1).ok_or_else(|| {
+                    CliError::Usage("--format requires `json` or `markdown`.".to_string())
+                })?;
+                format = parse_output_format(value)?;
+                index += 2;
+            }
             other => {
                 return Err(CliError::Usage(format!(
                     "Unknown option `{other}` for session-synthesize command."
@@ -4189,7 +4644,18 @@ fn parse_session_synthesize_options(args: &[String]) -> Result<SessionSynthesize
             CliError::Usage("session-synthesize requires `--session-file <path>`.".to_string())
         })?,
         note_limit,
+        format,
     })
+}
+
+fn parse_output_format(value: &str) -> Result<OutputFormat, CliError> {
+    match value {
+        "json" => Ok(OutputFormat::Json),
+        "markdown" => Ok(OutputFormat::Markdown),
+        _ => Err(CliError::Usage(
+            "--format requires `json` or `markdown`.".to_string(),
+        )),
+    }
 }
 
 fn parse_follow_options(args: &[String]) -> Result<FollowOptions, CliError> {
@@ -5484,12 +5950,14 @@ fn usage() -> String {
         "  touch-browser open <target> [--browser] [--headed] [--budget <tokens>] [--session-file <path>] [--source-risk low|medium|hostile] [--source-label <label>] [--allow-domain <host> ...]",
         "  touch-browser snapshot <target> [--browser] [--headed] [--budget <tokens>] [--session-file <path>] [--source-risk low|medium|hostile] [--source-label <label>] [--allow-domain <host> ...]",
         "  touch-browser compact-view <target> [--browser] [--headed] [--budget <tokens>] [--session-file <path>] [--source-risk low|medium|hostile] [--source-label <label>] [--allow-domain <host> ...]",
-        "  touch-browser extract <target> --claim <statement> [--claim <statement> ...] [--browser] [--headed] [--budget <tokens>] [--session-file <path>] [--source-risk low|medium|hostile] [--source-label <label>] [--allow-domain <host> ...]",
+        "  touch-browser read-view <target> [--browser] [--headed] [--budget <tokens>] [--session-file <path>] [--source-risk low|medium|hostile] [--source-label <label>] [--allow-domain <host> ...]",
+        "  touch-browser extract <target> --claim <statement> [--claim <statement> ...] [--verifier-command <shell-command>] [--browser] [--headed] [--budget <tokens>] [--session-file <path>] [--source-risk low|medium|hostile] [--source-label <label>] [--allow-domain <host> ...]",
         "  touch-browser policy <target> [--browser] [--headed] [--budget <tokens>] [--source-risk low|medium|hostile] [--source-label <label>] [--allow-domain <host> ...]",
         "  touch-browser session-snapshot --session-file <path>",
         "  touch-browser session-compact --session-file <path>",
-        "  touch-browser session-extract --session-file <path> --claim <statement> [--claim <statement> ...]",
-        "  touch-browser session-synthesize --session-file <path> [--note-limit <count>]",
+        "  touch-browser session-extract --session-file <path> --claim <statement> [--claim <statement> ...] [--verifier-command <shell-command>]",
+        "  touch-browser session-read --session-file <path>",
+        "  touch-browser session-synthesize --session-file <path> [--note-limit <count>] [--format json|markdown]",
         "  touch-browser follow --session-file <path> --ref <stable-ref> [--headed]",
         "  touch-browser paginate --session-file <path> --direction next|prev [--headed]",
         "  touch-browser expand --session-file <path> --ref <stable-ref> [--headed]",
@@ -5519,10 +5987,12 @@ enum CliCommand {
     Open(TargetOptions),
     Snapshot(TargetOptions),
     CompactView(TargetOptions),
+    ReadView(TargetOptions),
     Extract(ExtractOptions),
     Policy(TargetOptions),
     SessionSnapshot(SessionFileOptions),
     SessionCompact(SessionFileOptions),
+    SessionRead(SessionFileOptions),
     SessionRefresh(SessionRefreshOptions),
     SessionExtract(SessionExtractOptions),
     SessionCheckpoint(SessionFileOptions),
@@ -5569,6 +6039,7 @@ struct ExtractOptions {
     headed: bool,
     session_file: Option<PathBuf>,
     claims: Vec<String>,
+    verifier_command: Option<String>,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -5580,12 +6051,21 @@ struct SessionFileOptions {
 struct SessionExtractOptions {
     session_file: PathBuf,
     claims: Vec<String>,
+    verifier_command: Option<String>,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 struct SessionSynthesizeOptions {
     session_file: PathBuf,
     note_limit: usize,
+    format: OutputFormat,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "lowercase")]
+enum OutputFormat {
+    Json,
+    Markdown,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -6186,6 +6666,9 @@ struct SessionPolicyCommandOutput {
 struct SessionSynthesisCommandOutput {
     report: SessionSynthesisReport,
     result: SessionSynthesisReport,
+    format: OutputFormat,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    markdown: Option<String>,
     session_state: SessionState,
     session_file: String,
 }
@@ -6249,6 +6732,49 @@ impl CompactSnapshotOutput {
 
 #[derive(Debug, Serialize)]
 #[serde(rename_all = "camelCase")]
+struct ReadViewOutput {
+    source_url: String,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    source_title: Option<String>,
+    markdown_text: String,
+    line_count: usize,
+    char_count: usize,
+    approx_tokens: usize,
+    ref_index: Vec<CompactRefIndexEntry>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    session_state: Option<SessionState>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    session_file: Option<String>,
+}
+
+impl ReadViewOutput {
+    fn new(
+        snapshot: &SnapshotDocument,
+        session_state: Option<SessionState>,
+        session_file: Option<String>,
+    ) -> Self {
+        let markdown_text = render_read_view_markdown(snapshot);
+        let line_count = markdown_text.lines().count();
+        let char_count = markdown_text.chars().count();
+        let approx_tokens = char_count.div_ceil(4).max(1);
+        let ref_index = compact_ref_index(snapshot);
+
+        Self {
+            source_url: snapshot.source.source_url.clone(),
+            source_title: snapshot.source.title.clone(),
+            markdown_text,
+            line_count,
+            char_count,
+            approx_tokens,
+            ref_index,
+            session_state,
+            session_file,
+        }
+    }
+}
+
+#[derive(Debug, Serialize)]
+#[serde(rename_all = "camelCase")]
 struct BrowserReplayCommandOutput {
     replayed_actions: usize,
     compact_text: String,
@@ -6284,6 +6810,8 @@ enum CliError {
     Telemetry(#[from] TelemetryError),
     #[error("adapter error: {0}")]
     Adapter(String),
+    #[error("verifier error: {0}")]
+    Verifier(String),
 }
 
 #[cfg(test)]
@@ -6297,9 +6825,10 @@ mod tests {
     use super::{
         browser_context_dir_for_session_file, dispatch, parse_command, AckRisk, ApproveOptions,
         CliCommand, ClickOptions, ExpandOptions, ExtractOptions, FollowOptions, PaginateOptions,
-        PaginationDirection, PolicyProfile, SessionExtractOptions, SessionFileOptions,
-        SessionProfileSetOptions, SessionRefreshOptions, SubmitOptions, TargetOptions,
-        TelemetryRecentOptions, TypeOptions, DEFAULT_REQUESTED_TOKENS,
+        OutputFormat, PaginationDirection, PolicyProfile, SessionExtractOptions,
+        SessionFileOptions, SessionProfileSetOptions, SessionRefreshOptions,
+        SessionSynthesizeOptions, SubmitOptions, TargetOptions, TelemetryRecentOptions,
+        TypeOptions, DEFAULT_REQUESTED_TOKENS,
     };
 
     fn temp_session_path(name: &str) -> PathBuf {
@@ -6337,8 +6866,81 @@ mod tests {
                     "The Starter plan costs $29 per month.".to_string(),
                     "There is an Enterprise plan.".to_string(),
                 ],
+                verifier_command: None,
             })
         );
+    }
+
+    #[test]
+    fn parses_extract_command_with_verifier_hook() {
+        let command = parse_command(&[
+            "extract".to_string(),
+            "fixture://research/citation-heavy/pricing".to_string(),
+            "--claim".to_string(),
+            "The Starter plan costs $29 per month.".to_string(),
+            "--verifier-command".to_string(),
+            "printf '{\"outcomes\":[]}'".to_string(),
+        ])
+        .expect("extract command with verifier should parse");
+
+        assert_eq!(
+            command,
+            CliCommand::Extract(ExtractOptions {
+                target: "fixture://research/citation-heavy/pricing".to_string(),
+                budget: DEFAULT_REQUESTED_TOKENS,
+                source_risk: None,
+                source_label: None,
+                allowlisted_domains: Vec::new(),
+                browser: false,
+                headed: false,
+                session_file: None,
+                claims: vec!["The Starter plan costs $29 per month.".to_string()],
+                verifier_command: Some("printf '{\"outcomes\":[]}'".to_string()),
+            })
+        );
+    }
+
+    #[test]
+    fn parses_session_synthesize_markdown_format() {
+        let command = parse_command(&[
+            "session-synthesize".to_string(),
+            "--session-file".to_string(),
+            "/tmp/test-session.json".to_string(),
+            "--format".to_string(),
+            "markdown".to_string(),
+        ])
+        .expect("session-synthesize command should parse");
+
+        assert_eq!(
+            command,
+            CliCommand::SessionSynthesize(SessionSynthesizeOptions {
+                session_file: PathBuf::from("/tmp/test-session.json"),
+                note_limit: 12,
+                format: OutputFormat::Markdown,
+            })
+        );
+    }
+
+    #[test]
+    fn dispatches_read_view_for_fixture_target() {
+        let output = dispatch(CliCommand::ReadView(TargetOptions {
+            target: "fixture://research/static-docs/getting-started".to_string(),
+            budget: DEFAULT_REQUESTED_TOKENS,
+            source_risk: None,
+            source_label: None,
+            allowlisted_domains: Vec::new(),
+            browser: false,
+            headed: false,
+            session_file: None,
+        }))
+        .expect("read-view should succeed");
+
+        let markdown = output["markdownText"]
+            .as_str()
+            .expect("markdown text should be present");
+        assert!(markdown.starts_with('#'));
+        assert!(markdown.contains("Getting Started"));
+        assert!(output["approxTokens"].as_u64().unwrap_or(0) > 0);
     }
 
     #[test]
@@ -6676,6 +7278,7 @@ mod tests {
             headed: false,
             session_file: None,
             claims: vec!["The Starter plan costs $29 per month.".to_string()],
+            verifier_command: None,
         }))
         .expect("browser-backed extract should succeed");
 
@@ -6685,8 +7288,37 @@ mod tests {
         );
         assert_eq!(output["extract"]["status"], "succeeded");
         assert_eq!(
-            output["extract"]["output"]["supportedClaims"][0]["statement"],
+            output["extract"]["output"]["evidenceSupportedClaims"][0]["statement"],
             "The Starter plan costs $29 per month."
+        );
+    }
+
+    #[test]
+    fn attaches_verifier_outcomes_to_extract_results() {
+        let output = dispatch(CliCommand::Extract(ExtractOptions {
+            target: "fixture://research/citation-heavy/pricing".to_string(),
+            budget: DEFAULT_REQUESTED_TOKENS,
+            source_risk: None,
+            source_label: None,
+            allowlisted_domains: Vec::new(),
+            browser: false,
+            headed: false,
+            session_file: None,
+            claims: vec!["The Starter plan costs $29 per month.".to_string()],
+            verifier_command: Some(
+                "printf '{\"outcomes\":[{\"claimId\":\"c1\",\"verdict\":\"verified\",\"verifierScore\":0.88,\"notes\":\"checked against source\"}]}'"
+                    .to_string(),
+            ),
+        }))
+        .expect("extract with verifier should succeed");
+
+        assert_eq!(
+            output["extract"]["output"]["verification"]["outcomes"][0]["verdict"],
+            "verified"
+        );
+        assert_eq!(
+            output["extract"]["output"]["verification"]["outcomes"][0]["verifierScore"],
+            0.88
         );
     }
 
@@ -6880,13 +7512,14 @@ mod tests {
         let extract_output = dispatch(CliCommand::SessionExtract(SessionExtractOptions {
             session_file: session_file.clone(),
             claims: vec!["Advanced guide opened for the next research step.".to_string()],
+            verifier_command: None,
         }))
         .expect("session extract should succeed");
 
         assert_eq!(extract_output["extract"]["status"], "succeeded");
         assert_eq!(extract_output["result"]["status"], "succeeded");
         assert_eq!(
-            extract_output["extract"]["output"]["supportedClaims"][0]["statement"],
+            extract_output["extract"]["output"]["evidenceSupportedClaims"][0]["statement"],
             "Advanced guide opened for the next research step."
         );
 
@@ -7028,12 +7661,13 @@ mod tests {
             claims: vec![
                 "Expanded details confirm that the runtime can reveal collapsed notes.".to_string(),
             ],
+            verifier_command: None,
         }))
         .expect("session extract should succeed");
 
         assert_eq!(extract_output["extract"]["status"], "succeeded");
         assert_eq!(
-            extract_output["extract"]["output"]["supportedClaims"][0]["statement"],
+            extract_output["extract"]["output"]["evidenceSupportedClaims"][0]["statement"],
             "Expanded details confirm that the runtime can reveal collapsed notes."
         );
 

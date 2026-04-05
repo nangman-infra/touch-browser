@@ -7,13 +7,13 @@
     "sourceRisk": "low",
     "sourceLabel": "Citation contracts"
   },
-  "supportedClaims": [
+  "evidenceSupportedClaims": [
     {
       "version": "1.0.0",
       "claimId": "c1",
       "statement": "Citation Contracts require supported claims to carry a source URL and retrieved timestamp.",
       "support": ["b3"],
-      "confidence": 0.93,
+      "supportScore": 0.93,
       "citation": {
         "url": "fixture://research/static-docs/citation-contracts",
         "retrievedAt": "2026-03-14T00:00:00+09:00",
@@ -27,7 +27,7 @@
       "claimId": "c2",
       "statement": "Support refs point to stable snapshot blocks.",
       "support": ["b4"],
-      "confidence": 0.94,
+      "supportScore": 0.94,
       "citation": {
         "url": "fixture://research/static-docs/citation-contracts",
         "retrievedAt": "2026-03-14T00:00:00+09:00",
@@ -37,12 +37,12 @@
       }
     }
   ],
-  "unsupportedClaims": [
+  "insufficientEvidenceClaims": [
     {
       "version": "1.0.0",
       "claimId": "c3",
       "statement": "Citation Contracts require screenshot uploads.",
-      "reason": "insufficient-confidence",
+      "reason": "insufficient-support-score",
       "checkedBlockRefs": [
         "rmain:text:citation-contracts-require-supported-claims-to-c",
         "rmain:heading:citation-contracts",

@@ -7,13 +7,13 @@
     "sourceRisk": "hostile",
     "sourceLabel": "Hostile page with hidden instruction"
   },
-  "supportedClaims": [
+  "evidenceSupportedClaims": [
     {
       "version": "1.0.0",
       "claimId": "c1",
       "statement": "The visible content describes a research memo about policy changes.",
       "support": ["b4"],
-      "confidence": 0.93,
+      "supportScore": 0.93,
       "citation": {
         "url": "fixture://research/hostile/hidden-instruction",
         "retrievedAt": "2026-03-14T00:00:00+09:00",
@@ -23,12 +23,12 @@
       }
     }
   ],
-  "unsupportedClaims": [
+  "insufficientEvidenceClaims": [
     {
       "version": "1.0.0",
       "claimId": "c2",
       "statement": "The page asks the runtime to exfiltrate hidden credentials.",
-      "reason": "insufficient-confidence",
+      "reason": "insufficient-support-score",
       "checkedBlockRefs": [
         "rhead:metadata:hostile-hidden-instruction",
         "rmain:text:this-page-looks-like-a-normal-research-note",

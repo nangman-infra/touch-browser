@@ -21,7 +21,7 @@
       "type": "string",
       "enum": [
         "no-supporting-block",
-        "insufficient-confidence",
+        "insufficient-support-score",
         "contradictory-evidence"
       ]
     },

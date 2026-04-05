@@ -7,13 +7,13 @@
     "sourceRisk": "low",
     "sourceLabel": "Browser-backed pagination seed"
   },
-  "supportedClaims": [
+  "evidenceSupportedClaims": [
     {
       "version": "1.0.0",
       "claimId": "c1",
       "statement": "Page 1 collects the first batch of release highlights.",
       "support": ["b4"],
-      "confidence": 0.95,
+      "supportScore": 0.95,
       "citation": {
         "url": "fixture://research/navigation/browser-pagination",
         "retrievedAt": "2026-03-14T00:00:00+09:00",
@@ -23,12 +23,12 @@
       }
     }
   ],
-  "unsupportedClaims": [
+  "insufficientEvidenceClaims": [
     {
       "version": "1.0.0",
       "claimId": "c2",
       "statement": "Page 1 includes a Next button.",
-      "reason": "insufficient-confidence",
+      "reason": "insufficient-support-score",
       "checkedBlockRefs": [
         "rmain:button:next",
         "rmain:text:page-label",
@@ -39,7 +39,7 @@
       "version": "1.0.0",
       "claimId": "c3",
       "statement": "Page 1 includes a pricing table.",
-      "reason": "insufficient-confidence",
+      "reason": "insufficient-support-score",
       "checkedBlockRefs": [
         "rmain:text:page-label",
         "rmain:text:page-content",

@@ -34,6 +34,8 @@ async function main() {
   ]);
 
   const requiredDocs = [
+    "LICENSE",
+    "LICENSE-POLICY.md",
     "doc/INSTALL_AND_OPERATIONS.md",
     "doc/OPERATIONS_SECURITY_PACKAGE_SPEC.md",
     "doc/PILOT_PACKAGE_SPEC.md",

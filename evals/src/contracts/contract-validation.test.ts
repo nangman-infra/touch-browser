@@ -158,7 +158,7 @@ describe("contract schemas", () => {
         claimId: "c12",
         statement: "The page offers monthly plans.",
         support: ["b21", "b22"],
-        confidence: 0.94,
+        supportScore: 0.94,
         citation: {
           url: "fixture://research/citation-heavy/pricing",
           retrievedAt: "2026-03-14T12:00:00+09:00",
@@ -195,13 +195,13 @@ describe("contract schemas", () => {
           sourceRisk: "low",
           sourceLabel: "Pricing",
         },
-        supportedClaims: [
+        evidenceSupportedClaims: [
           {
             version: "1.0.0",
             claimId: "c1",
             statement: "The Starter plan costs $29 per month.",
             support: ["b3", "b4"],
-            confidence: 0.91,
+            supportScore: 0.91,
             citation: {
               url: "fixture://research/citation-heavy/pricing",
               retrievedAt: "2026-03-14T12:00:00+09:00",
@@ -211,7 +211,7 @@ describe("contract schemas", () => {
             },
           },
         ],
-        unsupportedClaims: [
+        insufficientEvidenceClaims: [
           {
             version: "1.0.0",
             claimId: "c2",

@@ -7,13 +7,13 @@
     "sourceRisk": "low",
     "sourceLabel": "Trusted sources guide"
   },
-  "supportedClaims": [
+  "evidenceSupportedClaims": [
     {
       "version": "1.0.0",
       "claimId": "c1",
       "statement": "Trusted Sources recommends domain allowlists before enabling browser actions.",
       "support": ["b3"],
-      "confidence": 0.93,
+      "supportScore": 0.93,
       "citation": {
         "url": "fixture://research/static-docs/trusted-sources",
         "retrievedAt": "2026-03-14T00:00:00+09:00",
@@ -27,7 +27,7 @@
       "claimId": "c2",
       "statement": "High-risk domains require review.",
       "support": ["b4"],
-      "confidence": 0.94,
+      "supportScore": 0.94,
       "citation": {
         "url": "fixture://research/static-docs/trusted-sources",
         "retrievedAt": "2026-03-14T00:00:00+09:00",
@@ -37,12 +37,12 @@
       }
     }
   ],
-  "unsupportedClaims": [
+  "insufficientEvidenceClaims": [
     {
       "version": "1.0.0",
       "claimId": "c3",
       "statement": "Trusted Sources enables automatic purchases.",
-      "reason": "insufficient-confidence",
+      "reason": "insufficient-support-score",
       "checkedBlockRefs": [
         "rmain:text:trusted-sources-recommends-domain-allowlists-bef",
         "rmain:heading:trusted-sources",

@@ -293,12 +293,14 @@ function summarizeTaskProof({
   closed,
 }) {
   const normalized = extracts.map((entry) => {
-    const supportedClaims = entry.extract?.supportedClaims ?? [];
-    const unsupportedClaims = entry.extract?.unsupportedClaims ?? [];
-    const matchedSupportedClaim = supportedClaims.find(
+    const evidenceSupportedClaims =
+      entry.extract?.evidenceSupportedClaims ?? [];
+    const insufficientEvidenceClaims =
+      entry.extract?.insufficientEvidenceClaims ?? [];
+    const matchedSupportedClaim = evidenceSupportedClaims.find(
       (claim) => claim.statement === entry.claim,
     );
-    const matchedUnsupportedClaim = unsupportedClaims.find(
+    const matchedUnsupportedClaim = insufficientEvidenceClaims.find(
       (claim) => claim.statement === entry.claim,
     );
 
@@ -381,8 +383,8 @@ function summarizeExtractResult(extract) {
   return {
     status: extract?.result?.status ?? null,
     sourceUrl: report?.source?.sourceUrl ?? null,
-    supportedClaims: report.supportedClaims ?? [],
-    unsupportedClaims: report.unsupportedClaims ?? [],
+    evidenceSupportedClaims: report.evidenceSupportedClaims ?? [],
+    insufficientEvidenceClaims: report.insufficientEvidenceClaims ?? [],
   };
 }
 
@@ -405,8 +407,9 @@ function summarizeSynthesisResult(synthesis) {
     tabCount: synthesis?.tabCount ?? null,
     synthesizedNotes: synthesis?.report?.synthesizedNotes ?? [],
     visitedUrls: synthesis?.report?.visitedUrls ?? [],
-    supportedClaims: synthesis?.report?.supportedClaims ?? [],
-    unsupportedClaims: synthesis?.report?.unsupportedClaims ?? [],
+    evidenceSupportedClaims: synthesis?.report?.evidenceSupportedClaims ?? [],
+    insufficientEvidenceClaims:
+      synthesis?.report?.insufficientEvidenceClaims ?? [],
   };
 }
 

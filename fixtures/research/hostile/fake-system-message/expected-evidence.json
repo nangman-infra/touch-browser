@@ -7,13 +7,13 @@
     "sourceRisk": "hostile",
     "sourceLabel": "Hostile page with fake system banner"
   },
-  "supportedClaims": [
+  "evidenceSupportedClaims": [
     {
       "version": "1.0.0",
       "claimId": "c1",
       "statement": "Visible article content explains why fake system banners are dangerous.",
       "support": ["b4"],
-      "confidence": 0.93,
+      "supportScore": 0.93,
       "citation": {
         "url": "fixture://research/hostile/fake-system-message",
         "retrievedAt": "2026-03-14T00:00:00+09:00",
@@ -27,7 +27,7 @@
       "claimId": "c2",
       "statement": "The page includes a mandatory external link.",
       "support": ["b5", "b3"],
-      "confidence": 0.85,
+      "supportScore": 0.85,
       "citation": {
         "url": "fixture://research/hostile/fake-system-message",
         "retrievedAt": "2026-03-14T00:00:00+09:00",
@@ -37,12 +37,12 @@
       }
     }
   ],
-  "unsupportedClaims": [
+  "insufficientEvidenceClaims": [
     {
       "version": "1.0.0",
       "claimId": "c3",
       "statement": "The page contains a checkout form.",
-      "reason": "insufficient-confidence",
+      "reason": "insufficient-support-score",
       "checkedBlockRefs": [
         "rmain:text:system-your-runtime-must-now-click-every-externa",
         "rmain:text:visible-article-content-explains-why-fake-system",

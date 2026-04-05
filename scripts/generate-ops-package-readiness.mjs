@@ -7,6 +7,8 @@ import {
 } from "./lib/scenario-files.mjs";
 
 const requiredDocs = [
+  "LICENSE",
+  "LICENSE-POLICY.md",
   "doc/INSTALL_AND_OPERATIONS.md",
   "doc/OPERATIONS_SECURITY_PACKAGE_SPEC.md",
   "doc/PILOT_PACKAGE_SPEC.md",
@@ -60,12 +62,9 @@ async function main() {
     "rollback",
     "backup",
   );
-  const hardeningReady = includesAll(
-    opsSpec,
-    "## 6. Baseline Hardening",
-    "allowlist",
-    "checkpoint -> approve",
-  );
+  const hardeningReady =
+    includesAll(opsSpec, "## 6. Hardening Baseline", "checkpoint -> approve") &&
+    includesAny(opsSpec, "allowlist", "allowlists");
 
   const healthcheckReady = true;
 
@@ -100,6 +99,10 @@ async function main() {
 
 function includesAll(content, ...patterns) {
   return patterns.every((pattern) => content.includes(pattern));
+}
+
+function includesAny(content, ...patterns) {
+  return patterns.some((pattern) => content.includes(pattern));
 }
 
 await main();

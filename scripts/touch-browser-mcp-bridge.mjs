@@ -61,7 +61,7 @@ const toolCatalog = [
     name: "tb_extract",
     title: "Extract Evidence",
     description:
-      "Extract supported and unsupported claims from the current target or daemon tab.",
+      "Extract evidence-supported and insufficient-evidence claims from the current target or daemon tab.",
     inputSchema: {
       type: "object",
       properties: {
@@ -82,6 +82,28 @@ const toolCatalog = [
         tabId: { type: "string" },
       },
       required: ["claims"],
+    },
+  },
+  {
+    name: "tb_read_view",
+    title: "Read View",
+    description:
+      "Return a readable Markdown view of a target or daemon tab for higher-level verification.",
+    inputSchema: {
+      type: "object",
+      properties: {
+        target: { type: "string" },
+        browser: { type: "boolean" },
+        headed: { type: "boolean" },
+        sourceRisk: { type: "string" },
+        sourceLabel: { type: "string" },
+        allowDomains: {
+          type: "array",
+          items: { type: "string" },
+        },
+        sessionId: { type: "string" },
+        tabId: { type: "string" },
+      },
     },
   },
   {
@@ -496,6 +518,12 @@ async function handleToolCall(id, params) {
     case "tb_extract":
       result = await serve.call(
         args.sessionId ? "runtime.session.extract" : "runtime.extract",
+        args,
+      );
+      break;
+    case "tb_read_view":
+      result = await serve.call(
+        args.sessionId ? "runtime.session.readView" : "runtime.readView",
         args,
       );
       break;

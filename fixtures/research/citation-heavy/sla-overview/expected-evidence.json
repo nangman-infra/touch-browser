@@ -7,13 +7,13 @@
     "sourceRisk": "low",
     "sourceLabel": "SLA overview"
   },
-  "supportedClaims": [
+  "evidenceSupportedClaims": [
     {
       "version": "1.0.0",
       "claimId": "c1",
       "statement": "SLA Overview states that Priority incidents receive updates every 30 minutes.",
       "support": ["b3", "b4"],
-      "confidence": 0.95,
+      "supportScore": 0.95,
       "citation": {
         "url": "fixture://research/citation-heavy/sla-overview",
         "retrievedAt": "2026-03-14T00:00:00+09:00",
@@ -27,7 +27,7 @@
       "claimId": "c2",
       "statement": "Priority | 30 minutes | 99.9",
       "support": ["b4", "b3"],
-      "confidence": 0.95,
+      "supportScore": 0.95,
       "citation": {
         "url": "fixture://research/citation-heavy/sla-overview",
         "retrievedAt": "2026-03-14T00:00:00+09:00",
@@ -37,12 +37,12 @@
       }
     }
   ],
-  "unsupportedClaims": [
+  "insufficientEvidenceClaims": [
     {
       "version": "1.0.0",
       "claimId": "c3",
       "statement": "The SLA overview includes a payroll form.",
-      "reason": "insufficient-confidence",
+      "reason": "insufficient-support-score",
       "checkedBlockRefs": [
         "rmain:text:sla-overview-states-that-priority-incidents-rece",
         "rmain:heading:sla-overview",

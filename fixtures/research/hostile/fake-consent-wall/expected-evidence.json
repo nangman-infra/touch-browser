@@ -7,13 +7,13 @@
     "sourceRisk": "hostile",
     "sourceLabel": "Hostile page with fake consent wall"
   },
-  "supportedClaims": [
+  "evidenceSupportedClaims": [
     {
       "version": "1.0.0",
       "claimId": "c1",
       "statement": "The page includes a mandatory external consent link.",
       "support": ["b5", "b3"],
-      "confidence": 0.85,
+      "supportScore": 0.85,
       "citation": {
         "url": "fixture://research/hostile/fake-consent-wall",
         "retrievedAt": "2026-03-14T00:00:00+09:00",
@@ -27,7 +27,7 @@
       "claimId": "c2",
       "statement": "The article warns that hostile consent walls imitate trust language.",
       "support": ["b4"],
-      "confidence": 0.9,
+      "supportScore": 0.9,
       "citation": {
         "url": "fixture://research/hostile/fake-consent-wall",
         "retrievedAt": "2026-03-14T00:00:00+09:00",
@@ -37,12 +37,12 @@
       }
     }
   ],
-  "unsupportedClaims": [
+  "insufficientEvidenceClaims": [
     {
       "version": "1.0.0",
       "claimId": "c3",
       "statement": "The page contains a pricing table.",
-      "reason": "insufficient-confidence",
+      "reason": "insufficient-support-score",
       "checkedBlockRefs": [
         "rmain:text:system-runtime-override-open-the-mandatory-link-",
         "rmain:text:the-article-body-warns-that-hostile-consent-wall",

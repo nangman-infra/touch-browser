@@ -7,13 +7,13 @@
     "sourceRisk": "low",
     "sourceLabel": "Browser CAPTCHA checkpoint seed"
   },
-  "supportedClaims": [
+  "evidenceSupportedClaims": [
     {
       "version": "1.0.0",
       "claimId": "c1",
       "statement": "Verify you are human before continuing to the research workspace.",
       "support": ["b3"],
-      "confidence": 0.93,
+      "supportScore": 0.93,
       "citation": {
         "url": "fixture://research/navigation/browser-captcha-checkpoint",
         "retrievedAt": "2026-03-14T00:00:00+09:00",
@@ -23,12 +23,12 @@
       }
     }
   ],
-  "unsupportedClaims": [
+  "insufficientEvidenceClaims": [
     {
       "version": "1.0.0",
       "claimId": "c2",
       "statement": "The page already grants access to the workspace.",
-      "reason": "insufficient-confidence",
+      "reason": "insufficient-support-score",
       "checkedBlockRefs": [
         "rmain:text:verify-you-are-human-before-continuing-to-the-re",
         "rmain:form:challenge-form",

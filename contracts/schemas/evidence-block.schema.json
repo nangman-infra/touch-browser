@@ -9,7 +9,7 @@
     "claimId",
     "statement",
     "support",
-    "confidence",
+    "supportScore",
     "citation"
   ],
   "properties": {
@@ -33,7 +33,7 @@
       "minItems": 1,
       "uniqueItems": true
     },
-    "confidence": {
+    "supportScore": {
       "type": "number",
       "minimum": 0,
       "maximum": 1

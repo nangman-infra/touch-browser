@@ -7,13 +7,13 @@
     "sourceRisk": "low",
     "sourceLabel": "Browser-backed duplicate follow disambiguation"
   },
-  "supportedClaims": [
+  "evidenceSupportedClaims": [
     {
       "version": "1.0.0",
       "claimId": "c1",
       "statement": "The page asks the runtime to select the correct Open docs link.",
       "support": ["b3", "b5", "b7"],
-      "confidence": 0.81,
+      "supportScore": 0.81,
       "citation": {
         "url": "fixture://research/navigation/browser-follow-duplicate",
         "retrievedAt": "2026-03-14T00:00:00+09:00",
@@ -27,7 +27,7 @@
       "claimId": "c2",
       "statement": "Current docs",
       "support": ["b6", "b3", "b4"],
-      "confidence": 0.92,
+      "supportScore": 0.92,
       "citation": {
         "url": "fixture://research/navigation/browser-follow-duplicate",
         "retrievedAt": "2026-03-14T00:00:00+09:00",
@@ -37,12 +37,12 @@
       }
     }
   ],
-  "unsupportedClaims": [
+  "insufficientEvidenceClaims": [
     {
       "version": "1.0.0",
       "claimId": "c3",
       "statement": "The page contains a pricing calculator.",
-      "reason": "insufficient-confidence",
+      "reason": "insufficient-support-score",
       "checkedBlockRefs": [
         "rmain:text:follow-content",
         "rmain:heading:browser-follow-duplicate",

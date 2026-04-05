@@ -7,13 +7,13 @@
     "sourceRisk": "low",
     "sourceLabel": "Citation-heavy pricing page"
   },
-  "supportedClaims": [
+  "evidenceSupportedClaims": [
     {
       "version": "1.0.0",
       "claimId": "c1",
       "statement": "The Starter plan costs $29 per month.",
       "support": ["b4", "b3"],
-      "confidence": 0.85,
+      "supportScore": 0.85,
       "citation": {
         "url": "fixture://research/citation-heavy/pricing",
         "retrievedAt": "2026-03-14T00:00:00+09:00",
@@ -27,7 +27,7 @@
       "claimId": "c2",
       "statement": "All plans include citation-ready evidence blocks.",
       "support": ["b5"],
-      "confidence": 0.93,
+      "supportScore": 0.93,
       "citation": {
         "url": "fixture://research/citation-heavy/pricing",
         "retrievedAt": "2026-03-14T00:00:00+09:00",
@@ -37,12 +37,12 @@
       }
     }
   ],
-  "unsupportedClaims": [
+  "insufficientEvidenceClaims": [
     {
       "version": "1.0.0",
       "claimId": "c3",
       "statement": "There is an Enterprise plan.",
-      "reason": "insufficient-confidence",
+      "reason": "insufficient-support-score",
       "checkedBlockRefs": [
         "rmain:table:plan-monthly-price-snapshots-starter-29-10-000-t",
         "rmain:text:touch-browser-offers-starter-and-team-plans-bill",
