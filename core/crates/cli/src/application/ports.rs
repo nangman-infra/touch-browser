@@ -5,7 +5,15 @@ use std::{
 
 use touch_browser_acquisition::AcquisitionEngine;
 
-use crate::*;
+use crate::{
+    BrowserActionSource, BrowserActionTraceEntry, BrowserCliSession, BrowserOrigin,
+    BrowserSessionContext, CliError, FixtureCatalog, PersistedBrowserState, PlaywrightClickParams,
+    PlaywrightClickResult, PlaywrightExpandParams, PlaywrightExpandResult, PlaywrightFollowParams,
+    PlaywrightFollowResult, PlaywrightPaginateParams, PlaywrightPaginateResult,
+    PlaywrightSnapshotParams, PlaywrightSnapshotResult, PlaywrightSubmitParams,
+    PlaywrightSubmitResult, PlaywrightTypeParams, PlaywrightTypePrefill, PlaywrightTypeResult,
+    ReadOnlySession, SearchReport, SecretPrefill, SnapshotDocument, SourceRisk,
+};
 
 pub(crate) trait SessionStorePort {
     fn save_session(&self, path: &Path, persisted: &BrowserCliSession) -> Result<(), CliError>;

@@ -1,7 +1,7 @@
 use std::sync::OnceLock;
 
 use super::ports::{default_cli_ports, CliPorts};
-use crate::*;
+use crate::{PolicyKernel, ReadOnlyActionVm, ReadOnlyRuntime};
 
 #[derive(Clone, Copy)]
 pub(crate) struct CliAppContext<'a> {

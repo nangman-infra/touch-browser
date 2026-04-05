@@ -1,9 +1,12 @@
 use std::io::{self, BufRead, Write};
 
 use serde::Deserialize;
-use serde_json::{json, Value};
+use serde_json::Value;
 
-use crate::*;
+use crate::{
+    dispatch, log_telemetry_error, log_telemetry_success, telemetry_surface_label, CliCommand,
+    CliError, TelemetryRecentOptions,
+};
 
 #[path = "serve_runtime/daemon_state.rs"]
 mod daemon_state;
@@ -11,6 +14,8 @@ mod daemon_state;
 mod interaction_handlers;
 #[path = "serve_runtime/params.rs"]
 mod params;
+#[path = "serve_runtime/presenters.rs"]
+mod presenters;
 #[path = "serve_runtime/search_handlers.rs"]
 mod search_handlers;
 #[path = "serve_runtime/session_handlers.rs"]
@@ -19,6 +24,48 @@ mod session_handlers;
 mod tab_handlers;
 
 use daemon_state::ServeDaemonState;
+
+const SERVE_METHODS: &[&str] = &[
+    "runtime.status",
+    "runtime.open",
+    "runtime.readView",
+    "runtime.extract",
+    "runtime.policy",
+    "runtime.compactView",
+    "runtime.search",
+    "runtime.search.openResult",
+    "runtime.search.openTop",
+    "runtime.session.create",
+    "runtime.session.open",
+    "runtime.session.snapshot",
+    "runtime.session.compactView",
+    "runtime.session.readView",
+    "runtime.session.refresh",
+    "runtime.session.extract",
+    "runtime.session.checkpoint",
+    "runtime.session.policy",
+    "runtime.session.profile.get",
+    "runtime.session.profile.set",
+    "runtime.session.synthesize",
+    "runtime.session.approve",
+    "runtime.session.follow",
+    "runtime.session.click",
+    "runtime.session.type",
+    "runtime.session.typeSecret",
+    "runtime.session.submit",
+    "runtime.session.secret.store",
+    "runtime.session.secret.clear",
+    "runtime.session.paginate",
+    "runtime.session.expand",
+    "runtime.session.replay",
+    "runtime.session.close",
+    "runtime.telemetry.summary",
+    "runtime.telemetry.recent",
+    "runtime.tab.open",
+    "runtime.tab.list",
+    "runtime.tab.select",
+    "runtime.tab.close",
+];
 
 #[derive(Debug, Deserialize)]
 #[serde(rename_all = "camelCase")]
@@ -46,7 +93,7 @@ pub(crate) fn handle_serve() -> Result<(), CliError> {
 
             let response = match serde_json::from_str::<ServeJsonRpcRequest>(trimmed) {
                 Ok(request) => serve_dispatch(request, &mut daemon_state),
-                Err(error) => serve_error(
+                Err(error) => presenters::present_json_rpc_error(
                     Value::Null,
                     -32700,
                     format!("Invalid JSON-RPC request: {error}"),
@@ -79,53 +126,7 @@ fn serve_dispatch(request: ServeJsonRpcRequest, daemon_state: &mut ServeDaemonSt
     } = request;
 
     let result = match method.as_str() {
-        "runtime.status" => Ok(json!({
-            "status": "ready",
-            "transport": "stdio-json-rpc",
-            "version": CONTRACT_VERSION,
-            "daemon": true,
-            "methods": [
-                "runtime.status",
-                "runtime.open",
-                "runtime.readView",
-                "runtime.extract",
-                "runtime.policy",
-                "runtime.compactView",
-                "runtime.search",
-                "runtime.search.openResult",
-                "runtime.search.openTop",
-                "runtime.session.create",
-                "runtime.session.open",
-                "runtime.session.snapshot",
-                "runtime.session.compactView",
-                "runtime.session.readView",
-                "runtime.session.refresh",
-                "runtime.session.extract",
-                "runtime.session.checkpoint",
-                "runtime.session.policy",
-                "runtime.session.profile.get",
-                "runtime.session.profile.set",
-                "runtime.session.synthesize",
-                "runtime.session.approve",
-                "runtime.session.follow",
-                "runtime.session.click",
-                "runtime.session.type",
-                "runtime.session.typeSecret",
-                "runtime.session.submit",
-                "runtime.session.secret.store",
-                "runtime.session.secret.clear",
-                "runtime.session.paginate",
-                "runtime.session.expand",
-                "runtime.session.replay",
-                "runtime.session.close",
-                "runtime.telemetry.summary",
-                "runtime.telemetry.recent",
-                "runtime.tab.open",
-                "runtime.tab.list",
-                "runtime.tab.select",
-                "runtime.tab.close"
-            ]
-        })),
+        "runtime.status" => presenters::present_runtime_status(SERVE_METHODS),
         "runtime.open" => params::json_target_options(&params)
             .and_then(|options| dispatch(CliCommand::Open(options))),
         "runtime.readView" => params::json_target_options(&params)
@@ -225,7 +226,7 @@ fn serve_dispatch(request: ServeJsonRpcRequest, daemon_state: &mut ServeDaemonSt
         Ok(result) => {
             let _ =
                 log_telemetry_success(&telemetry_surface_label("serve"), &method, &result, &params);
-            serve_result(id, result)
+            presenters::present_json_rpc_result(id, result)
         }
         Err(error) => {
             let _ = log_telemetry_error(
@@ -235,26 +236,7 @@ fn serve_dispatch(request: ServeJsonRpcRequest, daemon_state: &mut ServeDaemonSt
                 params.get("sessionId").and_then(Value::as_str),
                 &params,
             );
-            serve_error(id, -32602, error.to_string())
+            presenters::present_json_rpc_error(id, -32602, error.to_string())
         }
     }
-}
-
-pub(crate) fn serve_result(id: Value, result: Value) -> Value {
-    json!({
-        "jsonrpc": "2.0",
-        "id": id,
-        "result": result
-    })
-}
-
-pub(crate) fn serve_error(id: Value, code: i64, message: String) -> Value {
-    json!({
-        "jsonrpc": "2.0",
-        "id": id,
-        "error": {
-            "code": code,
-            "message": message
-        }
-    })
 }

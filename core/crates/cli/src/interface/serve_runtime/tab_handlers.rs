@@ -1,12 +1,13 @@
-use serde_json::{json, Value};
+use serde_json::Value;
 
-use crate::*;
+use crate::{parse_source_risk, CliError, DEFAULT_REQUESTED_TOKENS};
 
 use super::{
     daemon_state::ServeDaemonState,
     params::{
         json_bool, json_string_array, json_usize, optional_json_string, required_json_string,
     },
+    presenters,
     session_handlers::{serve_session_open_internal, ServeSessionOpenRequest},
 };
 
@@ -43,11 +44,8 @@ pub(crate) fn serve_tab_open(
         );
     }
 
-    Ok(json!({
-        "sessionId": session_id,
-        "activeTabId": tab_id,
-        "tab": daemon_state.tab_summary(&session_id, &tab_id)?,
-    }))
+    let tab = daemon_state.tab_summary(&session_id, &tab_id)?;
+    presenters::present_tab_open(session_id, tab_id, tab)
 }
 
 pub(crate) fn serve_tab_list(
@@ -61,11 +59,7 @@ pub(crate) fn serve_tab_list(
         .keys()
         .map(|tab_id| daemon_state.tab_summary(&session_id, tab_id))
         .collect::<Result<Vec<_>, _>>()?;
-    Ok(json!({
-        "sessionId": session_id,
-        "activeTabId": session.active_tab_id,
-        "tabs": tabs,
-    }))
+    presenters::present_tab_list(session_id, session.active_tab_id.clone(), tabs)
 }
 
 pub(crate) fn serve_tab_select(
@@ -75,11 +69,8 @@ pub(crate) fn serve_tab_select(
     let session_id = required_json_string(params, "sessionId")?;
     let tab_id = required_json_string(params, "tabId")?;
     daemon_state.select_tab(&session_id, &tab_id)?;
-    Ok(json!({
-        "sessionId": session_id,
-        "activeTabId": tab_id.clone(),
-        "tab": daemon_state.tab_summary(&session_id, &tab_id)?,
-    }))
+    let tab = daemon_state.tab_summary(&session_id, &tab_id)?;
+    presenters::present_tab_select(session_id, tab_id, tab)
 }
 
 pub(crate) fn serve_tab_close(

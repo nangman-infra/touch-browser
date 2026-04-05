@@ -5,9 +5,14 @@ use std::{
     time::{SystemTime, UNIX_EPOCH},
 };
 
-use serde_json::{json, Value};
+use serde_json::Value;
 
-use crate::*;
+use crate::{
+    browser_context_dir_for_session_file, dispatch, load_browser_cli_session, AckRisk, CliCommand,
+    CliError, SessionFileOptions,
+};
+
+use super::presenters;
 
 #[derive(Debug)]
 pub(crate) struct ServeDaemonState {
@@ -227,17 +232,17 @@ impl ServeDaemonState {
             .map(|report| report.result_count)
             .unwrap_or(0);
 
-        Ok(json!({
-            "tabId": tab_id,
-            "active": session.active_tab_id.as_deref() == Some(tab_id),
-            "sessionFile": tab.session_file.display().to_string(),
-            "hasState": persisted.is_some(),
-            "currentUrl": current_url,
-            "visitedUrlCount": visited_url_count,
-            "snapshotCount": snapshot_count,
-            "latestSearchQuery": latest_search_query,
-            "latestSearchResultCount": latest_search_result_count,
-        }))
+        presenters::present_tab_summary(
+            tab_id,
+            session.active_tab_id.as_deref() == Some(tab_id),
+            tab.session_file.display().to_string(),
+            persisted.is_some(),
+            current_url,
+            visited_url_count,
+            snapshot_count,
+            latest_search_query,
+            latest_search_result_count,
+        )
     }
 
     pub(crate) fn close_tab(&mut self, session_id: &str, tab_id: &str) -> Result<Value, CliError> {
@@ -271,14 +276,13 @@ impl ServeDaemonState {
             session.active_tab_id = session.tabs.keys().next().cloned();
         }
 
-        Ok(json!({
-            "sessionId": session_id,
-            "tabId": tab_id,
-            "removed": true,
-            "removedState": removed_state,
-            "activeTabId": session.active_tab_id,
-            "remainingTabCount": session.tabs.len(),
-        }))
+        presenters::present_tab_close(
+            session_id,
+            tab_id,
+            removed_state,
+            session.active_tab_id.clone(),
+            session.tabs.len(),
+        )
     }
 
     pub(crate) fn close_session(&mut self, session_id: &str) -> Result<Value, CliError> {
@@ -301,10 +305,6 @@ impl ServeDaemonState {
             fs::remove_dir_all(session_dir)?;
         }
 
-        Ok(json!({
-            "sessionId": session_id,
-            "removed": true,
-            "removedTabs": removed_tabs,
-        }))
+        presenters::present_session_close(session_id, removed_tabs)
     }
 }

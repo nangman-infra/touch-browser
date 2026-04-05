@@ -1,8 +1,17 @@
 use std::collections::{BTreeMap, BTreeSet};
 
-use serde_json::{json, Value};
+use serde_json::Value;
 
-use crate::*;
+use crate::{
+    approved_risk_labels, dispatch, load_browser_cli_session, parse_output_format,
+    parse_policy_profile, parse_source_risk, policy_profile_label,
+    promoted_policy_profile_for_risks, render_session_synthesis_markdown, save_browser_cli_session,
+    CliCommand, CliError, EvidenceCitation, OutputFormat, PolicyProfile, ReadOnlyRuntime,
+    SessionExtractOptions, SessionFileOptions, SessionProfileSetOptions, SessionReadOptions,
+    SessionRefreshOptions, SessionSynthesisClaim, SessionSynthesisClaimStatus,
+    SessionSynthesisReport, SourceRisk, TargetOptions, CONTRACT_VERSION, DEFAULT_OPENED_AT,
+    DEFAULT_REQUESTED_TOKENS,
+};
 
 use super::{
     daemon_state::ServeDaemonState,
@@ -10,6 +19,7 @@ use super::{
         json_ack_risks, json_bool, json_string_array, json_usize, optional_json_string,
         required_json_string,
     },
+    presenters,
 };
 
 #[derive(Debug, Clone)]
@@ -33,13 +43,7 @@ pub(crate) fn serve_session_create(
     let allowlisted_domains = json_string_array(params, "allowDomains")?;
     let (session_id, active_tab_id) =
         daemon_state.create_session(headless, allowlisted_domains.clone())?;
-    Ok(json!({
-        "sessionId": session_id,
-        "activeTabId": active_tab_id,
-        "headless": headless,
-        "allowDomains": allowlisted_domains,
-        "tabCount": 1,
-    }))
+    presenters::present_session_created(session_id, active_tab_id, headless, allowlisted_domains, 1)
 }
 
 pub(crate) fn serve_session_open(
@@ -85,11 +89,7 @@ pub(crate) fn serve_session_snapshot(
     let result = dispatch(CliCommand::SessionSnapshot(SessionFileOptions {
         session_file,
     }))?;
-    Ok(json!({
-        "sessionId": session_id,
-        "tabId": resolved_tab_id,
-        "result": result,
-    }))
+    presenters::present_session_tab_result(session_id, resolved_tab_id, result)
 }
 
 pub(crate) fn serve_session_compact_view(
@@ -103,11 +103,7 @@ pub(crate) fn serve_session_compact_view(
     let result = dispatch(CliCommand::SessionCompact(SessionFileOptions {
         session_file,
     }))?;
-    Ok(json!({
-        "sessionId": session_id,
-        "tabId": resolved_tab_id,
-        "result": result,
-    }))
+    presenters::present_session_tab_result(session_id, resolved_tab_id, result)
 }
 
 pub(crate) fn serve_session_read_view(
@@ -123,11 +119,7 @@ pub(crate) fn serve_session_read_view(
         session_file,
         main_only,
     }))?;
-    Ok(json!({
-        "sessionId": session_id,
-        "tabId": resolved_tab_id,
-        "result": result,
-    }))
+    presenters::present_session_tab_result(session_id, resolved_tab_id, result)
 }
 
 pub(crate) fn serve_session_refresh(
@@ -143,11 +135,7 @@ pub(crate) fn serve_session_refresh(
         session_file,
         headed,
     }))?;
-    Ok(json!({
-        "sessionId": session_id,
-        "tabId": resolved_tab_id,
-        "result": result,
-    }))
+    presenters::present_session_tab_result(session_id, resolved_tab_id, result)
 }
 
 pub(crate) fn serve_session_extract(
@@ -171,11 +159,7 @@ pub(crate) fn serve_session_extract(
         claims,
         verifier_command,
     }))?;
-    Ok(json!({
-        "sessionId": session_id,
-        "tabId": resolved_tab_id,
-        "result": result,
-    }))
+    presenters::present_session_tab_result(session_id, resolved_tab_id, result)
 }
 
 pub(crate) fn serve_session_policy(
@@ -189,11 +173,7 @@ pub(crate) fn serve_session_policy(
     let result = dispatch(CliCommand::SessionPolicy(SessionFileOptions {
         session_file,
     }))?;
-    Ok(json!({
-        "sessionId": session_id,
-        "tabId": resolved_tab_id,
-        "result": result,
-    }))
+    presenters::present_session_tab_result(session_id, resolved_tab_id, result)
 }
 
 pub(crate) fn serve_session_profile_get(
@@ -207,11 +187,7 @@ pub(crate) fn serve_session_profile_get(
     let result = dispatch(CliCommand::SessionProfile(SessionFileOptions {
         session_file,
     }))?;
-    Ok(json!({
-        "sessionId": session_id,
-        "tabId": resolved_tab_id,
-        "result": result,
-    }))
+    presenters::present_session_tab_result(session_id, resolved_tab_id, result)
 }
 
 pub(crate) fn serve_session_profile_set(
@@ -228,11 +204,7 @@ pub(crate) fn serve_session_profile_set(
         session_file,
         profile,
     }))?;
-    Ok(json!({
-        "sessionId": session_id,
-        "tabId": resolved_tab_id,
-        "result": result,
-    }))
+    presenters::present_session_tab_result(session_id, resolved_tab_id, result)
 }
 
 pub(crate) fn serve_session_checkpoint(
@@ -250,16 +222,12 @@ pub(crate) fn serve_session_checkpoint(
         let session = daemon_state.session(&session_id)?;
         approved_risk_labels(&session.approved_risks)
     };
-    result["checkpoint"]["approvedRisks"] = json!(approved_risks);
+    result["checkpoint"]["approvedRisks"] = Value::from(approved_risks);
     result["checkpoint"]["approvalPanel"]["approvedRisks"] =
         result["checkpoint"]["approvedRisks"].clone();
     result["checkpoint"]["playbook"]["approvedRisks"] =
         result["checkpoint"]["approvedRisks"].clone();
-    Ok(json!({
-        "sessionId": session_id,
-        "tabId": resolved_tab_id,
-        "result": result,
-    }))
+    presenters::present_session_tab_result(session_id, resolved_tab_id, result)
 }
 
 pub(crate) fn serve_session_synthesize(
@@ -297,25 +265,15 @@ pub(crate) fn serve_session_synthesize(
     }
 
     let report = combine_session_synthesis_reports(&session_id, note_limit, &tab_reports);
-    let tab_reports_json = tab_reports
-        .into_iter()
-        .map(|(tab_id, report)| {
-            json!({
-                "tabId": tab_id,
-                "report": report,
-            })
-        })
-        .collect::<Vec<_>>();
-
-    Ok(json!({
-        "sessionId": session_id,
-        "activeTabId": session.active_tab_id,
-        "tabCount": session.tabs.len(),
-        "format": format,
-        "markdown": (format == OutputFormat::Markdown).then(|| render_session_synthesis_markdown(&report)),
-        "report": report,
-        "tabReports": tab_reports_json,
-    }))
+    presenters::present_session_synthesize(
+        session_id,
+        session.active_tab_id.clone(),
+        session.tabs.len(),
+        format,
+        (format == OutputFormat::Markdown).then(|| render_session_synthesis_markdown(&report)),
+        report,
+        tab_reports,
+    )
 }
 
 pub(crate) fn serve_session_approve(
@@ -347,11 +305,11 @@ pub(crate) fn serve_session_approve(
         save_browser_cli_session(&tab.session_file, &persisted)?;
     }
 
-    Ok(json!({
-        "sessionId": session_id,
-        "approvedRisks": approved_risk_labels(&session.approved_risks),
-        "policyProfile": policy_profile_label(promoted_profile),
-    }))
+    presenters::present_session_approved(
+        session_id,
+        approved_risk_labels(&session.approved_risks),
+        policy_profile_label(promoted_profile),
+    )
 }
 
 pub(crate) fn serve_session_replay(
@@ -365,11 +323,7 @@ pub(crate) fn serve_session_replay(
     let result = dispatch(CliCommand::BrowserReplay(SessionFileOptions {
         session_file,
     }))?;
-    Ok(json!({
-        "sessionId": session_id,
-        "tabId": resolved_tab_id,
-        "result": result,
-    }))
+    presenters::present_session_tab_result(session_id, resolved_tab_id, result)
 }
 
 pub(crate) fn serve_session_close(
@@ -438,11 +392,7 @@ pub(crate) fn serve_session_open_internal(
         session_file: Some(session_file),
     }))?;
 
-    Ok(json!({
-        "sessionId": session_id,
-        "tabId": resolved_tab_id,
-        "result": result,
-    }))
+    presenters::present_session_tab_result(session_id, resolved_tab_id, result)
 }
 
 fn combine_session_synthesis_reports(

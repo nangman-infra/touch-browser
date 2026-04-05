@@ -1,10 +1,14 @@
-use serde_json::{json, Value};
+use serde_json::Value;
 
-use crate::*;
+use crate::{
+    dispatch, load_browser_cli_session, parse_search_engine, CliCommand, CliError, SearchEngine,
+    SearchOptions, SearchReportStatus, SourceRisk, DEFAULT_REQUESTED_TOKENS, DEFAULT_SEARCH_TOKENS,
+};
 
 use super::{
     daemon_state::ServeDaemonState,
     params::{json_bool, json_usize, optional_json_string, required_json_string},
+    presenters,
     session_handlers::{serve_session_open_internal, ServeSessionOpenRequest},
 };
 
@@ -46,11 +50,7 @@ pub(crate) fn serve_search(
         profile_dir: None,
         session_file: Some(session_file),
     }))?;
-    Ok(json!({
-        "sessionId": session_id,
-        "tabId": resolved_tab_id,
-        "result": result,
-    }))
+    presenters::present_session_tab_result(session_id, resolved_tab_id, result)
 }
 
 pub(crate) fn serve_search_open_result(
@@ -108,14 +108,14 @@ pub(crate) fn serve_search_open_result(
         },
     )?;
 
-    Ok(json!({
-        "sessionId": session_id,
-        "searchTabId": resolved_search_tab_id,
-        "openedTabId": target_tab_id,
-        "selectionStrategy": selection_strategy,
-        "selectedResult": selected,
-        "result": open_result,
-    }))
+    presenters::present_search_open_result(
+        session_id,
+        resolved_search_tab_id,
+        target_tab_id,
+        selection_strategy,
+        selected,
+        open_result,
+    )
 }
 
 pub(crate) fn serve_search_open_top(
@@ -184,17 +184,8 @@ pub(crate) fn serve_search_open_top(
                 browser: true,
             },
         )?;
-        opened_tabs.push(json!({
-            "tabId": tab_id,
-            "selectedResult": selected,
-            "result": open_result,
-        }));
+        opened_tabs.push((tab_id, selected, open_result));
     }
 
-    Ok(json!({
-        "sessionId": session_id,
-        "searchTabId": resolved_search_tab_id,
-        "openedCount": opened_tabs.len(),
-        "openedTabs": opened_tabs,
-    }))
+    presenters::present_search_open_top(session_id, resolved_search_tab_id, opened_tabs)
 }

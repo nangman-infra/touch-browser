@@ -1,10 +1,14 @@
-use serde_json::{json, Value};
+use serde_json::Value;
 
-use crate::*;
+use crate::{
+    dispatch, merge_ack_risks, AckRisk, CliCommand, CliError, ClickOptions, ExpandOptions,
+    FollowOptions, PaginateOptions, PaginationDirection, SecretPrefill, SubmitOptions, TypeOptions,
+};
 
 use super::{
     daemon_state::ServeDaemonState,
     params::{json_ack_risks, json_bool, optional_json_string, required_json_string},
+    presenters,
 };
 
 #[derive(Debug)]
@@ -26,7 +30,7 @@ pub(crate) fn serve_session_follow(
         target_ref,
         headed,
     }))?;
-    Ok(serve_tab_result(context, result))
+    presenters::present_session_tab_result(context.session_id, context.tab_id, result)
 }
 
 pub(crate) fn serve_session_click(
@@ -45,7 +49,7 @@ pub(crate) fn serve_session_click(
         headed,
         ack_risks: merged_ack_risks,
     }))?;
-    Ok(serve_tab_result(context, result))
+    presenters::present_session_tab_result(context.session_id, context.tab_id, result)
 }
 
 pub(crate) fn serve_session_type(
@@ -74,7 +78,7 @@ pub(crate) fn serve_session_type(
         sensitive,
         ack_risks: merged_ack_risks,
     }))?;
-    Ok(serve_tab_result(context, result))
+    presenters::present_session_tab_result(context.session_id, context.tab_id, result)
 }
 
 pub(crate) fn serve_session_type_secret(
@@ -96,7 +100,7 @@ pub(crate) fn serve_session_type_secret(
         sensitive: true,
         ack_risks: merged_ack_risks,
     }))?;
-    Ok(serve_tab_result(context, result))
+    presenters::present_session_tab_result(context.session_id, context.tab_id, result)
 }
 
 pub(crate) fn serve_session_submit(
@@ -117,7 +121,7 @@ pub(crate) fn serve_session_submit(
         ack_risks: merged_ack_risks,
         extra_prefill,
     }))?;
-    Ok(serve_tab_result(context, result))
+    presenters::present_session_tab_result(context.session_id, context.tab_id, result)
 }
 
 pub(crate) fn serve_session_secret_store(
@@ -129,12 +133,7 @@ pub(crate) fn serve_session_secret_store(
     let value = required_json_string(params, "value")?;
     let session = daemon_state.session_mut(&session_id)?;
     session.secret_prefills.insert(target_ref.clone(), value);
-    Ok(json!({
-        "sessionId": session_id,
-        "stored": true,
-        "targetRef": target_ref,
-        "secretCount": session.secret_prefills.len(),
-    }))
+    presenters::present_secret_store(session_id, target_ref, session.secret_prefills.len())
 }
 
 pub(crate) fn serve_session_secret_clear(
@@ -152,11 +151,7 @@ pub(crate) fn serve_session_secret_clear(
             had_any
         }
     };
-    Ok(json!({
-        "sessionId": session_id,
-        "removed": removed,
-        "secretCount": session.secret_prefills.len(),
-    }))
+    presenters::present_secret_clear(session_id, removed, session.secret_prefills.len())
 }
 
 pub(crate) fn serve_session_paginate(
@@ -179,7 +174,7 @@ pub(crate) fn serve_session_paginate(
         direction,
         headed,
     }))?;
-    Ok(serve_tab_result(context, result))
+    presenters::present_session_tab_result(context.session_id, context.tab_id, result)
 }
 
 pub(crate) fn serve_session_expand(
@@ -194,7 +189,7 @@ pub(crate) fn serve_session_expand(
         target_ref,
         headed,
     }))?;
-    Ok(serve_tab_result(context, result))
+    presenters::present_session_tab_result(context.session_id, context.tab_id, result)
 }
 
 fn resolve_serve_tab_context(
@@ -209,14 +204,6 @@ fn resolve_serve_tab_context(
         session_id,
         tab_id: resolved_tab_id,
         session_file,
-    })
-}
-
-fn serve_tab_result(context: ServeTabCommandContext, result: Value) -> Value {
-    json!({
-        "sessionId": context.session_id,
-        "tabId": context.tab_id,
-        "result": result,
     })
 }
 
