@@ -1,4 +1,9 @@
 import {
+  claimOutcomeForStatement,
+  evidenceSupportedClaims,
+  insufficientEvidenceClaims,
+} from "./lib/evidence-report.mjs";
+import {
   closeSessionQuietly,
   createWorkflowClient,
   initializeWorkflowClient,
@@ -293,14 +298,13 @@ function summarizeTaskProof({
   closed,
 }) {
   const normalized = extracts.map((entry) => {
-    const evidenceSupportedClaims =
-      entry.extract?.evidenceSupportedClaims ?? [];
-    const insufficientEvidenceClaims =
-      entry.extract?.insufficientEvidenceClaims ?? [];
-    const matchedSupportedClaim = evidenceSupportedClaims.find(
+    const supportedClaims = evidenceSupportedClaims(entry.extract);
+    const unresolvedClaims = insufficientEvidenceClaims(entry.extract);
+    const matchedOutcome = claimOutcomeForStatement(entry.extract, entry.claim);
+    const matchedSupportedClaim = supportedClaims.find(
       (claim) => claim.statement === entry.claim,
     );
-    const matchedUnsupportedClaim = insufficientEvidenceClaims.find(
+    const matchedUnsupportedClaim = unresolvedClaims.find(
       (claim) => claim.statement === entry.claim,
     );
 
@@ -310,9 +314,11 @@ function summarizeTaskProof({
       tabId: entry.tabId,
       status: matchedSupportedClaim
         ? "supported"
-        : matchedUnsupportedClaim
-          ? "unsupported"
-          : "unknown",
+        : matchedOutcome
+          ? matchedOutcome.verdict
+          : matchedUnsupportedClaim
+            ? "insufficient-evidence"
+            : "unknown",
       citationCount: matchedSupportedClaim?.citations
         ? matchedSupportedClaim.citations.length
         : matchedSupportedClaim?.citation
@@ -383,8 +389,11 @@ function summarizeExtractResult(extract) {
   return {
     status: extract?.result?.status ?? null,
     sourceUrl: report?.source?.sourceUrl ?? null,
-    evidenceSupportedClaims: report.evidenceSupportedClaims ?? [],
-    insufficientEvidenceClaims: report.insufficientEvidenceClaims ?? [],
+    evidenceSupportedClaims: evidenceSupportedClaims(report),
+    insufficientEvidenceClaims: insufficientEvidenceClaims(report),
+    contradictedClaims: report.contradictedClaims ?? [],
+    needsMoreBrowsingClaims: report.needsMoreBrowsingClaims ?? [],
+    claimOutcomes: report.claimOutcomes ?? [],
   };
 }
 
@@ -410,6 +419,8 @@ function summarizeSynthesisResult(synthesis) {
     evidenceSupportedClaims: synthesis?.report?.evidenceSupportedClaims ?? [],
     insufficientEvidenceClaims:
       synthesis?.report?.insufficientEvidenceClaims ?? [],
+    contradictedClaims: synthesis?.report?.contradictedClaims ?? [],
+    needsMoreBrowsingClaims: synthesis?.report?.needsMoreBrowsingClaims ?? [],
   };
 }
 

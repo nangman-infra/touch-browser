@@ -12,7 +12,7 @@
       "version": "1.0.0",
       "claimId": "c1",
       "statement": "Touch Browser compiles web pages into semantic state for research agents.",
-      "support": ["b6"],
+      "support": ["b6", "b8"],
       "supportScore": 0.93,
       "citation": {
         "url": "fixture://research/static-docs/getting-started",
@@ -42,6 +42,60 @@
       "version": "1.0.0",
       "claimId": "c3",
       "statement": "Touch Browser includes a built-in checkout flow.",
+      "reason": "insufficient-support-score",
+      "checkedBlockRefs": [
+        "rmain:list:1-install-the-runtime-2-open-a-research-url-3-ca",
+        "rmain:text:touch-browser-compiles-web-pages-into-semantic-s",
+        "rnav:link:docs"
+      ]
+    }
+  ],
+  "claimOutcomes": [
+    {
+      "version": "1.0.0",
+      "claimId": "c1",
+      "statement": "Touch Browser compiles web pages into semantic state for research agents.",
+      "verdict": "evidence-supported",
+      "support": ["b6", "b8"],
+      "supportScore": 0.93,
+      "citation": {
+        "url": "fixture://research/static-docs/getting-started",
+        "retrievedAt": "2026-03-14T00:00:00+09:00",
+        "sourceType": "fixture",
+        "sourceRisk": "low",
+        "sourceLabel": "Static docs getting started page"
+      },
+      "checkedBlockRefs": [
+        "rmain:text:touch-browser-compiles-web-pages-into-semantic-s",
+        "rmain:list:1-install-the-runtime-2-open-a-research-url-3-ca",
+        "rnav:link:docs"
+      ]
+    },
+    {
+      "version": "1.0.0",
+      "claimId": "c2",
+      "statement": "Quickstart includes opening a research URL.",
+      "verdict": "evidence-supported",
+      "support": ["b8"],
+      "supportScore": 0.8,
+      "citation": {
+        "url": "fixture://research/static-docs/getting-started",
+        "retrievedAt": "2026-03-14T00:00:00+09:00",
+        "sourceType": "fixture",
+        "sourceRisk": "low",
+        "sourceLabel": "Static docs getting started page"
+      },
+      "checkedBlockRefs": [
+        "rmain:list:1-install-the-runtime-2-open-a-research-url-3-ca",
+        "rmain:text:touch-browser-compiles-web-pages-into-semantic-s",
+        "rmain:heading:quickstart"
+      ]
+    },
+    {
+      "version": "1.0.0",
+      "claimId": "c3",
+      "statement": "Touch Browser includes a built-in checkout flow.",
+      "verdict": "insufficient-evidence",
       "reason": "insufficient-support-score",
       "checkedBlockRefs": [
         "rmain:list:1-install-the-runtime-2-open-a-research-url-3-ca",

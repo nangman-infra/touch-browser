@@ -26,7 +26,7 @@
       "version": "1.0.0",
       "claimId": "c2",
       "statement": "Snapshot responses include stable refs and evidence metadata.",
-      "support": ["b8"],
+      "support": ["b8", "b10"],
       "supportScore": 0.93,
       "citation": {
         "url": "fixture://research/navigation/api-reference",
@@ -47,7 +47,76 @@
         "rmain:heading:overview",
         "rhead:metadata:api-reference",
         "rmain:text:the-runtime-exposes-open-snapshot-extract-diff-c"
+      ],
+      "guardFailures": [
+        {
+          "kind": "anchor-coverage",
+          "detail": "anchor coverage 0.25 is below required 0.60"
+        }
+      ],
+      "nextActionHint": "Browse a more specific source page before answering."
+    }
+  ],
+  "claimOutcomes": [
+    {
+      "version": "1.0.0",
+      "claimId": "c1",
+      "statement": "The runtime exposes open, snapshot, extract, diff, compact, and replay commands.",
+      "verdict": "evidence-supported",
+      "support": ["b6"],
+      "supportScore": 0.93,
+      "citation": {
+        "url": "fixture://research/navigation/api-reference",
+        "retrievedAt": "2026-03-14T00:00:00+09:00",
+        "sourceType": "fixture",
+        "sourceRisk": "low",
+        "sourceLabel": "Navigation-heavy API reference page"
+      },
+      "checkedBlockRefs": [
+        "rmain:text:the-runtime-exposes-open-snapshot-extract-diff-c",
+        "rmain:text:snapshot-responses-include-stable-refs-and-evide",
+        "rmain:text:evidence-blocks-must-point-back-to-the-supportin"
       ]
+    },
+    {
+      "version": "1.0.0",
+      "claimId": "c2",
+      "statement": "Snapshot responses include stable refs and evidence metadata.",
+      "verdict": "evidence-supported",
+      "support": ["b8", "b10"],
+      "supportScore": 0.93,
+      "citation": {
+        "url": "fixture://research/navigation/api-reference",
+        "retrievedAt": "2026-03-14T00:00:00+09:00",
+        "sourceType": "fixture",
+        "sourceRisk": "low",
+        "sourceLabel": "Navigation-heavy API reference page"
+      },
+      "checkedBlockRefs": [
+        "rmain:text:snapshot-responses-include-stable-refs-and-evide",
+        "rmain:text:evidence-blocks-must-point-back-to-the-supportin",
+        "rmain:text:the-runtime-exposes-open-snapshot-extract-diff-c"
+      ]
+    },
+    {
+      "version": "1.0.0",
+      "claimId": "c3",
+      "statement": "The API reference documents a purchase command.",
+      "verdict": "insufficient-evidence",
+      "support": ["b5", "b1"],
+      "reason": "insufficient-support-score",
+      "checkedBlockRefs": [
+        "rmain:heading:overview",
+        "rhead:metadata:api-reference",
+        "rmain:text:the-runtime-exposes-open-snapshot-extract-diff-c"
+      ],
+      "guardFailures": [
+        {
+          "kind": "anchor-coverage",
+          "detail": "anchor coverage 0.25 is below required 0.60"
+        }
+      ],
+      "nextActionHint": "Browse a more specific source page before answering."
     }
   ]
 }

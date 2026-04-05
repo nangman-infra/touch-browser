@@ -1,3 +1,7 @@
+import {
+  evidenceSupportedClaims,
+  claimOutcomes as getClaimOutcomes,
+} from "./lib/evidence-report.mjs";
 import { roundTo } from "./lib/live-sample-server.mjs";
 import {
   readRepoJson,
@@ -167,18 +171,15 @@ function summarizeExtractBackedTask(synthesizedNotes, extractRecords) {
     .map((record) => record?.result?.extract ?? record?.extract ?? null)
     .filter(Boolean);
   const extractedClaimCount = normalizedExtracts.reduce((sum, extract) => {
-    const evidenceSupportedClaims =
-      extract?.output?.evidenceSupportedClaims ?? [];
-    const insufficientEvidenceClaims =
-      extract?.output?.insufficientEvidenceClaims ?? [];
-    return (
-      sum + evidenceSupportedClaims.length + insufficientEvidenceClaims.length
-    );
+    const output = extract?.output ?? {};
+    const supportedClaims = evidenceSupportedClaims(output);
+    const unresolvedCount = getClaimOutcomes(output).filter(
+      (claim) => claim.verdict !== "evidence-supported",
+    ).length;
+    return sum + supportedClaims.length + unresolvedCount;
   }, 0);
   const supportedClaimCount = normalizedExtracts.reduce((sum, extract) => {
-    const evidenceSupportedClaims =
-      extract?.output?.evidenceSupportedClaims ?? [];
-    return sum + evidenceSupportedClaims.length;
+    return sum + evidenceSupportedClaims(extract?.output ?? {}).length;
   }, 0);
   const supportedClaimRate = roundTo(
     supportedClaimCount / Math.max(extractedClaimCount, 1),

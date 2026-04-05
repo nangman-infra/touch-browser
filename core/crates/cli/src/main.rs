@@ -16,11 +16,12 @@ use touch_browser_contracts::{
     compact_ref_index, navigation_ref_index, render_compact_snapshot,
     render_main_read_view_markdown, render_navigation_compact_snapshot, render_read_view_markdown,
     render_reading_compact_snapshot, ActionCommand, ActionFailureKind, ActionName, ActionResult,
-    ActionStatus, CompactRefIndexEntry, EvidenceCitation, EvidenceReport,
-    EvidenceVerificationOutcome, EvidenceVerificationReport, EvidenceVerificationVerdict,
-    PolicyProfile, PolicyReport, ReplayTranscript, RiskClass, SessionMode, SessionState,
-    SessionSynthesisClaim, SessionSynthesisClaimStatus, SessionSynthesisReport, SnapshotBlock,
-    SnapshotDocument, SourceRisk, SourceType, CONTRACT_VERSION,
+    ActionStatus, CompactRefIndexEntry, EvidenceCitation, EvidenceClaimOutcome,
+    EvidenceClaimVerdict, EvidenceReport, EvidenceVerificationOutcome,
+    EvidenceVerificationReport, EvidenceVerificationVerdict, PolicyProfile, PolicyReport,
+    ReplayTranscript, RiskClass, SessionMode, SessionState, SessionSynthesisClaim,
+    SessionSynthesisClaimStatus, SessionSynthesisReport, SnapshotBlock, SnapshotDocument,
+    SourceRisk, SourceType, UnsupportedClaimReason, CONTRACT_VERSION,
 };
 use touch_browser_memory::{plan_memory_turn, summarize_turns, MemorySessionSummary};
 use touch_browser_observation::{
@@ -1252,7 +1253,149 @@ fn run_verifier_hook(
         generated_at: generated_at.to_string(),
         outcomes,
     });
+    apply_verifier_adjudication(&mut verified);
     Ok(verified)
+}
+
+fn apply_verifier_adjudication(report: &mut EvidenceReport) {
+    if report.claim_outcomes.is_empty() {
+        report.claim_outcomes = synthesize_claim_outcomes_from_report(report);
+    }
+
+    let verdicts = report
+        .verification
+        .as_ref()
+        .map(|verification| {
+            verification
+                .outcomes
+                .iter()
+                .map(|outcome| (outcome.claim_id.as_str(), outcome.verdict.clone()))
+                .collect::<BTreeMap<_, _>>()
+        })
+        .unwrap_or_default();
+
+    for claim in &mut report.claim_outcomes {
+        let Some(verifier_verdict) = verdicts.get(claim.claim_id.as_str()) else {
+            continue;
+        };
+
+        claim.verification_verdict = Some(verifier_verdict.clone());
+        claim.verdict = map_final_claim_verdict(&claim.verdict, verifier_verdict);
+        claim.reason = match claim.verdict {
+            EvidenceClaimVerdict::EvidenceSupported => None,
+            EvidenceClaimVerdict::Contradicted => claim
+                .reason
+                .clone()
+                .or(Some(UnsupportedClaimReason::ContradictoryEvidence)),
+            EvidenceClaimVerdict::InsufficientEvidence => claim
+                .reason
+                .clone()
+                .filter(|reason| *reason != UnsupportedClaimReason::NeedsMoreBrowsing)
+                .or(Some(UnsupportedClaimReason::InsufficientConfidence)),
+            EvidenceClaimVerdict::NeedsMoreBrowsing => Some(UnsupportedClaimReason::NeedsMoreBrowsing),
+        };
+
+        if claim.verdict != EvidenceClaimVerdict::NeedsMoreBrowsing {
+            claim.next_action_hint = None;
+        }
+    }
+
+    report.rebuild_claim_buckets();
+}
+
+fn synthesize_claim_outcomes_from_report(report: &EvidenceReport) -> Vec<EvidenceClaimOutcome> {
+    let mut outcomes = Vec::new();
+
+    for claim in &report.supported_claims {
+        outcomes.push(EvidenceClaimOutcome {
+            version: claim.version.clone(),
+            claim_id: claim.claim_id.clone(),
+            statement: claim.statement.clone(),
+            verdict: EvidenceClaimVerdict::EvidenceSupported,
+            support: claim.support.clone(),
+            support_score: Some(claim.confidence),
+            citation: Some(claim.citation.clone()),
+            reason: None,
+            checked_block_refs: Vec::new(),
+            guard_failures: Vec::new(),
+            next_action_hint: None,
+            verification_verdict: None,
+        });
+    }
+
+    for claim in &report.contradicted_claims {
+        outcomes.push(EvidenceClaimOutcome {
+            version: claim.version.clone(),
+            claim_id: claim.claim_id.clone(),
+            statement: claim.statement.clone(),
+            verdict: EvidenceClaimVerdict::Contradicted,
+            support: Vec::new(),
+            support_score: None,
+            citation: None,
+            reason: Some(claim.reason.clone()),
+            checked_block_refs: claim.checked_block_refs.clone(),
+            guard_failures: claim.guard_failures.clone(),
+            next_action_hint: claim.next_action_hint.clone(),
+            verification_verdict: None,
+        });
+    }
+
+    for claim in &report.unsupported_claims {
+        outcomes.push(EvidenceClaimOutcome {
+            version: claim.version.clone(),
+            claim_id: claim.claim_id.clone(),
+            statement: claim.statement.clone(),
+            verdict: EvidenceClaimVerdict::InsufficientEvidence,
+            support: Vec::new(),
+            support_score: None,
+            citation: None,
+            reason: Some(claim.reason.clone()),
+            checked_block_refs: claim.checked_block_refs.clone(),
+            guard_failures: claim.guard_failures.clone(),
+            next_action_hint: claim.next_action_hint.clone(),
+            verification_verdict: None,
+        });
+    }
+
+    for claim in &report.needs_more_browsing_claims {
+        outcomes.push(EvidenceClaimOutcome {
+            version: claim.version.clone(),
+            claim_id: claim.claim_id.clone(),
+            statement: claim.statement.clone(),
+            verdict: EvidenceClaimVerdict::NeedsMoreBrowsing,
+            support: Vec::new(),
+            support_score: None,
+            citation: None,
+            reason: Some(claim.reason.clone()),
+            checked_block_refs: claim.checked_block_refs.clone(),
+            guard_failures: claim.guard_failures.clone(),
+            next_action_hint: claim.next_action_hint.clone(),
+            verification_verdict: None,
+        });
+    }
+
+    outcomes
+}
+
+fn map_final_claim_verdict(
+    current: &EvidenceClaimVerdict,
+    verifier: &EvidenceVerificationVerdict,
+) -> EvidenceClaimVerdict {
+    match verifier {
+        EvidenceVerificationVerdict::Verified => EvidenceClaimVerdict::EvidenceSupported,
+        EvidenceVerificationVerdict::Contradicted => EvidenceClaimVerdict::Contradicted,
+        EvidenceVerificationVerdict::NeedsMoreBrowsing => EvidenceClaimVerdict::NeedsMoreBrowsing,
+        EvidenceVerificationVerdict::InsufficientEvidence => {
+            EvidenceClaimVerdict::InsufficientEvidence
+        }
+        EvidenceVerificationVerdict::Unresolved => {
+            if *current == EvidenceClaimVerdict::EvidenceSupported {
+                EvidenceClaimVerdict::NeedsMoreBrowsing
+            } else {
+                current.clone()
+            }
+        }
+    }
 }
 
 fn render_session_synthesis_markdown(report: &SessionSynthesisReport) -> String {
@@ -1287,10 +1430,26 @@ fn render_session_synthesis_markdown(report: &SessionSynthesisReport) -> String 
         }
     }
 
+    if !report.contradicted_claims.is_empty() {
+        sections.push(String::new());
+        sections.push("## Contradicted Claims".to_string());
+        for claim in &report.contradicted_claims {
+            sections.push(render_session_claim_markdown(claim));
+        }
+    }
+
     if !report.unsupported_claims.is_empty() {
         sections.push(String::new());
         sections.push("## Insufficient Evidence Claims".to_string());
         for claim in &report.unsupported_claims {
+            sections.push(render_session_claim_markdown(claim));
+        }
+    }
+
+    if !report.needs_more_browsing_claims.is_empty() {
+        sections.push(String::new());
+        sections.push("## Needs More Browsing Claims".to_string());
+        for claim in &report.needs_more_browsing_claims {
             sections.push(render_session_claim_markdown(claim));
         }
     }
@@ -3230,7 +3389,9 @@ fn combine_session_synthesis_reports(
     let mut synthesized_notes = Vec::new();
     let mut note_keys = BTreeSet::new();
     let mut supported = BTreeMap::<(String, String), AggregateClaim>::new();
+    let mut contradicted = BTreeMap::<(String, String), AggregateClaim>::new();
     let mut unsupported = BTreeMap::<(String, String), AggregateClaim>::new();
+    let mut needs_more_browsing = BTreeMap::<(String, String), AggregateClaim>::new();
     let mut snapshot_count = 0usize;
     let mut evidence_report_count = 0usize;
     let mut generated_at = DEFAULT_OPENED_AT.to_string();
@@ -3250,14 +3411,28 @@ fn combine_session_synthesis_reports(
             merge_claim(
                 &mut supported,
                 claim,
-                SessionSynthesisClaimStatus::Supported,
+                SessionSynthesisClaimStatus::EvidenceSupported,
+            );
+        }
+        for claim in &report.contradicted_claims {
+            merge_claim(
+                &mut contradicted,
+                claim,
+                SessionSynthesisClaimStatus::Contradicted,
             );
         }
         for claim in &report.unsupported_claims {
             merge_claim(
                 &mut unsupported,
                 claim,
-                SessionSynthesisClaimStatus::Unsupported,
+                SessionSynthesisClaimStatus::InsufficientEvidence,
+            );
+        }
+        for claim in &report.needs_more_browsing_claims {
+            merge_claim(
+                &mut needs_more_browsing,
+                claim,
+                SessionSynthesisClaimStatus::NeedsMoreBrowsing,
             );
         }
     }
@@ -3287,7 +3462,9 @@ fn combine_session_synthesis_reports(
         working_set_refs: working_set_refs.into_iter().collect(),
         synthesized_notes,
         supported_claims: into_claims(supported),
+        contradicted_claims: into_claims(contradicted),
         unsupported_claims: into_claims(unsupported),
+        needs_more_browsing_claims: into_claims(needs_more_browsing),
     }
 }
 
@@ -7440,6 +7617,46 @@ mod tests {
         assert_eq!(
             output["extract"]["output"]["verification"]["outcomes"][0]["verifierScore"],
             0.88
+        );
+        assert_eq!(
+            output["extract"]["output"]["claimOutcomes"][0]["verdict"],
+            "evidence-supported"
+        );
+    }
+
+    #[test]
+    fn verifier_can_demote_supported_claims_into_needs_more_browsing() {
+        let output = dispatch(CliCommand::Extract(ExtractOptions {
+            target: "fixture://research/citation-heavy/pricing".to_string(),
+            budget: DEFAULT_REQUESTED_TOKENS,
+            source_risk: None,
+            source_label: None,
+            allowlisted_domains: Vec::new(),
+            browser: false,
+            headed: false,
+            session_file: None,
+            claims: vec!["The Starter plan costs $29 per month.".to_string()],
+            verifier_command: Some(
+                "printf '{\"outcomes\":[{\"claimId\":\"c1\",\"verdict\":\"needs-more-browsing\",\"verifierScore\":0.31,\"notes\":\"open a more specific pricing table before answering\"}]}'"
+                    .to_string(),
+            ),
+        }))
+        .expect("extract with demoting verifier should succeed");
+
+        assert_eq!(
+            output["extract"]["output"]["evidenceSupportedClaims"]
+                .as_array()
+                .expect("supported claims should be present")
+                .len(),
+            0
+        );
+        assert_eq!(
+            output["extract"]["output"]["needsMoreBrowsingClaims"][0]["statement"],
+            "The Starter plan costs $29 per month."
+        );
+        assert_eq!(
+            output["extract"]["output"]["claimOutcomes"][0]["verificationVerdict"],
+            "needs-more-browsing"
         );
     }
 

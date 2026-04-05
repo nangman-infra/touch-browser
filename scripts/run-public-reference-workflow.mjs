@@ -1,3 +1,4 @@
+import { claimOutcomeForStatement } from "./lib/evidence-report.mjs";
 import {
   closeSessionQuietly,
   createWorkflowClient,
@@ -142,12 +143,11 @@ function summarizeTaskProof(extracts, synthesis) {
   const normalized = extracts.map((entry) => {
     const evidenceSupportedClaims =
       entry.extract?.result?.extract?.output?.evidenceSupportedClaims ?? [];
-    const insufficientEvidenceClaims =
-      entry.extract?.result?.extract?.output?.insufficientEvidenceClaims ?? [];
-    const matchedSupportedClaim = evidenceSupportedClaims.find(
-      (claim) => claim.statement === entry.claim,
+    const matchedOutcome = claimOutcomeForStatement(
+      entry.extract?.result?.extract?.output ?? {},
+      entry.claim,
     );
-    const matchedUnsupportedClaim = insufficientEvidenceClaims.find(
+    const matchedSupportedClaim = evidenceSupportedClaims.find(
       (claim) => claim.statement === entry.claim,
     );
 
@@ -157,8 +157,8 @@ function summarizeTaskProof(extracts, synthesis) {
       claim: entry.claim,
       status: matchedSupportedClaim
         ? "supported"
-        : matchedUnsupportedClaim
-          ? "unsupported"
+        : matchedOutcome
+          ? matchedOutcome.verdict
           : "unknown",
       citationCount: matchedSupportedClaim?.citations
         ? matchedSupportedClaim.citations.length

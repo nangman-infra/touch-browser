@@ -12,7 +12,7 @@
       "version": "1.0.0",
       "claimId": "c1",
       "statement": "The page contains a work email field.",
-      "support": ["b4", "b5"],
+      "support": ["b4", "b5", "b6"],
       "supportScore": 0.87,
       "citation": {
         "url": "fixture://research/navigation/browser-login-form",
@@ -42,6 +42,60 @@
       "version": "1.0.0",
       "claimId": "c3",
       "statement": "The page starts with an authenticated dashboard.",
+      "reason": "insufficient-support-score",
+      "checkedBlockRefs": [
+        "rmain:form:work-email-password-no-email-typed-yet-sign-in",
+        "rmain:text:login-status",
+        "rmain:input:email-email-agent-example-com"
+      ]
+    }
+  ],
+  "claimOutcomes": [
+    {
+      "version": "1.0.0",
+      "claimId": "c1",
+      "statement": "The page contains a work email field.",
+      "verdict": "evidence-supported",
+      "support": ["b4", "b5", "b6"],
+      "supportScore": 0.87,
+      "citation": {
+        "url": "fixture://research/navigation/browser-login-form",
+        "retrievedAt": "2026-03-14T00:00:00+09:00",
+        "sourceType": "fixture",
+        "sourceRisk": "low",
+        "sourceLabel": "Browser-backed login form seed"
+      },
+      "checkedBlockRefs": [
+        "rmain:form:work-email-password-no-email-typed-yet-sign-in",
+        "rmain:input:email-email-agent-example-com",
+        "rmain:input:password-password-enter-password"
+      ]
+    },
+    {
+      "version": "1.0.0",
+      "claimId": "c2",
+      "statement": "The page includes a Sign in button.",
+      "verdict": "evidence-supported",
+      "support": ["b8", "b4"],
+      "supportScore": 0.84,
+      "citation": {
+        "url": "fixture://research/navigation/browser-login-form",
+        "retrievedAt": "2026-03-14T00:00:00+09:00",
+        "sourceType": "fixture",
+        "sourceRisk": "low",
+        "sourceLabel": "Browser-backed login form seed"
+      },
+      "checkedBlockRefs": [
+        "rmain:button:sign-in",
+        "rmain:form:work-email-password-no-email-typed-yet-sign-in",
+        "rmain:text:login-status"
+      ]
+    },
+    {
+      "version": "1.0.0",
+      "claimId": "c3",
+      "statement": "The page starts with an authenticated dashboard.",
+      "verdict": "insufficient-evidence",
       "reason": "insufficient-support-score",
       "checkedBlockRefs": [
         "rmain:form:work-email-password-no-email-typed-yet-sign-in",

@@ -128,6 +128,8 @@ pnpm run pilot:real-user-research
 - `read-view` prefers main-content blocks by default; `--main-only` makes the filter explicit for especially noisy page chrome
 - `session-synthesize --format markdown` emits raw Markdown in direct CLI mode
 - `serve` and MCP keep returning structured JSON
+- `extract` emits four-state claim outcomes: `evidence-supported`, `contradicted`, `insufficient-evidence`, and `needs-more-browsing`
+- verifier hooks can adjudicate the final claim verdict, but they still run on top of the same base evidence collector
 - non-sensitive typed values are replayed in the same browser pass right before submit
 - sensitive values are replayed only through the direct CLI secret sidecar or the daemon in-memory secret store
 - anti-bot, MFA, payment, and other high-risk write actions are handled as supervised flows, not bypass flows

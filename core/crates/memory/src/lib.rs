@@ -316,7 +316,10 @@ mod tests {
                     source_label: Some("test".to_string()),
                 },
             }],
+            contradicted_claims: Vec::new(),
             unsupported_claims: Vec::new(),
+            needs_more_browsing_claims: Vec::new(),
+            claim_outcomes: Vec::new(),
             verification: None,
         };
 
@@ -369,7 +372,10 @@ mod tests {
                     source_label: Some("test".to_string()),
                 },
             }],
+            contradicted_claims: Vec::new(),
             unsupported_claims: Vec::new(),
+            needs_more_browsing_claims: Vec::new(),
+            claim_outcomes: Vec::new(),
             verification: None,
         };
 

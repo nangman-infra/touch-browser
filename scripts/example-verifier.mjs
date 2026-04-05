@@ -17,34 +17,80 @@ async function main() {
       claim,
     ]),
   );
+  const contradictedClaims = new Map(
+    (request.evidenceReport?.contradictedClaims ?? []).map((claim) => [
+      claim.claimId,
+      claim,
+    ]),
+  );
   const unsupportedClaims = new Map(
     (request.evidenceReport?.insufficientEvidenceClaims ?? []).map((claim) => [
       claim.claimId,
       claim,
     ]),
   );
+  const needsMoreBrowsingClaims = new Map(
+    (request.evidenceReport?.needsMoreBrowsingClaims ?? []).map((claim) => [
+      claim.claimId,
+      claim,
+    ]),
+  );
   const blocksById = new Map(snapshotBlocks.map((block) => [block.id, block]));
   const outcomes = claims.map((claim) =>
-    verifyClaim(claim, supportedClaims, unsupportedClaims, blocksById),
+    verifyClaim(
+      claim,
+      supportedClaims,
+      contradictedClaims,
+      unsupportedClaims,
+      needsMoreBrowsingClaims,
+      blocksById,
+    ),
   );
 
   process.stdout.write(`${JSON.stringify({ outcomes }, null, 2)}\n`);
 }
 
-function verifyClaim(claim, supportedClaims, unsupportedClaims, blocksById) {
+function verifyClaim(
+  claim,
+  supportedClaims,
+  contradictedClaims,
+  unsupportedClaims,
+  needsMoreBrowsingClaims,
+  blocksById,
+) {
   const supported = supportedClaims.get(claim.id);
+  const contradicted = contradictedClaims.get(claim.id);
   const unsupported = unsupportedClaims.get(claim.id);
+  const needsMoreBrowsing = needsMoreBrowsingClaims.get(claim.id);
+
+  if (contradicted) {
+    return {
+      claimId: claim.id,
+      statement: claim.statement,
+      verdict: "contradicted",
+      verifierScore: 0.1,
+      notes: `Base extractor returned ${contradicted.reason}.`,
+    };
+  }
+
+  if (needsMoreBrowsing) {
+    return {
+      claimId: claim.id,
+      statement: claim.statement,
+      verdict: "needs-more-browsing",
+      verifierScore: 0.28,
+      notes:
+        needsMoreBrowsing.nextActionHint ??
+        `Base extractor returned ${needsMoreBrowsing.reason}.`,
+    };
+  }
 
   if (unsupported) {
     return {
       claimId: claim.id,
       statement: claim.statement,
-      verdict:
-        unsupported.reason === "contradictory-evidence"
-          ? "contradicted"
-          : "unresolved",
-      verifierScore:
-        unsupported.reason === "contradictory-evidence" ? 0.12 : 0.2,
+      verdict: "insufficient-evidence",
+      verifierScore: 0.18,
       notes: `Base extractor returned ${unsupported.reason}.`,
     };
   }
@@ -73,36 +119,60 @@ function verifyClaim(claim, supportedClaims, unsupportedClaims, blocksById) {
   const qualifierCoverage = qualifierTokens.length
     ? coverageRatio(qualifierTokens, supportAllTokens)
     : 1;
+  const numericCheck = compareNumericExpressions(
+    numericExpressions(claim.statement),
+    numericExpressions(combinedSupportText),
+  );
   const minimumAnchorCoverage = requiredAnchorCoverage(anchorTokens.length);
   const verified =
     anchorCoverage >= minimumAnchorCoverage &&
     qualifierCoverage >= 1 &&
+    numericCheck.kind === "match" &&
     Number(supported.supportScore ?? 0) >= 0.6;
+  const verdict =
+    numericCheck.kind === "mismatch"
+      ? "contradicted"
+      : verified
+        ? "verified"
+        : numericCheck.kind === "missing-support-number" ||
+            qualifierCoverage < 1 ||
+            anchorCoverage < minimumAnchorCoverage
+          ? "needs-more-browsing"
+          : "insufficient-evidence";
 
   return {
     claimId: claim.id,
     statement: claim.statement,
-    verdict: verified ? "verified" : "unresolved",
+    verdict,
     verifierScore: Number(
       Math.max(
         0,
         Math.min(
           1,
-          verified
-            ? 0.55 +
+          verdict === "contradicted"
+            ? 0.08
+            : verified
+              ? 0.55 +
                 Number(supported.supportScore ?? 0) * 0.25 +
                 anchorCoverage * 0.2
-            : 0.2 + anchorCoverage * 0.25 + qualifierCoverage * 0.1,
+              : verdict === "needs-more-browsing"
+                ? 0.24 + anchorCoverage * 0.2 + qualifierCoverage * 0.1
+                : 0.16 + anchorCoverage * 0.2 + qualifierCoverage * 0.1,
         ),
       ).toFixed(2),
     ),
     notes: [
       `anchorCoverage=${anchorCoverage.toFixed(2)}`,
       `qualifierCoverage=${qualifierCoverage.toFixed(2)}`,
+      `numericCheck=${numericCheck.kind}`,
       `supportScore=${Number(supported.supportScore ?? 0).toFixed(2)}`,
       verified
         ? "Conservative verifier accepted the evidence set."
-        : "Conservative verifier left the claim unresolved.",
+        : verdict === "contradicted"
+          ? "Conservative verifier found a conflicting numeric or qualifier detail."
+          : verdict === "needs-more-browsing"
+            ? "Conservative verifier requires a more specific source page."
+            : "Conservative verifier left the claim insufficiently grounded.",
     ].join("; "),
   };
 }
@@ -186,6 +256,74 @@ function tokensMatch(left, right) {
     (left.length >= 4 && right.startsWith(left)) ||
     (right.length >= 4 && left.startsWith(right))
   );
+}
+
+function numericExpressions(text) {
+  const tokens = normalizeText(text).split(" ").filter(Boolean);
+  const expressions = [];
+  for (let index = 0; index < tokens.length; index += 1) {
+    const token = tokens[index];
+    if (/^\d+$/.test(token)) {
+      const expression = {
+        value: token,
+        unit: normalizeUnit(tokens[index + 1] ?? ""),
+      };
+      if (
+        !expressions.some(
+          (existing) =>
+            existing.value === expression.value &&
+            existing.unit === expression.unit,
+        )
+      ) {
+        expressions.push(expression);
+      }
+    }
+  }
+  return expressions;
+}
+
+function normalizeUnit(token) {
+  switch (token) {
+    case "second":
+    case "seconds":
+    case "sec":
+    case "secs":
+      return "second";
+    case "minute":
+    case "minutes":
+    case "min":
+    case "mins":
+      return "minute";
+    case "hour":
+    case "hours":
+    case "hr":
+    case "hrs":
+      return "hour";
+    case "day":
+    case "days":
+      return "day";
+    default:
+      return null;
+  }
+}
+
+function compareNumericExpressions(claimNumbers, supportNumbers) {
+  if (claimNumbers.length === 0) {
+    return { kind: "match" };
+  }
+  if (supportNumbers.length === 0) {
+    return { kind: "missing-support-number" };
+  }
+  const matched = claimNumbers.every((claimNumber) =>
+    supportNumbers.some(
+      (supportNumber) =>
+        supportNumber.value === claimNumber.value &&
+        (!claimNumber.unit ||
+          !supportNumber.unit ||
+          supportNumber.unit === claimNumber.unit),
+    ),
+  );
+  return { kind: matched ? "match" : "mismatch" };
 }
 
 const STOP_WORDS = new Set([

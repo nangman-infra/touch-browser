@@ -65,7 +65,19 @@
         "$ref": "#/$defs/synthesisClaim"
       }
     },
+    "contradictedClaims": {
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/synthesisClaim"
+      }
+    },
     "insufficientEvidenceClaims": {
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/synthesisClaim"
+      }
+    },
+    "needsMoreBrowsingClaims": {
       "type": "array",
       "items": {
         "$ref": "#/$defs/synthesisClaim"
@@ -118,7 +130,12 @@
         },
         "status": {
           "type": "string",
-          "enum": ["evidence-supported", "insufficient-evidence"]
+          "enum": [
+            "evidence-supported",
+            "contradicted",
+            "insufficient-evidence",
+            "needs-more-browsing"
+          ]
         },
         "snapshotIds": {
           "type": "array",

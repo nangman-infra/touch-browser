@@ -49,5 +49,59 @@
         "rmain:heading:browser-tabs"
       ]
     }
+  ],
+  "claimOutcomes": [
+    {
+      "version": "1.0.0",
+      "claimId": "c1",
+      "statement": "Browser Tabs highlights overview, policies, and logs as the main navigation targets.",
+      "verdict": "evidence-supported",
+      "support": ["b3", "b4"],
+      "supportScore": 0.93,
+      "citation": {
+        "url": "fixture://research/navigation/browser-tabs",
+        "retrievedAt": "2026-03-14T00:00:00+09:00",
+        "sourceType": "fixture",
+        "sourceRisk": "low",
+        "sourceLabel": "Browser tabs navigation"
+      },
+      "checkedBlockRefs": [
+        "rmain:text:browser-tabs-highlights-overview-policies-and-lo",
+        "rmain:list:overview-tab-policies-tab-logs-tab",
+        "rmain:heading:browser-tabs"
+      ]
+    },
+    {
+      "version": "1.0.0",
+      "claimId": "c2",
+      "statement": "Overview tab",
+      "verdict": "evidence-supported",
+      "support": ["b4", "b3", "b2"],
+      "supportScore": 0.94,
+      "citation": {
+        "url": "fixture://research/navigation/browser-tabs",
+        "retrievedAt": "2026-03-14T00:00:00+09:00",
+        "sourceType": "fixture",
+        "sourceRisk": "low",
+        "sourceLabel": "Browser tabs navigation"
+      },
+      "checkedBlockRefs": [
+        "rmain:list:overview-tab-policies-tab-logs-tab",
+        "rmain:text:browser-tabs-highlights-overview-policies-and-lo",
+        "rmain:heading:browser-tabs"
+      ]
+    },
+    {
+      "version": "1.0.0",
+      "claimId": "c3",
+      "statement": "The page includes a payment checkout flow.",
+      "verdict": "insufficient-evidence",
+      "reason": "insufficient-support-score",
+      "checkedBlockRefs": [
+        "rmain:list:overview-tab-policies-tab-logs-tab",
+        "rmain:text:browser-tabs-highlights-overview-policies-and-lo",
+        "rmain:heading:browser-tabs"
+      ]
+    }
   ]
 }

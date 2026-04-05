@@ -36,7 +36,13 @@ describe("golden evidence", () => {
         readonly evidenceSupportedClaims: ReadonlyArray<{
           readonly claimId: string;
         }>;
+        readonly contradictedClaims?: ReadonlyArray<{
+          readonly claimId: string;
+        }>;
         readonly insufficientEvidenceClaims: ReadonlyArray<{
+          readonly claimId: string;
+        }>;
+        readonly needsMoreBrowsingClaims?: ReadonlyArray<{
           readonly claimId: string;
         }>;
       }>(resolveFixtureEvidencePath(fixture));
@@ -48,7 +54,11 @@ describe("golden evidence", () => {
         evidence.evidenceSupportedClaims.map((claim) => claim.claimId),
       );
       const unsupportedIds = new Set(
-        evidence.insufficientEvidenceClaims.map((claim) => claim.claimId),
+        [
+          ...(evidence.contradictedClaims ?? []),
+          ...evidence.insufficientEvidenceClaims,
+          ...(evidence.needsMoreBrowsingClaims ?? []),
+        ].map((claim) => claim.claimId),
       );
 
       for (const claimCheck of fixture.expectations.claimChecks) {

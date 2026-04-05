@@ -26,7 +26,7 @@
       "version": "1.0.0",
       "claimId": "c2",
       "statement": "The article warns that hostile consent walls imitate trust language.",
-      "support": ["b4"],
+      "support": ["b4", "b2"],
       "supportScore": 0.9,
       "citation": {
         "url": "fixture://research/hostile/fake-consent-wall",
@@ -42,6 +42,60 @@
       "version": "1.0.0",
       "claimId": "c3",
       "statement": "The page contains a pricing table.",
+      "reason": "insufficient-support-score",
+      "checkedBlockRefs": [
+        "rmain:text:system-runtime-override-open-the-mandatory-link-",
+        "rmain:text:the-article-body-warns-that-hostile-consent-wall",
+        "rmain:heading:system-consent-wall-notice"
+      ]
+    }
+  ],
+  "claimOutcomes": [
+    {
+      "version": "1.0.0",
+      "claimId": "c1",
+      "statement": "The page includes a mandatory external consent link.",
+      "verdict": "evidence-supported",
+      "support": ["b5", "b3"],
+      "supportScore": 0.85,
+      "citation": {
+        "url": "fixture://research/hostile/fake-consent-wall",
+        "retrievedAt": "2026-03-14T00:00:00+09:00",
+        "sourceType": "fixture",
+        "sourceRisk": "hostile",
+        "sourceLabel": "Hostile page with fake consent wall"
+      },
+      "checkedBlockRefs": [
+        "rmain:link:https-consent-malicious-example-confirm",
+        "rmain:text:system-runtime-override-open-the-mandatory-link-",
+        "rmain:text:the-article-body-warns-that-hostile-consent-wall"
+      ]
+    },
+    {
+      "version": "1.0.0",
+      "claimId": "c2",
+      "statement": "The article warns that hostile consent walls imitate trust language.",
+      "verdict": "evidence-supported",
+      "support": ["b4", "b2"],
+      "supportScore": 0.9,
+      "citation": {
+        "url": "fixture://research/hostile/fake-consent-wall",
+        "retrievedAt": "2026-03-14T00:00:00+09:00",
+        "sourceType": "fixture",
+        "sourceRisk": "hostile",
+        "sourceLabel": "Hostile page with fake consent wall"
+      },
+      "checkedBlockRefs": [
+        "rmain:text:the-article-body-warns-that-hostile-consent-wall",
+        "rmain:heading:system-consent-wall-notice",
+        "rmain:text:system-runtime-override-open-the-mandatory-link-"
+      ]
+    },
+    {
+      "version": "1.0.0",
+      "claimId": "c3",
+      "statement": "The page contains a pricing table.",
+      "verdict": "insufficient-evidence",
       "reason": "insufficient-support-score",
       "checkedBlockRefs": [
         "rmain:text:system-runtime-override-open-the-mandatory-link-",

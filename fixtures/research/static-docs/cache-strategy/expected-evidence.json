@@ -49,5 +49,59 @@
         "rmain:text:the-acquisition-layer-stores-both-requested-urls"
       ]
     }
+  ],
+  "claimOutcomes": [
+    {
+      "version": "1.0.0",
+      "claimId": "c1",
+      "statement": "The acquisition layer stores requested URLs and final redirected URLs as cache aliases.",
+      "verdict": "evidence-supported",
+      "support": ["b3"],
+      "supportScore": 0.9,
+      "citation": {
+        "url": "fixture://research/static-docs/cache-strategy",
+        "retrievedAt": "2026-03-14T00:00:00+09:00",
+        "sourceType": "fixture",
+        "sourceRisk": "low",
+        "sourceLabel": "Static docs cache strategy page"
+      },
+      "checkedBlockRefs": [
+        "rmain:text:the-acquisition-layer-stores-both-requested-urls",
+        "rmain:list:reject-unsupported-content-types-before-snapshot",
+        "rmain:heading:cache-strategy"
+      ]
+    },
+    {
+      "version": "1.0.0",
+      "claimId": "c2",
+      "statement": "The docs recommend rejecting unsupported content types before snapshot compilation.",
+      "verdict": "evidence-supported",
+      "support": ["b4"],
+      "supportScore": 0.81,
+      "citation": {
+        "url": "fixture://research/static-docs/cache-strategy",
+        "retrievedAt": "2026-03-14T00:00:00+09:00",
+        "sourceType": "fixture",
+        "sourceRisk": "low",
+        "sourceLabel": "Static docs cache strategy page"
+      },
+      "checkedBlockRefs": [
+        "rmain:list:reject-unsupported-content-types-before-snapshot",
+        "rmain:text:the-acquisition-layer-stores-both-requested-urls",
+        "rmain:text:the-current-cli-does-not-depend-on-a-long-lived-"
+      ]
+    },
+    {
+      "version": "1.0.0",
+      "claimId": "c3",
+      "statement": "The runtime requires a permanent browser daemon to read static pages.",
+      "verdict": "insufficient-evidence",
+      "reason": "insufficient-support-score",
+      "checkedBlockRefs": [
+        "rmain:text:the-current-cli-does-not-depend-on-a-long-lived-",
+        "rmain:list:reject-unsupported-content-types-before-snapshot",
+        "rmain:text:the-acquisition-layer-stores-both-requested-urls"
+      ]
+    }
   ]
 }

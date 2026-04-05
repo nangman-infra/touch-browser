@@ -85,6 +85,7 @@ This benchmark adds a stronger product claim on top of that baseline:
 - the workflow remains within a typed MCP tool surface
 - claims can still be extracted with citations
 - the session can be synthesized and closed cleanly at the end
+- harder contradiction and unresolved-claim cases are covered separately by [ADVERSARIAL_BENCHMARK_SPEC.md](ADVERSARIAL_BENCHMARK_SPEC.md)
 
 ## 6. Interpretation
 

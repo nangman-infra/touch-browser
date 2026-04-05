@@ -72,7 +72,7 @@ Current tool set:
 ## 3. Intended Use
 
 - `tb_read_view` is the readable surface for higher-level review or verifier models
-- `tb_extract` is the evidence retrieval surface for structured claims and citations
+- `tb_extract` is the evidence retrieval surface for four-state claim outcomes and citations
 - `tb_session_synthesize` combines multi-page session traces into a single report
 - supervised tools remain available for allowlisted, review-gated browser sessions
 
@@ -95,4 +95,4 @@ Relevant tool inputs:
 - the tool set is intentionally smaller than the full serve method surface
 - interactive tools only make sense inside allowlisted daemon sessions and still require risk acknowledgement when challenge, MFA, auth, or high-risk-write signals appear
 - the bridge starts `touch-browser serve` as an internal child process and injects `TOUCH_BROWSER_TELEMETRY_SURFACE=mcp`
-- use `verifierCommand` to attach a second-pass judge without replacing the base evidence collector
+- use `verifierCommand` to let a second-pass judge adjudicate the final verdict without replacing the base evidence collector

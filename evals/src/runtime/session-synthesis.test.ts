@@ -17,7 +17,13 @@ describe("session synthesis scenario", () => {
           readonly evidenceSupportedClaims: ReadonlyArray<{
             readonly claimId: string;
           }>;
+          readonly contradictedClaims?: ReadonlyArray<{
+            readonly claimId: string;
+          }>;
           readonly insufficientEvidenceClaims: ReadonlyArray<{
+            readonly claimId: string;
+          }>;
+          readonly needsMoreBrowsingClaims?: ReadonlyArray<{
             readonly claimId: string;
           }>;
         };
@@ -49,7 +55,9 @@ describe("session synthesis scenario", () => {
       ),
     ).toBe(true);
     expect(
-      report.synthesis.report.insufficientEvidenceClaims.length,
+      (report.synthesis.report.contradictedClaims?.length ?? 0) +
+        report.synthesis.report.insufficientEvidenceClaims.length +
+        (report.synthesis.report.needsMoreBrowsingClaims?.length ?? 0),
     ).toBeGreaterThanOrEqual(1);
     expect(report.compact.approxTokens).toBeGreaterThan(0);
     expect(report.compact.refIndex.length).toBeGreaterThan(0);

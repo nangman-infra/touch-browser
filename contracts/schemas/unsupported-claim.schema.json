@@ -22,7 +22,12 @@
       "enum": [
         "no-supporting-block",
         "insufficient-support-score",
-        "contradictory-evidence"
+        "contradictory-evidence",
+        "numeric-mismatch",
+        "scope-mismatch",
+        "status-mismatch",
+        "negation-mismatch",
+        "needs-more-browsing"
       ]
     },
     "checkedBlockRefs": {
@@ -32,6 +37,36 @@
         "pattern": "^r[a-zA-Z0-9:_-]+$"
       },
       "uniqueItems": true
+    },
+    "guardFailures": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["kind", "detail"],
+        "properties": {
+          "kind": {
+            "type": "string",
+            "enum": [
+              "numeric-value",
+              "numeric-unit",
+              "scope",
+              "status",
+              "negation",
+              "anchor-coverage",
+              "qualifier-coverage"
+            ]
+          },
+          "detail": {
+            "type": "string",
+            "minLength": 1
+          }
+        }
+      }
+    },
+    "nextActionHint": {
+      "type": "string",
+      "minLength": 1
     }
   }
 }

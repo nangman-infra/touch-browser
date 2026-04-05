@@ -37,17 +37,87 @@
       }
     }
   ],
-  "insufficientEvidenceClaims": [
+  "insufficientEvidenceClaims": [],
+  "needsMoreBrowsingClaims": [
     {
       "version": "1.0.0",
       "claimId": "c3",
       "statement": "The SLA overview includes a payroll form.",
-      "reason": "insufficient-support-score",
+      "reason": "needs-more-browsing",
       "checkedBlockRefs": [
         "rmain:text:sla-overview-states-that-priority-incidents-rece",
         "rmain:heading:sla-overview",
         "rhead:metadata:sla-overview"
+      ],
+      "guardFailures": [
+        {
+          "kind": "anchor-coverage",
+          "detail": "anchor coverage 0.50 is below required 1.00"
+        }
+      ],
+      "nextActionHint": "Browse a more specific source page before answering."
+    }
+  ],
+  "claimOutcomes": [
+    {
+      "version": "1.0.0",
+      "claimId": "c1",
+      "statement": "SLA Overview states that Priority incidents receive updates every 30 minutes.",
+      "verdict": "evidence-supported",
+      "support": ["b3", "b4"],
+      "supportScore": 0.95,
+      "citation": {
+        "url": "fixture://research/citation-heavy/sla-overview",
+        "retrievedAt": "2026-03-14T00:00:00+09:00",
+        "sourceType": "fixture",
+        "sourceRisk": "low",
+        "sourceLabel": "SLA overview"
+      },
+      "checkedBlockRefs": [
+        "rmain:text:sla-overview-states-that-priority-incidents-rece",
+        "rmain:table:severity-updates-availability-priority-30-minute",
+        "rmain:heading:sla-overview"
       ]
+    },
+    {
+      "version": "1.0.0",
+      "claimId": "c2",
+      "statement": "Priority | 30 minutes | 99.9",
+      "verdict": "evidence-supported",
+      "support": ["b4", "b3"],
+      "supportScore": 0.95,
+      "citation": {
+        "url": "fixture://research/citation-heavy/sla-overview",
+        "retrievedAt": "2026-03-14T00:00:00+09:00",
+        "sourceType": "fixture",
+        "sourceRisk": "low",
+        "sourceLabel": "SLA overview"
+      },
+      "checkedBlockRefs": [
+        "rmain:table:severity-updates-availability-priority-30-minute",
+        "rmain:text:sla-overview-states-that-priority-incidents-rece",
+        "rmain:heading:sla-overview"
+      ]
+    },
+    {
+      "version": "1.0.0",
+      "claimId": "c3",
+      "statement": "The SLA overview includes a payroll form.",
+      "verdict": "needs-more-browsing",
+      "support": ["b3", "b2", "b1"],
+      "reason": "needs-more-browsing",
+      "checkedBlockRefs": [
+        "rmain:text:sla-overview-states-that-priority-incidents-rece",
+        "rmain:heading:sla-overview",
+        "rhead:metadata:sla-overview"
+      ],
+      "guardFailures": [
+        {
+          "kind": "anchor-coverage",
+          "detail": "anchor coverage 0.50 is below required 1.00"
+        }
+      ],
+      "nextActionHint": "Browse a more specific source page before answering."
     }
   ]
 }

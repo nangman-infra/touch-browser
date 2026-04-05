@@ -37,17 +37,87 @@
       }
     }
   ],
-  "insufficientEvidenceClaims": [
+  "insufficientEvidenceClaims": [],
+  "needsMoreBrowsingClaims": [
     {
       "version": "1.0.0",
       "claimId": "c3",
       "statement": "The deployment notes include a billing calculator.",
-      "reason": "insufficient-support-score",
+      "reason": "needs-more-browsing",
       "checkedBlockRefs": [
         "rmain:text:deployment-notes-record-that-blue-green-rollouts",
         "rmain:heading:deployment-notes",
         "rhead:metadata:deployment-notes"
+      ],
+      "guardFailures": [
+        {
+          "kind": "anchor-coverage",
+          "detail": "anchor coverage 0.50 is below required 1.00"
+        }
+      ],
+      "nextActionHint": "Browse a more specific source page before answering."
+    }
+  ],
+  "claimOutcomes": [
+    {
+      "version": "1.0.0",
+      "claimId": "c1",
+      "statement": "Deployment notes record that blue-green rollouts cut recovery time to 8 minutes.",
+      "verdict": "evidence-supported",
+      "support": ["b3", "b4"],
+      "supportScore": 0.95,
+      "citation": {
+        "url": "fixture://research/citation-heavy/deployment-notes",
+        "retrievedAt": "2026-03-14T00:00:00+09:00",
+        "sourceType": "fixture",
+        "sourceRisk": "low",
+        "sourceLabel": "Deployment notes summary"
+      },
+      "checkedBlockRefs": [
+        "rmain:text:deployment-notes-record-that-blue-green-rollouts",
+        "rmain:table:stage-recovery-mode-rollback-8-minutes-automatic",
+        "rmain:heading:deployment-notes"
       ]
+    },
+    {
+      "version": "1.0.0",
+      "claimId": "c2",
+      "statement": "Rollback | 8 minutes | Automatic",
+      "verdict": "evidence-supported",
+      "support": ["b4", "b3"],
+      "supportScore": 0.95,
+      "citation": {
+        "url": "fixture://research/citation-heavy/deployment-notes",
+        "retrievedAt": "2026-03-14T00:00:00+09:00",
+        "sourceType": "fixture",
+        "sourceRisk": "low",
+        "sourceLabel": "Deployment notes summary"
+      },
+      "checkedBlockRefs": [
+        "rmain:table:stage-recovery-mode-rollback-8-minutes-automatic",
+        "rmain:text:deployment-notes-record-that-blue-green-rollouts",
+        "rmain:heading:deployment-notes"
+      ]
+    },
+    {
+      "version": "1.0.0",
+      "claimId": "c3",
+      "statement": "The deployment notes include a billing calculator.",
+      "verdict": "needs-more-browsing",
+      "support": ["b3", "b2", "b1"],
+      "reason": "needs-more-browsing",
+      "checkedBlockRefs": [
+        "rmain:text:deployment-notes-record-that-blue-green-rollouts",
+        "rmain:heading:deployment-notes",
+        "rhead:metadata:deployment-notes"
+      ],
+      "guardFailures": [
+        {
+          "kind": "anchor-coverage",
+          "detail": "anchor coverage 0.50 is below required 1.00"
+        }
+      ],
+      "nextActionHint": "Browse a more specific source page before answering."
     }
   ]
 }

@@ -15,7 +15,7 @@ type VerifierResponse = {
 };
 
 describe("example verifier", () => {
-  it("marks qualifier and anchor mismatches as unresolved", async () => {
+  it("marks qualifier and anchor mismatches as needs-more-browsing", async () => {
     const payload = {
       claims: [
         {
@@ -57,7 +57,7 @@ describe("example verifier", () => {
       throw new Error("expected one verifier outcome");
     }
     expect(outcome.claimId).toBe("c1");
-    expect(outcome.verdict).toBe("unresolved");
+    expect(outcome.verdict).toBe("needs-more-browsing");
     expect(outcome.notes).toContain("qualifierCoverage=0.00");
   });
 });

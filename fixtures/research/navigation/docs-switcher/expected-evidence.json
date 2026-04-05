@@ -12,7 +12,7 @@
       "version": "1.0.0",
       "claimId": "c1",
       "statement": "Docs Switcher links architecture, policy, and replay references from one index.",
-      "support": ["b3", "b4"],
+      "support": ["b3", "b4", "b5"],
       "supportScore": 0.93,
       "citation": {
         "url": "fixture://research/navigation/docs-switcher",
@@ -47,7 +47,76 @@
         "rmain:text:docs-switcher-links-architecture-policy-and-repl",
         "rmain:heading:docs-switcher",
         "rhead:metadata:docs-switcher"
+      ],
+      "guardFailures": [
+        {
+          "kind": "anchor-coverage",
+          "detail": "anchor coverage 0.33 is below required 0.67"
+        }
+      ],
+      "nextActionHint": "Browse a more specific source page before answering."
+    }
+  ],
+  "claimOutcomes": [
+    {
+      "version": "1.0.0",
+      "claimId": "c1",
+      "statement": "Docs Switcher links architecture, policy, and replay references from one index.",
+      "verdict": "evidence-supported",
+      "support": ["b3", "b4", "b5"],
+      "supportScore": 0.93,
+      "citation": {
+        "url": "fixture://research/navigation/docs-switcher",
+        "retrievedAt": "2026-03-14T00:00:00+09:00",
+        "sourceType": "fixture",
+        "sourceRisk": "low",
+        "sourceLabel": "Docs switcher"
+      },
+      "checkedBlockRefs": [
+        "rmain:text:docs-switcher-links-architecture-policy-and-repl",
+        "rmain:list:architecture-reference-policy-reference-replay-r",
+        "rmain:link:architecture"
       ]
+    },
+    {
+      "version": "1.0.0",
+      "claimId": "c2",
+      "statement": "Replay reference",
+      "verdict": "evidence-supported",
+      "support": ["b4", "b3", "b7"],
+      "supportScore": 0.94,
+      "citation": {
+        "url": "fixture://research/navigation/docs-switcher",
+        "retrievedAt": "2026-03-14T00:00:00+09:00",
+        "sourceType": "fixture",
+        "sourceRisk": "low",
+        "sourceLabel": "Docs switcher"
+      },
+      "checkedBlockRefs": [
+        "rmain:list:architecture-reference-policy-reference-replay-r",
+        "rmain:text:docs-switcher-links-architecture-policy-and-repl",
+        "rmain:link:replay"
+      ]
+    },
+    {
+      "version": "1.0.0",
+      "claimId": "c3",
+      "statement": "The docs switcher submits a purchase form.",
+      "verdict": "insufficient-evidence",
+      "support": ["b3", "b2", "b1"],
+      "reason": "insufficient-support-score",
+      "checkedBlockRefs": [
+        "rmain:text:docs-switcher-links-architecture-policy-and-repl",
+        "rmain:heading:docs-switcher",
+        "rhead:metadata:docs-switcher"
+      ],
+      "guardFailures": [
+        {
+          "kind": "anchor-coverage",
+          "detail": "anchor coverage 0.33 is below required 0.67"
+        }
+      ],
+      "nextActionHint": "Browse a more specific source page before answering."
     }
   ]
 }

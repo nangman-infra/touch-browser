@@ -49,5 +49,59 @@
         "rmain:text:all-plans-include-citation-ready-evidence-blocks"
       ]
     }
+  ],
+  "claimOutcomes": [
+    {
+      "version": "1.0.0",
+      "claimId": "c1",
+      "statement": "The Starter plan costs $29 per month.",
+      "verdict": "evidence-supported",
+      "support": ["b4", "b3"],
+      "supportScore": 0.85,
+      "citation": {
+        "url": "fixture://research/citation-heavy/pricing",
+        "retrievedAt": "2026-03-14T00:00:00+09:00",
+        "sourceType": "fixture",
+        "sourceRisk": "low",
+        "sourceLabel": "Citation-heavy pricing page"
+      },
+      "checkedBlockRefs": [
+        "rmain:table:plan-monthly-price-snapshots-starter-29-10-000-t",
+        "rmain:text:touch-browser-offers-starter-and-team-plans-bill",
+        "rmain:text:all-plans-include-citation-ready-evidence-blocks"
+      ]
+    },
+    {
+      "version": "1.0.0",
+      "claimId": "c2",
+      "statement": "All plans include citation-ready evidence blocks.",
+      "verdict": "evidence-supported",
+      "support": ["b5"],
+      "supportScore": 0.93,
+      "citation": {
+        "url": "fixture://research/citation-heavy/pricing",
+        "retrievedAt": "2026-03-14T00:00:00+09:00",
+        "sourceType": "fixture",
+        "sourceRisk": "low",
+        "sourceLabel": "Citation-heavy pricing page"
+      },
+      "checkedBlockRefs": [
+        "rmain:text:all-plans-include-citation-ready-evidence-blocks",
+        "rmain:table:plan-monthly-price-snapshots-starter-29-10-000-t",
+        "rmain:text:touch-browser-offers-starter-and-team-plans-bill"
+      ]
+    },
+    {
+      "version": "1.0.0",
+      "claimId": "c3",
+      "statement": "There is an Enterprise plan.",
+      "verdict": "insufficient-evidence",
+      "reason": "insufficient-support-score",
+      "checkedBlockRefs": [
+        "rmain:table:plan-monthly-price-snapshots-starter-29-10-000-t",
+        "rmain:text:touch-browser-offers-starter-and-team-plans-bill",
+        "rmain:text:all-plans-include-citation-ready-evidence-blocks"
+      ]
+    }
   ]
 }

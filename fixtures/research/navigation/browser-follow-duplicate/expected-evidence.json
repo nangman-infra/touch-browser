@@ -49,5 +49,59 @@
         "rmain:heading:legacy-docs"
       ]
     }
+  ],
+  "claimOutcomes": [
+    {
+      "version": "1.0.0",
+      "claimId": "c1",
+      "statement": "The page asks the runtime to select the correct Open docs link.",
+      "verdict": "evidence-supported",
+      "support": ["b3", "b5", "b7"],
+      "supportScore": 0.81,
+      "citation": {
+        "url": "fixture://research/navigation/browser-follow-duplicate",
+        "retrievedAt": "2026-03-14T00:00:00+09:00",
+        "sourceType": "fixture",
+        "sourceRisk": "low",
+        "sourceLabel": "Browser-backed duplicate follow disambiguation"
+      },
+      "checkedBlockRefs": [
+        "rmain:text:follow-content",
+        "rmain:link:docs",
+        "rmain:link:docs:2"
+      ]
+    },
+    {
+      "version": "1.0.0",
+      "claimId": "c2",
+      "statement": "Current docs",
+      "verdict": "evidence-supported",
+      "support": ["b6", "b3", "b4"],
+      "supportScore": 0.92,
+      "citation": {
+        "url": "fixture://research/navigation/browser-follow-duplicate",
+        "retrievedAt": "2026-03-14T00:00:00+09:00",
+        "sourceType": "fixture",
+        "sourceRisk": "low",
+        "sourceLabel": "Browser-backed duplicate follow disambiguation"
+      },
+      "checkedBlockRefs": [
+        "rmain:heading:current-docs",
+        "rmain:text:follow-content",
+        "rmain:heading:legacy-docs"
+      ]
+    },
+    {
+      "version": "1.0.0",
+      "claimId": "c3",
+      "statement": "The page contains a pricing calculator.",
+      "verdict": "insufficient-evidence",
+      "reason": "insufficient-support-score",
+      "checkedBlockRefs": [
+        "rmain:text:follow-content",
+        "rmain:heading:browser-follow-duplicate",
+        "rmain:heading:legacy-docs"
+      ]
+    }
   ]
 }

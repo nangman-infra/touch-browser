@@ -9,7 +9,8 @@
     "generatedAt",
     "source",
     "evidenceSupportedClaims",
-    "insufficientEvidenceClaims"
+    "insufficientEvidenceClaims",
+    "claimOutcomes"
   ],
   "properties": {
     "version": {
@@ -48,10 +49,153 @@
         "$ref": "evidence-block.schema.json"
       }
     },
+    "contradictedClaims": {
+      "type": "array",
+      "items": {
+        "$ref": "unsupported-claim.schema.json"
+      }
+    },
     "insufficientEvidenceClaims": {
       "type": "array",
       "items": {
         "$ref": "unsupported-claim.schema.json"
+      }
+    },
+    "needsMoreBrowsingClaims": {
+      "type": "array",
+      "items": {
+        "$ref": "unsupported-claim.schema.json"
+      }
+    },
+    "claimOutcomes": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["version", "claimId", "statement", "verdict"],
+        "properties": {
+          "version": {
+            "const": "1.0.0"
+          },
+          "claimId": {
+            "type": "string",
+            "pattern": "^c[0-9]+$"
+          },
+          "statement": {
+            "type": "string",
+            "minLength": 1
+          },
+          "verdict": {
+            "type": "string",
+            "enum": [
+              "evidence-supported",
+              "contradicted",
+              "insufficient-evidence",
+              "needs-more-browsing"
+            ]
+          },
+          "support": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "pattern": "^b[0-9]+$"
+            },
+            "uniqueItems": true
+          },
+          "supportScore": {
+            "type": "number",
+            "minimum": 0,
+            "maximum": 1
+          },
+          "citation": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["url", "retrievedAt", "sourceType", "sourceRisk"],
+            "properties": {
+              "url": {
+                "type": "string",
+                "minLength": 1
+              },
+              "retrievedAt": {
+                "type": "string",
+                "pattern": "^\\d{4}-\\d{2}-\\d{2}T\\d{2}:\\d{2}:\\d{2}(?:\\.\\d+)?(?:Z|[+-]\\d{2}:\\d{2})$"
+              },
+              "sourceType": {
+                "type": "string",
+                "enum": ["fixture", "http", "playwright"]
+              },
+              "sourceRisk": {
+                "type": "string",
+                "enum": ["low", "medium", "hostile"]
+              },
+              "sourceLabel": {
+                "type": "string",
+                "minLength": 1
+              }
+            }
+          },
+          "reason": {
+            "type": "string",
+            "enum": [
+              "no-supporting-block",
+              "insufficient-support-score",
+              "contradictory-evidence",
+              "numeric-mismatch",
+              "scope-mismatch",
+              "status-mismatch",
+              "negation-mismatch",
+              "needs-more-browsing"
+            ]
+          },
+          "checkedBlockRefs": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "pattern": "^r[a-zA-Z0-9:_-]+$"
+            },
+            "uniqueItems": true
+          },
+          "guardFailures": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "additionalProperties": false,
+              "required": ["kind", "detail"],
+              "properties": {
+                "kind": {
+                  "type": "string",
+                  "enum": [
+                    "numeric-value",
+                    "numeric-unit",
+                    "scope",
+                    "status",
+                    "negation",
+                    "anchor-coverage",
+                    "qualifier-coverage"
+                  ]
+                },
+                "detail": {
+                  "type": "string",
+                  "minLength": 1
+                }
+              }
+            }
+          },
+          "nextActionHint": {
+            "type": "string",
+            "minLength": 1
+          },
+          "verificationVerdict": {
+            "type": "string",
+            "enum": [
+              "verified",
+              "contradicted",
+              "unresolved",
+              "needs-more-browsing",
+              "insufficient-evidence"
+            ]
+          }
+        }
       }
     },
     "verification": {
@@ -90,7 +234,13 @@
               },
               "verdict": {
                 "type": "string",
-                "enum": ["verified", "contradicted", "unresolved"]
+                "enum": [
+                  "verified",
+                  "contradicted",
+                  "unresolved",
+                  "needs-more-browsing",
+                  "insufficient-evidence"
+                ]
               },
               "verifierScore": {
                 "type": "number",

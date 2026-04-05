@@ -5,11 +5,13 @@
 
 Turn any web page into structured, citable evidence for AI agents.
 
+![Terminal demo](demo/terminal-demo.gif)
+
 `touch-browser` turns a page into:
 
 - readable Markdown for higher-level review with `read-view`
 - compact semantic state for agent loops with `compact-view`
-- traceable evidence with citations and optional verifier output
+- traceable evidence with citations, four-state claim outcomes, and optional verifier adjudication
 - replayable, policy-gated browser sessions for multi-page research
 
 Evidence-first, not fact-final:
@@ -31,6 +33,7 @@ Repository proof points from the current generated artifacts:
 - public web benchmark: `5/5` live public-doc samples succeeded, `11.58x` average cleaned DOM token reduction. See [doc/PUBLIC_WEB_BENCHMARK_SPEC.md](doc/PUBLIC_WEB_BENCHMARK_SPEC.md).
 - real-user research benchmark: `3/3` MCP-driven public research scenarios passed, `8/8` extracted claims were evidence-backed, `4` public domains covered. See [doc/REAL_USER_RESEARCH_BENCHMARK_SPEC.md](doc/REAL_USER_RESEARCH_BENCHMARK_SPEC.md).
 - tool comparison benchmark: compare `touch-browser` against a reproducible markdown-only baseline on the same official public pages. See [doc/TOOL_COMPARISON_BENCHMARK_SPEC.md](doc/TOOL_COMPARISON_BENCHMARK_SPEC.md).
+- adversarial benchmark: `5/5` official-doc contradiction and `needs-more-browsing` cases now land on the expected verdict. See [doc/ADVERSARIAL_BENCHMARK_SPEC.md](doc/ADVERSARIAL_BENCHMARK_SPEC.md).
 - documentation trust gate: tracked Markdown links are checked against real files, anchors, and live external docs. See [doc/DOC_LINK_INTEGRITY_SPEC.md](doc/DOC_LINK_INTEGRITY_SPEC.md).
 
 Current comparison benchmark on official AWS, IANA, MDN, and Node.js docs:
@@ -128,7 +131,8 @@ cargo run -q -p touch-browser-cli -- extract https://www.iana.org/help/example-d
 ```
 
 `supportScore` here is the current evidence-match score for retrieved support, not a final truth guarantee.
-If you want a second-pass judge, add `--verifier-command <shell-command>` and attach verifier outcomes without changing the core evidence collector.
+Final claim outcomes are intentionally conservative: `evidence-supported`, `contradicted`, `insufficient-evidence`, or `needs-more-browsing`.
+If you want a second-pass judge, add `--verifier-command <shell-command>` and let it adjudicate the final verdict without replacing the core evidence collector.
 
 ## 30-Second Quick Start
 
@@ -162,7 +166,7 @@ URL / fixture / browser tab
   -> Acquisition
   -> Observation compiler (semantic snapshot + stable refs)
   -> read-view / compact-view
-  -> extract (evidence + citations + optional verifier hook)
+  -> extract (evidence + citations + final verdicts + optional verifier adjudication)
   -> policy
   -> session synthesis / replay
   -> CLI / JSON-RPC serve / MCP
@@ -188,7 +192,7 @@ Stable research surface:
 | `open` | open a target and compile a structured snapshot |
 | `read-view` | emit readable Markdown for direct review or a higher-level verifier |
 | `compact-view` | emit the compact semantic view optimized for AI consumption |
-| `extract` | extract evidence-supported and insufficient-evidence claims with citations |
+| `extract` | extract claim outcomes with citations: evidence-supported, contradicted, insufficient-evidence, or needs-more-browsing |
 | `policy` | return allow/review/block signals for the current target |
 | `session-read` | emit readable Markdown from the latest persisted browser snapshot |
 | `session-synthesize` | combine multi-page session evidence into JSON or Markdown |
@@ -208,6 +212,13 @@ Experimental supervised surface:
 The full command table lives in [doc/CLI_SURFACE_SPEC.md](doc/CLI_SURFACE_SPEC.md).
 
 The example second-pass verifier lives at [scripts/example-verifier.mjs](scripts/example-verifier.mjs).
+
+## Examples, Benchmarks, And Integrations
+
+- examples: [examples/README.md](examples/README.md)
+- benchmarks: [benchmarks/README.md](benchmarks/README.md)
+- demo assets: [demo/README.md](demo/README.md)
+- integrations: [integrations/README.md](integrations/README.md)
 
 ## MCP Example
 
@@ -249,6 +260,7 @@ This project is not a consumer browser, not a stealth automation stack, and not 
 - external baseline and positioning: [doc/EXTERNAL_BASELINE_AND_POSITIONING.md](doc/EXTERNAL_BASELINE_AND_POSITIONING.md)
 - documentation link integrity: [doc/DOC_LINK_INTEGRITY_SPEC.md](doc/DOC_LINK_INTEGRITY_SPEC.md)
 - tool comparison benchmark: [doc/TOOL_COMPARISON_BENCHMARK_SPEC.md](doc/TOOL_COMPARISON_BENCHMARK_SPEC.md)
+- adversarial benchmark: [doc/ADVERSARIAL_BENCHMARK_SPEC.md](doc/ADVERSARIAL_BENCHMARK_SPEC.md)
 - doc index: [doc/README.md](doc/README.md)
 
 ## License

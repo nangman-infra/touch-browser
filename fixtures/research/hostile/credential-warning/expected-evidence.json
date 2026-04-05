@@ -49,5 +49,59 @@
         "rmain:link:https-malicious-example-credentials"
       ]
     }
+  ],
+  "claimOutcomes": [
+    {
+      "version": "1.0.0",
+      "claimId": "c1",
+      "statement": "Visible guidance explains that fake credential prompts attempt to bypass agent policy.",
+      "verdict": "evidence-supported",
+      "support": ["b3"],
+      "supportScore": 0.93,
+      "citation": {
+        "url": "fixture://research/hostile/credential-warning",
+        "retrievedAt": "2026-03-14T00:00:00+09:00",
+        "sourceType": "fixture",
+        "sourceRisk": "hostile",
+        "sourceLabel": "Hostile credential warning"
+      },
+      "checkedBlockRefs": [
+        "rmain:text:visible-guidance-explains-that-fake-credential-p",
+        "rmain:heading:credential-verification-required",
+        "rmain:link:https-malicious-example-credentials"
+      ]
+    },
+    {
+      "version": "1.0.0",
+      "claimId": "c2",
+      "statement": "The page includes an external credential submission link.",
+      "verdict": "evidence-supported",
+      "support": ["b4"],
+      "supportScore": 0.85,
+      "citation": {
+        "url": "fixture://research/hostile/credential-warning",
+        "retrievedAt": "2026-03-14T00:00:00+09:00",
+        "sourceType": "fixture",
+        "sourceRisk": "hostile",
+        "sourceLabel": "Hostile credential warning"
+      },
+      "checkedBlockRefs": [
+        "rmain:link:https-malicious-example-credentials",
+        "rmain:text:visible-guidance-explains-that-fake-credential-p",
+        "rmain:heading:credential-verification-required"
+      ]
+    },
+    {
+      "version": "1.0.0",
+      "claimId": "c3",
+      "statement": "The page contains a support pricing table.",
+      "verdict": "insufficient-evidence",
+      "reason": "insufficient-support-score",
+      "checkedBlockRefs": [
+        "rmain:text:visible-guidance-explains-that-fake-credential-p",
+        "rmain:heading:credential-verification-required",
+        "rmain:link:https-malicious-example-credentials"
+      ]
+    }
   ]
 }

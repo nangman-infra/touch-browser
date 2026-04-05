@@ -1,6 +1,11 @@
 import { countTokens } from "gpt-tokenizer/model/gpt-4o";
 
 import {
+  claimOutcomeForStatement,
+  evidenceSupportedClaims,
+  insufficientEvidenceClaims,
+} from "./lib/evidence-report.mjs";
+import {
   ensureCliBuilt,
   normalizeCleanedDom,
   normalizeText,
@@ -300,21 +305,14 @@ async function runServeBenchmark(samples) {
 
 function summarizeTaskExtract(sample, tabId, extractResult) {
   const output = extractResult?.result?.extract?.output ?? {};
-  const evidenceSupportedClaims = Array.isArray(output.evidenceSupportedClaims)
-    ? output.evidenceSupportedClaims
-    : [];
-  const insufficientEvidenceClaims = Array.isArray(
-    output.insufficientEvidenceClaims,
-  )
-    ? output.insufficientEvidenceClaims
-    : [];
-  const supported = evidenceSupportedClaims.some(
-    (claim) => claim.statement === sample.claim,
-  );
-  const unsupported = insufficientEvidenceClaims.some(
-    (claim) => claim.statement === sample.claim,
-  );
-  const matchedSupportedClaim = evidenceSupportedClaims.find(
+  const supportedClaims = evidenceSupportedClaims(output);
+  const unresolvedClaims = insufficientEvidenceClaims(output);
+  const matchedOutcome = claimOutcomeForStatement(output, sample.claim);
+  const supported = matchedOutcome?.verdict === "evidence-supported";
+  const unsupported = matchedOutcome
+    ? matchedOutcome.verdict !== "evidence-supported"
+    : unresolvedClaims.some((claim) => claim.statement === sample.claim);
+  const matchedSupportedClaim = supportedClaims.find(
     (claim) => claim.statement === sample.claim,
   );
 
@@ -322,7 +320,11 @@ function summarizeTaskExtract(sample, tabId, extractResult) {
     sampleId: sample.id,
     tabId,
     claim: sample.claim,
-    status: supported ? "supported" : unsupported ? "unsupported" : "unknown",
+    status: supported
+      ? "supported"
+      : unsupported
+        ? (matchedOutcome?.verdict ?? "unsupported")
+        : "unknown",
     citationCount: matchedSupportedClaim?.citations
       ? matchedSupportedClaim.citations.length
       : matchedSupportedClaim?.citation

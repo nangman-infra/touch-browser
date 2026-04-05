@@ -47,7 +47,76 @@
         "rmain:text:compaction-playbook-keeps-working-sets-small-by-",
         "rmain:heading:compaction-playbook",
         "rmain:link:compaction-playbook"
+      ],
+      "guardFailures": [
+        {
+          "kind": "anchor-coverage",
+          "detail": "anchor coverage 0.40 is below required 0.60"
+        }
+      ],
+      "nextActionHint": "Browse a more specific source page before answering."
+    }
+  ],
+  "claimOutcomes": [
+    {
+      "version": "1.0.0",
+      "claimId": "c1",
+      "statement": "Compaction Playbook keeps working sets small by promoting supported claims and recent refs.",
+      "verdict": "evidence-supported",
+      "support": ["b3", "b4"],
+      "supportScore": 0.93,
+      "citation": {
+        "url": "fixture://research/static-docs/compaction-playbook",
+        "retrievedAt": "2026-03-14T00:00:00+09:00",
+        "sourceType": "fixture",
+        "sourceRisk": "low",
+        "sourceLabel": "Compaction playbook"
+      },
+      "checkedBlockRefs": [
+        "rmain:text:compaction-playbook-keeps-working-sets-small-by-",
+        "rmain:list:recent-refs-remain-in-the-active-working-set-uns",
+        "rmain:heading:compaction-playbook"
       ]
+    },
+    {
+      "version": "1.0.0",
+      "claimId": "c2",
+      "statement": "Recent refs remain in the active working set.",
+      "verdict": "evidence-supported",
+      "support": ["b4", "b3"],
+      "supportScore": 0.94,
+      "citation": {
+        "url": "fixture://research/static-docs/compaction-playbook",
+        "retrievedAt": "2026-03-14T00:00:00+09:00",
+        "sourceType": "fixture",
+        "sourceRisk": "low",
+        "sourceLabel": "Compaction playbook"
+      },
+      "checkedBlockRefs": [
+        "rmain:list:recent-refs-remain-in-the-active-working-set-uns",
+        "rmain:text:compaction-playbook-keeps-working-sets-small-by-",
+        "rmain:heading:compaction-playbook"
+      ]
+    },
+    {
+      "version": "1.0.0",
+      "claimId": "c3",
+      "statement": "Compaction Playbook requires screenshot rendering.",
+      "verdict": "insufficient-evidence",
+      "support": ["b3", "b2", "b5"],
+      "reason": "insufficient-support-score",
+      "checkedBlockRefs": [
+        "rmain:text:compaction-playbook-keeps-working-sets-small-by-",
+        "rmain:heading:compaction-playbook",
+        "rmain:link:compaction-playbook"
+      ],
+      "guardFailures": [
+        {
+          "kind": "anchor-coverage",
+          "detail": "anchor coverage 0.40 is below required 0.60"
+        }
+      ],
+      "nextActionHint": "Browse a more specific source page before answering."
     }
   ]
 }

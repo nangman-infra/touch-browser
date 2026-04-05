@@ -21,6 +21,7 @@ async function main() {
     realUserResearch,
     docLinkIntegrity,
     toolComparison,
+    adversarial,
   ] = await Promise.all([
     readRepoJson("fixtures/scenarios/customer-fit-economics/report.json"),
     readRepoJson("fixtures/scenarios/customer-proxy-tasks/report.json"),
@@ -35,6 +36,7 @@ async function main() {
     readRepoJson("fixtures/scenarios/real-user-research-benchmark/report.json"),
     readRepoJson("fixtures/scenarios/doc-link-integrity/report.json"),
     readRepoJson("fixtures/scenarios/tool-comparison-benchmark/report.json"),
+    readRepoJson("fixtures/scenarios/adversarial-benchmark/report.json"),
   ]);
 
   const requiredDocs = [
@@ -46,6 +48,7 @@ async function main() {
     "doc/REAL_USER_RESEARCH_BENCHMARK_SPEC.md",
     "doc/DOC_LINK_INTEGRITY_SPEC.md",
     "doc/TOOL_COMPARISON_BENCHMARK_SPEC.md",
+    "doc/ADVERSARIAL_BENCHMARK_SPEC.md",
     "doc/RELEASE_READINESS_SPEC.md",
     "doc/STAGED_REFERENCE_WORKFLOW_SPEC.md",
     "doc/PUBLIC_REFERENCE_WORKFLOW_SPEC.md",
@@ -99,6 +102,9 @@ async function main() {
     (toolComparison?.surfaces?.touchBrowserCompact?.averageTokens ??
       Number.POSITIVE_INFINITY) <
       (toolComparison?.surfaces?.markdownBaseline?.averageTokens ?? 0);
+  const adversarialBenchmarkReady =
+    adversarial?.successfulSampleCount === adversarial?.sampleCount &&
+    (adversarial?.verifiedExactVerdictAccuracy ?? 0) >= 1;
 
   const readinessScore = roundTo(
     [
@@ -114,7 +120,8 @@ async function main() {
       publicProofReady ? 1 : 0,
       realUserEnvironmentReady ? 1 : 0,
       comparisonBenchmarkReady ? 1 : 0,
-    ].reduce((sum, value) => sum + value, 0) / 12,
+      adversarialBenchmarkReady ? 1 : 0,
+    ].reduce((sum, value) => sum + value, 0) / 13,
     2,
   );
 
@@ -139,6 +146,7 @@ async function main() {
       publicProofReady,
       realUserEnvironmentReady,
       comparisonBenchmarkReady,
+      adversarialBenchmarkReady,
       compactTokenCostRatio: latencyCost.compactTokenCostRatio,
     },
     requiredDocs,

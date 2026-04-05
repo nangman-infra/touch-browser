@@ -47,7 +47,76 @@
         "rmain:heading:release-notes",
         "rhead:metadata:release-notes",
         "rmain:text:touch-browser-documents-major-runtime-changes-in"
+      ],
+      "guardFailures": [
+        {
+          "kind": "anchor-coverage",
+          "detail": "anchor coverage 0.20 is below required 0.60"
+        }
+      ],
+      "nextActionHint": "Browse a more specific source page before answering."
+    }
+  ],
+  "claimOutcomes": [
+    {
+      "version": "1.0.0",
+      "claimId": "c1",
+      "statement": "Version 0.1.0 added read-only replay sessions.",
+      "verdict": "evidence-supported",
+      "support": ["b4"],
+      "supportScore": 0.95,
+      "citation": {
+        "url": "fixture://research/citation-heavy/release-notes",
+        "retrievedAt": "2026-03-14T00:00:00+09:00",
+        "sourceType": "fixture",
+        "sourceRisk": "low",
+        "sourceLabel": "Citation-heavy release notes page"
+      },
+      "checkedBlockRefs": [
+        "rmain:table:version-date-highlights-0-1-0-2026-02-10-added-r",
+        "rmain:heading:release-notes",
+        "rmain:text:each-release-entry-is-intended-to-support-citati"
       ]
+    },
+    {
+      "version": "1.0.0",
+      "claimId": "c2",
+      "statement": "Version 0.2.0 added hostile policy reports.",
+      "verdict": "evidence-supported",
+      "support": ["b4"],
+      "supportScore": 0.95,
+      "citation": {
+        "url": "fixture://research/citation-heavy/release-notes",
+        "retrievedAt": "2026-03-14T00:00:00+09:00",
+        "sourceType": "fixture",
+        "sourceRisk": "low",
+        "sourceLabel": "Citation-heavy release notes page"
+      },
+      "checkedBlockRefs": [
+        "rmain:table:version-date-highlights-0-1-0-2026-02-10-added-r",
+        "rmain:text:touch-browser-documents-major-runtime-changes-in",
+        "rmain:text:each-release-entry-is-intended-to-support-citati"
+      ]
+    },
+    {
+      "version": "1.0.0",
+      "claimId": "c3",
+      "statement": "The release notes announce autonomous drone shipping.",
+      "verdict": "insufficient-evidence",
+      "support": ["b2", "b1"],
+      "reason": "insufficient-support-score",
+      "checkedBlockRefs": [
+        "rmain:heading:release-notes",
+        "rhead:metadata:release-notes",
+        "rmain:text:touch-browser-documents-major-runtime-changes-in"
+      ],
+      "guardFailures": [
+        {
+          "kind": "anchor-coverage",
+          "detail": "anchor coverage 0.20 is below required 0.60"
+        }
+      ],
+      "nextActionHint": "Browse a more specific source page before answering."
     }
   ]
 }

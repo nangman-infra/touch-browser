@@ -2,9 +2,9 @@ use std::collections::BTreeSet;
 
 use thiserror::Error;
 use touch_browser_contracts::{
-    EvidenceBlock, EvidenceCitation, EvidenceReport, EvidenceSource, SnapshotBlock,
-    SnapshotBlockKind, SnapshotDocument, SourceRisk, UnsupportedClaim, UnsupportedClaimReason,
-    CONTRACT_VERSION,
+    EvidenceCitation, EvidenceClaimOutcome, EvidenceClaimVerdict, EvidenceGuardFailure,
+    EvidenceGuardKind, EvidenceReport, EvidenceSource, SnapshotBlock, SnapshotBlockKind,
+    SnapshotDocument, SourceRisk, UnsupportedClaimReason, CONTRACT_VERSION,
 };
 
 pub fn crate_status() -> &'static str {
@@ -62,54 +62,44 @@ impl EvidenceExtractor {
             return Err(EvidenceError::NoClaims);
         }
 
-        let mut supported_claims = Vec::new();
-        let mut unsupported_claims = Vec::new();
+        let mut claim_outcomes = Vec::new();
 
         for claim in &input.claims {
-            let analysis = analyze_claim(claim, &input.snapshot.blocks);
+            let resolution = analyze_claim(claim, &input.snapshot.blocks);
+            let citation = (resolution.verdict == EvidenceClaimVerdict::EvidenceSupported).then(
+                || EvidenceCitation {
+                    url: input.snapshot.source.source_url.clone(),
+                    retrieved_at: input.generated_at.clone(),
+                    source_type: input.snapshot.source.source_type.clone(),
+                    source_risk: input.source_risk.clone(),
+                    source_label: input
+                        .source_label
+                        .clone()
+                        .or_else(|| input.snapshot.source.title.clone()),
+                },
+            );
 
-            match analysis {
-                ClaimAnalysis::Supported {
-                    support,
-                    confidence,
-                } => {
-                    supported_claims.push(EvidenceBlock {
-                        version: CONTRACT_VERSION.to_string(),
-                        claim_id: claim.claim_id.clone(),
-                        statement: claim.statement.clone(),
-                        support: support
-                            .iter()
-                            .map(|candidate| candidate.block.id.clone())
-                            .collect(),
-                        confidence,
-                        citation: EvidenceCitation {
-                            url: input.snapshot.source.source_url.clone(),
-                            retrieved_at: input.generated_at.clone(),
-                            source_type: input.snapshot.source.source_type.clone(),
-                            source_risk: input.source_risk.clone(),
-                            source_label: input
-                                .source_label
-                                .clone()
-                                .or_else(|| input.snapshot.source.title.clone()),
-                        },
-                    });
-                }
-                ClaimAnalysis::Unsupported {
-                    reason,
-                    checked_refs,
-                } => {
-                    unsupported_claims.push(UnsupportedClaim {
-                        version: CONTRACT_VERSION.to_string(),
-                        claim_id: claim.claim_id.clone(),
-                        statement: claim.statement.clone(),
-                        reason,
-                        checked_block_refs: checked_refs,
-                    });
-                }
-            }
+            claim_outcomes.push(EvidenceClaimOutcome {
+                version: CONTRACT_VERSION.to_string(),
+                claim_id: claim.claim_id.clone(),
+                statement: claim.statement.clone(),
+                verdict: resolution.verdict,
+                support: resolution
+                    .support
+                    .iter()
+                    .map(|candidate| candidate.block.id.clone())
+                    .collect(),
+                support_score: resolution.confidence,
+                citation,
+                reason: resolution.reason,
+                checked_block_refs: resolution.checked_refs,
+                guard_failures: resolution.guard_failures,
+                next_action_hint: resolution.next_action_hint,
+                verification_verdict: None,
+            });
         }
 
-        Ok(EvidenceReport {
+        let mut report = EvidenceReport {
             version: CONTRACT_VERSION.to_string(),
             generated_at: input.generated_at.clone(),
             source: EvidenceSource {
@@ -121,10 +111,15 @@ impl EvidenceExtractor {
                     .clone()
                     .or_else(|| input.snapshot.source.title.clone()),
             },
-            supported_claims,
-            unsupported_claims,
+            supported_claims: Vec::new(),
+            contradicted_claims: Vec::new(),
+            unsupported_claims: Vec::new(),
+            needs_more_browsing_claims: Vec::new(),
+            claim_outcomes,
             verification: None,
-        })
+        };
+        report.rebuild_claim_buckets();
+        Ok(report)
     }
 }
 
@@ -134,15 +129,14 @@ pub enum EvidenceError {
     NoClaims,
 }
 
-enum ClaimAnalysis<'a> {
-    Supported {
-        support: Vec<ScoredCandidate<'a>>,
-        confidence: f64,
-    },
-    Unsupported {
-        reason: UnsupportedClaimReason,
-        checked_refs: Vec<String>,
-    },
+struct ClaimResolution<'a> {
+    verdict: EvidenceClaimVerdict,
+    support: Vec<ScoredCandidate<'a>>,
+    confidence: Option<f64>,
+    reason: Option<UnsupportedClaimReason>,
+    checked_refs: Vec<String>,
+    guard_failures: Vec<EvidenceGuardFailure>,
+    next_action_hint: Option<String>,
 }
 
 #[derive(Clone)]
@@ -152,7 +146,7 @@ struct ScoredCandidate<'a> {
     contradictory: bool,
 }
 
-fn analyze_claim<'a>(claim: &ClaimRequest, blocks: &'a [SnapshotBlock]) -> ClaimAnalysis<'a> {
+fn analyze_claim<'a>(claim: &ClaimRequest, blocks: &'a [SnapshotBlock]) -> ClaimResolution<'a> {
     let claim_tokens = tokenize_significant(&claim.statement);
     let claim_numeric_tokens = numeric_tokens(&claim.statement);
     let claim_anchor_tokens = anchor_tokens(&claim_tokens);
@@ -184,6 +178,39 @@ fn analyze_claim<'a>(claim: &ClaimRequest, blocks: &'a [SnapshotBlock]) -> Claim
         .map(|candidate| candidate.block.stable_ref.clone())
         .collect::<Vec<_>>();
 
+    let contradictory_support = scored
+        .iter()
+        .filter(|candidate| candidate.contradictory && candidate.score >= 0.05)
+        .take(3)
+        .cloned()
+        .collect::<Vec<_>>();
+
+    if !contradictory_support.is_empty() {
+        let contradiction_checked_refs = contradictory_support
+            .iter()
+            .map(|candidate| candidate.block.stable_ref.clone())
+            .collect::<Vec<_>>();
+        let assessment = assess_support_guards(
+            claim,
+            &contradictory_support,
+            blocks,
+            &claim_anchor_tokens,
+            &claim_qualifier_tokens,
+        );
+
+        if let Some(reason) = assessment.contradiction_reason.clone() {
+            return ClaimResolution {
+                verdict: EvidenceClaimVerdict::Contradicted,
+                support: contradictory_support,
+                confidence: None,
+                reason: Some(reason),
+                checked_refs: contradiction_checked_refs,
+                guard_failures: assessment.guard_failures,
+                next_action_hint: None,
+            };
+        }
+    }
+
     let contradictory_exists = scored.iter().any(|candidate| candidate.contradictory);
 
     let non_contradictory = scored
@@ -193,28 +220,34 @@ fn analyze_claim<'a>(claim: &ClaimRequest, blocks: &'a [SnapshotBlock]) -> Claim
 
     let Some(best_candidate) = non_contradictory.first() else {
         if contradictory_exists {
-            return ClaimAnalysis::Unsupported {
-                reason: UnsupportedClaimReason::ContradictoryEvidence,
+            return ClaimResolution {
+                verdict: EvidenceClaimVerdict::Contradicted,
+                support: Vec::new(),
+                confidence: None,
+                reason: Some(UnsupportedClaimReason::ContradictoryEvidence),
                 checked_refs,
+                guard_failures: vec![EvidenceGuardFailure {
+                    kind: EvidenceGuardKind::Negation,
+                    detail: "Observed support blocks contradict the claim polarity.".to_string(),
+                }],
+                next_action_hint: None,
             };
         }
-        return ClaimAnalysis::Unsupported {
-            reason: UnsupportedClaimReason::NoSupportingBlock,
+        return ClaimResolution {
+            verdict: EvidenceClaimVerdict::InsufficientEvidence,
+            support: Vec::new(),
+            confidence: None,
+            reason: Some(UnsupportedClaimReason::NoSupportingBlock),
             checked_refs,
+            guard_failures: Vec::new(),
+            next_action_hint: None,
         };
     };
     let best_score = best_candidate.score;
 
-    if best_score < 0.52 {
-        return ClaimAnalysis::Unsupported {
-            reason: UnsupportedClaimReason::InsufficientConfidence,
-            checked_refs,
-        };
-    }
-
     let top_support = non_contradictory
         .into_iter()
-        .filter(|candidate| candidate.score >= 0.33)
+        .filter(|candidate| candidate.score >= 0.25)
         .take(3)
         .collect::<Vec<_>>();
 
@@ -225,27 +258,60 @@ fn analyze_claim<'a>(claim: &ClaimRequest, blocks: &'a [SnapshotBlock]) -> Claim
             UnsupportedClaimReason::InsufficientConfidence
         };
 
-        return ClaimAnalysis::Unsupported {
-            reason,
+        return ClaimResolution {
+            verdict: if contradictory_exists {
+                EvidenceClaimVerdict::Contradicted
+            } else {
+                EvidenceClaimVerdict::InsufficientEvidence
+            },
+            support: Vec::new(),
+            confidence: None,
+            reason: Some(reason),
             checked_refs,
+            guard_failures: Vec::new(),
+            next_action_hint: None,
         };
     }
 
-    if !supports_claim_with_required_coverage(
+    let assessment = assess_support_guards(
+        claim,
         &top_support,
         blocks,
         &claim_anchor_tokens,
         &claim_qualifier_tokens,
-    ) {
-        let reason = if contradictory_exists {
-            UnsupportedClaimReason::ContradictoryEvidence
+    );
+
+    if let Some(reason) = assessment.contradiction_reason.clone() {
+        return ClaimResolution {
+            verdict: EvidenceClaimVerdict::Contradicted,
+            support: top_support,
+            confidence: None,
+            reason: Some(reason),
+            checked_refs,
+            guard_failures: assessment.guard_failures,
+            next_action_hint: None,
+        };
+    }
+
+    if best_score < 0.52 || !assessment.guard_failures.is_empty() {
+        let verdict = if should_keep_browsing(best_score, &assessment, claim) {
+            EvidenceClaimVerdict::NeedsMoreBrowsing
         } else {
-            UnsupportedClaimReason::InsufficientConfidence
+            EvidenceClaimVerdict::InsufficientEvidence
         };
 
-        return ClaimAnalysis::Unsupported {
-            reason,
+        return ClaimResolution {
+            verdict: verdict.clone(),
+            support: top_support,
+            confidence: None,
+            reason: Some(if verdict == EvidenceClaimVerdict::NeedsMoreBrowsing {
+                UnsupportedClaimReason::NeedsMoreBrowsing
+            } else {
+                UnsupportedClaimReason::InsufficientConfidence
+            }),
             checked_refs,
+            guard_failures: assessment.guard_failures,
+            next_action_hint: assessment.next_action_hint,
         };
     }
 
@@ -258,10 +324,22 @@ fn analyze_claim<'a>(claim: &ClaimRequest, blocks: &'a [SnapshotBlock]) -> Claim
         ),
     );
 
-    ClaimAnalysis::Supported {
+    ClaimResolution {
+        verdict: EvidenceClaimVerdict::EvidenceSupported,
         support: top_support,
-        confidence,
+        confidence: Some(confidence),
+        reason: None,
+        checked_refs,
+        guard_failures: Vec::new(),
+        next_action_hint: None,
     }
+}
+
+#[derive(Debug, Default)]
+struct GuardAssessment {
+    contradiction_reason: Option<UnsupportedClaimReason>,
+    guard_failures: Vec<EvidenceGuardFailure>,
+    next_action_hint: Option<String>,
 }
 
 fn score_block<'a>(
@@ -545,28 +623,137 @@ fn qualifier_tokens(text: &str) -> Vec<String> {
         .collect()
 }
 
-fn supports_claim_with_required_coverage(
+fn assess_support_guards(
+    claim: &ClaimRequest,
     top_support: &[ScoredCandidate<'_>],
     blocks: &[SnapshotBlock],
     claim_anchor_tokens: &[String],
     claim_qualifier_tokens: &[String],
-) -> bool {
+) -> GuardAssessment {
     let aggregated_text = aggregate_support_text(top_support, blocks);
     let aggregated_tokens = tokenize_significant(&aggregated_text);
     let aggregated_all_tokens = tokenize_all(&aggregated_text);
+    let normalized_claim = normalize_text(&claim.statement);
+    let normalized_support = normalize_text(&aggregated_text);
+    let mut guard_failures = Vec::new();
+    let mut contradiction_reason = None;
+
     let anchor_coverage = if claim_anchor_tokens.is_empty() {
         1.0
     } else {
         token_overlap_ratio(claim_anchor_tokens, &aggregated_tokens)
     };
+    let required_anchor_coverage = required_anchor_coverage(claim_anchor_tokens.len());
+    if anchor_coverage + 0.001 < required_anchor_coverage {
+        guard_failures.push(EvidenceGuardFailure {
+            kind: EvidenceGuardKind::AnchorCoverage,
+            detail: format!(
+                "anchor coverage {:.2} is below required {:.2}",
+                anchor_coverage,
+                required_anchor_coverage
+            ),
+        });
+    }
+
     let qualifier_coverage = if claim_qualifier_tokens.is_empty() {
         1.0
     } else {
         token_overlap_ratio(claim_qualifier_tokens, &aggregated_all_tokens)
     };
+    if qualifier_coverage < 1.0 {
+        guard_failures.push(EvidenceGuardFailure {
+            kind: EvidenceGuardKind::QualifierCoverage,
+            detail: format!(
+                "qualifier coverage {:.2} is below required 1.00",
+                qualifier_coverage
+            ),
+        });
+    }
 
-    anchor_coverage >= required_anchor_coverage(claim_anchor_tokens.len())
-        && qualifier_coverage >= 1.0
+    let claim_numeric = numeric_expressions(&claim.statement);
+    let support_numeric = numeric_expressions(&aggregated_text);
+    if !claim_numeric.is_empty() {
+        if support_numeric.is_empty() {
+            guard_failures.push(EvidenceGuardFailure {
+                kind: EvidenceGuardKind::NumericValue,
+                detail: "No exact numeric detail was found in the retrieved support.".to_string(),
+            });
+        } else if !numeric_expressions_match(&claim_numeric, &support_numeric) {
+            contradiction_reason = Some(UnsupportedClaimReason::NumericMismatch);
+            guard_failures.push(EvidenceGuardFailure {
+                kind: EvidenceGuardKind::NumericValue,
+                detail: format!(
+                    "Claim numeric values {:?} do not match support values {:?}.",
+                    claim_numeric
+                        .iter()
+                        .map(NumericExpression::render)
+                        .collect::<Vec<_>>(),
+                    support_numeric
+                        .iter()
+                        .map(NumericExpression::render)
+                        .collect::<Vec<_>>()
+                ),
+            });
+        }
+    }
+
+    let claim_scope = detect_scope_profile(&tokenize_all(&claim.statement));
+    let support_scope = detect_scope_profile(&aggregated_all_tokens);
+    if scope_profiles_contradict(claim_scope, support_scope) {
+        contradiction_reason = Some(UnsupportedClaimReason::ScopeMismatch);
+        guard_failures.push(EvidenceGuardFailure {
+            kind: EvidenceGuardKind::Scope,
+            detail: format!(
+                "Claim scope `{}` conflicts with support scope `{}`.",
+                claim_scope.label(),
+                support_scope.label()
+            ),
+        });
+    } else if claim_scope.requires_explicit_support() && support_scope == ScopeProfile::Unknown {
+        guard_failures.push(EvidenceGuardFailure {
+            kind: EvidenceGuardKind::Scope,
+            detail:
+                "The claim requires explicit scope confirmation, but the support is scope-ambiguous."
+                    .to_string(),
+        });
+    }
+
+    let claim_status = detect_status_profile(&tokenize_all(&claim.statement));
+    let support_status = detect_status_profile(&aggregated_all_tokens);
+    if status_profiles_contradict(claim_status, support_status) {
+        contradiction_reason = Some(UnsupportedClaimReason::StatusMismatch);
+        guard_failures.push(EvidenceGuardFailure {
+            kind: EvidenceGuardKind::Status,
+            detail: format!(
+                "Claim status `{}` conflicts with support status `{}`.",
+                claim_status.label(),
+                support_status.label()
+            ),
+        });
+    } else if claim_status.requires_explicit_support() && support_status == StatusProfile::Unknown {
+        guard_failures.push(EvidenceGuardFailure {
+            kind: EvidenceGuardKind::Status,
+            detail: "The claim requires explicit release-status support, but the support is status-ambiguous.".to_string(),
+        });
+    }
+
+    if contradiction_detected(&normalized_claim, &normalized_support) {
+        contradiction_reason.get_or_insert(UnsupportedClaimReason::NegationMismatch);
+        guard_failures.push(EvidenceGuardFailure {
+            kind: EvidenceGuardKind::Negation,
+            detail: "The retrieved support contains polarity language that conflicts with the claim.".to_string(),
+        });
+    }
+
+    GuardAssessment {
+        contradiction_reason: contradiction_reason.clone(),
+        next_action_hint: if contradiction_reason.is_none() {
+            next_action_hint_for_failures(&guard_failures)
+        } else {
+            None
+        },
+        guard_failures,
+    }
 }
 
 fn aggregate_support_text(top_support: &[ScoredCandidate<'_>], blocks: &[SnapshotBlock]) -> String {
@@ -606,8 +793,196 @@ fn required_anchor_coverage(anchor_count: usize) -> f64 {
     match anchor_count {
         0 => 0.0,
         1 | 2 => 1.0,
-        3 => 0.67,
+        3 => 2.0 / 3.0,
         _ => 0.6,
+    }
+}
+
+fn should_keep_browsing(best_score: f64, assessment: &GuardAssessment, claim: &ClaimRequest) -> bool {
+    best_score >= 0.35
+        && (!assessment.guard_failures.is_empty()
+            || !numeric_expressions(&claim.statement).is_empty()
+            || detect_scope_profile(&tokenize_all(&claim.statement)).requires_explicit_support()
+            || detect_status_profile(&tokenize_all(&claim.statement)).requires_explicit_support())
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+struct NumericExpression {
+    value: String,
+    unit: Option<String>,
+}
+
+impl NumericExpression {
+    fn render(&self) -> String {
+        match &self.unit {
+            Some(unit) => format!("{} {}", self.value, unit),
+            None => self.value.clone(),
+        }
+    }
+}
+
+fn numeric_expressions(text: &str) -> Vec<NumericExpression> {
+    let tokens = normalize_text(text)
+        .split_whitespace()
+        .map(|token| token.to_string())
+        .collect::<Vec<_>>();
+    let mut expressions = Vec::new();
+
+    for (index, token) in tokens.iter().enumerate() {
+        if token.chars().all(|character| character.is_ascii_digit()) {
+            let expression = NumericExpression {
+                value: token.clone(),
+                unit: tokens.get(index + 1).and_then(|candidate| normalize_unit(candidate)),
+            };
+            if !expressions.contains(&expression) {
+                expressions.push(expression);
+            }
+        }
+    }
+
+    expressions
+}
+
+fn normalize_unit(token: &str) -> Option<String> {
+    match token {
+        "second" | "seconds" | "sec" | "secs" => Some("second".to_string()),
+        "minute" | "minutes" | "min" | "mins" => Some("minute".to_string()),
+        "hour" | "hours" | "hr" | "hrs" => Some("hour".to_string()),
+        "day" | "days" => Some("day".to_string()),
+        "week" | "weeks" => Some("week".to_string()),
+        "month" | "months" => Some("month".to_string()),
+        "year" | "years" => Some("year".to_string()),
+        _ => None,
+    }
+}
+
+fn numeric_expressions_match(
+    claim_numeric: &[NumericExpression],
+    support_numeric: &[NumericExpression],
+) -> bool {
+    claim_numeric.iter().all(|claim_expr| {
+        support_numeric.iter().any(|support_expr| {
+            claim_expr.value == support_expr.value
+                && match (&claim_expr.unit, &support_expr.unit) {
+                    (Some(claim_unit), Some(support_unit)) => claim_unit == support_unit,
+                    _ => true,
+                }
+        })
+    })
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+enum ScopeProfile {
+    Unknown,
+    Universal,
+    Exclusive,
+    Limited,
+}
+
+impl ScopeProfile {
+    fn requires_explicit_support(self) -> bool {
+        matches!(self, ScopeProfile::Universal | ScopeProfile::Exclusive)
+    }
+
+    fn label(self) -> &'static str {
+        match self {
+            ScopeProfile::Unknown => "unknown",
+            ScopeProfile::Universal => "universal",
+            ScopeProfile::Exclusive => "exclusive",
+            ScopeProfile::Limited => "limited",
+        }
+    }
+}
+
+fn detect_scope_profile(tokens: &[String]) -> ScopeProfile {
+    if tokens.iter().any(|token| UNIVERSAL_SCOPE_TOKENS.contains(&token.as_str())) {
+        ScopeProfile::Universal
+    } else if tokens.iter().any(|token| EXCLUSIVE_SCOPE_TOKENS.contains(&token.as_str())) {
+        ScopeProfile::Exclusive
+    } else if tokens.iter().any(|token| LIMITED_SCOPE_TOKENS.contains(&token.as_str())) {
+        ScopeProfile::Limited
+    } else {
+        ScopeProfile::Unknown
+    }
+}
+
+fn scope_profiles_contradict(claim: ScopeProfile, support: ScopeProfile) -> bool {
+    matches!(
+        (claim, support),
+        (ScopeProfile::Universal, ScopeProfile::Limited)
+            | (ScopeProfile::Universal, ScopeProfile::Exclusive)
+            | (ScopeProfile::Exclusive, ScopeProfile::Limited)
+    )
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+enum StatusProfile {
+    Unknown,
+    Preview,
+    GenerallyAvailable,
+    Deprecated,
+}
+
+impl StatusProfile {
+    fn requires_explicit_support(self) -> bool {
+        matches!(self, StatusProfile::Preview | StatusProfile::GenerallyAvailable)
+    }
+
+    fn label(self) -> &'static str {
+        match self {
+            StatusProfile::Unknown => "unknown",
+            StatusProfile::Preview => "preview",
+            StatusProfile::GenerallyAvailable => "general-availability",
+            StatusProfile::Deprecated => "deprecated",
+        }
+    }
+}
+
+fn detect_status_profile(tokens: &[String]) -> StatusProfile {
+    if tokens.iter().any(|token| PREVIEW_STATUS_TOKENS.contains(&token.as_str())) {
+        StatusProfile::Preview
+    } else if tokens.iter().any(|token| GA_STATUS_TOKENS.contains(&token.as_str())) {
+        StatusProfile::GenerallyAvailable
+    } else if tokens
+        .iter()
+        .any(|token| DEPRECATED_STATUS_TOKENS.contains(&token.as_str()))
+    {
+        StatusProfile::Deprecated
+    } else {
+        StatusProfile::Unknown
+    }
+}
+
+fn status_profiles_contradict(claim: StatusProfile, support: StatusProfile) -> bool {
+    matches!(
+        (claim, support),
+        (StatusProfile::GenerallyAvailable, StatusProfile::Preview)
+            | (StatusProfile::Preview, StatusProfile::GenerallyAvailable)
+            | (StatusProfile::GenerallyAvailable, StatusProfile::Deprecated)
+            | (StatusProfile::Preview, StatusProfile::Deprecated)
+    )
+}
+
+fn next_action_hint_for_failures(failures: &[EvidenceGuardFailure]) -> Option<String> {
+    if failures
+        .iter()
+        .any(|failure| matches!(failure.kind, EvidenceGuardKind::NumericValue | EvidenceGuardKind::NumericUnit))
+    {
+        Some("Browse the limits, pricing, or quotas page before answering.".to_string())
+    } else if failures
+        .iter()
+        .any(|failure| matches!(failure.kind, EvidenceGuardKind::Scope))
+    {
+        Some("Browse the regional availability or feature-matrix page before answering.".to_string())
+    } else if failures
+        .iter()
+        .any(|failure| matches!(failure.kind, EvidenceGuardKind::Status))
+    {
+        Some("Browse the release notes or feature status page before answering.".to_string())
+    } else if failures.is_empty() {
+        None
+    } else {
+        Some("Browse a more specific source page before answering.".to_string())
     }
 }
 
@@ -638,6 +1013,46 @@ const QUALIFIER_TOKENS: &[&str] = &[
     "always",
     "never",
     "entire",
+];
+
+const UNIVERSAL_SCOPE_TOKENS: &[&str] = &[
+    "all",
+    "every",
+    "global",
+    "worldwide",
+    "entire",
+    "universal",
+];
+
+const EXCLUSIVE_SCOPE_TOKENS: &[&str] = &["only", "exclusive", "solely"];
+
+const LIMITED_SCOPE_TOKENS: &[&str] = &[
+    "selected",
+    "some",
+    "certain",
+    "regional",
+    "region",
+    "varies",
+    "subset",
+    "specific",
+];
+
+const PREVIEW_STATUS_TOKENS: &[&str] = &[
+    "preview",
+    "beta",
+    "alpha",
+    "experimental",
+    "prelaunch",
+];
+
+const GA_STATUS_TOKENS: &[&str] = &["launched", "generally", "ga"];
+
+const DEPRECATED_STATUS_TOKENS: &[&str] = &[
+    "deprecated",
+    "legacy",
+    "retired",
+    "sunset",
+    "unsupported",
 ];
 
 struct ContradictionPattern {
@@ -768,6 +1183,8 @@ mod tests {
             .expect("evidence extraction should succeed");
 
         assert!(report.supported_claims.is_empty());
+        assert!(report.contradicted_claims.is_empty());
+        assert!(report.needs_more_browsing_claims.is_empty());
         assert_eq!(report.unsupported_claims.len(), 1);
         assert_eq!(
             report.unsupported_claims[0].reason,
@@ -823,10 +1240,10 @@ mod tests {
             .expect("evidence extraction should succeed");
 
         assert!(report.supported_claims.is_empty());
-        assert_eq!(report.unsupported_claims.len(), 1);
+        assert_eq!(report.contradicted_claims.len(), 1);
         assert_eq!(
-            report.unsupported_claims[0].reason,
-            UnsupportedClaimReason::ContradictoryEvidence
+            report.contradicted_claims[0].reason,
+            UnsupportedClaimReason::NegationMismatch
         );
     }
 
@@ -879,6 +1296,8 @@ mod tests {
             .expect("evidence extraction should succeed");
 
         assert_eq!(report.supported_claims.len(), 1);
+        assert!(report.contradicted_claims.is_empty());
+        assert!(report.needs_more_browsing_claims.is_empty());
         assert!(report.unsupported_claims.is_empty());
     }
 
@@ -966,11 +1385,89 @@ mod tests {
             .expect("evidence extraction should succeed");
 
         assert!(report.supported_claims.is_empty());
-        assert_eq!(report.unsupported_claims.len(), 2);
+        assert_eq!(
+            report.contradicted_claims.len()
+                + report.needs_more_browsing_claims.len()
+                + report.unsupported_claims.len(),
+            2
+        );
         assert!(report
-            .unsupported_claims
+            .needs_more_browsing_claims
             .iter()
-            .all(|claim| claim.reason == UnsupportedClaimReason::InsufficientConfidence));
+            .all(|claim| claim.reason == UnsupportedClaimReason::NeedsMoreBrowsing));
+    }
+
+    #[test]
+    fn rejects_numeric_mismatches_as_contradicted() {
+        let snapshot = SnapshotDocument {
+            version: "1.0.0".to_string(),
+            stable_ref_version: "1".to_string(),
+            source: touch_browser_contracts::SnapshotSource {
+                source_url: "https://docs.aws.example/lambda/limits".to_string(),
+                source_type: touch_browser_contracts::SourceType::Http,
+                title: Some("Lambda quotas".to_string()),
+            },
+            budget: touch_browser_contracts::SnapshotBudget {
+                requested_tokens: 512,
+                estimated_tokens: 64,
+                emitted_tokens: 64,
+                truncated: false,
+            },
+            blocks: vec![
+                touch_browser_contracts::SnapshotBlock {
+                    version: "1.0.0".to_string(),
+                    id: "b1".to_string(),
+                    kind: touch_browser_contracts::SnapshotBlockKind::Heading,
+                    stable_ref: "rmain:heading:function-configuration".to_string(),
+                    role: touch_browser_contracts::SnapshotBlockRole::Content,
+                    text: "Function configuration, deployment, and execution".to_string(),
+                    attributes: Default::default(),
+                    evidence: touch_browser_contracts::SnapshotEvidence {
+                        source_url: "https://docs.aws.example/lambda/limits".to_string(),
+                        source_type: touch_browser_contracts::SourceType::Http,
+                        dom_path_hint: Some("html > body > main > h2".to_string()),
+                        byte_range_start: None,
+                        byte_range_end: None,
+                    },
+                },
+                touch_browser_contracts::SnapshotBlock {
+                    version: "1.0.0".to_string(),
+                    id: "b2".to_string(),
+                    kind: touch_browser_contracts::SnapshotBlockKind::Text,
+                    stable_ref: "rmain:text:timeout".to_string(),
+                    role: touch_browser_contracts::SnapshotBlockRole::Content,
+                    text: "Function timeout: 900 seconds (15 minutes).".to_string(),
+                    attributes: Default::default(),
+                    evidence: touch_browser_contracts::SnapshotEvidence {
+                        source_url: "https://docs.aws.example/lambda/limits".to_string(),
+                        source_type: touch_browser_contracts::SourceType::Http,
+                        dom_path_hint: Some("html > body > main > p:nth-of-type(1)".to_string()),
+                        byte_range_start: None,
+                        byte_range_end: None,
+                    },
+                },
+            ],
+        };
+
+        let report = EvidenceExtractor
+            .extract(&EvidenceInput::new(
+                snapshot,
+                vec![ClaimRequest::new(
+                    "c1",
+                    "The maximum timeout for a Lambda function is 24 hours.",
+                )],
+                "2026-04-05T00:00:00+09:00",
+                SourceRisk::Low,
+                Some("Lambda quotas".to_string()),
+            ))
+            .expect("evidence extraction should succeed");
+
+        assert!(report.supported_claims.is_empty());
+        assert_eq!(report.contradicted_claims.len(), 1);
+        assert_eq!(
+            report.contradicted_claims[0].reason,
+            UnsupportedClaimReason::NumericMismatch
+        );
     }
 
     fn parse_risk(value: &str) -> SourceRisk {

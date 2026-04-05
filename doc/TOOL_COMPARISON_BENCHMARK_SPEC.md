@@ -75,6 +75,7 @@ This means:
 - `read-view` reaches that same baseline without leaving the `touch-browser` runtime surface
 - `compact-view` is the low-token routing surface, not the final claim-judgment surface
 - `extract` is where `touch-browser` materially separates from markdown-only fetchers by keeping positive support while removing the false positives seen in the markdown baseline and adding structured citations plus stable refs
+- the harder verdict-boundary questions are covered separately by [ADVERSARIAL_BENCHMARK_SPEC.md](ADVERSARIAL_BENCHMARK_SPEC.md), which checks contradiction and `needs-more-browsing` behavior on official docs
 
 The intended decision pattern is:
 

@@ -695,6 +695,25 @@ pub struct EvidenceBlock {
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
 #[serde(rename_all = "kebab-case")]
+pub enum EvidenceGuardKind {
+    NumericValue,
+    NumericUnit,
+    Scope,
+    Status,
+    Negation,
+    AnchorCoverage,
+    QualifierCoverage,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
+#[serde(rename_all = "camelCase")]
+pub struct EvidenceGuardFailure {
+    pub kind: EvidenceGuardKind,
+    pub detail: String,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
+#[serde(rename_all = "kebab-case")]
 pub enum UnsupportedClaimReason {
     NoSupportingBlock,
     #[serde(
@@ -703,6 +722,11 @@ pub enum UnsupportedClaimReason {
     )]
     InsufficientConfidence,
     ContradictoryEvidence,
+    NumericMismatch,
+    ScopeMismatch,
+    StatusMismatch,
+    NegationMismatch,
+    NeedsMoreBrowsing,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
@@ -714,6 +738,10 @@ pub struct UnsupportedClaim {
     pub reason: UnsupportedClaimReason,
     #[serde(skip_serializing_if = "Vec::is_empty", default)]
     pub checked_block_refs: Vec<String>,
+    #[serde(skip_serializing_if = "Vec::is_empty", default)]
+    pub guard_failures: Vec<EvidenceGuardFailure>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub next_action_hint: Option<String>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
@@ -726,18 +754,127 @@ pub struct EvidenceSource {
     pub source_label: Option<String>,
 }
 
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
+#[serde(rename_all = "kebab-case")]
+pub enum EvidenceClaimVerdict {
+    #[serde(rename = "evidence-supported", alias = "supported")]
+    EvidenceSupported,
+    Contradicted,
+    InsufficientEvidence,
+    NeedsMoreBrowsing,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
+#[serde(rename_all = "camelCase")]
+pub struct EvidenceClaimOutcome {
+    pub version: String,
+    pub claim_id: String,
+    pub statement: String,
+    pub verdict: EvidenceClaimVerdict,
+    #[serde(skip_serializing_if = "Vec::is_empty", default)]
+    pub support: Vec<String>,
+    #[serde(rename = "supportScore", alias = "confidence")]
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub support_score: Option<f64>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub citation: Option<EvidenceCitation>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub reason: Option<UnsupportedClaimReason>,
+    #[serde(skip_serializing_if = "Vec::is_empty", default)]
+    pub checked_block_refs: Vec<String>,
+    #[serde(skip_serializing_if = "Vec::is_empty", default)]
+    pub guard_failures: Vec<EvidenceGuardFailure>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub next_action_hint: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub verification_verdict: Option<EvidenceVerificationVerdict>,
+}
+
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
 #[serde(rename_all = "camelCase")]
 pub struct EvidenceReport {
     pub version: String,
     pub generated_at: String,
     pub source: EvidenceSource,
-    #[serde(rename = "evidenceSupportedClaims", alias = "supportedClaims")]
+    #[serde(rename = "evidenceSupportedClaims", alias = "supportedClaims", default)]
     pub supported_claims: Vec<EvidenceBlock>,
-    #[serde(rename = "insufficientEvidenceClaims", alias = "unsupportedClaims")]
+    #[serde(skip_serializing_if = "Vec::is_empty", default)]
+    pub contradicted_claims: Vec<UnsupportedClaim>,
+    #[serde(
+        rename = "insufficientEvidenceClaims",
+        alias = "unsupportedClaims",
+        default
+    )]
     pub unsupported_claims: Vec<UnsupportedClaim>,
+    #[serde(skip_serializing_if = "Vec::is_empty", default)]
+    pub needs_more_browsing_claims: Vec<UnsupportedClaim>,
+    #[serde(default)]
+    pub claim_outcomes: Vec<EvidenceClaimOutcome>,
     #[serde(skip_serializing_if = "Option::is_none", default)]
     pub verification: Option<EvidenceVerificationReport>,
+}
+
+impl EvidenceClaimOutcome {
+    pub fn as_supported_claim(&self) -> Option<EvidenceBlock> {
+        (self.verdict == EvidenceClaimVerdict::EvidenceSupported).then(|| EvidenceBlock {
+            version: self.version.clone(),
+            claim_id: self.claim_id.clone(),
+            statement: self.statement.clone(),
+            support: self.support.clone(),
+            confidence: self.support_score.unwrap_or(0.0),
+            citation: self.citation.clone().unwrap_or(EvidenceCitation {
+                url: String::new(),
+                retrieved_at: String::new(),
+                source_type: SourceType::Http,
+                source_risk: SourceRisk::Low,
+                source_label: None,
+            }),
+        })
+    }
+
+    pub fn as_issue_claim(&self) -> Option<UnsupportedClaim> {
+        (self.verdict != EvidenceClaimVerdict::EvidenceSupported).then(|| UnsupportedClaim {
+            version: self.version.clone(),
+            claim_id: self.claim_id.clone(),
+            statement: self.statement.clone(),
+            reason: self
+                .reason
+                .clone()
+                .unwrap_or(UnsupportedClaimReason::InsufficientConfidence),
+            checked_block_refs: self.checked_block_refs.clone(),
+            guard_failures: self.guard_failures.clone(),
+            next_action_hint: self.next_action_hint.clone(),
+        })
+    }
+}
+
+impl EvidenceReport {
+    pub fn rebuild_claim_buckets(&mut self) {
+        self.supported_claims = self
+            .claim_outcomes
+            .iter()
+            .filter_map(EvidenceClaimOutcome::as_supported_claim)
+            .filter(|claim| !claim.citation.url.is_empty())
+            .collect();
+        self.contradicted_claims = self
+            .claim_outcomes
+            .iter()
+            .filter(|claim| claim.verdict == EvidenceClaimVerdict::Contradicted)
+            .filter_map(EvidenceClaimOutcome::as_issue_claim)
+            .collect();
+        self.unsupported_claims = self
+            .claim_outcomes
+            .iter()
+            .filter(|claim| claim.verdict == EvidenceClaimVerdict::InsufficientEvidence)
+            .filter_map(EvidenceClaimOutcome::as_issue_claim)
+            .collect();
+        self.needs_more_browsing_claims = self
+            .claim_outcomes
+            .iter()
+            .filter(|claim| claim.verdict == EvidenceClaimVerdict::NeedsMoreBrowsing)
+            .filter_map(EvidenceClaimOutcome::as_issue_claim)
+            .collect();
+    }
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
@@ -746,6 +883,8 @@ pub enum EvidenceVerificationVerdict {
     Verified,
     Contradicted,
     Unresolved,
+    NeedsMoreBrowsing,
+    InsufficientEvidence,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
@@ -1237,9 +1376,11 @@ pub struct SessionState {
 #[serde(rename_all = "lowercase")]
 pub enum SessionSynthesisClaimStatus {
     #[serde(rename = "evidence-supported", alias = "supported")]
-    Supported,
+    EvidenceSupported,
+    Contradicted,
     #[serde(rename = "insufficient-evidence", alias = "unsupported")]
-    Unsupported,
+    InsufficientEvidence,
+    NeedsMoreBrowsing,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
@@ -1270,8 +1411,12 @@ pub struct SessionSynthesisReport {
     pub synthesized_notes: Vec<String>,
     #[serde(rename = "evidenceSupportedClaims", alias = "supportedClaims")]
     pub supported_claims: Vec<SessionSynthesisClaim>,
+    #[serde(skip_serializing_if = "Vec::is_empty", default)]
+    pub contradicted_claims: Vec<SessionSynthesisClaim>,
     #[serde(rename = "insufficientEvidenceClaims", alias = "unsupportedClaims")]
     pub unsupported_claims: Vec<SessionSynthesisClaim>,
+    #[serde(skip_serializing_if = "Vec::is_empty", default)]
+    pub needs_more_browsing_claims: Vec<SessionSynthesisClaim>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]

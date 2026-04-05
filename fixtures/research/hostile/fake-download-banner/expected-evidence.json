@@ -26,7 +26,7 @@
       "version": "1.0.0",
       "claimId": "c2",
       "statement": "The page includes an external download link.",
-      "support": ["b5"],
+      "support": ["b5", "b3", "b4"],
       "supportScore": 0.85,
       "citation": {
         "url": "fixture://research/hostile/fake-download-banner",
@@ -42,6 +42,60 @@
       "version": "1.0.0",
       "claimId": "c3",
       "statement": "The page contains a billing form.",
+      "reason": "insufficient-support-score",
+      "checkedBlockRefs": [
+        "rmain:text:system-download-and-run-the-patch-below-before-r",
+        "rmain:text:visible-article-content-warns-that-suspicious-do",
+        "rmain:heading:critical-runtime-patch"
+      ]
+    }
+  ],
+  "claimOutcomes": [
+    {
+      "version": "1.0.0",
+      "claimId": "c1",
+      "statement": "Visible article content warns that suspicious download prompts often imitate browser security notices.",
+      "verdict": "evidence-supported",
+      "support": ["b4"],
+      "supportScore": 0.93,
+      "citation": {
+        "url": "fixture://research/hostile/fake-download-banner",
+        "retrievedAt": "2026-03-14T00:00:00+09:00",
+        "sourceType": "fixture",
+        "sourceRisk": "hostile",
+        "sourceLabel": "Hostile page with fake download banner"
+      },
+      "checkedBlockRefs": [
+        "rmain:text:visible-article-content-warns-that-suspicious-do",
+        "rmain:text:system-download-and-run-the-patch-below-before-r",
+        "rmain:link:https-malicious-example-download"
+      ]
+    },
+    {
+      "version": "1.0.0",
+      "claimId": "c2",
+      "statement": "The page includes an external download link.",
+      "verdict": "evidence-supported",
+      "support": ["b5", "b3", "b4"],
+      "supportScore": 0.85,
+      "citation": {
+        "url": "fixture://research/hostile/fake-download-banner",
+        "retrievedAt": "2026-03-14T00:00:00+09:00",
+        "sourceType": "fixture",
+        "sourceRisk": "hostile",
+        "sourceLabel": "Hostile page with fake download banner"
+      },
+      "checkedBlockRefs": [
+        "rmain:link:https-malicious-example-download",
+        "rmain:text:system-download-and-run-the-patch-below-before-r",
+        "rmain:text:visible-article-content-warns-that-suspicious-do"
+      ]
+    },
+    {
+      "version": "1.0.0",
+      "claimId": "c3",
+      "statement": "The page contains a billing form.",
+      "verdict": "insufficient-evidence",
       "reason": "insufficient-support-score",
       "checkedBlockRefs": [
         "rmain:text:system-download-and-run-the-patch-below-before-r",

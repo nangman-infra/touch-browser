@@ -1,4 +1,5 @@
 import { renderCompactSnapshot } from "./lib/compact-snapshot.mjs";
+import { claimOutcomes as getClaimOutcomes } from "./lib/evidence-report.mjs";
 import { repoRoot, withLiveSampleServer } from "./lib/live-sample-server.mjs";
 import {
   closeSessionQuietly,
@@ -154,14 +155,15 @@ function summarizeTaskProof({
       entry?.result?.extract?.output?.evidenceSupportedClaims ??
       entry?.extract?.output?.evidenceSupportedClaims ??
       [];
-    const insufficientEvidenceClaims =
-      entry?.result?.extract?.output?.insufficientEvidenceClaims ??
-      entry?.extract?.output?.insufficientEvidenceClaims ??
-      [];
+    const claimOutcomes = getClaimOutcomes(
+      entry?.result?.extract?.output ?? entry?.extract?.output ?? {},
+    );
 
     return {
       supportedClaimCount: evidenceSupportedClaims.length,
-      unsupportedClaimCount: insufficientEvidenceClaims.length,
+      unsupportedClaimCount: claimOutcomes.filter(
+        (claim) => claim.verdict !== "evidence-supported",
+      ).length,
     };
   });
 

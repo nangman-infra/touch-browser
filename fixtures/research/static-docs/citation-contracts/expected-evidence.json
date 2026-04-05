@@ -49,5 +49,60 @@
         "rmain:link:citation-contracts"
       ]
     }
+  ],
+  "claimOutcomes": [
+    {
+      "version": "1.0.0",
+      "claimId": "c1",
+      "statement": "Citation Contracts require supported claims to carry a source URL and retrieved timestamp.",
+      "verdict": "evidence-supported",
+      "support": ["b3"],
+      "supportScore": 0.93,
+      "citation": {
+        "url": "fixture://research/static-docs/citation-contracts",
+        "retrievedAt": "2026-03-14T00:00:00+09:00",
+        "sourceType": "fixture",
+        "sourceRisk": "low",
+        "sourceLabel": "Citation contracts"
+      },
+      "checkedBlockRefs": [
+        "rmain:text:citation-contracts-require-supported-claims-to-c",
+        "rmain:list:support-refs-point-to-stable-snapshot-blocks-uns",
+        "rmain:heading:citation-contracts"
+      ]
+    },
+    {
+      "version": "1.0.0",
+      "claimId": "c2",
+      "statement": "Support refs point to stable snapshot blocks.",
+      "verdict": "evidence-supported",
+      "support": ["b4"],
+      "supportScore": 0.94,
+      "citation": {
+        "url": "fixture://research/static-docs/citation-contracts",
+        "retrievedAt": "2026-03-14T00:00:00+09:00",
+        "sourceType": "fixture",
+        "sourceRisk": "low",
+        "sourceLabel": "Citation contracts"
+      },
+      "checkedBlockRefs": [
+        "rmain:list:support-refs-point-to-stable-snapshot-blocks-uns",
+        "rmain:text:citation-contracts-require-supported-claims-to-c",
+        "rmain:heading:citation-contracts"
+      ]
+    },
+    {
+      "version": "1.0.0",
+      "claimId": "c3",
+      "statement": "Citation Contracts require screenshot uploads.",
+      "verdict": "insufficient-evidence",
+      "support": ["b3", "b2", "b5"],
+      "reason": "insufficient-support-score",
+      "checkedBlockRefs": [
+        "rmain:text:citation-contracts-require-supported-claims-to-c",
+        "rmain:heading:citation-contracts",
+        "rmain:link:citation-contracts"
+      ]
+    }
   ]
 }

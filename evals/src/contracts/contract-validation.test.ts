@@ -211,12 +211,56 @@ describe("contract schemas", () => {
             },
           },
         ],
+        contradictedClaims: [
+          {
+            version: "1.0.0",
+            claimId: "c3",
+            statement: "The Starter plan costs $99 per day.",
+            reason: "numeric-mismatch",
+            checkedBlockRefs: ["rmain:table:pricing"],
+          },
+        ],
         insufficientEvidenceClaims: [
           {
             version: "1.0.0",
             claimId: "c2",
             statement: "There is an Enterprise plan.",
             reason: "no-supporting-block",
+          },
+        ],
+        needsMoreBrowsingClaims: [
+          {
+            version: "1.0.0",
+            claimId: "c4",
+            statement: "The plan is available in all regions.",
+            reason: "needs-more-browsing",
+            nextActionHint:
+              "Browse the regional availability or feature-matrix page before answering.",
+          },
+        ],
+        claimOutcomes: [
+          {
+            version: "1.0.0",
+            claimId: "c1",
+            statement: "The Starter plan costs $29 per month.",
+            verdict: "evidence-supported",
+            support: ["b3", "b4"],
+            supportScore: 0.91,
+            citation: {
+              url: "fixture://research/citation-heavy/pricing",
+              retrievedAt: "2026-03-14T12:00:00+09:00",
+              sourceType: "fixture",
+              sourceRisk: "low",
+              sourceLabel: "Pricing",
+            },
+          },
+          {
+            version: "1.0.0",
+            claimId: "c4",
+            statement: "The plan is available in all regions.",
+            verdict: "needs-more-browsing",
+            reason: "needs-more-browsing",
+            checkedBlockRefs: ["rmain:heading:pricing"],
           },
         ],
       }),

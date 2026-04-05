@@ -625,12 +625,26 @@ impl ReadOnlyRuntime {
             synthesized_notes: summary.synthesized_notes,
             supported_claims: aggregated_claims
                 .iter()
-                .filter(|claim| claim.status == SessionSynthesisClaimStatus::Supported)
+                .filter(|claim| claim.status == SessionSynthesisClaimStatus::EvidenceSupported)
+                .cloned()
+                .collect(),
+            contradicted_claims: aggregated_claims
+                .iter()
+                .filter(|claim| claim.status == SessionSynthesisClaimStatus::Contradicted)
                 .cloned()
                 .collect(),
             unsupported_claims: aggregated_claims
                 .iter()
-                .filter(|claim| claim.status == SessionSynthesisClaimStatus::Unsupported)
+                .filter(|claim| {
+                    claim.status == SessionSynthesisClaimStatus::InsufficientEvidence
+                })
+                .cloned()
+                .collect(),
+            needs_more_browsing_claims: aggregated_claims
+                .iter()
+                .filter(|claim| {
+                    claim.status == SessionSynthesisClaimStatus::NeedsMoreBrowsing
+                })
                 .cloned()
                 .collect(),
         })
@@ -860,14 +874,14 @@ fn aggregate_session_claims(session: &ReadOnlySession) -> Vec<SessionSynthesisCl
             let aggregate = aggregates.entry(key).or_insert_with(|| Aggregate {
                 claim_id: supported_claim.claim_id.clone(),
                 statement: supported_claim.statement.clone(),
-                status: SessionSynthesisClaimStatus::Supported,
+                status: SessionSynthesisClaimStatus::EvidenceSupported,
                 snapshot_ids: BTreeSet::new(),
                 support_refs: BTreeSet::new(),
                 citations: Vec::new(),
                 citation_keys: BTreeSet::new(),
             });
 
-            aggregate.status = SessionSynthesisClaimStatus::Supported;
+            aggregate.status = SessionSynthesisClaimStatus::EvidenceSupported;
             aggregate
                 .snapshot_ids
                 .insert(evidence_record.snapshot_id.clone());
@@ -886,6 +900,34 @@ fn aggregate_session_claims(session: &ReadOnlySession) -> Vec<SessionSynthesisCl
             }
         }
 
+        for unsupported_claim in &evidence_record.report.contradicted_claims {
+            let key = (
+                unsupported_claim.claim_id.clone(),
+                unsupported_claim.statement.clone(),
+            );
+            let aggregate = aggregates.entry(key).or_insert_with(|| Aggregate {
+                claim_id: unsupported_claim.claim_id.clone(),
+                statement: unsupported_claim.statement.clone(),
+                status: SessionSynthesisClaimStatus::Contradicted,
+                snapshot_ids: BTreeSet::new(),
+                support_refs: BTreeSet::new(),
+                citations: Vec::new(),
+                citation_keys: BTreeSet::new(),
+            });
+
+            if claim_status_priority(SessionSynthesisClaimStatus::Contradicted)
+                > claim_status_priority(aggregate.status.clone())
+            {
+                aggregate.status = SessionSynthesisClaimStatus::Contradicted;
+            }
+            aggregate
+                .snapshot_ids
+                .insert(evidence_record.snapshot_id.clone());
+            for checked_ref in &unsupported_claim.checked_block_refs {
+                aggregate.support_refs.insert(checked_ref.clone());
+            }
+        }
+
         for unsupported_claim in &evidence_record.report.unsupported_claims {
             let key = (
                 unsupported_claim.claim_id.clone(),
@@ -894,15 +936,45 @@ fn aggregate_session_claims(session: &ReadOnlySession) -> Vec<SessionSynthesisCl
             let aggregate = aggregates.entry(key).or_insert_with(|| Aggregate {
                 claim_id: unsupported_claim.claim_id.clone(),
                 statement: unsupported_claim.statement.clone(),
-                status: SessionSynthesisClaimStatus::Unsupported,
+                status: SessionSynthesisClaimStatus::InsufficientEvidence,
                 snapshot_ids: BTreeSet::new(),
                 support_refs: BTreeSet::new(),
                 citations: Vec::new(),
                 citation_keys: BTreeSet::new(),
             });
 
-            if aggregate.status != SessionSynthesisClaimStatus::Supported {
-                aggregate.status = SessionSynthesisClaimStatus::Unsupported;
+            if claim_status_priority(SessionSynthesisClaimStatus::InsufficientEvidence)
+                > claim_status_priority(aggregate.status.clone())
+            {
+                aggregate.status = SessionSynthesisClaimStatus::InsufficientEvidence;
+            }
+            aggregate
+                .snapshot_ids
+                .insert(evidence_record.snapshot_id.clone());
+            for checked_ref in &unsupported_claim.checked_block_refs {
+                aggregate.support_refs.insert(checked_ref.clone());
+            }
+        }
+
+        for unsupported_claim in &evidence_record.report.needs_more_browsing_claims {
+            let key = (
+                unsupported_claim.claim_id.clone(),
+                unsupported_claim.statement.clone(),
+            );
+            let aggregate = aggregates.entry(key).or_insert_with(|| Aggregate {
+                claim_id: unsupported_claim.claim_id.clone(),
+                statement: unsupported_claim.statement.clone(),
+                status: SessionSynthesisClaimStatus::NeedsMoreBrowsing,
+                snapshot_ids: BTreeSet::new(),
+                support_refs: BTreeSet::new(),
+                citations: Vec::new(),
+                citation_keys: BTreeSet::new(),
+            });
+
+            if claim_status_priority(SessionSynthesisClaimStatus::NeedsMoreBrowsing)
+                > claim_status_priority(aggregate.status.clone())
+            {
+                aggregate.status = SessionSynthesisClaimStatus::NeedsMoreBrowsing;
             }
             aggregate
                 .snapshot_ids
@@ -925,6 +997,15 @@ fn aggregate_session_claims(session: &ReadOnlySession) -> Vec<SessionSynthesisCl
             citations: aggregate.citations,
         })
         .collect()
+}
+
+fn claim_status_priority(status: SessionSynthesisClaimStatus) -> usize {
+    match status {
+        SessionSynthesisClaimStatus::InsufficientEvidence => 0,
+        SessionSynthesisClaimStatus::NeedsMoreBrowsing => 1,
+        SessionSynthesisClaimStatus::Contradicted => 2,
+        SessionSynthesisClaimStatus::EvidenceSupported => 3,
+    }
 }
 
 #[derive(Debug, Error)]
@@ -1312,6 +1393,8 @@ mod tests {
         assert!(synthesis
             .unsupported_claims
             .iter()
+            .chain(synthesis.needs_more_browsing_claims.iter())
+            .chain(synthesis.contradicted_claims.iter())
             .any(|claim| claim.claim_id == "claim-missing"));
         assert!(synthesis
             .synthesized_notes

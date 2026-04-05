@@ -1,6 +1,12 @@
 import { countTokens } from "gpt-tokenizer/model/gpt-4o";
 
 import {
+  claimOutcomeForStatement,
+  evidenceSupportedClaims,
+  claimOutcomes as getClaimOutcomes,
+  insufficientEvidenceClaims,
+} from "./lib/evidence-report.mjs";
+import {
   ensureCliBuilt,
   normalizeText,
   roundTo,
@@ -297,17 +303,12 @@ function summarizeTextSurface(text, claims) {
 }
 
 function summarizeExtractSurface(extract, claims) {
-  const supportedByStatement = new Map(
-    (extract.evidenceSupportedClaims ?? []).map((claim) => [
-      claim.statement,
-      claim,
-    ]),
-  );
   let positiveSupportedCount = 0;
   let negativeFalsePositiveCount = 0;
 
   for (const claim of claims) {
-    const supported = supportedByStatement.has(claim.statement);
+    const outcome = claimOutcomeForStatement(extract, claim.statement);
+    const supported = outcome?.verdict === "evidence-supported";
     if (claim.expected === "positive" && supported) {
       positiveSupportedCount += 1;
     }
@@ -319,13 +320,14 @@ function summarizeExtractSurface(extract, claims) {
   return {
     positiveSupportedCount,
     negativeFalsePositiveCount,
-    supportedClaims: (extract.evidenceSupportedClaims ?? []).map((claim) => ({
+    supportedClaims: evidenceSupportedClaims(extract).map((claim) => ({
       statement: claim.statement,
       supportScore: Number(claim.supportScore ?? 0),
       supportRefCount: Array.isArray(claim.support) ? claim.support.length : 0,
       hasCitation: Boolean(claim.citation?.url),
     })),
-    insufficientEvidenceClaims: extract.insufficientEvidenceClaims ?? [],
+    insufficientEvidenceClaims: insufficientEvidenceClaims(extract),
+    claimOutcomes: getClaimOutcomes(extract),
   };
 }
 

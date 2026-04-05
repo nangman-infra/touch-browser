@@ -49,5 +49,59 @@
         "rmain:link:advanced"
       ]
     }
+  ],
+  "claimOutcomes": [
+    {
+      "version": "1.0.0",
+      "claimId": "c1",
+      "statement": "The page asks the runtime to follow the Advanced guide link.",
+      "verdict": "evidence-supported",
+      "support": ["b3", "b4"],
+      "supportScore": 0.8,
+      "citation": {
+        "url": "fixture://research/navigation/browser-follow",
+        "retrievedAt": "2026-03-14T00:00:00+09:00",
+        "sourceType": "fixture",
+        "sourceRisk": "low",
+        "sourceLabel": "Browser-backed follow seed"
+      },
+      "checkedBlockRefs": [
+        "rmain:text:follow-content",
+        "rmain:link:advanced",
+        "rmain:heading:browser-follow"
+      ]
+    },
+    {
+      "version": "1.0.0",
+      "claimId": "c2",
+      "statement": "The page includes an Advanced guide link.",
+      "verdict": "evidence-supported",
+      "support": ["b3", "b4"],
+      "supportScore": 0.86,
+      "citation": {
+        "url": "fixture://research/navigation/browser-follow",
+        "retrievedAt": "2026-03-14T00:00:00+09:00",
+        "sourceType": "fixture",
+        "sourceRisk": "low",
+        "sourceLabel": "Browser-backed follow seed"
+      },
+      "checkedBlockRefs": [
+        "rmain:text:follow-content",
+        "rmain:link:advanced",
+        "rmain:heading:browser-follow"
+      ]
+    },
+    {
+      "version": "1.0.0",
+      "claimId": "c3",
+      "statement": "The page contains a payment form.",
+      "verdict": "insufficient-evidence",
+      "reason": "insufficient-support-score",
+      "checkedBlockRefs": [
+        "rmain:text:follow-content",
+        "rmain:heading:browser-follow",
+        "rmain:link:advanced"
+      ]
+    }
   ]
 }

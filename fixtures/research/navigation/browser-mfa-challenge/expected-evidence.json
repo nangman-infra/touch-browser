@@ -35,5 +35,39 @@
         "rmain:input:otp-text"
       ]
     }
+  ],
+  "claimOutcomes": [
+    {
+      "version": "1.0.0",
+      "claimId": "c1",
+      "statement": "The page asks for a verification code.",
+      "verdict": "evidence-supported",
+      "support": ["b4", "b3", "b7"],
+      "supportScore": 0.77,
+      "citation": {
+        "url": "fixture://research/navigation/browser-mfa-challenge",
+        "retrievedAt": "2026-03-14T00:00:00+09:00",
+        "sourceType": "fixture",
+        "sourceRisk": "low",
+        "sourceLabel": "Browser MFA challenge seed"
+      },
+      "checkedBlockRefs": [
+        "rmain:form:verify-form",
+        "rmain:text:enter-the-6-digit-verification-code-from-your-au",
+        "rmain:text:status"
+      ]
+    },
+    {
+      "version": "1.0.0",
+      "claimId": "c2",
+      "statement": "The page already shows a signed-in dashboard.",
+      "verdict": "insufficient-evidence",
+      "reason": "insufficient-support-score",
+      "checkedBlockRefs": [
+        "rmain:form:verify-form",
+        "rmain:text:enter-the-6-digit-verification-code-from-your-au",
+        "rmain:input:otp-text"
+      ]
+    }
   ]
 }

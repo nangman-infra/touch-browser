@@ -17,7 +17,10 @@ The runtime now has two read surfaces:
 Evidence extraction is intentionally phrased as support retrieval, not final truth judgment:
 
 - `evidenceSupportedClaims`
+- `contradictedClaims`
 - `insufficientEvidenceClaims`
+- `needsMoreBrowsingClaims`
+- `claimOutcomes`
 - `supportScore`
 - optional `verification` from `--verifier-command`
 
@@ -29,7 +32,7 @@ Evidence extraction is intentionally phrased as support retrieval, not final tru
 | `touch-browser snapshot <target> [--browser] [--headed] [--budget <tokens>] [--session-file <path>] [--allow-domain <host> ...]` | Return the full snapshot payload for the target. |
 | `touch-browser read-view <target> [--browser] [--headed] [--main-only] [--budget <tokens>] [--session-file <path>] [--allow-domain <host> ...]` | Return a readable Markdown rendering of the target. By default the renderer prefers main-content blocks when available; `--main-only` makes that filter explicit. |
 | `touch-browser compact-view <target> [--browser] [--headed] [--budget <tokens>] [--session-file <path>] [--allow-domain <host> ...]` | Return compact semantic text plus `refIndex`. |
-| `touch-browser extract <target> --claim <statement> ... [--verifier-command <shell-command>] [--browser] [--headed] [--budget <tokens>] [--session-file <path>] [--allow-domain <host> ...]` | Return evidence-supported and insufficient-evidence claims with citations and optional verifier output. |
+| `touch-browser extract <target> --claim <statement> ... [--verifier-command <shell-command>] [--browser] [--headed] [--budget <tokens>] [--session-file <path>] [--allow-domain <host> ...]` | Return structured claim outcomes with citations: `evidence-supported`, `contradicted`, `insufficient-evidence`, or `needs-more-browsing`. |
 | `touch-browser policy <target> [--browser] [--headed] [--budget <tokens>] [--allow-domain <host> ...]` | Return the allow, review, or block policy report. |
 | `touch-browser session-snapshot --session-file <path>` | Read the latest snapshot from a persisted browser session. |
 | `touch-browser session-read --session-file <path> [--main-only]` | Return a readable Markdown rendering of the latest persisted browser snapshot. |
@@ -67,7 +70,7 @@ Evidence extraction is intentionally phrased as support retrieval, not final tru
 - live targets run through `ReadOnlyRuntime + AcquisitionEngine + PolicyKernel`
 - browser targets run through `Playwright stdio adapter -> ObservationCompiler -> ReadOnlyRuntime.open_snapshot -> Policy/Evidence`
 - persisted browser sessions run through `session-file JSON -> ReadOnlySession + persisted browser state + browser context dir + browser trace + requested budget restore -> stable-ref hints -> Playwright action -> runtime append -> session-file save`
-- verifier hooks run only when `--verifier-command` is set and execute after evidence retrieval
+- verifier hooks run only when `--verifier-command` is set and execute after evidence retrieval, with the ability to adjudicate the final claim verdict
 - `read-view` and `session-read` prefer main-content blocks by default and can be forced into explicit main-zone filtering with `--main-only`
 - supervised browser actions require allowlists, policy preflight, and explicit risk acknowledgement when challenge, MFA, auth, or high-risk-write signals appear
 
@@ -133,9 +136,12 @@ Primary shapes:
 Evidence output terminology:
 
 - `evidenceSupportedClaims`: retrieved evidence blocks that currently support a claim
+- `contradictedClaims`: retrieved evidence that directly conflicts with the claim
 - `insufficientEvidenceClaims`: claims with no sufficient support in the current snapshot
+- `needsMoreBrowsingClaims`: claims that should stay unresolved until the agent opens a more specific source
+- `claimOutcomes`: the canonical four-state verdict list across all extracted claims
 - `supportScore`: evidence-match score for the retrieved support
-- `verification`: optional second-pass verifier output supplied by `--verifier-command`
+- `verification`: optional second-pass verifier output supplied by `--verifier-command`, which may refine the final verdict while leaving the collected support trace intact
 
 ## 7. Validation
 
@@ -186,7 +192,7 @@ Eval and smoke validation covers:
 
 - `read-view` is for readable inspection; `compact-view` is for low-token agent loops
 - use `--main-only` when the page shell is noisy and you want the Markdown output scoped to the primary content region
-- verifier hooks do not replace the base extractor; they attach a second-pass judgment to the report
+- verifier hooks do not replace the base extractor; they adjudicate the final claim verdict on top of the same collected support trace
 - browser-backed `follow` is supported on persisted sessions, not as a general live multi-step replay
 - `--budget` controls the observation budget for live and browser open paths and is reused during follow, paginate, and expand recompilation
 - interactive actions are only supported inside allowlisted browser sessions

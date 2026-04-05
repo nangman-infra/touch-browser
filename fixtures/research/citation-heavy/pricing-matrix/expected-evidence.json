@@ -37,17 +37,87 @@
       }
     }
   ],
-  "insufficientEvidenceClaims": [
+  "insufficientEvidenceClaims": [],
+  "needsMoreBrowsingClaims": [
     {
       "version": "1.0.0",
       "claimId": "c3",
       "statement": "The pricing matrix offers a free GPU tier.",
-      "reason": "insufficient-support-score",
+      "reason": "needs-more-browsing",
+      "checkedBlockRefs": [
+        "rmain:table:tier-price-notes-research-49-5-seats-enterprise-",
+        "rmain:text:pricing-matrix-lists-research-at-49-per-month-an",
+        "rmain:heading:pricing-matrix"
+      ],
+      "guardFailures": [
+        {
+          "kind": "anchor-coverage",
+          "detail": "anchor coverage 0.50 is below required 1.00"
+        }
+      ],
+      "nextActionHint": "Browse a more specific source page before answering."
+    }
+  ],
+  "claimOutcomes": [
+    {
+      "version": "1.0.0",
+      "claimId": "c1",
+      "statement": "Pricing Matrix lists Research at $49 per month and Enterprise as custom.",
+      "verdict": "evidence-supported",
+      "support": ["b3", "b4"],
+      "supportScore": 0.95,
+      "citation": {
+        "url": "fixture://research/citation-heavy/pricing-matrix",
+        "retrievedAt": "2026-03-14T00:00:00+09:00",
+        "sourceType": "fixture",
+        "sourceRisk": "low",
+        "sourceLabel": "Pricing matrix summary"
+      },
+      "checkedBlockRefs": [
+        "rmain:text:pricing-matrix-lists-research-at-49-per-month-an",
+        "rmain:table:tier-price-notes-research-49-5-seats-enterprise-",
+        "rmain:heading:pricing-matrix"
+      ]
+    },
+    {
+      "version": "1.0.0",
+      "claimId": "c2",
+      "statement": "Enterprise | Custom | Contact sales",
+      "verdict": "evidence-supported",
+      "support": ["b4", "b3"],
+      "supportScore": 0.95,
+      "citation": {
+        "url": "fixture://research/citation-heavy/pricing-matrix",
+        "retrievedAt": "2026-03-14T00:00:00+09:00",
+        "sourceType": "fixture",
+        "sourceRisk": "low",
+        "sourceLabel": "Pricing matrix summary"
+      },
       "checkedBlockRefs": [
         "rmain:table:tier-price-notes-research-49-5-seats-enterprise-",
         "rmain:text:pricing-matrix-lists-research-at-49-per-month-an",
         "rmain:heading:pricing-matrix"
       ]
+    },
+    {
+      "version": "1.0.0",
+      "claimId": "c3",
+      "statement": "The pricing matrix offers a free GPU tier.",
+      "verdict": "needs-more-browsing",
+      "support": ["b4", "b3", "b2"],
+      "reason": "needs-more-browsing",
+      "checkedBlockRefs": [
+        "rmain:table:tier-price-notes-research-49-5-seats-enterprise-",
+        "rmain:text:pricing-matrix-lists-research-at-49-per-month-an",
+        "rmain:heading:pricing-matrix"
+      ],
+      "guardFailures": [
+        {
+          "kind": "anchor-coverage",
+          "detail": "anchor coverage 0.50 is below required 1.00"
+        }
+      ],
+      "nextActionHint": "Browse a more specific source page before answering."
     }
   ]
 }
