@@ -3,6 +3,7 @@
   "files": {
     "ignore": [
       "target/**",
+      "output/**",
       "contracts/generated/manifest.json",
       "fixtures/scenarios/**/*.json"
     ],

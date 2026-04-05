@@ -135,6 +135,7 @@ fn dispatch(command: CliCommand) -> Result<Value, CliError> {
     match command {
         CliCommand::Search(options) => handle_search(options),
         CliCommand::SearchOpenResult(options) => handle_search_open_result(options),
+        CliCommand::SearchOpenTop(options) => handle_search_open_top(options),
         CliCommand::Open(options) => handle_open(options),
         CliCommand::Snapshot(options) => handle_open(options),
         CliCommand::CompactView(options) => handle_compact_view(options),
@@ -172,10 +173,8 @@ fn dispatch(command: CliCommand) -> Result<Value, CliError> {
 
 fn handle_search(options: SearchOptions) -> Result<Value, CliError> {
     let search_url = build_search_url(options.engine, &options.query)?;
-    let browser_context_dir = options
-        .session_file
-        .as_ref()
-        .map(|path| browser_context_dir_for_session_file(path.as_path()))
+    let session_file = resolve_search_session_file(options.session_file.as_ref(), options.engine);
+    let browser_context_dir = Some(browser_context_dir_for_session_file(&session_file))
         .map(|path| path.display().to_string());
     let context = open_browser_session(
         &search_url,
@@ -197,26 +196,24 @@ fn handle_search(options: SearchOptions) -> Result<Value, CliError> {
         DEFAULT_OPENED_AT,
     );
 
-    if let Some(session_file) = options.session_file.as_ref() {
-        save_browser_cli_session(
-            session_file,
-            &build_browser_cli_session(
-                &context.session,
-                context.snapshot.budget.requested_tokens,
-                !options.headed,
-                Some(context.browser_state.clone()),
-                context.browser_context_dir.clone(),
-                Some(BrowserOrigin {
-                    target: search_url.clone(),
-                    source_risk: Some(SourceRisk::Low),
-                    source_label: Some(search_engine_source_label(options.engine).to_string()),
-                }),
-                Vec::new(),
-                Vec::new(),
-                Some(report.clone()),
-            ),
-        )?;
-    }
+    save_browser_cli_session(
+        &session_file,
+        &build_browser_cli_session(
+            &context.session,
+            context.snapshot.budget.requested_tokens,
+            !options.headed,
+            Some(context.browser_state.clone()),
+            context.browser_context_dir.clone(),
+            Some(BrowserOrigin {
+                target: search_url.clone(),
+                source_risk: Some(SourceRisk::Low),
+                source_label: Some(search_engine_source_label(options.engine).to_string()),
+            }),
+            Vec::new(),
+            Vec::new(),
+            Some(report.clone()),
+        ),
+    )?;
 
     Ok(json!({
         "query": options.query,
@@ -226,12 +223,13 @@ fn handle_search(options: SearchOptions) -> Result<Value, CliError> {
         "search": report.clone(),
         "result": report,
         "sessionState": context.session.state,
-        "sessionFile": options.session_file.map(|path| path.display().to_string()),
+        "sessionFile": session_file.display().to_string(),
     }))
 }
 
 fn handle_search_open_result(options: SearchOpenResultOptions) -> Result<Value, CliError> {
-    let persisted = load_browser_cli_session(&options.session_file)?;
+    let session_file = resolve_search_session_file(options.session_file.as_ref(), options.engine);
+    let persisted = load_browser_cli_session(&session_file)?;
     let latest_search = persisted.latest_search.clone().ok_or_else(|| {
         CliError::Usage(
             "This browser session does not contain saved search results. Run `touch-browser search ... --session-file <path>` first.".to_string(),
@@ -266,13 +264,91 @@ fn handle_search_open_result(options: SearchOpenResultOptions) -> Result<Value, 
         browser: true,
         headed: options.headed,
         main_only: false,
-        session_file: Some(options.session_file.clone()),
+        session_file: Some(session_file.clone()),
     })?;
+
+    let mut refreshed = load_browser_cli_session(&session_file)?;
+    refreshed.latest_search = Some(latest_search.clone());
+    save_browser_cli_session(&session_file, &refreshed)?;
 
     Ok(json!({
         "selectedResult": selected,
         "result": opened,
-        "sessionFile": options.session_file.display().to_string(),
+        "sessionFile": session_file.display().to_string(),
+    }))
+}
+
+fn handle_search_open_top(options: SearchOpenTopOptions) -> Result<Value, CliError> {
+    let search_session_file =
+        resolve_search_session_file(options.session_file.as_ref(), options.engine);
+    let persisted = load_browser_cli_session(&search_session_file)?;
+    let latest_search = persisted.latest_search.clone().ok_or_else(|| {
+        CliError::Usage(
+            "This browser session does not contain saved search results. Run `touch-browser search ... --session-file <path>` first.".to_string(),
+        )
+    })?;
+    if latest_search.status != SearchReportStatus::Ready {
+        return Err(CliError::Usage(
+            latest_search
+                .status_detail
+                .clone()
+                .unwrap_or_else(|| "Saved search results are not ready to open.".to_string()),
+        ));
+    }
+
+    let selected_ranks = if latest_search.recommended_result_ranks.is_empty() {
+        latest_search
+            .results
+            .iter()
+            .map(|result| result.rank)
+            .take(options.limit)
+            .collect::<Vec<_>>()
+    } else {
+        latest_search
+            .recommended_result_ranks
+            .iter()
+            .copied()
+            .take(options.limit)
+            .collect::<Vec<_>>()
+    };
+
+    let opened = selected_ranks
+        .into_iter()
+        .filter_map(|rank| {
+            latest_search
+                .results
+                .iter()
+                .find(|result| result.rank == rank)
+                .cloned()
+        })
+        .map(|selected| {
+            let result_session_file =
+                derived_search_result_session_file(&search_session_file, selected.rank);
+            let opened = handle_browser_open(TargetOptions {
+                target: selected.url.clone(),
+                budget: persisted.requested_budget,
+                source_risk: Some(SourceRisk::Low),
+                source_label: None,
+                allowlisted_domains: persisted.allowlisted_domains.clone(),
+                browser: true,
+                headed: options.headed,
+                main_only: false,
+                session_file: Some(result_session_file.clone()),
+            })?;
+
+            Ok::<Value, CliError>(json!({
+                "rank": selected.rank,
+                "selectedResult": selected,
+                "sessionFile": result_session_file.display().to_string(),
+                "result": opened,
+            }))
+        })
+        .collect::<Result<Vec<_>, _>>()?;
+
+    Ok(json!({
+        "searchSessionFile": search_session_file.display().to_string(),
+        "openedCount": opened.len(),
+        "opened": opened,
     }))
 }
 
@@ -285,6 +361,47 @@ fn build_search_url(engine: SearchEngine, query: &str) -> Result<String, CliErro
     serializer.append_pair("q", query);
     let query_string = serializer.finish();
     Ok(format!("{base}?{query_string}"))
+}
+
+fn search_engine_slug(engine: SearchEngine) -> &'static str {
+    match engine {
+        SearchEngine::Google => "google",
+        SearchEngine::Brave => "brave",
+    }
+}
+
+fn default_search_session_file(engine: SearchEngine) -> PathBuf {
+    repo_root()
+        .join("output/browser-search")
+        .join(format!("{}.search-session.json", search_engine_slug(engine)))
+}
+
+fn resolve_search_session_file(session_file: Option<&PathBuf>, engine: SearchEngine) -> PathBuf {
+    session_file
+        .cloned()
+        .unwrap_or_else(|| default_search_session_file(engine))
+}
+
+fn derived_search_result_session_file(search_session_file: &Path, rank: usize) -> PathBuf {
+    let parent = search_session_file
+        .parent()
+        .unwrap_or_else(|| Path::new("/tmp"));
+    let stem = search_session_file
+        .file_stem()
+        .map(|value| value.to_string_lossy().to_string())
+        .unwrap_or_else(|| "touch-browser-search".to_string());
+    parent.join(format!("{stem}.rank-{rank}.json"))
+}
+
+fn is_search_results_target(target: &str) -> bool {
+    let Ok(url) = Url::parse(target) else {
+        return false;
+    };
+    let Some(host) = url.host_str() else {
+        return false;
+    };
+    let path = url.path();
+    (is_google_host(host) && path == "/search") || (is_brave_host(host) && path == "/search")
 }
 
 fn build_search_report(
@@ -1589,12 +1706,18 @@ fn handle_session_refresh(options: SessionRefreshOptions) -> Result<Value, CliEr
     let runtime = ReadOnlyRuntime::default();
     let kernel = PolicyKernel;
     let mut persisted = load_browser_cli_session(&options.session_file)?;
+    let current_search_identity = persisted
+        .session
+        .current_snapshot_record()
+        .map(|record| is_search_results_target(&record.snapshot.source.source_url))
+        .unwrap_or(false);
     let primary_capture = invoke_playwright_snapshot(PlaywrightSnapshotParams {
         url: None,
         html: None,
         context_dir: persisted.browser_context_dir.clone(),
         budget: persisted.requested_budget,
         headless: !options.headed,
+        search_identity: current_search_identity,
     })?;
     let (capture, effective_budget, snapshot) = match compile_browser_snapshot(
         &primary_capture.final_url,
@@ -1614,6 +1737,7 @@ fn handle_session_refresh(options: SessionRefreshOptions) -> Result<Value, CliEr
                 context_dir: source.context_dir,
                 budget: persisted.requested_budget,
                 headless: !options.headed,
+                search_identity: is_search_results_target(&source.source_url),
             })?;
             let effective_budget =
                 recommend_requested_tokens(&fallback_capture.html, persisted.requested_budget);
@@ -4724,6 +4848,7 @@ fn browser_document(
             context_dir: browser_context_dir.clone(),
             budget: effective_budget,
             headless: !headed,
+            search_identity: false,
         })?;
         let snapshot = compile_browser_snapshot(target, &capture.html, effective_budget)?;
 
@@ -4745,6 +4870,7 @@ fn browser_document(
         context_dir: browser_context_dir.clone(),
         budget: requested_budget,
         headless: !headed,
+        search_identity: is_search_results_target(target),
     })?;
     let effective_budget = recommend_requested_tokens(&capture.html, requested_budget);
     let snapshot = compile_browser_snapshot(&capture.final_url, &capture.html, effective_budget)?;
@@ -5225,6 +5351,9 @@ fn parse_command(args: &[String]) -> Result<CliCommand, CliError> {
         "search-open-result" => Ok(CliCommand::SearchOpenResult(
             parse_search_open_result_options(&args[1..])?,
         )),
+        "search-open-top" => Ok(CliCommand::SearchOpenTop(
+            parse_search_open_top_options(&args[1..])?,
+        )),
         "open" => Ok(CliCommand::Open(parse_target_options(&args[1..])?)),
         "snapshot" => Ok(CliCommand::Snapshot(parse_target_options(&args[1..])?)),
         "compact-view" => Ok(CliCommand::CompactView(parse_target_options(&args[1..])?)),
@@ -5313,7 +5442,7 @@ fn parse_search_options(args: &[String]) -> Result<SearchOptions, CliError> {
         query,
         engine: SearchEngine::Google,
         budget: DEFAULT_SEARCH_TOKENS,
-        headed: false,
+        headed: true,
         session_file: None,
     };
     let mut index = 1;
@@ -5329,6 +5458,10 @@ fn parse_search_options(args: &[String]) -> Result<SearchOptions, CliError> {
             }
             "--headed" => {
                 options.headed = true;
+                index += 1;
+            }
+            "--headless" => {
+                options.headed = false;
                 index += 1;
             }
             "--budget" => {
@@ -5365,12 +5498,20 @@ fn parse_search_options(args: &[String]) -> Result<SearchOptions, CliError> {
 
 fn parse_search_open_result_options(args: &[String]) -> Result<SearchOpenResultOptions, CliError> {
     let mut session_file = None;
+    let mut engine = SearchEngine::Google;
     let mut rank = None;
-    let mut headed = false;
+    let mut headed = true;
     let mut index = 0;
 
     while index < args.len() {
         match args[index].as_str() {
+            "--engine" => {
+                let value = args
+                    .get(index + 1)
+                    .ok_or_else(|| CliError::Usage("--engine requires a value.".to_string()))?;
+                engine = parse_search_engine(value)?;
+                index += 2;
+            }
             "--session-file" => {
                 let value = args.get(index + 1).ok_or_else(|| {
                     CliError::Usage("--session-file requires a path.".to_string())
@@ -5397,6 +5538,10 @@ fn parse_search_open_result_options(args: &[String]) -> Result<SearchOpenResultO
                 headed = true;
                 index += 1;
             }
+            "--headless" => {
+                headed = false;
+                index += 1;
+            }
             other => {
                 return Err(CliError::Usage(format!(
                     "Unknown option `{other}` for search-open-result."
@@ -5406,12 +5551,72 @@ fn parse_search_open_result_options(args: &[String]) -> Result<SearchOpenResultO
     }
 
     Ok(SearchOpenResultOptions {
-        session_file: session_file.ok_or_else(|| {
-            CliError::Usage("search-open-result requires `--session-file <path>`.".to_string())
-        })?,
+        engine,
+        session_file,
         rank: rank.ok_or_else(|| {
             CliError::Usage("search-open-result requires `--rank <number>`.".to_string())
         })?,
+        headed,
+    })
+}
+
+fn parse_search_open_top_options(args: &[String]) -> Result<SearchOpenTopOptions, CliError> {
+    let mut session_file = None;
+    let mut engine = SearchEngine::Google;
+    let mut limit = 3usize;
+    let mut headed = true;
+    let mut index = 0;
+
+    while index < args.len() {
+        match args[index].as_str() {
+            "--engine" => {
+                let value = args
+                    .get(index + 1)
+                    .ok_or_else(|| CliError::Usage("--engine requires a value.".to_string()))?;
+                engine = parse_search_engine(value)?;
+                index += 2;
+            }
+            "--session-file" => {
+                let value = args.get(index + 1).ok_or_else(|| {
+                    CliError::Usage("--session-file requires a path.".to_string())
+                })?;
+                session_file = Some(PathBuf::from(value));
+                index += 2;
+            }
+            "--limit" => {
+                let value = args
+                    .get(index + 1)
+                    .ok_or_else(|| CliError::Usage("--limit requires a number.".to_string()))?;
+                limit = value.parse::<usize>().map_err(|_| {
+                    CliError::Usage("--limit requires a positive number.".to_string())
+                })?;
+                if limit == 0 {
+                    return Err(CliError::Usage(
+                        "--limit requires a positive number.".to_string(),
+                    ));
+                }
+                index += 2;
+            }
+            "--headed" => {
+                headed = true;
+                index += 1;
+            }
+            "--headless" => {
+                headed = false;
+                index += 1;
+            }
+            other => {
+                return Err(CliError::Usage(format!(
+                    "Unknown option `{other}` for search-open-top."
+                )));
+            }
+        }
+    }
+
+    Ok(SearchOpenTopOptions {
+        engine,
+        session_file,
+        limit,
         headed,
     })
 }
@@ -7239,8 +7444,9 @@ fn usage() -> String {
     [
         "Usage:",
         "  Stable research commands:",
-        "  touch-browser search <query> [--engine google|brave] [--headed] [--budget <tokens>] [--session-file <path>]",
-        "  touch-browser search-open-result --session-file <path> --rank <number> [--headed]",
+        "  touch-browser search <query> [--engine google|brave] [--headless] [--budget <tokens>] [--session-file <path>]",
+        "  touch-browser search-open-result --rank <number> [--engine google|brave] [--session-file <path>] [--headless]",
+        "  touch-browser search-open-top [--limit <count>] [--engine google|brave] [--session-file <path>] [--headless]",
         "  touch-browser open <target> [--browser] [--headed] [--budget <tokens>] [--session-file <path>] [--source-risk low|medium|hostile] [--source-label <label>] [--allow-domain <host> ...]",
         "  touch-browser snapshot <target> [--browser] [--headed] [--budget <tokens>] [--session-file <path>] [--source-risk low|medium|hostile] [--source-label <label>] [--allow-domain <host> ...]",
         "  touch-browser compact-view <target> [--browser] [--headed] [--budget <tokens>] [--session-file <path>] [--source-risk low|medium|hostile] [--source-label <label>] [--allow-domain <host> ...]",
@@ -7280,6 +7486,7 @@ fn usage() -> String {
 enum CliCommand {
     Search(SearchOptions),
     SearchOpenResult(SearchOpenResultOptions),
+    SearchOpenTop(SearchOpenTopOptions),
     Open(TargetOptions),
     Snapshot(TargetOptions),
     CompactView(TargetOptions),
@@ -7336,8 +7543,17 @@ struct SearchOptions {
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 struct SearchOpenResultOptions {
-    session_file: PathBuf,
+    engine: SearchEngine,
+    session_file: Option<PathBuf>,
     rank: usize,
+    headed: bool,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+struct SearchOpenTopOptions {
+    engine: SearchEngine,
+    session_file: Option<PathBuf>,
+    limit: usize,
     headed: bool,
 }
 
@@ -7634,6 +7850,8 @@ struct PlaywrightSnapshotParams {
     context_dir: Option<String>,
     budget: usize,
     headless: bool,
+    #[serde(skip_serializing_if = "std::ops::Not::not")]
+    search_identity: bool,
 }
 
 #[derive(Debug, Deserialize)]
@@ -8157,19 +8375,21 @@ mod tests {
 
     use serde_json::json;
     use touch_browser_contracts::{
+        SearchReport, SearchResultItem,
         SnapshotBlock, SnapshotBlockKind, SnapshotBlockRole, SnapshotBudget, SnapshotDocument,
         SnapshotEvidence, SnapshotSource, SourceType,
     };
 
     use super::{
-        browser_context_dir_for_session_file, build_search_report, dispatch, parse_command,
-        AckRisk, ApproveOptions, CliCommand, ClickOptions, ExpandOptions, ExtractOptions,
+        browser_context_dir_for_session_file, build_search_report, dispatch,
+        load_browser_cli_session, parse_command, save_browser_cli_session, AckRisk,
+        ApproveOptions, CliCommand, ClickOptions, ExpandOptions, ExtractOptions,
         FollowOptions, OutputFormat, PaginateOptions, PaginationDirection, PolicyProfile,
-        SearchActionActor, SearchEngine, SearchOpenResultOptions, SearchOptions,
-        SearchReportStatus, SessionExtractOptions, SessionFileOptions, SessionProfileSetOptions,
-        SessionReadOptions, SessionRefreshOptions, SessionSynthesizeOptions, SubmitOptions,
-        TargetOptions, TelemetryRecentOptions, TypeOptions, DEFAULT_REQUESTED_TOKENS,
-        DEFAULT_SEARCH_TOKENS,
+        SearchActionActor, SearchEngine, SearchOpenResultOptions, SearchOpenTopOptions,
+        SearchOptions, SearchReportStatus, SessionExtractOptions, SessionFileOptions,
+        SessionProfileSetOptions, SessionReadOptions, SessionRefreshOptions,
+        SessionSynthesizeOptions, SubmitOptions, TargetOptions, TelemetryRecentOptions,
+        TypeOptions, DEFAULT_OPENED_AT, DEFAULT_REQUESTED_TOKENS, DEFAULT_SEARCH_TOKENS,
     };
 
     fn temp_session_path(name: &str) -> PathBuf {
@@ -8251,8 +8471,32 @@ mod tests {
         assert_eq!(
             command,
             CliCommand::SearchOpenResult(SearchOpenResultOptions {
-                session_file: PathBuf::from("/tmp/search-session.json"),
+                engine: SearchEngine::Google,
+                session_file: Some(PathBuf::from("/tmp/search-session.json")),
                 rank: 2,
+                headed: true,
+            })
+        );
+    }
+
+    #[test]
+    fn parses_search_open_top_command() {
+        let command = parse_command(&[
+            "search-open-top".to_string(),
+            "--engine".to_string(),
+            "brave".to_string(),
+            "--limit".to_string(),
+            "2".to_string(),
+            "--headless".to_string(),
+        ])
+        .expect("search-open-top command should parse");
+
+        assert_eq!(
+            command,
+            CliCommand::SearchOpenTop(SearchOpenTopOptions {
+                engine: SearchEngine::Brave,
+                session_file: None,
+                limit: 2,
                 headed: false,
             })
         );
@@ -8534,6 +8778,73 @@ mod tests {
                 && hint.headed_required
                 && !hint.can_auto_run
         }));
+    }
+
+    #[test]
+    fn search_open_result_preserves_latest_search_state() {
+        let session_file = temp_session_path("search-open-result-preserve");
+        dispatch(CliCommand::Open(TargetOptions {
+            target: "fixture://research/navigation/browser-pagination".to_string(),
+            budget: DEFAULT_REQUESTED_TOKENS,
+            source_risk: None,
+            source_label: None,
+            allowlisted_domains: Vec::new(),
+            browser: true,
+            headed: false,
+            main_only: false,
+            session_file: Some(session_file.clone()),
+        }))
+        .expect("browser-backed open should persist session");
+
+        let mut persisted =
+            load_browser_cli_session(&session_file).expect("session should load after open");
+        persisted.latest_search = Some(SearchReport {
+            version: "1.0.0".to_string(),
+            generated_at: DEFAULT_OPENED_AT.to_string(),
+            engine: SearchEngine::Google,
+            query: "browser pagination".to_string(),
+            search_url: "https://www.google.com/search?q=browser+pagination".to_string(),
+            final_url: "https://www.google.com/search?q=browser+pagination".to_string(),
+            status: SearchReportStatus::Ready,
+            status_detail: None,
+            result_count: 1,
+            results: vec![SearchResultItem {
+                rank: 1,
+                title: "Browser Pagination".to_string(),
+                url: "fixture://research/navigation/browser-pagination".to_string(),
+                domain: "fixture.local".to_string(),
+                snippet: Some("Fixture search result".to_string()),
+                stable_ref: None,
+                official_likely: true,
+                selection_score: Some(1.0),
+                recommended_surface: Some("read-view".to_string()),
+            }],
+            recommended_result_ranks: vec![1],
+            next_action_hints: Vec::new(),
+        });
+        save_browser_cli_session(&session_file, &persisted)
+            .expect("session should save with search state");
+
+        dispatch(CliCommand::SearchOpenResult(SearchOpenResultOptions {
+            engine: SearchEngine::Google,
+            session_file: Some(session_file.clone()),
+            rank: 1,
+            headed: false,
+        }))
+        .expect("search-open-result should succeed");
+
+        let refreshed =
+            load_browser_cli_session(&session_file).expect("session should reload after open");
+        let latest_search = refreshed
+            .latest_search
+            .expect("latest search should still be present after opening a result");
+        assert_eq!(latest_search.result_count, 1);
+        assert_eq!(latest_search.results[0].rank, 1);
+
+        dispatch(CliCommand::SessionClose(SessionFileOptions {
+            session_file: session_file.clone(),
+        }))
+        .expect("session close should clean search session");
     }
 
     #[test]

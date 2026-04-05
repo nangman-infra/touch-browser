@@ -91,6 +91,51 @@ describe("playwright adapter", () => {
     }
   });
 
+  it("hardens search snapshots to look less like automation", async () => {
+    const response = await handleRequest({
+      jsonrpc: "2.0",
+      id: "req-search-identity",
+      method: "browser.snapshot",
+      params: {
+        html: `
+          <!doctype html>
+          <html>
+            <body>
+              <main>
+                <div id="result"></div>
+                <script>
+                  const result = document.getElementById("result");
+                  result.textContent = [
+                    String(navigator.webdriver),
+                    typeof window.chrome,
+                  ].join("|");
+                </script>
+              </main>
+            </body>
+          </html>
+        `,
+        budget: 600,
+        searchIdentity: true,
+      },
+    });
+
+    expect(response).toMatchObject({
+      jsonrpc: "2.0",
+      id: "req-search-identity",
+      result: {
+        status: "ok",
+        mode: "playwright-browser",
+      },
+    });
+    if ("result" in response) {
+      const visibleText = String(
+        (response.result as { visibleText?: unknown }).visibleText ?? "",
+      );
+      expect(visibleText.endsWith("|object")).toBe(true);
+      expect(visibleText.startsWith("true|")).toBe(false);
+    }
+  });
+
   it("serializes concurrent persistent-context requests for the same session directory", async () => {
     const contextDir = await mkdtemp(
       path.join(os.tmpdir(), "touch-browser-playwright-lock-"),
@@ -148,6 +193,107 @@ describe("playwright adapter", () => {
         visibleText: expect.stringContaining("Concurrent Context"),
       },
     });
+  });
+
+  it("creates lock directories for nested persistent context paths", async () => {
+    const baseDir = await mkdtemp(
+      path.join(os.tmpdir(), "touch-browser-playwright-nested-"),
+    );
+    const contextDir = path.join(baseDir, "profiles", "google-search");
+
+    const response = await handleRequest({
+      jsonrpc: "2.0",
+      id: "req-nested-context",
+      method: "browser.snapshot",
+      params: {
+        html: `
+          <!doctype html>
+          <html>
+            <body>
+              <main>
+                <h1>Nested Context</h1>
+              </main>
+            </body>
+          </html>
+        `,
+        contextDir,
+        budget: 600,
+      },
+    });
+
+    expect(response).toMatchObject({
+      jsonrpc: "2.0",
+      id: "req-nested-context",
+      result: {
+        status: "ok",
+        visibleText: expect.stringContaining("Nested Context"),
+      },
+    });
+  });
+
+  it("reuses search identity hardening across the same persistent context directory", async () => {
+    const contextDir = await mkdtemp(
+      path.join(os.tmpdir(), "touch-browser-search-profile-"),
+    );
+    const html = `
+      <!doctype html>
+      <html>
+        <body>
+          <main>
+            <div id="result"></div>
+            <script>
+              const result = document.getElementById("result");
+              result.textContent = [
+                String(navigator.webdriver),
+                typeof window.chrome,
+              ].join("|");
+            </script>
+          </main>
+        </body>
+      </html>
+    `;
+
+    const first = await handleRequest({
+      jsonrpc: "2.0",
+      id: "req-search-profile-first",
+      method: "browser.snapshot",
+      params: {
+        html,
+        contextDir,
+        searchIdentity: true,
+      },
+    });
+    const second = await handleRequest({
+      jsonrpc: "2.0",
+      id: "req-search-profile-second",
+      method: "browser.snapshot",
+      params: {
+        html,
+        contextDir,
+      },
+    });
+
+    expect(first).toMatchObject({
+      jsonrpc: "2.0",
+      id: "req-search-profile-first",
+      result: {
+        status: "ok",
+      },
+    });
+    expect(second).toMatchObject({
+      jsonrpc: "2.0",
+      id: "req-search-profile-second",
+      result: {
+        status: "ok",
+      },
+    });
+    if ("result" in second) {
+      const visibleText = String(
+        (second.result as { visibleText?: unknown }).visibleText ?? "",
+      );
+      expect(visibleText.endsWith("|object")).toBe(true);
+      expect(visibleText.startsWith("true|")).toBe(false);
+    }
   });
 
   it("executes browser-backed follow with inline html", async () => {

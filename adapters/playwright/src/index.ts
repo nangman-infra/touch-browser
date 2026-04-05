@@ -1,4 +1,12 @@
-import { mkdir, readFile, rm, stat, writeFile } from "node:fs/promises";
+import {
+  mkdir,
+  mkdtemp,
+  readFile,
+  rm,
+  stat,
+  writeFile,
+} from "node:fs/promises";
+import os from "node:os";
 import path from "node:path";
 
 import {
@@ -65,6 +73,7 @@ type BrowserSource = {
   readonly html: string | undefined;
   readonly contextDir: string | undefined;
   readonly headless: boolean;
+  readonly searchIdentity: boolean;
 };
 
 type BrowserPageState = {
@@ -118,6 +127,7 @@ type ScoredCandidate = {
 const CONTEXT_LOCK_TIMEOUT_MS = 30_000;
 const CONTEXT_LOCK_RETRY_MS = 150;
 const CONTEXT_LOCK_STALE_MS = 120_000;
+const SEARCH_PROFILE_MARKER = ".touch-browser-search-profile.json";
 
 export function adapterStatus(): AdapterStatus {
   return {
@@ -176,6 +186,7 @@ async function handleSnapshot(
   const budget = asNumber(request.params?.budget) ?? 1200;
   const headless = asBoolean(request.params?.headless) ?? true;
   const contextDir = asString(request.params?.contextDir);
+  const searchIdentity = asBoolean(request.params?.searchIdentity) ?? false;
 
   if (!url && !html && !contextDir) {
     return failure(
@@ -187,7 +198,7 @@ async function handleSnapshot(
 
   try {
     const pageState = await withPage<BrowserPageState>(
-      browserSource(url, html, headless, contextDir),
+      browserSource(url, html, headless, contextDir, searchIdentity),
       capturePageState,
     );
     return success(request.id, {
@@ -241,7 +252,7 @@ async function handleFollow(request: JsonRpcRequest): Promise<JsonRpcResponse> {
   try {
     const resolvedTarget = targetText ?? targetHref ?? targetRef ?? "";
     const result = await withPage(
-      browserSource(url, html, headless, contextDir),
+      browserSource(url, html, headless, contextDir, false),
       async (page) => {
         const target = {
           text: targetText,
@@ -327,7 +338,7 @@ async function handleClick(request: JsonRpcRequest): Promise<JsonRpcResponse> {
   try {
     const resolvedTarget = targetText ?? targetHref ?? targetRef ?? "";
     const result = await withPage(
-      browserSource(url, html, headless, contextDir),
+      browserSource(url, html, headless, contextDir, false),
       async (page) => {
         const target = {
           text: targetText,
@@ -418,7 +429,7 @@ async function handleType(request: JsonRpcRequest): Promise<JsonRpcResponse> {
 
   try {
     const result = await withPage(
-      browserSource(url, html, headless, contextDir),
+      browserSource(url, html, headless, contextDir, false),
       async (page) => {
         const target = {
           text: targetText,
@@ -491,7 +502,7 @@ async function handleSubmit(request: JsonRpcRequest): Promise<JsonRpcResponse> {
   try {
     const resolvedTarget = targetText ?? targetRef ?? "";
     const result = await withPage(
-      browserSource(url, html, headless, contextDir),
+      browserSource(url, html, headless, contextDir, false),
       async (page) => {
         for (const action of prefill) {
           const fillTarget = {
@@ -576,7 +587,7 @@ async function handlePaginate(
 
   try {
     const result = await withPage(
-      browserSource(url, html, headless, contextDir),
+      browserSource(url, html, headless, contextDir, false),
       async (page) => {
         const locator = await findFirstLocator(
           page,
@@ -649,7 +660,7 @@ async function handleExpand(request: JsonRpcRequest): Promise<JsonRpcResponse> {
   try {
     const resolvedTarget = targetText ?? targetRef ?? "";
     const result = await withPage(
-      browserSource(url, html, headless, contextDir),
+      browserSource(url, html, headless, contextDir, false),
       async (page) => {
         const locator = await findExpandLocator(page, {
           text: targetText ?? targetRef,
@@ -720,21 +731,25 @@ async function withPage<T>(
   if (source.contextDir) {
     const { contextDir } = source;
     return withContextDirLock(contextDir, async () => {
-      const context = await chromium.launchPersistentContext(contextDir, {
-        headless: source.headless,
-        viewport: { width: 1600, height: 1200 },
-        screen: { width: 1600, height: 1200 },
-      });
+      const effectiveSource = {
+        ...source,
+        searchIdentity:
+          source.searchIdentity || (await hasSearchIdentityMarker(contextDir)),
+      } satisfies BrowserSource;
+      const context = await launchPersistentBrowserContext(
+        effectiveSource,
+        contextDir,
+      );
 
       try {
         const page = context.pages()[0] ?? (await context.newPage());
         const shouldLoad =
-          !!source.html ||
+          !!effectiveSource.html ||
           page.url() === "about:blank" ||
-          (source.url !== undefined &&
-            !sameResolvedUrl(page.url(), source.url));
+          (effectiveSource.url !== undefined &&
+            !sameResolvedUrl(page.url(), effectiveSource.url));
         if (shouldLoad) {
-          await loadPageSource(page, source);
+          await loadPageSource(page, effectiveSource);
         }
         return await run(page);
       } finally {
@@ -743,7 +758,30 @@ async function withPage<T>(
     });
   }
 
-  const browser = await chromium.launch({ headless: source.headless });
+  if (source.searchIdentity) {
+    const tempContextDir = await mkdtemp(
+      path.join(os.tmpdir(), "touch-browser-search-profile-"),
+    );
+    try {
+      const context = await launchPersistentBrowserContext(
+        source,
+        tempContextDir,
+      );
+      try {
+        const page = context.pages()[0] ?? (await context.newPage());
+        await loadPageSource(page, source);
+        return await run(page);
+      } finally {
+        await closeContextQuietly(context);
+      }
+    } finally {
+      await rm(tempContextDir, { recursive: true, force: true }).catch(
+        () => {},
+      );
+    }
+  }
+
+  const browser = await launchBrowser(source);
 
   try {
     const context = await browser.newContext({
@@ -762,6 +800,77 @@ async function withPage<T>(
   } finally {
     await browser.close();
   }
+}
+
+async function launchPersistentBrowserContext(
+  source: BrowserSource,
+  contextDir: string,
+): Promise<BrowserContext> {
+  const baseOptions = {
+    headless: source.headless,
+    viewport: { width: 1600, height: 1200 },
+    screen: { width: 1600, height: 1200 },
+  };
+  const contextOptions = {
+    ...baseOptions,
+    ...(await searchIdentityPersistentOptions(source)),
+  };
+  const context = await chromium.launchPersistentContext(
+    contextDir,
+    contextOptions,
+  );
+
+  if (source.searchIdentity) {
+    await writeSearchIdentityMarker(contextDir);
+    await installSearchIdentity(context);
+  }
+  return context;
+}
+
+async function launchBrowser(source: BrowserSource) {
+  const launchOptions = {
+    headless: source.headless,
+    ...(await searchIdentityBrowserOptions(source)),
+  };
+  return chromium.launch(launchOptions);
+}
+
+async function searchIdentityPersistentOptions(source: BrowserSource) {
+  if (!source.searchIdentity) {
+    return {};
+  }
+
+  const executablePath = await resolveSearchBrowserExecutablePath();
+  return {
+    ...(executablePath ? { executablePath } : {}),
+    ignoreDefaultArgs: ["--enable-automation"],
+    args: [
+      "--disable-blink-features=AutomationControlled",
+      "--no-first-run",
+      "--no-default-browser-check",
+      "--disable-dev-shm-usage",
+    ],
+    locale: resolveSearchLocale(),
+    timezoneId: resolveSearchTimezoneId(),
+  };
+}
+
+async function searchIdentityBrowserOptions(source: BrowserSource) {
+  if (!source.searchIdentity) {
+    return {};
+  }
+
+  const executablePath = await resolveSearchBrowserExecutablePath();
+  return {
+    ...(executablePath ? { executablePath } : {}),
+    ignoreDefaultArgs: ["--enable-automation"],
+    args: [
+      "--disable-blink-features=AutomationControlled",
+      "--no-first-run",
+      "--no-default-browser-check",
+      "--disable-dev-shm-usage",
+    ],
+  };
 }
 
 async function withContextDirLock<T>(
@@ -791,6 +900,7 @@ async function acquireContextDirLock(
     null,
     2,
   );
+  await mkdir(path.dirname(lockPath), { recursive: true });
 
   while (Date.now() - startedAt < CONTEXT_LOCK_TIMEOUT_MS) {
     try {
@@ -887,6 +997,12 @@ async function loadPageSource(
     await page.setContent(source.html, { waitUntil: "domcontentloaded" });
   } else if (source.url) {
     await page.goto(source.url, { waitUntil: "domcontentloaded" });
+    if (source.searchIdentity) {
+      await page
+        .waitForLoadState("networkidle", { timeout: 3_000 })
+        .catch(() => {});
+      await page.waitForTimeout(250).catch(() => {});
+    }
   }
 }
 
@@ -949,13 +1065,137 @@ function browserSource(
   html: string | undefined,
   headless: boolean,
   contextDir: string | undefined,
+  searchIdentity: boolean,
 ): BrowserSource {
   return {
     url,
     html,
     contextDir,
     headless,
+    searchIdentity,
   };
+}
+
+async function resolveSearchBrowserExecutablePath(): Promise<
+  string | undefined
+> {
+  const candidates = [
+    process.env.TOUCH_BROWSER_SEARCH_CHROME_EXECUTABLE,
+    "/Applications/Google Chrome.app/Contents/MacOS/Google Chrome",
+    "/Applications/Brave Browser.app/Contents/MacOS/Brave Browser",
+    "/Applications/Microsoft Edge.app/Contents/MacOS/Microsoft Edge",
+    "/usr/bin/google-chrome",
+    "/usr/bin/google-chrome-stable",
+    "/usr/bin/chromium",
+    "/usr/bin/chromium-browser",
+  ].filter((candidate): candidate is string => Boolean(candidate));
+
+  for (const candidate of candidates) {
+    try {
+      await stat(candidate);
+      return candidate;
+    } catch {
+      // Try the next candidate.
+    }
+  }
+
+  return undefined;
+}
+
+function searchIdentityMarkerPath(contextDir: string): string {
+  return path.join(contextDir, SEARCH_PROFILE_MARKER);
+}
+
+async function hasSearchIdentityMarker(contextDir: string): Promise<boolean> {
+  try {
+    await stat(searchIdentityMarkerPath(contextDir));
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+async function writeSearchIdentityMarker(contextDir: string): Promise<void> {
+  await mkdir(contextDir, { recursive: true });
+  await writeFile(
+    searchIdentityMarkerPath(contextDir),
+    JSON.stringify({ profile: "search", version: 1 }, null, 2),
+    "utf8",
+  );
+}
+
+function resolveSearchLocale(): string {
+  const locale = process.env.TOUCH_BROWSER_SEARCH_LOCALE ?? process.env.LANG;
+  if (!locale) {
+    return "en-US";
+  }
+  return locale.replace(/\\.UTF-8$/i, "").replace(/_/g, "-");
+}
+
+function resolveSearchTimezoneId(): string {
+  return (
+    process.env.TOUCH_BROWSER_SEARCH_TIMEZONE ??
+    Intl.DateTimeFormat().resolvedOptions().timeZone
+  );
+}
+
+async function installSearchIdentity(context: BrowserContext): Promise<void> {
+  await context.addInitScript(() => {
+    const patch = (target: object, key: PropertyKey, value: unknown) => {
+      try {
+        Object.defineProperty(target, key, {
+          configurable: true,
+          get: () => value,
+        });
+      } catch {
+        // Ignore immutable browser fields.
+      }
+    };
+
+    patch(window.navigator, "webdriver", undefined);
+    patch(window.navigator, "platform", "MacIntel");
+    patch(window.navigator, "hardwareConcurrency", 8);
+    patch(window.navigator, "languages", ["ko-KR", "ko", "en-US", "en"]);
+    patch(window.navigator, "plugins", [
+      { name: "Chrome PDF Plugin", filename: "internal-pdf-viewer" },
+      {
+        name: "Chrome PDF Viewer",
+        filename: "mhjfbmdgcfjbbpaeojofohoefgiehjai",
+      },
+      { name: "Native Client", filename: "internal-nacl-plugin" },
+    ]);
+
+    if (!("chrome" in window)) {
+      Object.defineProperty(window, "chrome", {
+        configurable: true,
+        value: {
+          runtime: {},
+          loadTimes: () => undefined,
+          csi: () => undefined,
+        },
+      });
+    }
+
+    const permissions = window.navigator.permissions;
+    if (permissions && typeof permissions.query === "function") {
+      const originalQuery = permissions.query.bind(permissions);
+      permissions.query = ((parameters: PermissionDescriptor) => {
+        if (parameters.name === "notifications") {
+          return Promise.resolve({
+            name: "notifications",
+            state: Notification.permission,
+            onchange: null,
+            addEventListener() {},
+            removeEventListener() {},
+            dispatchEvent() {
+              return false;
+            },
+          } as unknown as PermissionStatus);
+        }
+        return originalQuery(parameters);
+      }) as typeof permissions.query;
+    }
+  });
 }
 
 function sameResolvedUrl(left: string, right: string): boolean {

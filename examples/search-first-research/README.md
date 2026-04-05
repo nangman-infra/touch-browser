@@ -8,27 +8,27 @@ This example shows the intended browser-first workflow:
 4. switch to `read-view` or `extract`
 
 ```bash
-# Save a search session
-cargo run -q -p touch-browser-cli -- search "lambda timeout" \
-  --engine google \
-  --session-file /tmp/touch-browser-search.json
+# Search now uses a persistent browser-backed profile by default and
+# stores the search session under output/browser-search/google.search-session.json.
+cargo run -q -p touch-browser-cli -- search "lambda timeout" --engine google
 
-# If the result reports `status: "challenge"`, rerun with --headed,
-# clear the provider checkpoint manually, then repeat the search.
+# If the result reports `status: "challenge"`, clear the provider checkpoint
+# in that same browser profile, then repeat the search.
 
-# Open the first ranked result from that saved search
-cargo run -q -p touch-browser-cli -- search-open-result \
-  --session-file /tmp/touch-browser-search.json \
-  --rank 1
+# Open the first ranked result from that search session
+cargo run -q -p touch-browser-cli -- search-open-result --rank 1
+
+# Or open the top two recommended results into separate persisted sessions
+cargo run -q -p touch-browser-cli -- search-open-top --limit 2
 
 # Read the resulting page
 cargo run -q -p touch-browser-cli -- session-read \
-  --session-file /tmp/touch-browser-search.json \
+  --session-file output/browser-search/google.search-session.json \
   --main-only
 
 # Extract a claim after the scope looks right
 cargo run -q -p touch-browser-cli -- session-extract \
-  --session-file /tmp/touch-browser-search.json \
+  --session-file output/browser-search/google.search-session.json \
   --claim "The maximum timeout for a Lambda function is 15 minutes."
 ```
 
