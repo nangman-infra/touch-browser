@@ -909,6 +909,70 @@ pub struct EvidenceVerificationReport {
     pub outcomes: Vec<EvidenceVerificationOutcome>,
 }
 
+#[derive(Debug, Clone, Copy, Serialize, Deserialize, PartialEq, Eq)]
+#[serde(rename_all = "lowercase")]
+pub enum SearchEngine {
+    Google,
+    Brave,
+}
+
+#[derive(Debug, Clone, Copy, Serialize, Deserialize, PartialEq, Eq)]
+#[serde(rename_all = "kebab-case")]
+pub enum SearchReportStatus {
+    Ready,
+    Challenge,
+    NoResults,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
+#[serde(rename_all = "camelCase")]
+pub struct SearchResultItem {
+    pub rank: usize,
+    pub title: String,
+    pub url: String,
+    pub domain: String,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub snippet: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub stable_ref: Option<String>,
+    #[serde(default)]
+    pub official_likely: bool,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub selection_score: Option<f64>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub recommended_surface: Option<String>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
+#[serde(rename_all = "camelCase")]
+pub struct SearchActionHint {
+    pub action: String,
+    pub detail: String,
+    #[serde(skip_serializing_if = "Vec::is_empty", default)]
+    pub result_ranks: Vec<usize>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
+#[serde(rename_all = "camelCase")]
+pub struct SearchReport {
+    pub version: String,
+    pub generated_at: String,
+    pub engine: SearchEngine,
+    pub query: String,
+    pub search_url: String,
+    pub final_url: String,
+    pub status: SearchReportStatus,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub status_detail: Option<String>,
+    pub result_count: usize,
+    #[serde(default)]
+    pub results: Vec<SearchResultItem>,
+    #[serde(skip_serializing_if = "Vec::is_empty", default)]
+    pub recommended_result_ranks: Vec<usize>,
+    #[serde(skip_serializing_if = "Vec::is_empty", default)]
+    pub next_action_hints: Vec<SearchActionHint>,
+}
+
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
 #[serde(rename_all = "kebab-case")]
 pub enum ActionName {

@@ -59,6 +59,56 @@ const toolCatalog = [
     },
   },
   {
+    name: "tb_search",
+    title: "Search The Web",
+    description:
+      "Run a Google or Brave search inside touch-browser and structure the search results for follow-up browsing.",
+    inputSchema: {
+      type: "object",
+      properties: {
+        sessionId: { type: "string" },
+        tabId: { type: "string" },
+        query: { type: "string" },
+        engine: { type: "string" },
+        headed: { type: "boolean" },
+        budget: { type: "number" },
+      },
+      required: ["sessionId", "query"],
+    },
+  },
+  {
+    name: "tb_search_open_result",
+    title: "Open One Search Result",
+    description:
+      "Open one structured search result into a new tab within the daemon session.",
+    inputSchema: {
+      type: "object",
+      properties: {
+        sessionId: { type: "string" },
+        tabId: { type: "string" },
+        rank: { type: "number" },
+        headed: { type: "boolean" },
+      },
+      required: ["sessionId", "rank"],
+    },
+  },
+  {
+    name: "tb_search_open_top",
+    title: "Open Top Search Results",
+    description:
+      "Open the top recommended search results into new tabs for multi-page research.",
+    inputSchema: {
+      type: "object",
+      properties: {
+        sessionId: { type: "string" },
+        tabId: { type: "string" },
+        limit: { type: "number" },
+        headed: { type: "boolean" },
+      },
+      required: ["sessionId"],
+    },
+  },
+  {
     name: "tb_extract",
     title: "Extract Evidence",
     description:
@@ -74,6 +124,7 @@ const toolCatalog = [
         browser: { type: "boolean" },
         headed: { type: "boolean" },
         mainOnly: { type: "boolean" },
+        verifierCommand: { type: "string" },
         sourceRisk: { type: "string" },
         sourceLabel: { type: "string" },
         allowDomains: {
@@ -97,6 +148,7 @@ const toolCatalog = [
         target: { type: "string" },
         browser: { type: "boolean" },
         headed: { type: "boolean" },
+        mainOnly: { type: "boolean" },
         sourceRisk: { type: "string" },
         sourceLabel: { type: "string" },
         allowDomains: {
@@ -471,7 +523,7 @@ async function handleRequest(request) {
         },
         serverInfo: implementation,
         instructions:
-          "Use the tb_* tools to drive touch-browser. Stateful browsing is available through tb_session_create, tb_tab_open, tb_tab_list, tb_tab_select, tb_tab_close, and tb_session_synthesize.",
+          "Use the tb_* tools to drive touch-browser. Stateful browsing is available through tb_session_create, tb_search, tb_search_open_top, tb_tab_open, tb_tab_list, tb_tab_select, tb_tab_close, and tb_session_synthesize.",
       });
     case "notifications/initialized":
       return null;
@@ -516,6 +568,15 @@ async function handleToolCall(id, params) {
         args.sessionId ? "runtime.session.open" : "runtime.open",
         args,
       );
+      break;
+    case "tb_search":
+      result = await serve.call("runtime.search", args);
+      break;
+    case "tb_search_open_result":
+      result = await serve.call("runtime.search.openResult", args);
+      break;
+    case "tb_search_open_top":
+      result = await serve.call("runtime.search.openTop", args);
       break;
     case "tb_extract":
       result = await serve.call(

@@ -11,6 +11,7 @@ This document fixes the current public CLI surface for `touch-browser`.
 
 The runtime now has two read surfaces:
 
+- `search`: browser-first discovery surface that structures Google or Brave result pages into ranked candidate links and next-action hints
 - `read-view`: readable Markdown for higher-level review or a verifier model
 - `compact-view`: low-token semantic state for routing, planning, and large multi-page runs
 
@@ -28,6 +29,8 @@ Evidence extraction is intentionally phrased as support retrieval, not final tru
 
 | Command | Description |
 | --- | --- |
+| `touch-browser search <query> [--engine google\|brave] [--headed] [--budget <tokens>] [--session-file <path>]` | Open a Google or Brave search results page inside the browser runtime and return `ready`, `challenge`, or `no-results` status plus structured result items and next-action hints. |
+| `touch-browser search-open-result --session-file <path> --rank <number> [--headed]` | Open one saved search result from a persisted browser search session when the latest saved search is `ready`. |
 | `touch-browser open <target> [--browser] [--headed] [--budget <tokens>] [--session-file <path>] [--allow-domain <host> ...]` | Open a target and compile a structured snapshot. |
 | `touch-browser snapshot <target> [--browser] [--headed] [--budget <tokens>] [--session-file <path>] [--allow-domain <host> ...]` | Return the full snapshot payload for the target. |
 | `touch-browser read-view <target> [--browser] [--headed] [--main-only] [--budget <tokens>] [--session-file <path>] [--allow-domain <host> ...]` | Return a readable Markdown rendering of the target. By default the renderer prefers main-content blocks when available; `--main-only` makes that filter explicit. |
@@ -69,6 +72,8 @@ Evidence extraction is intentionally phrased as support retrieval, not final tru
 - fixture targets run through `ReadOnlyActionVm`
 - live targets run through `ReadOnlyRuntime + AcquisitionEngine + PolicyKernel`
 - browser targets run through `Playwright stdio adapter -> ObservationCompiler -> ReadOnlyRuntime.open_snapshot -> Policy/Evidence`
+- the observation compiler now also summarizes JSON-LD and common hydration blobs so JS-heavy pages expose more than just visible DOM text
+- search targets run through `query -> engine URL builder -> browser open -> semantic SERP structuring -> ranked result items + next-action hints`
 - persisted browser sessions run through `session-file JSON -> ReadOnlySession + persisted browser state + browser context dir + browser trace + requested budget restore -> stable-ref hints -> Playwright action -> runtime append -> session-file save`
 - verifier hooks run only when `--verifier-command` is set and execute after evidence retrieval, with the ability to adjudicate the final claim verdict
 - `read-view` and `session-read` prefer main-content blocks by default and can be forced into explicit main-zone filtering with `--main-only`
@@ -81,6 +86,9 @@ Evidence extraction is intentionally phrased as support retrieval, not final tru
 - `runtime.extract`
 - `runtime.policy`
 - `runtime.compactView`
+- `runtime.search`
+- `runtime.search.openResult`
+- `runtime.search.openTop`
 - `runtime.session.create`
 - `runtime.session.open`
 - `runtime.session.snapshot`
@@ -122,6 +130,7 @@ Evidence extraction is intentionally phrased as support retrieval, not final tru
 
 Primary shapes:
 
+- `search` -> `search` + `result` + optional persisted `sessionFile`
 - `open` and `snapshot` -> `ActionResult`
 - `read-view` and `session-read` -> Markdown rendering plus metadata when consumed as JSON
 - `compact-view` and `session-compact` -> compact snapshot payload plus `refIndex`
@@ -142,11 +151,17 @@ Evidence output terminology:
 - `claimOutcomes`: the canonical four-state verdict list across all extracted claims
 - `supportScore`: evidence-match score for the retrieved support
 - `verification`: optional second-pass verifier output supplied by `--verifier-command`, which may refine the final verdict while leaving the collected support trace intact
+- search output includes `results`, `recommendedResultRanks`, and `nextActionHints` so a higher-level AI can decide the next browsing step without pretending the browser already knows the final answer
+- search output also includes `status` and optional `statusDetail` so challenge pages and empty result pages are explicit instead of masquerading as normal zero-result searches
 
 ## 7. Validation
 
 Rust tests cover:
 
+- search CLI parsing
+- search result structuring
+- HTML-based search result recovery when snapshot blocks are sparse
+- search challenge detection for provider verification pages
 - fixture open CLI
 - hostile policy CLI
 - read-view CLI
@@ -191,6 +206,7 @@ Eval and smoke validation covers:
 ## 8. Notes
 
 - `read-view` is for readable inspection; `compact-view` is for low-token agent loops
+- `search` is the discovery surface; it structures result pages, but it does not replace the later `read-view` / `extract` pass on the selected tabs
 - use `--main-only` when the page shell is noisy and you want the Markdown output scoped to the primary content region
 - verifier hooks do not replace the base extractor; they adjudicate the final claim verdict on top of the same collected support trace
 - browser-backed `follow` is supported on persisted sessions, not as a general live multi-step replay

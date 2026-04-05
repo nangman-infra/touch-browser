@@ -63,6 +63,8 @@ describe("interface compatibility", () => {
     expect(serveStatus.status).toBe("ready");
     expect(serveStatus.methods).toContain("runtime.open");
     expect(serveStatus.methods).toContain("runtime.readView");
+    expect(serveStatus.methods).toContain("runtime.search");
+    expect(serveStatus.methods).toContain("runtime.search.openTop");
     expect(serveStatus.methods).toContain("runtime.session.click");
     expect(serveStatus.methods).toContain("runtime.session.type");
     expect(serveStatus.methods).toContain("runtime.session.submit");
@@ -86,6 +88,16 @@ describe("interface compatibility", () => {
     expect(
       mcpToolList.tools.some(
         (tool: { readonly name: string }) => tool.name === "tb_extract",
+      ),
+    ).toBe(true);
+    expect(
+      mcpToolList.tools.some(
+        (tool: { readonly name: string }) => tool.name === "tb_search",
+      ),
+    ).toBe(true);
+    expect(
+      mcpToolList.tools.some(
+        (tool: { readonly name: string }) => tool.name === "tb_search_open_top",
       ),
     ).toBe(true);
     expect(

@@ -63,6 +63,22 @@ describe("mcp bridge smoke", () => {
     ).toBe(true);
     expect(
       tools.tools.some(
+        (tool: { readonly name: string }) => tool.name === "tb_search",
+      ),
+    ).toBe(true);
+    expect(
+      tools.tools.some(
+        (tool: { readonly name: string }) =>
+          tool.name === "tb_search_open_result",
+      ),
+    ).toBe(true);
+    expect(
+      tools.tools.some(
+        (tool: { readonly name: string }) => tool.name === "tb_search_open_top",
+      ),
+    ).toBe(true);
+    expect(
+      tools.tools.some(
         (tool: { readonly name: string }) => tool.name === "tb_submit",
       ),
     ).toBe(true);

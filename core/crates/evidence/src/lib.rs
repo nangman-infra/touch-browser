@@ -66,18 +66,19 @@ impl EvidenceExtractor {
 
         for claim in &input.claims {
             let resolution = analyze_claim(claim, &input.snapshot.blocks);
-            let citation = (resolution.verdict == EvidenceClaimVerdict::EvidenceSupported).then(
-                || EvidenceCitation {
-                    url: input.snapshot.source.source_url.clone(),
-                    retrieved_at: input.generated_at.clone(),
-                    source_type: input.snapshot.source.source_type.clone(),
-                    source_risk: input.source_risk.clone(),
-                    source_label: input
-                        .source_label
-                        .clone()
-                        .or_else(|| input.snapshot.source.title.clone()),
-                },
-            );
+            let citation =
+                (resolution.verdict == EvidenceClaimVerdict::EvidenceSupported).then(|| {
+                    EvidenceCitation {
+                        url: input.snapshot.source.source_url.clone(),
+                        retrieved_at: input.generated_at.clone(),
+                        source_type: input.snapshot.source.source_type.clone(),
+                        source_risk: input.source_risk.clone(),
+                        source_label: input
+                            .source_label
+                            .clone()
+                            .or_else(|| input.snapshot.source.title.clone()),
+                    }
+                });
 
             claim_outcomes.push(EvidenceClaimOutcome {
                 version: CONTRACT_VERSION.to_string(),
@@ -530,9 +531,9 @@ fn round_confidence(score: f64) -> f64 {
 }
 
 fn tokenize_significant(text: &str) -> Vec<String> {
-    normalize_text(text)
-        .split_whitespace()
-        .map(stem_token)
+    split_normalized_tokens(&normalize_text(text))
+        .into_iter()
+        .flat_map(|token| expand_semantic_tokens(&token, true))
         .filter(|token| is_significant_token(token))
         .collect::<BTreeSet<_>>()
         .into_iter()
@@ -552,9 +553,9 @@ fn numeric_tokens(text: &str) -> Vec<String> {
 }
 
 fn tokenize_all(text: &str) -> Vec<String> {
-    normalize_text(text)
-        .split_whitespace()
-        .map(stem_token)
+    split_normalized_tokens(&normalize_text(text))
+        .into_iter()
+        .flat_map(|token| expand_semantic_tokens(&token, false))
         .filter(|token| !token.is_empty())
         .collect::<BTreeSet<_>>()
         .into_iter()
@@ -565,7 +566,7 @@ fn normalize_text(text: &str) -> String {
     let mut normalized = String::with_capacity(text.len());
 
     for character in text.chars().flat_map(|character| character.to_lowercase()) {
-        if character.is_ascii_alphanumeric() {
+        if character.is_alphanumeric() || is_cjk_character(character) {
             normalized.push(character);
         } else {
             normalized.push(' ');
@@ -576,6 +577,10 @@ fn normalize_text(text: &str) -> String {
 }
 
 fn stem_token(token: &str) -> String {
+    if !token.is_ascii() {
+        return token.to_string();
+    }
+
     let mut stemmed = token.to_string();
 
     for suffix in ["ing", "ed", "ly", "es", "s"] {
@@ -593,13 +598,74 @@ fn is_significant_token(token: &str) -> bool {
         return true;
     }
 
+    if contains_cjk(token) {
+        return token.chars().count() >= 2;
+    }
+
     token.len() >= 3 && !STOP_WORDS.contains(&token)
 }
 
 fn tokens_match(left: &str, right: &str) -> bool {
+    if !left.is_ascii() || !right.is_ascii() {
+        return left == right || left.contains(right) || right.contains(left);
+    }
+
     left == right
         || (left.len() >= 4 && right.starts_with(left))
         || (right.len() >= 4 && left.starts_with(right))
+}
+
+fn split_normalized_tokens(normalized: &str) -> Vec<String> {
+    normalized
+        .split_whitespace()
+        .map(ToString::to_string)
+        .collect::<Vec<_>>()
+}
+
+fn expand_semantic_tokens(token: &str, significant_only: bool) -> Vec<String> {
+    let mut expanded = BTreeSet::new();
+    let stemmed = stem_token(token);
+    if !stemmed.is_empty() {
+        expanded.insert(stemmed);
+    }
+
+    if contains_cjk(token) {
+        for width in [2usize, 3usize] {
+            for gram in cjk_ngrams(token, width) {
+                if !significant_only || gram.chars().count() >= 2 {
+                    expanded.insert(gram);
+                }
+            }
+        }
+    }
+
+    expanded.into_iter().collect()
+}
+
+fn contains_cjk(text: &str) -> bool {
+    text.chars().any(is_cjk_character)
+}
+
+fn is_cjk_character(character: char) -> bool {
+    matches!(
+        character as u32,
+        0x3040..=0x30ff
+            | 0x3400..=0x4dbf
+            | 0x4e00..=0x9fff
+            | 0xac00..=0xd7af
+            | 0xf900..=0xfaff
+    )
+}
+
+fn cjk_ngrams(token: &str, width: usize) -> Vec<String> {
+    let characters = token.chars().collect::<Vec<_>>();
+    if characters.len() < width {
+        return Vec::new();
+    }
+
+    (0..=characters.len() - width)
+        .map(|index| characters[index..index + width].iter().collect::<String>())
+        .collect()
 }
 
 fn anchor_tokens(claim_tokens: &[String]) -> Vec<String> {
@@ -649,8 +715,7 @@ fn assess_support_guards(
             kind: EvidenceGuardKind::AnchorCoverage,
             detail: format!(
                 "anchor coverage {:.2} is below required {:.2}",
-                anchor_coverage,
-                required_anchor_coverage
+                anchor_coverage, required_anchor_coverage
             ),
         });
     }
@@ -741,7 +806,9 @@ fn assess_support_guards(
         contradiction_reason.get_or_insert(UnsupportedClaimReason::NegationMismatch);
         guard_failures.push(EvidenceGuardFailure {
             kind: EvidenceGuardKind::Negation,
-            detail: "The retrieved support contains polarity language that conflicts with the claim.".to_string(),
+            detail:
+                "The retrieved support contains polarity language that conflicts with the claim."
+                    .to_string(),
         });
     }
 
@@ -798,7 +865,11 @@ fn required_anchor_coverage(anchor_count: usize) -> f64 {
     }
 }
 
-fn should_keep_browsing(best_score: f64, assessment: &GuardAssessment, claim: &ClaimRequest) -> bool {
+fn should_keep_browsing(
+    best_score: f64,
+    assessment: &GuardAssessment,
+    claim: &ClaimRequest,
+) -> bool {
     best_score >= 0.35
         && (!assessment.guard_failures.is_empty()
             || !numeric_expressions(&claim.statement).is_empty()
@@ -832,7 +903,9 @@ fn numeric_expressions(text: &str) -> Vec<NumericExpression> {
         if token.chars().all(|character| character.is_ascii_digit()) {
             let expression = NumericExpression {
                 value: token.clone(),
-                unit: tokens.get(index + 1).and_then(|candidate| normalize_unit(candidate)),
+                unit: tokens
+                    .get(index + 1)
+                    .and_then(|candidate| normalize_unit(candidate)),
             };
             if !expressions.contains(&expression) {
                 expressions.push(expression);
@@ -895,11 +968,20 @@ impl ScopeProfile {
 }
 
 fn detect_scope_profile(tokens: &[String]) -> ScopeProfile {
-    if tokens.iter().any(|token| UNIVERSAL_SCOPE_TOKENS.contains(&token.as_str())) {
+    if tokens
+        .iter()
+        .any(|token| UNIVERSAL_SCOPE_TOKENS.contains(&token.as_str()))
+    {
         ScopeProfile::Universal
-    } else if tokens.iter().any(|token| EXCLUSIVE_SCOPE_TOKENS.contains(&token.as_str())) {
+    } else if tokens
+        .iter()
+        .any(|token| EXCLUSIVE_SCOPE_TOKENS.contains(&token.as_str()))
+    {
         ScopeProfile::Exclusive
-    } else if tokens.iter().any(|token| LIMITED_SCOPE_TOKENS.contains(&token.as_str())) {
+    } else if tokens
+        .iter()
+        .any(|token| LIMITED_SCOPE_TOKENS.contains(&token.as_str()))
+    {
         ScopeProfile::Limited
     } else {
         ScopeProfile::Unknown
@@ -925,7 +1007,10 @@ enum StatusProfile {
 
 impl StatusProfile {
     fn requires_explicit_support(self) -> bool {
-        matches!(self, StatusProfile::Preview | StatusProfile::GenerallyAvailable)
+        matches!(
+            self,
+            StatusProfile::Preview | StatusProfile::GenerallyAvailable
+        )
     }
 
     fn label(self) -> &'static str {
@@ -939,9 +1024,15 @@ impl StatusProfile {
 }
 
 fn detect_status_profile(tokens: &[String]) -> StatusProfile {
-    if tokens.iter().any(|token| PREVIEW_STATUS_TOKENS.contains(&token.as_str())) {
+    if tokens
+        .iter()
+        .any(|token| PREVIEW_STATUS_TOKENS.contains(&token.as_str()))
+    {
         StatusProfile::Preview
-    } else if tokens.iter().any(|token| GA_STATUS_TOKENS.contains(&token.as_str())) {
+    } else if tokens
+        .iter()
+        .any(|token| GA_STATUS_TOKENS.contains(&token.as_str()))
+    {
         StatusProfile::GenerallyAvailable
     } else if tokens
         .iter()
@@ -964,16 +1055,20 @@ fn status_profiles_contradict(claim: StatusProfile, support: StatusProfile) -> b
 }
 
 fn next_action_hint_for_failures(failures: &[EvidenceGuardFailure]) -> Option<String> {
-    if failures
-        .iter()
-        .any(|failure| matches!(failure.kind, EvidenceGuardKind::NumericValue | EvidenceGuardKind::NumericUnit))
-    {
+    if failures.iter().any(|failure| {
+        matches!(
+            failure.kind,
+            EvidenceGuardKind::NumericValue | EvidenceGuardKind::NumericUnit
+        )
+    }) {
         Some("Browse the limits, pricing, or quotas page before answering.".to_string())
     } else if failures
         .iter()
         .any(|failure| matches!(failure.kind, EvidenceGuardKind::Scope))
     {
-        Some("Browse the regional availability or feature-matrix page before answering.".to_string())
+        Some(
+            "Browse the regional availability or feature-matrix page before answering.".to_string(),
+        )
     } else if failures
         .iter()
         .any(|failure| matches!(failure.kind, EvidenceGuardKind::Status))
@@ -1015,45 +1110,21 @@ const QUALIFIER_TOKENS: &[&str] = &[
     "entire",
 ];
 
-const UNIVERSAL_SCOPE_TOKENS: &[&str] = &[
-    "all",
-    "every",
-    "global",
-    "worldwide",
-    "entire",
-    "universal",
-];
+const UNIVERSAL_SCOPE_TOKENS: &[&str] =
+    &["all", "every", "global", "worldwide", "entire", "universal"];
 
 const EXCLUSIVE_SCOPE_TOKENS: &[&str] = &["only", "exclusive", "solely"];
 
 const LIMITED_SCOPE_TOKENS: &[&str] = &[
-    "selected",
-    "some",
-    "certain",
-    "regional",
-    "region",
-    "varies",
-    "subset",
-    "specific",
+    "selected", "some", "certain", "regional", "region", "varies", "subset", "specific",
 ];
 
-const PREVIEW_STATUS_TOKENS: &[&str] = &[
-    "preview",
-    "beta",
-    "alpha",
-    "experimental",
-    "prelaunch",
-];
+const PREVIEW_STATUS_TOKENS: &[&str] = &["preview", "beta", "alpha", "experimental", "prelaunch"];
 
 const GA_STATUS_TOKENS: &[&str] = &["launched", "generally", "ga"];
 
-const DEPRECATED_STATUS_TOKENS: &[&str] = &[
-    "deprecated",
-    "legacy",
-    "retired",
-    "sunset",
-    "unsupported",
-];
+const DEPRECATED_STATUS_TOKENS: &[&str] =
+    &["deprecated", "legacy", "retired", "sunset", "unsupported"];
 
 struct ContradictionPattern {
     positive: &'static str,
@@ -1468,6 +1539,113 @@ mod tests {
             report.contradicted_claims[0].reason,
             UnsupportedClaimReason::NumericMismatch
         );
+    }
+
+    #[test]
+    fn supports_cjk_claims_when_main_subject_terms_are_present() {
+        let snapshot = SnapshotDocument {
+            version: "1.0.0".to_string(),
+            stable_ref_version: "1".to_string(),
+            source: touch_browser_contracts::SnapshotSource {
+                source_url: "https://ko.wikipedia.example/wiki/Python".to_string(),
+                source_type: touch_browser_contracts::SourceType::Http,
+                title: Some("Python".to_string()),
+            },
+            budget: touch_browser_contracts::SnapshotBudget {
+                requested_tokens: 512,
+                estimated_tokens: 64,
+                emitted_tokens: 64,
+                truncated: false,
+            },
+            blocks: vec![touch_browser_contracts::SnapshotBlock {
+                version: "1.0.0".to_string(),
+                id: "b1".to_string(),
+                kind: touch_browser_contracts::SnapshotBlockKind::Text,
+                stable_ref: "rmain:text:python-origin".to_string(),
+                role: touch_browser_contracts::SnapshotBlockRole::Content,
+                text: "파이썬은 1991년 귀도 반 로섬이 발표한 프로그래밍 언어이다.".to_string(),
+                attributes: Default::default(),
+                evidence: touch_browser_contracts::SnapshotEvidence {
+                    source_url: "https://ko.wikipedia.example/wiki/Python".to_string(),
+                    source_type: touch_browser_contracts::SourceType::Http,
+                    dom_path_hint: Some("html > body > main > p:nth-of-type(1)".to_string()),
+                    byte_range_start: None,
+                    byte_range_end: None,
+                },
+            }],
+        };
+
+        let report = EvidenceExtractor
+            .extract(&EvidenceInput::new(
+                snapshot,
+                vec![ClaimRequest::new(
+                    "c1",
+                    "파이썬은 1991년 귀도 반 로섬이 발표한 프로그래밍 언어이다.",
+                )],
+                "2026-04-05T00:00:00+09:00",
+                SourceRisk::Low,
+                Some("Python".to_string()),
+            ))
+            .expect("evidence extraction should succeed");
+
+        assert_eq!(report.supported_claims.len(), 1);
+        assert!(report.contradicted_claims.is_empty());
+        assert!(report.needs_more_browsing_claims.is_empty());
+        assert!(report.unsupported_claims.is_empty());
+    }
+
+    #[test]
+    fn supports_japanese_claims_when_main_subject_terms_are_present() {
+        let snapshot = SnapshotDocument {
+            version: "1.0.0".to_string(),
+            stable_ref_version: "1".to_string(),
+            source: touch_browser_contracts::SnapshotSource {
+                source_url: "https://ja.wikipedia.example/wiki/明治維新".to_string(),
+                source_type: touch_browser_contracts::SourceType::Http,
+                title: Some("明治維新".to_string()),
+            },
+            budget: touch_browser_contracts::SnapshotBudget {
+                requested_tokens: 512,
+                estimated_tokens: 64,
+                emitted_tokens: 64,
+                truncated: false,
+            },
+            blocks: vec![touch_browser_contracts::SnapshotBlock {
+                version: "1.0.0".to_string(),
+                id: "b1".to_string(),
+                kind: touch_browser_contracts::SnapshotBlockKind::Text,
+                stable_ref: "rmain:text:meiji".to_string(),
+                role: touch_browser_contracts::SnapshotBlockRole::Content,
+                text: "明治維新は江戸幕府に対する倒幕運動から始まった日本の近代化改革である。"
+                    .to_string(),
+                attributes: Default::default(),
+                evidence: touch_browser_contracts::SnapshotEvidence {
+                    source_url: "https://ja.wikipedia.example/wiki/明治維新".to_string(),
+                    source_type: touch_browser_contracts::SourceType::Http,
+                    dom_path_hint: Some("html > body > main > p:nth-of-type(1)".to_string()),
+                    byte_range_start: None,
+                    byte_range_end: None,
+                },
+            }],
+        };
+
+        let report = EvidenceExtractor
+            .extract(&EvidenceInput::new(
+                snapshot,
+                vec![ClaimRequest::new(
+                    "c1",
+                    "明治維新は江戸幕府に対する倒幕運動から始まった日本の近代化改革である。",
+                )],
+                "2026-04-05T00:00:00+09:00",
+                SourceRisk::Low,
+                Some("明治維新".to_string()),
+            ))
+            .expect("evidence extraction should succeed");
+
+        assert_eq!(report.supported_claims.len(), 1);
+        assert!(report.contradicted_claims.is_empty());
+        assert!(report.needs_more_browsing_claims.is_empty());
+        assert!(report.unsupported_claims.is_empty());
     }
 
     fn parse_risk(value: &str) -> SourceRisk {

@@ -376,6 +376,7 @@ fn is_semantic_tag(tag: &str) -> bool {
             | "form"
             | "button"
             | "input"
+            | "script"
     )
 }
 
@@ -397,7 +398,154 @@ fn extract_semantic_text(node: &NodeRef, tag: &str) -> Result<String, Observatio
         "table" => extract_table_text(node),
         "form" => Ok(normalize_text(&node.text_contents())),
         "input" => Ok(extract_input_label(node)),
+        "script" => Ok(extract_script_semantic_text(node)),
         _ => Ok(String::new()),
+    }
+}
+
+fn extract_script_semantic_text(node: &NodeRef) -> String {
+    let Some(element) = node.as_element() else {
+        return String::new();
+    };
+    let attrs = element.attributes.borrow();
+    let script_type = attrs.get("type").unwrap_or_default();
+    let script_id = attrs.get("id").unwrap_or_default();
+    let raw = node.text_contents();
+
+    let kind = if script_type.eq_ignore_ascii_case("application/ld+json")
+        || raw.contains("\"@context\"")
+    {
+        "json-ld"
+    } else if matches!(
+        script_id,
+        "__NEXT_DATA__"
+            | "__NUXT__"
+            | "__NUXT_DATA__"
+            | "__APOLLO_STATE__"
+            | "__INITIAL_STATE__"
+            | "__PRELOADED_STATE__"
+    ) {
+        "hydration"
+    } else {
+        return String::new();
+    };
+
+    summarize_json_payload(kind, &raw)
+}
+
+fn summarize_json_payload(kind: &str, raw: &str) -> String {
+    let Ok(value) = serde_json::from_str::<Value>(raw) else {
+        return String::new();
+    };
+
+    let mut fields = Vec::new();
+    collect_json_summary_fields(&value, "", &mut fields, 0, 14);
+    if fields.is_empty() {
+        return String::new();
+    }
+
+    normalize_text(&format!("{kind}: {}", fields.join(" | ")))
+}
+
+fn collect_json_summary_fields(
+    value: &Value,
+    path: &str,
+    output: &mut Vec<String>,
+    depth: usize,
+    limit: usize,
+) {
+    if output.len() >= limit || depth > 4 {
+        return;
+    }
+
+    match value {
+        Value::Object(map) => {
+            for key in [
+                "@type",
+                "name",
+                "headline",
+                "description",
+                "url",
+                "datePublished",
+                "dateModified",
+                "price",
+                "availability",
+                "title",
+                "page",
+                "pathname",
+                "slug",
+                "query",
+                "buildId",
+                "locale",
+            ] {
+                if output.len() >= limit {
+                    return;
+                }
+                if let Some(candidate) = map.get(key) {
+                    let next_path = if path.is_empty() {
+                        key.to_string()
+                    } else {
+                        format!("{path}.{key}")
+                    };
+                    collect_json_summary_fields(candidate, &next_path, output, depth + 1, limit);
+                }
+            }
+
+            for (key, candidate) in map {
+                if output.len() >= limit {
+                    return;
+                }
+                if [
+                    "@type",
+                    "name",
+                    "headline",
+                    "description",
+                    "url",
+                    "datePublished",
+                    "dateModified",
+                    "price",
+                    "availability",
+                    "title",
+                    "page",
+                    "pathname",
+                    "slug",
+                    "query",
+                    "buildId",
+                    "locale",
+                ]
+                .contains(&key.as_str())
+                {
+                    continue;
+                }
+                let next_path = if path.is_empty() {
+                    key.clone()
+                } else {
+                    format!("{path}.{key}")
+                };
+                collect_json_summary_fields(candidate, &next_path, output, depth + 1, limit);
+            }
+        }
+        Value::Array(items) => {
+            for item in items.iter().take(3) {
+                if output.len() >= limit {
+                    return;
+                }
+                collect_json_summary_fields(item, path, output, depth + 1, limit);
+            }
+        }
+        Value::String(text) => {
+            let normalized = normalize_text(text);
+            if !normalized.is_empty() {
+                output.push(format!("{path}: {normalized}"));
+            }
+        }
+        Value::Bool(flag) => {
+            output.push(format!("{path}: {flag}"));
+        }
+        Value::Number(number) => {
+            output.push(format!("{path}: {number}"));
+        }
+        Value::Null => {}
     }
 }
 
@@ -486,6 +634,7 @@ fn semantic_zone(node: &NodeRef, tag: &str) -> &'static str {
 fn semantic_kind(tag: &str) -> SnapshotBlockKind {
     match tag {
         "title" => SnapshotBlockKind::Metadata,
+        "script" => SnapshotBlockKind::Metadata,
         "h1" | "h2" | "h3" | "h4" | "h5" | "h6" => SnapshotBlockKind::Heading,
         "a" => SnapshotBlockKind::Link,
         "ul" | "ol" => SnapshotBlockKind::List,
@@ -500,6 +649,8 @@ fn semantic_kind(tag: &str) -> SnapshotBlockKind {
 fn semantic_role(node: &NodeRef, tag: &str, zone: &str) -> SnapshotBlockRole {
     if tag == "title" {
         SnapshotBlockRole::Metadata
+    } else if tag == "script" {
+        SnapshotBlockRole::Supporting
     } else if zone == "nav" {
         SnapshotBlockRole::PrimaryNav
     } else if zone == "aside" {
@@ -523,6 +674,18 @@ fn semantic_attributes(
     match tag {
         "title" => {
             attributes.insert("source".to_string(), json!("title"));
+        }
+        "script" => {
+            if let Some(element) = node.as_element() {
+                let attrs = element.attributes.borrow();
+                if let Some(script_type) = attrs.get("type") {
+                    attributes.insert("scriptType".to_string(), json!(script_type));
+                }
+                if let Some(script_id) = attrs.get("id") {
+                    attributes.insert("scriptId".to_string(), json!(script_id));
+                }
+            }
+            attributes.insert("source".to_string(), json!("script"));
         }
         "h1" | "h2" | "h3" | "h4" | "h5" | "h6" => {
             let level = tag.trim_start_matches('h').parse::<usize>().unwrap_or(1);
@@ -718,7 +881,7 @@ fn is_hidden(node: &NodeRef, hidden_rules: &HiddenRules) -> bool {
         };
 
         let tag = element.name.local.as_ref();
-        if matches!(tag, "script" | "style" | "noscript" | "template") {
+        if matches!(tag, "style" | "noscript" | "template") {
             return true;
         }
 
@@ -895,6 +1058,55 @@ mod tests {
             "complex pages should auto-escalate beyond the default budget"
         );
         assert_eq!(recommend_requested_tokens(&large_html, 4096), 4096);
+    }
+
+    #[test]
+    fn captures_json_ld_and_hydration_scripts_as_semantic_metadata() {
+        let compiler = ObservationCompiler;
+        let html = r#"
+            <html>
+              <head>
+                <title>Modern Docs</title>
+                <script type="application/ld+json">
+                  {"@context":"https://schema.org","@type":"TechArticle","headline":"Modern Docs","datePublished":"2026-04-05"}
+                </script>
+              </head>
+              <body>
+                <main>
+                  <h1>Modern Docs</h1>
+                  <p>Primary content.</p>
+                </main>
+                <script id="__NEXT_DATA__" type="application/json">
+                  {"page":"/docs","buildId":"build-123","props":{"pageProps":{"title":"Modern Docs","slug":"modern-docs"}}}
+                </script>
+              </body>
+            </html>
+        "#;
+
+        let snapshot = compiler
+            .compile(&ObservationInput::new(
+                "https://docs.example.com/modern",
+                SourceType::Http,
+                html,
+                512,
+            ))
+            .expect("compile should work");
+
+        let metadata_blocks = snapshot
+            .blocks
+            .iter()
+            .filter(|block| block.kind == touch_browser_contracts::SnapshotBlockKind::Metadata)
+            .collect::<Vec<_>>();
+
+        assert!(metadata_blocks
+            .iter()
+            .any(|block| block.text.contains("json-ld")));
+        assert!(metadata_blocks
+            .iter()
+            .any(|block| block.text.contains("hydration")));
+        assert!(metadata_blocks
+            .iter()
+            .any(|block| block.text.contains("Modern Docs")));
     }
 
     fn repo_root() -> PathBuf {

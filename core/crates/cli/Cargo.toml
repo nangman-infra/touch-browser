@@ -9,6 +9,7 @@ name = "touch-browser"
 path = "src/main.rs"
 
 [dependencies]
+kuchiki.workspace = true
 serde.workspace = true
 serde_json.workspace = true
 thiserror.workspace = true
@@ -20,3 +21,4 @@ touch-browser-observation = { path = "../observation" }
 touch-browser-policy = { path = "../policy" }
 touch-browser-runtime = { path = "../runtime" }
 touch-browser-storage-sqlite = { path = "../storage-sqlite" }
+url.workspace = true

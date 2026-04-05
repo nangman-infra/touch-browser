@@ -123,6 +123,9 @@ describe("serve daemon session registry", () => {
     expect(status.daemon).toBe(true);
     expect(status.methods).toContain("runtime.session.create");
     expect(status.methods).toContain("runtime.tab.open");
+    expect(status.methods).toContain("runtime.search");
+    expect(status.methods).toContain("runtime.search.openResult");
+    expect(status.methods).toContain("runtime.search.openTop");
 
     const created = await client.call<SessionCreateResponse>(
       "runtime.session.create",

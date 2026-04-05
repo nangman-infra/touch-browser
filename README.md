@@ -9,6 +9,7 @@ Turn any web page into structured, citable evidence for AI agents.
 
 `touch-browser` turns a page into:
 
+- search results structured inside the browser with `search`
 - readable Markdown for higher-level review with `read-view`
 - compact semantic state for agent loops with `compact-view`
 - traceable evidence with citations, four-state claim outcomes, and optional verifier adjudication
@@ -23,6 +24,7 @@ Evidence-first, not fact-final:
 
 | Problem | touch-browser |
 | --- | --- |
+| Agents still need to know the exact URL | `search` structures Google and Brave result pages into ranked candidate tabs |
 | Raw HTML wastes tokens | `compact-view` emits a compact semantic snapshot instead of a full DOM dump |
 | Answers lose their sources | `extract` returns block refs plus URL, retrieved time, and source metadata |
 | Agents click risky controls too early | policy reports and supervised actions keep risky steps review-gated |
@@ -141,6 +143,16 @@ Prerequisites: [rustup](https://rustup.rs), Node.js 18+, `pnpm`.
 ```bash
 bash scripts/bootstrap-local.sh
 
+# Search inside touch-browser and save the structured results
+cargo run -q -p touch-browser-cli -- search "lambda timeout" \
+  --engine google \
+  --session-file /tmp/touch-browser-search.json
+
+# Open one ranked result from the saved search session
+cargo run -q -p touch-browser-cli -- search-open-result \
+  --session-file /tmp/touch-browser-search.json \
+  --rank 1
+
 # Read a real public page
 cargo run -q -p touch-browser-cli -- read-view https://www.iana.org/help/example-domains
 
@@ -159,13 +171,20 @@ cargo run -q -p touch-browser-cli -- extract https://www.iana.org/help/example-d
 
 If you already built the binary, replace `cargo run -q -p touch-browser-cli --` with `touch-browser`.
 
+`search` now reports an explicit provider state:
+
+- `ready`: ranked results are available for `search-open-result` or `search-open-top`
+- `challenge`: the provider returned CAPTCHA / bot-check UI; re-run headed and clear it manually
+- `no-results`: the page loaded but no external results were structured from it yet
+
 ## Architecture
 
 ```text
-URL / fixture / browser tab
+Query / URL / fixture / browser tab
+  -> browser-first search result parsing
   -> Acquisition
-  -> Observation compiler (semantic snapshot + stable refs)
-  -> read-view / compact-view
+  -> Observation compiler (semantic snapshot + stable refs + JSON-LD / hydration summaries)
+  -> read-view / compact-view / search ranking hints
   -> extract (evidence + citations + final verdicts + optional verifier adjudication)
   -> policy
   -> session synthesis / replay
@@ -176,6 +195,8 @@ URL / fixture / browser tab
 
 - research agents that need citations instead of raw HTML
   Works well for agent frameworks that want a low-token page view plus traceable evidence.
+- search-first browser workflows for AI operators
+  Start with `search`, open the top tabs, and let `nextActionHints` steer read-view or extract on the most relevant sources.
 - evidence-linked RAG ingestion pipelines
   Use `read-view` for readable source text and `extract` for claim-level provenance.
 - policy-gated web research in self-hosted environments
@@ -189,6 +210,8 @@ Stable research surface:
 
 | Command | What it does |
 | --- | --- |
+| `search` | open Google or Brave inside touch-browser and structure the results for follow-up browsing |
+| `search-open-result` | open one ranked result from a saved search session |
 | `open` | open a target and compile a structured snapshot |
 | `read-view` | emit readable Markdown for direct review or a higher-level verifier |
 | `compact-view` | emit the compact semantic view optimized for AI consumption |
@@ -213,6 +236,8 @@ The full command table lives in [doc/CLI_SURFACE_SPEC.md](doc/CLI_SURFACE_SPEC.m
 
 The example second-pass verifier lives at [scripts/example-verifier.mjs](scripts/example-verifier.mjs).
 
+When `search` returns `status: "challenge"`, do not call `search-open-result` yet. Re-run in headed mode, clear the provider checkpoint manually, and then repeat the search so touch-browser can persist a `ready` result list.
+
 ## Examples, Benchmarks, And Integrations
 
 - examples: [examples/README.md](examples/README.md)
@@ -235,8 +260,8 @@ Minimal MCP bridge setup from the repository root:
 }
 ```
 
-The bridge starts `touch-browser serve` underneath and exposes tools like `tb_open`, `tb_read_view`, `tb_extract`, `tb_tab_open`, and `tb_session_synthesize`.
-`tb_read_view` accepts `mainOnly`, and `tb_extract` accepts `verifierCommand`.
+The bridge starts `touch-browser serve` underneath and exposes tools like `tb_search`, `tb_search_open_top`, `tb_open`, `tb_read_view`, `tb_extract`, `tb_tab_open`, and `tb_session_synthesize`.
+`tb_read_view` accepts `mainOnly`, `tb_extract` accepts `verifierCommand`, and `tb_search` returns ranked results plus `nextActionHints`.
 
 ## Design Principles
 

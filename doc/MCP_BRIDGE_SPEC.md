@@ -45,6 +45,9 @@ Current tool set:
 
 - `tb_status`
 - `tb_session_create`
+- `tb_search`
+- `tb_search_open_result`
+- `tb_search_open_top`
 - `tb_open`
 - `tb_read_view`
 - `tb_extract`
@@ -72,12 +75,16 @@ Current tool set:
 ## 3. Intended Use
 
 - `tb_read_view` is the readable surface for higher-level review or verifier models
+- `tb_search` is the discovery surface that structures Google or Brave result pages into ranked candidates and next-action hints, or returns `challenge` / `no-results` when the provider does not yield a normal result list
 - `tb_extract` is the evidence retrieval surface for four-state claim outcomes and citations
 - `tb_session_synthesize` combines multi-page session traces into a single report
 - supervised tools remain available for allowlisted, review-gated browser sessions
 
 Relevant tool inputs:
 
+- `tb_search`: `sessionId`, `tabId`, `query`, `engine`, `headed`, `budget`
+- `tb_search_open_result`: `sessionId`, `tabId`, `rank`, `headed`
+- `tb_search_open_top`: `sessionId`, `tabId`, `limit`, `headed`
 - `tb_read_view`: `target`, `mainOnly`, `browser`, `headed`, `budget`, `sessionFile`, `allowDomains`
 - `tb_extract`: `target`, `claims`, `verifierCommand`, `browser`, `headed`, `budget`, `sessionFile`, `allowDomains`
 
@@ -87,12 +94,14 @@ Relevant tool inputs:
 - [interface-compatibility.test.ts](../evals/src/runtime/interface-compatibility.test.ts)
 - [serve-daemon.test.ts](../evals/src/runtime/serve-daemon.test.ts)
 - round-trip validation for `initialize -> tools/list -> tools/call(tb_status)`
-- daemon-path validation for read, extract, session synthesis, and supervised interaction flows
+- daemon-path validation for search tool presence, read, extract, session synthesis, and supervised interaction flows
 
 ## 5. Notes
 
 - this is a thin MCP proxy, not a full MCP resource or prompt server
 - the tool set is intentionally smaller than the full serve method surface
+- search works browser-first inside touch-browser; the bridge forwards ranked result items and next-action hints rather than pretending the search phase is already resolved
+- search responses also carry `status` and `statusDetail`, so an MCP client can decide whether to open ranked tabs, re-run headed for a CAPTCHA, or refine the query
 - interactive tools only make sense inside allowlisted daemon sessions and still require risk acknowledgement when challenge, MFA, auth, or high-risk-write signals appear
 - the bridge starts `touch-browser serve` as an internal child process and injects `TOUCH_BROWSER_TELEMETRY_SURFACE=mcp`
 - use `verifierCommand` to let a second-pass judge adjudicate the final verdict without replacing the base evidence collector

@@ -635,16 +635,12 @@ impl ReadOnlyRuntime {
                 .collect(),
             unsupported_claims: aggregated_claims
                 .iter()
-                .filter(|claim| {
-                    claim.status == SessionSynthesisClaimStatus::InsufficientEvidence
-                })
+                .filter(|claim| claim.status == SessionSynthesisClaimStatus::InsufficientEvidence)
                 .cloned()
                 .collect(),
             needs_more_browsing_claims: aggregated_claims
                 .iter()
-                .filter(|claim| {
-                    claim.status == SessionSynthesisClaimStatus::NeedsMoreBrowsing
-                })
+                .filter(|claim| claim.status == SessionSynthesisClaimStatus::NeedsMoreBrowsing)
                 .cloned()
                 .collect(),
         })

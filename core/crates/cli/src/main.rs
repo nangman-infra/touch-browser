@@ -7,6 +7,7 @@ use std::{
     time::{SystemTime, UNIX_EPOCH},
 };
 
+use kuchiki::{parse_html, traits::*, NodeRef};
 use serde::{Deserialize, Serialize};
 use serde_json::{json, Value};
 use thiserror::Error;
@@ -17,10 +18,11 @@ use touch_browser_contracts::{
     render_main_read_view_markdown, render_navigation_compact_snapshot, render_read_view_markdown,
     render_reading_compact_snapshot, ActionCommand, ActionFailureKind, ActionName, ActionResult,
     ActionStatus, CompactRefIndexEntry, EvidenceCitation, EvidenceClaimOutcome,
-    EvidenceClaimVerdict, EvidenceReport, EvidenceVerificationOutcome,
-    EvidenceVerificationReport, EvidenceVerificationVerdict, PolicyProfile, PolicyReport,
-    ReplayTranscript, RiskClass, SessionMode, SessionState, SessionSynthesisClaim,
-    SessionSynthesisClaimStatus, SessionSynthesisReport, SnapshotBlock, SnapshotDocument,
+    EvidenceClaimVerdict, EvidenceReport, EvidenceVerificationOutcome, EvidenceVerificationReport,
+    EvidenceVerificationVerdict, PolicyProfile, PolicyReport, ReplayTranscript, RiskClass,
+    SearchActionHint, SearchEngine, SearchReport, SearchReportStatus, SearchResultItem,
+    SessionMode, SessionState, SessionSynthesisClaim, SessionSynthesisClaimStatus,
+    SessionSynthesisReport, SnapshotBlock, SnapshotBlockKind, SnapshotBlockRole, SnapshotDocument,
     SourceRisk, SourceType, UnsupportedClaimReason, CONTRACT_VERSION,
 };
 use touch_browser_memory::{plan_memory_turn, summarize_turns, MemorySessionSummary};
@@ -32,9 +34,11 @@ use touch_browser_runtime::{
     CatalogDocument, ClaimInput, FixtureCatalog, ReadOnlyRuntime, ReadOnlySession, RuntimeError,
 };
 use touch_browser_storage_sqlite::{PilotTelemetryEvent, PilotTelemetryStore, TelemetryError};
+use url::{form_urlencoded, Url};
 
 const DEFAULT_OPENED_AT: &str = "2026-03-14T00:00:00+09:00";
 const DEFAULT_REQUESTED_TOKENS: usize = 512;
+const DEFAULT_SEARCH_TOKENS: usize = 2048;
 
 fn main() {
     let args = env::args().skip(1).collect::<Vec<_>>();
@@ -128,6 +132,8 @@ fn required_output_string<'a>(output: &'a Value, field: &str) -> &'a str {
 
 fn dispatch(command: CliCommand) -> Result<Value, CliError> {
     match command {
+        CliCommand::Search(options) => handle_search(options),
+        CliCommand::SearchOpenResult(options) => handle_search_open_result(options),
         CliCommand::Open(options) => handle_open(options),
         CliCommand::Snapshot(options) => handle_open(options),
         CliCommand::CompactView(options) => handle_compact_view(options),
@@ -161,6 +167,707 @@ fn dispatch(command: CliCommand) -> Result<Value, CliError> {
             "serve is handled directly and should not be dispatched.".to_string(),
         )),
     }
+}
+
+fn handle_search(options: SearchOptions) -> Result<Value, CliError> {
+    let search_url = build_search_url(options.engine, &options.query)?;
+    let browser_context_dir = options
+        .session_file
+        .as_ref()
+        .map(|path| browser_context_dir_for_session_file(path.as_path()))
+        .map(|path| path.display().to_string());
+    let context = open_browser_session(
+        &search_url,
+        options.budget,
+        Some(SourceRisk::Low),
+        Some(search_engine_source_label(options.engine).to_string()),
+        options.headed,
+        browser_context_dir.clone(),
+        "sclisearch001",
+        DEFAULT_OPENED_AT,
+    )?;
+    let report = build_search_report(
+        options.engine,
+        &options.query,
+        &search_url,
+        &context.snapshot,
+        &context.browser_state.current_html,
+        &context.browser_state.current_url,
+        DEFAULT_OPENED_AT,
+    );
+
+    if let Some(session_file) = options.session_file.as_ref() {
+        save_browser_cli_session(
+            session_file,
+            &build_browser_cli_session(
+                &context.session,
+                context.snapshot.budget.requested_tokens,
+                !options.headed,
+                Some(context.browser_state.clone()),
+                context.browser_context_dir.clone(),
+                Some(BrowserOrigin {
+                    target: search_url.clone(),
+                    source_risk: Some(SourceRisk::Low),
+                    source_label: Some(search_engine_source_label(options.engine).to_string()),
+                }),
+                Vec::new(),
+                Vec::new(),
+                Some(report.clone()),
+            ),
+        )?;
+    }
+
+    Ok(json!({
+        "query": options.query,
+        "engine": options.engine,
+        "searchUrl": search_url,
+        "resultCount": report.result_count,
+        "search": report.clone(),
+        "result": report,
+        "sessionState": context.session.state,
+        "sessionFile": options.session_file.map(|path| path.display().to_string()),
+    }))
+}
+
+fn handle_search_open_result(options: SearchOpenResultOptions) -> Result<Value, CliError> {
+    let persisted = load_browser_cli_session(&options.session_file)?;
+    let latest_search = persisted.latest_search.clone().ok_or_else(|| {
+        CliError::Usage(
+            "This browser session does not contain saved search results. Run `touch-browser search ... --session-file <path>` first.".to_string(),
+        )
+    })?;
+    if latest_search.status != SearchReportStatus::Ready {
+        return Err(CliError::Usage(
+            latest_search
+                .status_detail
+                .clone()
+                .unwrap_or_else(|| "Saved search results are not ready to open.".to_string()),
+        ));
+    }
+    let selected = latest_search
+        .results
+        .iter()
+        .find(|result| result.rank == options.rank)
+        .cloned()
+        .ok_or_else(|| {
+            CliError::Usage(format!(
+                "Saved search results do not contain rank {}.",
+                options.rank
+            ))
+        })?;
+
+    let opened = handle_browser_open(TargetOptions {
+        target: selected.url.clone(),
+        budget: persisted.requested_budget,
+        source_risk: Some(SourceRisk::Low),
+        source_label: None,
+        allowlisted_domains: persisted.allowlisted_domains.clone(),
+        browser: true,
+        headed: options.headed,
+        main_only: false,
+        session_file: Some(options.session_file.clone()),
+    })?;
+
+    Ok(json!({
+        "selectedResult": selected,
+        "result": opened,
+        "sessionFile": options.session_file.display().to_string(),
+    }))
+}
+
+fn build_search_url(engine: SearchEngine, query: &str) -> Result<String, CliError> {
+    let base = match engine {
+        SearchEngine::Google => "https://www.google.com/search",
+        SearchEngine::Brave => "https://search.brave.com/search",
+    };
+    let mut serializer = form_urlencoded::Serializer::new(String::new());
+    serializer.append_pair("q", query);
+    let query_string = serializer.finish();
+    Ok(format!("{base}?{query_string}"))
+}
+
+fn build_search_report(
+    engine: SearchEngine,
+    query: &str,
+    search_url: &str,
+    snapshot: &SnapshotDocument,
+    html: &str,
+    final_url: &str,
+    generated_at: &str,
+) -> SearchReport {
+    let mut results = extract_search_results_from_snapshot(engine, query, snapshot);
+    merge_search_results(
+        &mut results,
+        extract_search_results_from_html(engine, query, final_url, html),
+    );
+    let (status, status_detail) = search_report_status(engine, snapshot, final_url, &results);
+    for result in &mut results {
+        result.selection_score = Some(round_search_score(selection_score_for_result(
+            query, result,
+        )));
+        result.recommended_surface = Some(recommended_surface_for_result(query, result));
+    }
+
+    let mut recommended = results
+        .iter()
+        .map(|result| {
+            (
+                result.rank,
+                result.selection_score.unwrap_or(0.0),
+                result.official_likely,
+            )
+        })
+        .collect::<Vec<_>>();
+    recommended.sort_by(|left, right| {
+        right
+            .1
+            .partial_cmp(&left.1)
+            .unwrap_or(std::cmp::Ordering::Equal)
+            .then_with(|| right.2.cmp(&left.2))
+            .then_with(|| left.0.cmp(&right.0))
+    });
+    let recommended_result_ranks = recommended
+        .into_iter()
+        .take(3)
+        .map(|entry| entry.0)
+        .collect::<Vec<_>>();
+    let next_action_hints = search_action_hints(
+        query,
+        &results,
+        &recommended_result_ranks,
+        status,
+        status_detail.as_deref(),
+    );
+
+    SearchReport {
+        version: CONTRACT_VERSION.to_string(),
+        generated_at: generated_at.to_string(),
+        engine,
+        query: query.to_string(),
+        search_url: search_url.to_string(),
+        final_url: final_url.to_string(),
+        status,
+        status_detail,
+        result_count: results.len(),
+        results,
+        recommended_result_ranks,
+        next_action_hints,
+    }
+}
+
+fn extract_search_results_from_snapshot(
+    engine: SearchEngine,
+    query: &str,
+    snapshot: &SnapshotDocument,
+) -> Vec<SearchResultItem> {
+    let mut results = Vec::new();
+    let mut seen_urls = BTreeSet::new();
+
+    for (index, block) in snapshot.blocks.iter().enumerate() {
+        if block.kind != SnapshotBlockKind::Link {
+            continue;
+        }
+        if matches!(
+            block.role,
+            SnapshotBlockRole::PrimaryNav
+                | SnapshotBlockRole::SecondaryNav
+                | SnapshotBlockRole::Cta
+                | SnapshotBlockRole::FormControl
+        ) {
+            continue;
+        }
+        let Some(raw_href) = block.attributes.get("href").and_then(Value::as_str) else {
+            continue;
+        };
+        let Some(url) = normalize_search_result_url(engine, &snapshot.source.source_url, raw_href)
+        else {
+            continue;
+        };
+        if !seen_urls.insert(url.clone()) {
+            continue;
+        }
+        let title = block.text.trim().to_string();
+        if title.len() < 6 {
+            continue;
+        }
+        let snippet = collect_search_result_snippet(&snapshot.blocks, index);
+        let domain = url_domain(&url);
+
+        results.push(SearchResultItem {
+            rank: results.len() + 1,
+            title,
+            url,
+            domain: domain.clone(),
+            snippet,
+            stable_ref: Some(block.stable_ref.clone()),
+            official_likely: official_likely(query, &domain),
+            selection_score: None,
+            recommended_surface: None,
+        });
+    }
+
+    results
+}
+
+fn extract_search_results_from_html(
+    engine: SearchEngine,
+    query: &str,
+    base_url: &str,
+    html: &str,
+) -> Vec<SearchResultItem> {
+    let document = parse_html().one(html.to_string());
+    let mut results = Vec::new();
+    let mut seen_urls = BTreeSet::new();
+
+    let Ok(anchors) = document.select("a") else {
+        return results;
+    };
+
+    for anchor in anchors {
+        let Some(attributes) = anchor.attributes.borrow().get("href").map(str::to_string) else {
+            continue;
+        };
+        let Some(url) = normalize_search_result_url(engine, base_url, &attributes) else {
+            continue;
+        };
+        if !seen_urls.insert(url.clone()) {
+            continue;
+        }
+
+        let title = collapse_whitespace(&anchor.text_contents());
+        if title.len() < 6 {
+            continue;
+        }
+        if looks_like_search_nav_link(&title) {
+            continue;
+        }
+        let domain = url_domain(&url);
+        let snippet = search_result_snippet_from_anchor(&anchor.as_node(), &title);
+
+        results.push(SearchResultItem {
+            rank: results.len() + 1,
+            title,
+            url,
+            domain: domain.clone(),
+            snippet,
+            stable_ref: None,
+            official_likely: official_likely(query, &domain),
+            selection_score: None,
+            recommended_surface: None,
+        });
+    }
+
+    results
+}
+
+fn merge_search_results(results: &mut Vec<SearchResultItem>, additional: Vec<SearchResultItem>) {
+    let mut seen = results
+        .iter()
+        .map(|result| result.url.clone())
+        .collect::<BTreeSet<_>>();
+    for candidate in additional {
+        if !seen.insert(candidate.url.clone()) {
+            continue;
+        }
+        let mut candidate = candidate;
+        candidate.rank = results.len() + 1;
+        results.push(candidate);
+    }
+}
+
+fn search_report_status(
+    engine: SearchEngine,
+    snapshot: &SnapshotDocument,
+    final_url: &str,
+    results: &[SearchResultItem],
+) -> (SearchReportStatus, Option<String>) {
+    if let Some(detail) = detect_search_challenge(engine, snapshot, final_url) {
+        return (SearchReportStatus::Challenge, Some(detail));
+    }
+    if results.is_empty() {
+        return (
+            SearchReportStatus::NoResults,
+            Some("No search results were structured from the current result page.".to_string()),
+        );
+    }
+    (SearchReportStatus::Ready, None)
+}
+
+fn detect_search_challenge(
+    engine: SearchEngine,
+    snapshot: &SnapshotDocument,
+    final_url: &str,
+) -> Option<String> {
+    let final_lowered = final_url.to_ascii_lowercase();
+    let title_lowered = snapshot
+        .source
+        .title
+        .as_deref()
+        .unwrap_or_default()
+        .to_ascii_lowercase();
+    let body_text = snapshot
+        .blocks
+        .iter()
+        .take(24)
+        .map(|block| block.text.as_str())
+        .collect::<Vec<_>>()
+        .join(" ")
+        .to_ascii_lowercase();
+
+    let signals = [
+        "captcha",
+        "recaptcha",
+        "confirm you're not a robot",
+        "i'm not a robot",
+        "비정상적인 트래픽",
+        "로봇이 아닙니다",
+        "drag the slider",
+        "human checkpoint",
+    ];
+    if signals.iter().any(|signal| {
+        final_lowered.contains(signal)
+            || title_lowered.contains(signal)
+            || body_text.contains(signal)
+    }) {
+        return Some(match engine {
+            SearchEngine::Google => "Google returned a bot-check or reCAPTCHA page instead of a normal result list. Re-run in headed mode, clear the challenge manually, then search again.".to_string(),
+            SearchEngine::Brave => "Brave returned a CAPTCHA or slider challenge instead of a normal result list. Re-run in headed mode, clear the challenge manually, then search again.".to_string(),
+        });
+    }
+
+    match engine {
+        SearchEngine::Google if final_lowered.contains("/sorry/") => Some(
+            "Google returned a traffic verification page instead of a normal result list. Re-run in headed mode, clear the challenge manually, then search again.".to_string(),
+        ),
+        _ => None,
+    }
+}
+
+fn search_result_snippet_from_anchor(anchor: &NodeRef, title: &str) -> Option<String> {
+    let mut candidate = anchor.parent();
+    while let Some(node) = candidate {
+        let text = collapse_whitespace(&node.text_contents());
+        if text.len() > title.len() + 24 {
+            let snippet = text.replacen(title, "", 1);
+            let snippet = collapse_whitespace(&snippet);
+            if snippet.len() >= 20 {
+                return Some(truncate_plain_text(&snippet, 220));
+            }
+        }
+        candidate = node.parent();
+    }
+    None
+}
+
+fn looks_like_search_nav_link(text: &str) -> bool {
+    let lowered = text.to_ascii_lowercase();
+    [
+        "images",
+        "news",
+        "videos",
+        "maps",
+        "shopping",
+        "more",
+        "settings",
+        "tools",
+        "sign in",
+        "feedback",
+        "help",
+        "다음",
+        "이전",
+        "도움말",
+        "설정",
+        "이미지",
+        "뉴스",
+        "동영상",
+    ]
+    .iter()
+    .any(|keyword| lowered == *keyword || lowered.starts_with(&format!("{keyword} ")))
+}
+
+fn collapse_whitespace(text: &str) -> String {
+    text.split_whitespace().collect::<Vec<_>>().join(" ")
+}
+
+fn collect_search_result_snippet(blocks: &[SnapshotBlock], start_index: usize) -> Option<String> {
+    let mut parts = Vec::new();
+    for block in blocks.iter().skip(start_index + 1).take(6) {
+        if matches!(
+            block.kind,
+            SnapshotBlockKind::Heading | SnapshotBlockKind::Link
+        ) {
+            break;
+        }
+        if !matches!(
+            block.role,
+            SnapshotBlockRole::Content | SnapshotBlockRole::Supporting
+        ) {
+            continue;
+        }
+        if !matches!(
+            block.kind,
+            SnapshotBlockKind::Text | SnapshotBlockKind::List | SnapshotBlockKind::Metadata
+        ) {
+            continue;
+        }
+        let text = block.text.trim();
+        if text.is_empty() {
+            continue;
+        }
+        parts.push(text.to_string());
+        if parts.join(" ").len() >= 220 {
+            break;
+        }
+    }
+
+    let snippet = parts.join(" ");
+    (!snippet.is_empty()).then(|| truncate_plain_text(&snippet, 220))
+}
+
+fn normalize_search_result_url(
+    engine: SearchEngine,
+    base_url: &str,
+    raw_href: &str,
+) -> Option<String> {
+    let base = Url::parse(base_url).ok()?;
+    let resolved = base.join(raw_href).or_else(|_| Url::parse(raw_href)).ok()?;
+    let host = resolved.host_str()?;
+
+    match engine {
+        SearchEngine::Google if is_google_host(host) => {
+            if resolved.path() == "/url" || resolved.path() == "/imgres" {
+                for key in ["q", "url", "imgurl"] {
+                    if let Some(value) = resolved
+                        .query_pairs()
+                        .find(|(candidate, _)| candidate == key)
+                        .map(|(_, value)| value.into_owned())
+                    {
+                        if value.starts_with("http://") || value.starts_with("https://") {
+                            return Some(value);
+                        }
+                    }
+                }
+            }
+            None
+        }
+        SearchEngine::Brave if is_brave_host(host) => None,
+        _ => matches!(resolved.scheme(), "http" | "https").then(|| resolved.to_string()),
+    }
+}
+
+fn is_google_host(host: &str) -> bool {
+    host == "google.com"
+        || host == "www.google.com"
+        || host.ends_with(".google.com")
+        || host.ends_with(".google.co.kr")
+}
+
+fn is_brave_host(host: &str) -> bool {
+    host == "search.brave.com" || host.ends_with(".brave.com")
+}
+
+fn url_domain(url: &str) -> String {
+    Url::parse(url)
+        .ok()
+        .and_then(|url| url.host_str().map(ToString::to_string))
+        .unwrap_or_else(|| "unknown".to_string())
+}
+
+fn search_engine_source_label(engine: SearchEngine) -> &'static str {
+    match engine {
+        SearchEngine::Google => "Google Search",
+        SearchEngine::Brave => "Brave Search",
+    }
+}
+
+fn official_likely(query: &str, domain: &str) -> bool {
+    let lowered_domain = domain.to_ascii_lowercase();
+    let query_tokens = search_query_tokens(query);
+    lowered_domain.starts_with("docs.")
+        || lowered_domain.starts_with("developer.")
+        || lowered_domain.contains("developers.")
+        || lowered_domain.contains("developer.")
+        || lowered_domain.contains("docs.")
+        || lowered_domain.ends_with(".gov")
+        || lowered_domain.ends_with(".edu")
+        || lowered_domain.contains("mdn")
+        || query_tokens
+            .iter()
+            .any(|token| token.len() >= 4 && lowered_domain.contains(token))
+}
+
+fn selection_score_for_result(query: &str, result: &SearchResultItem) -> f64 {
+    let lowered_title = result.title.to_ascii_lowercase();
+    let lowered_url = result.url.to_ascii_lowercase();
+    let lowered_snippet = result
+        .snippet
+        .as_deref()
+        .unwrap_or_default()
+        .to_ascii_lowercase();
+    let numeric_intent = query_has_numeric_intent(query);
+    let detail_keywords = [
+        "limit",
+        "limits",
+        "quota",
+        "quotas",
+        "pricing",
+        "price",
+        "cost",
+        "timeout",
+        "release",
+        "version",
+        "versions",
+        "reference",
+        "api",
+        "docs",
+    ];
+    let overview_keywords = ["overview", "guide", "intro", "introduction", "manual"];
+
+    let mut score = 0.6 / result.rank as f64;
+    if result.official_likely {
+        score += 0.25;
+    }
+    if detail_keywords.iter().any(|keyword| {
+        lowered_title.contains(keyword)
+            || lowered_url.contains(keyword)
+            || lowered_snippet.contains(keyword)
+    }) {
+        score += if numeric_intent { 0.22 } else { 0.10 };
+    }
+    if overview_keywords.iter().any(|keyword| {
+        lowered_title.contains(keyword)
+            || lowered_url.contains(keyword)
+            || lowered_snippet.contains(keyword)
+    }) {
+        score += if numeric_intent { 0.04 } else { 0.12 };
+    }
+    if search_query_tokens(query)
+        .iter()
+        .any(|token| lowered_title.contains(token) || lowered_url.contains(token))
+    {
+        score += 0.10;
+    }
+    score.clamp(0.0, 1.0)
+}
+
+fn recommended_surface_for_result(query: &str, result: &SearchResultItem) -> String {
+    let lowered = format!(
+        "{} {} {}",
+        result.title.to_ascii_lowercase(),
+        result.url.to_ascii_lowercase(),
+        result
+            .snippet
+            .as_deref()
+            .unwrap_or_default()
+            .to_ascii_lowercase()
+    );
+    if query_has_numeric_intent(query)
+        || ["limit", "quota", "pricing", "timeout", "release", "version"]
+            .iter()
+            .any(|keyword| lowered.contains(keyword))
+    {
+        "extract".to_string()
+    } else {
+        "read-view".to_string()
+    }
+}
+
+fn search_action_hints(
+    query: &str,
+    results: &[SearchResultItem],
+    recommended_ranks: &[usize],
+    status: SearchReportStatus,
+    status_detail: Option<&str>,
+) -> Vec<SearchActionHint> {
+    if status == SearchReportStatus::Challenge {
+        return vec![SearchActionHint {
+            action: "complete-challenge".to_string(),
+            detail: status_detail.unwrap_or("The search provider returned a challenge page. Re-run in headed mode, clear the challenge manually, then retry search.").to_string(),
+            result_ranks: Vec::new(),
+        }];
+    }
+
+    if results.is_empty() {
+        return vec![SearchActionHint {
+            action: "refine-search".to_string(),
+            detail: status_detail.unwrap_or("No external results were structured from the current search page. Retry with a narrower query or run in headed mode.").to_string(),
+            result_ranks: Vec::new(),
+        }];
+    }
+
+    let mut hints = vec![SearchActionHint {
+        action: "open-top".to_string(),
+        detail: "Open the highest-ranked candidate tabs first, then run read-view or extract on the most specific pages.".to_string(),
+        result_ranks: recommended_ranks.to_vec(),
+    }];
+
+    let official_ranks = results
+        .iter()
+        .filter(|result| result.official_likely)
+        .map(|result| result.rank)
+        .take(3)
+        .collect::<Vec<_>>();
+    if !official_ranks.is_empty() {
+        hints.push(SearchActionHint {
+            action: "prefer-official".to_string(),
+            detail:
+                "Prefer documentation-like or official domains before making an evidence judgment."
+                    .to_string(),
+            result_ranks: official_ranks,
+        });
+    }
+
+    if query_has_numeric_intent(query) {
+        hints.push(SearchActionHint {
+            action: "extract".to_string(),
+            detail: "This query looks numeric or limit-sensitive. Prefer limits, pricing, release-note, or reference pages before answering.".to_string(),
+            result_ranks: recommended_ranks.to_vec(),
+        });
+    } else {
+        hints.push(SearchActionHint {
+            action: "read-view".to_string(),
+            detail: "Use read-view on the most relevant tabs first, then run extract only after the scope looks right.".to_string(),
+            result_ranks: recommended_ranks.to_vec(),
+        });
+    }
+
+    hints
+}
+
+fn query_has_numeric_intent(query: &str) -> bool {
+    let lowered = query.to_ascii_lowercase();
+    lowered.chars().any(|character| character.is_ascii_digit())
+        || [
+            "limit", "limits", "quota", "quotas", "price", "pricing", "cost", "timeout", "version",
+            "release", "released", "seconds", "minutes", "hours", "size", "latency", "memory",
+            "date", "when",
+        ]
+        .iter()
+        .any(|keyword| lowered.contains(keyword))
+}
+
+fn search_query_tokens(text: &str) -> Vec<String> {
+    text.to_ascii_lowercase()
+        .split(|character: char| !character.is_alphanumeric())
+        .filter(|token| token.len() >= 3)
+        .map(ToString::to_string)
+        .collect::<BTreeSet<_>>()
+        .into_iter()
+        .collect()
+}
+
+fn round_search_score(score: f64) -> f64 {
+    (score * 100.0).round() / 100.0
+}
+
+fn truncate_plain_text(text: &str, limit: usize) -> String {
+    if text.chars().count() <= limit {
+        return text.to_string();
+    }
+    text.chars()
+        .take(limit.saturating_sub(1))
+        .collect::<String>()
+        + "…"
 }
 
 fn handle_open(options: TargetOptions) -> Result<Value, CliError> {
@@ -254,6 +961,7 @@ fn handle_browser_open(options: TargetOptions) -> Result<Value, CliError> {
                 }),
                 options.allowlisted_domains.clone(),
                 Vec::new(),
+                None,
             ),
         )?;
     }
@@ -301,6 +1009,7 @@ fn handle_compact_view(options: TargetOptions) -> Result<Value, CliError> {
                     }),
                     options.allowlisted_domains.clone(),
                     Vec::new(),
+                    None,
                 ),
             )?;
         }
@@ -378,6 +1087,7 @@ fn handle_read_view(options: TargetOptions) -> Result<Value, CliError> {
                     }),
                     options.allowlisted_domains.clone(),
                     Vec::new(),
+                    None,
                 ),
             )?;
         }
@@ -500,6 +1210,7 @@ fn handle_extract(options: ExtractOptions) -> Result<Value, CliError> {
                     }),
                     options.allowlisted_domains.clone(),
                     Vec::new(),
+                    None,
                 ),
             )?;
         }
@@ -1292,7 +2003,9 @@ fn apply_verifier_adjudication(report: &mut EvidenceReport) {
                 .clone()
                 .filter(|reason| *reason != UnsupportedClaimReason::NeedsMoreBrowsing)
                 .or(Some(UnsupportedClaimReason::InsufficientConfidence)),
-            EvidenceClaimVerdict::NeedsMoreBrowsing => Some(UnsupportedClaimReason::NeedsMoreBrowsing),
+            EvidenceClaimVerdict::NeedsMoreBrowsing => {
+                Some(UnsupportedClaimReason::NeedsMoreBrowsing)
+            }
         };
 
         if claim.verdict != EvidenceClaimVerdict::NeedsMoreBrowsing {
@@ -2336,6 +3049,9 @@ fn serve_dispatch(request: ServeJsonRpcRequest, daemon_state: &mut ServeDaemonSt
                     "runtime.extract",
                     "runtime.policy",
                     "runtime.compactView",
+                    "runtime.search",
+                    "runtime.search.openResult",
+                    "runtime.search.openTop",
                     "runtime.session.create",
                     "runtime.session.open",
                     "runtime.session.snapshot",
@@ -2379,6 +3095,9 @@ fn serve_dispatch(request: ServeJsonRpcRequest, daemon_state: &mut ServeDaemonSt
                 .and_then(|options| dispatch(CliCommand::Policy(options))),
             "runtime.compactView" => json_target_options(&params)
                 .and_then(|options| dispatch(CliCommand::CompactView(options))),
+            "runtime.search" => serve_search(&params, daemon_state),
+            "runtime.search.openResult" => serve_search_open_result(&params, daemon_state),
+            "runtime.search.openTop" => serve_search_open_top(&params, daemon_state),
             "runtime.session.create" => serve_session_create(&params, daemon_state),
             "runtime.session.open" => serve_session_open(&params, daemon_state),
             "runtime.session.snapshot" => serve_session_snapshot(&params, daemon_state),
@@ -2573,6 +3292,191 @@ fn json_usize(params: &Value, field: &str) -> Option<usize> {
         .get(field)
         .and_then(Value::as_u64)
         .and_then(|value| usize::try_from(value).ok())
+}
+
+fn serve_search(params: &Value, daemon_state: &mut ServeDaemonState) -> Result<Value, CliError> {
+    let session_id = required_json_string(params, "sessionId")?;
+    let requested_tab_id = optional_json_string(params, "tabId");
+    let query = required_json_string(params, "query")?;
+    let engine = optional_json_string(params, "engine")
+        .map(|value| parse_search_engine(&value))
+        .transpose()?
+        .unwrap_or(SearchEngine::Google);
+    let budget = json_usize(params, "budget").unwrap_or(DEFAULT_SEARCH_TOKENS);
+    let resolved_tab_id = match requested_tab_id.as_deref() {
+        Some(tab_id) => {
+            daemon_state.ensure_tab(&session_id, tab_id)?;
+            daemon_state.select_tab(&session_id, tab_id)?;
+            tab_id.to_string()
+        }
+        None => daemon_state.ensure_active_tab(&session_id)?,
+    };
+    let (headless, session_file) = {
+        let session = daemon_state.session(&session_id)?;
+        let tab = session.tabs.get(&resolved_tab_id).ok_or_else(|| {
+            CliError::Usage(format!(
+                "Serve session `{session_id}` does not contain tab `{resolved_tab_id}`."
+            ))
+        })?;
+        (session.headless, tab.session_file.clone())
+    };
+    let headed = json_bool(params, "headed").unwrap_or(!headless);
+    let result = dispatch(CliCommand::Search(SearchOptions {
+        query,
+        engine,
+        budget,
+        headed,
+        session_file: Some(session_file),
+    }))?;
+    Ok(json!({
+        "sessionId": session_id,
+        "tabId": resolved_tab_id,
+        "result": result,
+    }))
+}
+
+fn serve_search_open_result(
+    params: &Value,
+    daemon_state: &mut ServeDaemonState,
+) -> Result<Value, CliError> {
+    let session_id = required_json_string(params, "sessionId")?;
+    let search_tab_id = optional_json_string(params, "tabId");
+    let rank = json_usize(params, "rank").ok_or_else(|| {
+        CliError::Usage("serve params `rank` must be a positive number.".to_string())
+    })?;
+    if rank == 0 {
+        return Err(CliError::Usage(
+            "serve params `rank` must be a positive number.".to_string(),
+        ));
+    }
+    let headed = json_bool(params, "headed");
+    let (resolved_search_tab_id, search_session_file) =
+        daemon_state.opened_tab_file(&session_id, search_tab_id.as_deref())?;
+    let persisted = load_browser_cli_session(&search_session_file)?;
+    let latest_search = persisted.latest_search.ok_or_else(|| {
+        CliError::Usage(format!(
+            "Tab `{resolved_search_tab_id}` does not contain saved search results."
+        ))
+    })?;
+    if latest_search.status != SearchReportStatus::Ready {
+        return Err(CliError::Usage(
+            latest_search
+                .status_detail
+                .clone()
+                .unwrap_or_else(|| "Saved search results are not ready to open.".to_string()),
+        ));
+    }
+    let selected = latest_search
+        .results
+        .iter()
+        .find(|result| result.rank == rank)
+        .cloned()
+        .ok_or_else(|| CliError::Usage(format!("Search results do not contain rank {rank}.")))?;
+    let target_tab_id = daemon_state.create_tab_for_session(&session_id)?;
+    daemon_state.select_tab(&session_id, &target_tab_id)?;
+    let open_result = serve_session_open_internal(
+        daemon_state,
+        ServeSessionOpenRequest {
+            session_id: session_id.clone(),
+            requested_tab_id: Some(target_tab_id.clone()),
+            target: selected.url.clone(),
+            budget: DEFAULT_REQUESTED_TOKENS,
+            source_risk: Some(SourceRisk::Low),
+            source_label: None,
+            new_allowlisted_domains: Vec::new(),
+            headed,
+            browser: true,
+        },
+    )?;
+
+    Ok(json!({
+        "sessionId": session_id,
+        "searchTabId": resolved_search_tab_id,
+        "openedTabId": target_tab_id,
+        "selectedResult": selected,
+        "result": open_result,
+    }))
+}
+
+fn serve_search_open_top(
+    params: &Value,
+    daemon_state: &mut ServeDaemonState,
+) -> Result<Value, CliError> {
+    let session_id = required_json_string(params, "sessionId")?;
+    let search_tab_id = optional_json_string(params, "tabId");
+    let limit = json_usize(params, "limit").unwrap_or(3).max(1);
+    let headed = json_bool(params, "headed");
+    let (resolved_search_tab_id, search_session_file) =
+        daemon_state.opened_tab_file(&session_id, search_tab_id.as_deref())?;
+    let persisted = load_browser_cli_session(&search_session_file)?;
+    let latest_search = persisted.latest_search.ok_or_else(|| {
+        CliError::Usage(format!(
+            "Tab `{resolved_search_tab_id}` does not contain saved search results."
+        ))
+    })?;
+    if latest_search.status != SearchReportStatus::Ready {
+        return Err(CliError::Usage(
+            latest_search
+                .status_detail
+                .clone()
+                .unwrap_or_else(|| "Saved search results are not ready to open.".to_string()),
+        ));
+    }
+
+    let selected_ranks = if latest_search.recommended_result_ranks.is_empty() {
+        latest_search
+            .results
+            .iter()
+            .map(|result| result.rank)
+            .take(limit)
+            .collect::<Vec<_>>()
+    } else {
+        latest_search
+            .recommended_result_ranks
+            .iter()
+            .copied()
+            .take(limit)
+            .collect::<Vec<_>>()
+    };
+
+    let mut opened_tabs = Vec::new();
+    for rank in selected_ranks {
+        let selected = latest_search
+            .results
+            .iter()
+            .find(|result| result.rank == rank)
+            .cloned()
+            .ok_or_else(|| {
+                CliError::Usage(format!("Search results do not contain rank {rank}."))
+            })?;
+        let tab_id = daemon_state.create_tab_for_session(&session_id)?;
+        let open_result = serve_session_open_internal(
+            daemon_state,
+            ServeSessionOpenRequest {
+                session_id: session_id.clone(),
+                requested_tab_id: Some(tab_id.clone()),
+                target: selected.url.clone(),
+                budget: DEFAULT_REQUESTED_TOKENS,
+                source_risk: Some(SourceRisk::Low),
+                source_label: None,
+                new_allowlisted_domains: Vec::new(),
+                headed,
+                browser: true,
+            },
+        )?;
+        opened_tabs.push(json!({
+            "tabId": tab_id,
+            "selectedResult": selected,
+            "result": open_result,
+        }));
+    }
+
+    Ok(json!({
+        "sessionId": session_id,
+        "searchTabId": resolved_search_tab_id,
+        "openedCount": opened_tabs.len(),
+        "openedTabs": opened_tabs,
+    }))
 }
 
 fn serve_session_create(
@@ -3650,6 +4554,15 @@ impl ServeDaemonState {
             .as_ref()
             .map(|persisted| persisted.session.snapshots.len())
             .unwrap_or(0);
+        let latest_search_query = persisted
+            .as_ref()
+            .and_then(|persisted| persisted.latest_search.as_ref())
+            .map(|report| report.query.clone());
+        let latest_search_result_count = persisted
+            .as_ref()
+            .and_then(|persisted| persisted.latest_search.as_ref())
+            .map(|report| report.result_count)
+            .unwrap_or(0);
 
         Ok(json!({
             "tabId": tab_id,
@@ -3659,6 +4572,8 @@ impl ServeDaemonState {
             "currentUrl": current_url,
             "visitedUrlCount": visited_url_count,
             "snapshotCount": snapshot_count,
+            "latestSearchQuery": latest_search_query,
+            "latestSearchResultCount": latest_search_result_count,
         }))
     }
 
@@ -3837,6 +4752,7 @@ fn build_browser_cli_session(
     browser_origin: Option<BrowserOrigin>,
     allowlisted_domains: Vec<String>,
     browser_trace: Vec<BrowserActionTraceEntry>,
+    latest_search: Option<SearchReport>,
 ) -> BrowserCliSession {
     BrowserCliSession {
         version: CONTRACT_VERSION.to_string(),
@@ -3849,6 +4765,7 @@ fn build_browser_cli_session(
         allowlisted_domains,
         browser_trace,
         approved_risks: BTreeSet::new(),
+        latest_search,
     }
 }
 
@@ -4285,6 +5202,10 @@ fn parse_command(args: &[String]) -> Result<CliCommand, CliError> {
     };
 
     match command_name {
+        "search" => Ok(CliCommand::Search(parse_search_options(&args[1..])?)),
+        "search-open-result" => Ok(CliCommand::SearchOpenResult(
+            parse_search_open_result_options(&args[1..])?,
+        )),
         "open" => Ok(CliCommand::Open(parse_target_options(&args[1..])?)),
         "snapshot" => Ok(CliCommand::Snapshot(parse_target_options(&args[1..])?)),
         "compact-view" => Ok(CliCommand::CompactView(parse_target_options(&args[1..])?)),
@@ -4361,6 +5282,119 @@ fn parse_command(args: &[String]) -> Result<CliCommand, CliError> {
             usage()
         ))),
     }
+}
+
+fn parse_search_options(args: &[String]) -> Result<SearchOptions, CliError> {
+    let query = args
+        .first()
+        .filter(|value| !value.starts_with("--"))
+        .cloned()
+        .ok_or_else(|| CliError::Usage("A search query is required.".to_string()))?;
+    let mut options = SearchOptions {
+        query,
+        engine: SearchEngine::Google,
+        budget: DEFAULT_SEARCH_TOKENS,
+        headed: false,
+        session_file: None,
+    };
+    let mut index = 1;
+
+    while index < args.len() {
+        match args[index].as_str() {
+            "--engine" => {
+                let value = args
+                    .get(index + 1)
+                    .ok_or_else(|| CliError::Usage("--engine requires a value.".to_string()))?;
+                options.engine = parse_search_engine(value)?;
+                index += 2;
+            }
+            "--headed" => {
+                options.headed = true;
+                index += 1;
+            }
+            "--budget" => {
+                let value = args.get(index + 1).ok_or_else(|| {
+                    CliError::Usage("--budget requires a positive integer.".to_string())
+                })?;
+                options.budget = value.parse().map_err(|_| {
+                    CliError::Usage("--budget requires a positive integer.".to_string())
+                })?;
+                if options.budget == 0 {
+                    return Err(CliError::Usage(
+                        "--budget requires a positive integer.".to_string(),
+                    ));
+                }
+                index += 2;
+            }
+            "--session-file" => {
+                let value = args.get(index + 1).ok_or_else(|| {
+                    CliError::Usage("--session-file requires a path.".to_string())
+                })?;
+                options.session_file = Some(PathBuf::from(value));
+                index += 2;
+            }
+            other => {
+                return Err(CliError::Usage(format!(
+                    "Unknown option `{other}` for search command."
+                )));
+            }
+        }
+    }
+
+    Ok(options)
+}
+
+fn parse_search_open_result_options(args: &[String]) -> Result<SearchOpenResultOptions, CliError> {
+    let mut session_file = None;
+    let mut rank = None;
+    let mut headed = false;
+    let mut index = 0;
+
+    while index < args.len() {
+        match args[index].as_str() {
+            "--session-file" => {
+                let value = args.get(index + 1).ok_or_else(|| {
+                    CliError::Usage("--session-file requires a path.".to_string())
+                })?;
+                session_file = Some(PathBuf::from(value));
+                index += 2;
+            }
+            "--rank" => {
+                let value = args
+                    .get(index + 1)
+                    .ok_or_else(|| CliError::Usage("--rank requires a number.".to_string()))?;
+                let parsed = value.parse::<usize>().map_err(|_| {
+                    CliError::Usage("--rank requires a positive number.".to_string())
+                })?;
+                if parsed == 0 {
+                    return Err(CliError::Usage(
+                        "--rank requires a positive number.".to_string(),
+                    ));
+                }
+                rank = Some(parsed);
+                index += 2;
+            }
+            "--headed" => {
+                headed = true;
+                index += 1;
+            }
+            other => {
+                return Err(CliError::Usage(format!(
+                    "Unknown option `{other}` for search-open-result."
+                )));
+            }
+        }
+    }
+
+    Ok(SearchOpenResultOptions {
+        session_file: session_file.ok_or_else(|| {
+            CliError::Usage("search-open-result requires `--session-file <path>`.".to_string())
+        })?,
+        rank: rank.ok_or_else(|| {
+            CliError::Usage("search-open-result requires `--rank <number>`.".to_string())
+        })?,
+        headed,
+    })
 }
 
 fn parse_target_options(args: &[String]) -> Result<TargetOptions, CliError> {
@@ -4447,6 +5481,16 @@ fn parse_target_options(args: &[String]) -> Result<TargetOptions, CliError> {
     }
 
     Ok(options)
+}
+
+fn parse_search_engine(value: &str) -> Result<SearchEngine, CliError> {
+    match value {
+        "google" => Ok(SearchEngine::Google),
+        "brave" => Ok(SearchEngine::Brave),
+        other => Err(CliError::Usage(format!(
+            "Unknown search engine `{other}`. Use `google` or `brave`."
+        ))),
+    }
 }
 
 fn parse_extract_options(args: &[String]) -> Result<ExtractOptions, CliError> {
@@ -6176,6 +7220,8 @@ fn usage() -> String {
     [
         "Usage:",
         "  Stable research commands:",
+        "  touch-browser search <query> [--engine google|brave] [--headed] [--budget <tokens>] [--session-file <path>]",
+        "  touch-browser search-open-result --session-file <path> --rank <number> [--headed]",
         "  touch-browser open <target> [--browser] [--headed] [--budget <tokens>] [--session-file <path>] [--source-risk low|medium|hostile] [--source-label <label>] [--allow-domain <host> ...]",
         "  touch-browser snapshot <target> [--browser] [--headed] [--budget <tokens>] [--session-file <path>] [--source-risk low|medium|hostile] [--source-label <label>] [--allow-domain <host> ...]",
         "  touch-browser compact-view <target> [--browser] [--headed] [--budget <tokens>] [--session-file <path>] [--source-risk low|medium|hostile] [--source-label <label>] [--allow-domain <host> ...]",
@@ -6213,6 +7259,8 @@ fn usage() -> String {
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 enum CliCommand {
+    Search(SearchOptions),
+    SearchOpenResult(SearchOpenResultOptions),
     Open(TargetOptions),
     Snapshot(TargetOptions),
     CompactView(TargetOptions),
@@ -6256,6 +7304,22 @@ struct TargetOptions {
     headed: bool,
     main_only: bool,
     session_file: Option<PathBuf>,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+struct SearchOptions {
+    query: String,
+    engine: SearchEngine,
+    budget: usize,
+    headed: bool,
+    session_file: Option<PathBuf>,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+struct SearchOpenResultOptions {
+    session_file: PathBuf,
+    rank: usize,
+    headed: bool,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -6425,6 +7489,8 @@ struct BrowserCliSession {
     browser_trace: Vec<BrowserActionTraceEntry>,
     #[serde(default)]
     approved_risks: BTreeSet<AckRisk>,
+    #[serde(default)]
+    latest_search: Option<SearchReport>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
@@ -7070,13 +8136,20 @@ mod tests {
         time::{SystemTime, UNIX_EPOCH},
     };
 
+    use serde_json::json;
+    use touch_browser_contracts::{
+        SnapshotBlock, SnapshotBlockKind, SnapshotBlockRole, SnapshotBudget, SnapshotDocument,
+        SnapshotEvidence, SnapshotSource, SourceType,
+    };
+
     use super::{
-        browser_context_dir_for_session_file, dispatch, parse_command, AckRisk, ApproveOptions,
-        CliCommand, ClickOptions, ExpandOptions, ExtractOptions, FollowOptions, OutputFormat,
-        PaginateOptions, PaginationDirection, PolicyProfile, SessionExtractOptions,
-        SessionFileOptions, SessionProfileSetOptions, SessionReadOptions, SessionRefreshOptions,
-        SessionSynthesizeOptions, SubmitOptions, TargetOptions, TelemetryRecentOptions,
-        TypeOptions, DEFAULT_REQUESTED_TOKENS,
+        browser_context_dir_for_session_file, build_search_report, dispatch, parse_command,
+        AckRisk, ApproveOptions, CliCommand, ClickOptions, ExpandOptions, ExtractOptions,
+        FollowOptions, OutputFormat, PaginateOptions, PaginationDirection, PolicyProfile,
+        SearchEngine, SearchOpenResultOptions, SearchOptions, SearchReportStatus,
+        SessionExtractOptions, SessionFileOptions, SessionProfileSetOptions, SessionReadOptions,
+        SessionRefreshOptions, SessionSynthesizeOptions, SubmitOptions, TargetOptions,
+        TelemetryRecentOptions, TypeOptions, DEFAULT_REQUESTED_TOKENS, DEFAULT_SEARCH_TOKENS,
     };
 
     fn temp_session_path(name: &str) -> PathBuf {
@@ -7115,6 +8188,52 @@ mod tests {
                     "There is an Enterprise plan.".to_string(),
                 ],
                 verifier_command: None,
+            })
+        );
+    }
+
+    #[test]
+    fn parses_search_command_with_engine_and_session_file() {
+        let command = parse_command(&[
+            "search".to_string(),
+            "lambda timeout".to_string(),
+            "--engine".to_string(),
+            "brave".to_string(),
+            "--session-file".to_string(),
+            "/tmp/search-session.json".to_string(),
+            "--headed".to_string(),
+        ])
+        .expect("search command should parse");
+
+        assert_eq!(
+            command,
+            CliCommand::Search(SearchOptions {
+                query: "lambda timeout".to_string(),
+                engine: SearchEngine::Brave,
+                budget: DEFAULT_SEARCH_TOKENS,
+                headed: true,
+                session_file: Some(PathBuf::from("/tmp/search-session.json")),
+            })
+        );
+    }
+
+    #[test]
+    fn parses_search_open_result_command() {
+        let command = parse_command(&[
+            "search-open-result".to_string(),
+            "--session-file".to_string(),
+            "/tmp/search-session.json".to_string(),
+            "--rank".to_string(),
+            "2".to_string(),
+        ])
+        .expect("search-open-result command should parse");
+
+        assert_eq!(
+            command,
+            CliCommand::SearchOpenResult(SearchOpenResultOptions {
+                session_file: PathBuf::from("/tmp/search-session.json"),
+                rank: 2,
+                headed: false,
             })
         );
     }
@@ -7190,6 +8309,210 @@ mod tests {
         assert!(markdown.starts_with('#'));
         assert!(markdown.contains("Getting Started"));
         assert!(output["approxTokens"].as_u64().unwrap_or(0) > 0);
+    }
+
+    #[test]
+    fn structures_google_style_search_results_from_snapshot_blocks() {
+        let snapshot = SnapshotDocument {
+            version: "1.0.0".to_string(),
+            stable_ref_version: "1".to_string(),
+            source: SnapshotSource {
+                source_url: "https://www.google.com/search?q=lambda+timeout".to_string(),
+                source_type: SourceType::Playwright,
+                title: Some("lambda timeout - Google Search".to_string()),
+            },
+            budget: SnapshotBudget {
+                requested_tokens: DEFAULT_SEARCH_TOKENS,
+                estimated_tokens: 256,
+                emitted_tokens: 256,
+                truncated: false,
+            },
+            blocks: vec![
+                SnapshotBlock {
+                    version: "1.0.0".to_string(),
+                    id: "b1".to_string(),
+                    kind: SnapshotBlockKind::Link,
+                    stable_ref: "rmain:link:aws-lambda-quotas".to_string(),
+                    role: SnapshotBlockRole::Content,
+                    text: "Lambda quotas".to_string(),
+                    attributes: std::collections::BTreeMap::from([(
+                        "href".to_string(),
+                        json!("https://docs.aws.amazon.com/lambda/latest/dg/gettingstarted-limits.html"),
+                    )]),
+                    evidence: SnapshotEvidence {
+                        source_url: "https://www.google.com/search?q=lambda+timeout".to_string(),
+                        source_type: SourceType::Playwright,
+                        dom_path_hint: Some("html > body > main > a:nth-of-type(1)".to_string()),
+                        byte_range_start: None,
+                        byte_range_end: None,
+                    },
+                },
+                SnapshotBlock {
+                    version: "1.0.0".to_string(),
+                    id: "b2".to_string(),
+                    kind: SnapshotBlockKind::Text,
+                    stable_ref: "rmain:text:aws-lambda-quotas-snippet".to_string(),
+                    role: SnapshotBlockRole::Supporting,
+                    text: "Function timeout: 900 seconds (15 minutes).".to_string(),
+                    attributes: Default::default(),
+                    evidence: SnapshotEvidence {
+                        source_url: "https://www.google.com/search?q=lambda+timeout".to_string(),
+                        source_type: SourceType::Playwright,
+                        dom_path_hint: Some("html > body > main > p:nth-of-type(1)".to_string()),
+                        byte_range_start: None,
+                        byte_range_end: None,
+                    },
+                },
+                SnapshotBlock {
+                    version: "1.0.0".to_string(),
+                    id: "b3".to_string(),
+                    kind: SnapshotBlockKind::Link,
+                    stable_ref: "rmain:link:google-help".to_string(),
+                    role: SnapshotBlockRole::PrimaryNav,
+                    text: "Google Help".to_string(),
+                    attributes: std::collections::BTreeMap::from([(
+                        "href".to_string(),
+                        json!("https://support.google.com/websearch"),
+                    )]),
+                    evidence: SnapshotEvidence {
+                        source_url: "https://www.google.com/search?q=lambda+timeout".to_string(),
+                        source_type: SourceType::Playwright,
+                        dom_path_hint: Some("html > body > nav > a:nth-of-type(1)".to_string()),
+                        byte_range_start: None,
+                        byte_range_end: None,
+                    },
+                },
+            ],
+        };
+
+        let report = build_search_report(
+            SearchEngine::Google,
+            "lambda timeout",
+            "https://www.google.com/search?q=lambda+timeout",
+            &snapshot,
+            "<html></html>",
+            "https://www.google.com/search?q=lambda+timeout",
+            "2026-04-05T00:00:00+09:00",
+        );
+
+        assert_eq!(report.status, SearchReportStatus::Ready);
+        assert_eq!(report.result_count, 1);
+        assert_eq!(report.results[0].rank, 1);
+        assert_eq!(report.results[0].domain, "docs.aws.amazon.com".to_string());
+        assert_eq!(
+            report.results[0].recommended_surface.as_deref(),
+            Some("extract")
+        );
+        assert!(report
+            .next_action_hints
+            .iter()
+            .any(|hint| hint.action == "open-top"));
+    }
+
+    #[test]
+    fn structures_search_results_from_html_when_snapshot_is_sparse() {
+        let snapshot = SnapshotDocument {
+            version: "1.0.0".to_string(),
+            stable_ref_version: "1".to_string(),
+            source: SnapshotSource {
+                source_url: "https://search.brave.com/search?q=lambda+timeout".to_string(),
+                source_type: SourceType::Playwright,
+                title: Some("lambda timeout - Brave Search".to_string()),
+            },
+            budget: SnapshotBudget {
+                requested_tokens: DEFAULT_SEARCH_TOKENS,
+                estimated_tokens: 64,
+                emitted_tokens: 64,
+                truncated: false,
+            },
+            blocks: Vec::new(),
+        };
+
+        let html = r#"
+            <html>
+              <body>
+                <main>
+                  <div class="snippet" data-type="web">
+                    <a href="https://docs.aws.amazon.com/lambda/latest/dg/gettingstarted-limits.html">
+                      Lambda quotas
+                    </a>
+                    <p>Function timeout: 900 seconds (15 minutes).</p>
+                  </div>
+                </main>
+              </body>
+            </html>
+        "#;
+
+        let report = build_search_report(
+            SearchEngine::Brave,
+            "lambda timeout",
+            "https://search.brave.com/search?q=lambda+timeout",
+            &snapshot,
+            html,
+            "https://search.brave.com/search?q=lambda+timeout",
+            "2026-04-05T00:00:00+09:00",
+        );
+
+        assert_eq!(report.status, SearchReportStatus::Ready);
+        assert_eq!(report.result_count, 1);
+        assert_eq!(report.results[0].title, "Lambda quotas");
+        assert_eq!(
+            report.results[0].snippet.as_deref(),
+            Some("Function timeout: 900 seconds (15 minutes).")
+        );
+    }
+
+    #[test]
+    fn marks_google_sorry_pages_as_search_challenges() {
+        let snapshot = SnapshotDocument {
+            version: "1.0.0".to_string(),
+            stable_ref_version: "1".to_string(),
+            source: SnapshotSource {
+                source_url: "https://www.google.com/search?q=lambda+timeout".to_string(),
+                source_type: SourceType::Playwright,
+                title: Some("Traffic verification".to_string()),
+            },
+            budget: SnapshotBudget {
+                requested_tokens: DEFAULT_SEARCH_TOKENS,
+                estimated_tokens: 96,
+                emitted_tokens: 96,
+                truncated: false,
+            },
+            blocks: vec![SnapshotBlock {
+                version: "1.0.0".to_string(),
+                id: "b1".to_string(),
+                kind: SnapshotBlockKind::Text,
+                stable_ref: "rmain:text:captcha".to_string(),
+                role: SnapshotBlockRole::Supporting,
+                text: "Google detected unusual traffic and requires reCAPTCHA verification."
+                    .to_string(),
+                attributes: Default::default(),
+                evidence: SnapshotEvidence {
+                    source_url: "https://www.google.com/sorry/index".to_string(),
+                    source_type: SourceType::Playwright,
+                    dom_path_hint: Some("html > body > main".to_string()),
+                    byte_range_start: None,
+                    byte_range_end: None,
+                },
+            }],
+        };
+
+        let report = build_search_report(
+            SearchEngine::Google,
+            "lambda timeout",
+            "https://www.google.com/search?q=lambda+timeout",
+            &snapshot,
+            "<html></html>",
+            "https://www.google.com/sorry/index?q=test",
+            "2026-04-05T00:00:00+09:00",
+        );
+
+        assert_eq!(report.status, SearchReportStatus::Challenge);
+        assert_eq!(report.result_count, 0);
+        assert!(report
+            .next_action_hints
+            .iter()
+            .any(|hint| hint.action == "complete-challenge"));
     }
 
     #[test]
