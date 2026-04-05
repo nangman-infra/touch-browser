@@ -3,6 +3,7 @@ use std::{
     path::{Path, PathBuf},
 };
 
+use serde::Serialize;
 use serde_json::Value;
 use thiserror::Error;
 use touch_browser_acquisition::AcquisitionError;
@@ -144,168 +145,319 @@ fn required_output_string<'a>(output: &'a Value, field: &str) -> &'a str {
         .unwrap_or_else(|| panic!("expected `{field}` string output"))
 }
 
+fn serialize_output<T: Serialize>(output: T) -> Result<Value, CliError> {
+    Ok(serde_json::to_value(output)?)
+}
+
 fn dispatch(command: CliCommand) -> Result<Value, CliError> {
+    let ctx = application::context::default_app_context();
     match command {
-        CliCommand::Search(options) => handle_search(options),
-        CliCommand::SearchOpenResult(options) => handle_search_open_result(options),
-        CliCommand::SearchOpenTop(options) => handle_search_open_top(options),
-        CliCommand::Open(options) => handle_open(options),
-        CliCommand::Snapshot(options) => handle_open(options),
-        CliCommand::CompactView(options) => handle_compact_view(options),
-        CliCommand::ReadView(options) => handle_read_view(options),
-        CliCommand::Extract(options) => handle_extract(options),
-        CliCommand::Policy(options) => handle_policy(options),
-        CliCommand::SessionSnapshot(options) => handle_session_snapshot(options),
-        CliCommand::SessionCompact(options) => handle_session_compact(options),
-        CliCommand::SessionRead(options) => handle_session_read(options),
-        CliCommand::SessionRefresh(options) => handle_session_refresh(options),
-        CliCommand::SessionExtract(options) => handle_session_extract(options),
-        CliCommand::SessionCheckpoint(options) => handle_session_checkpoint(options),
-        CliCommand::SessionPolicy(options) => handle_session_policy(options),
-        CliCommand::SessionProfile(options) => handle_session_profile(options),
-        CliCommand::SetProfile(options) => handle_set_profile(options),
-        CliCommand::SessionSynthesize(options) => handle_session_synthesize(options),
-        CliCommand::Approve(options) => handle_approve(options),
-        CliCommand::Follow(options) => handle_follow(options),
-        CliCommand::Click(options) => handle_click(options),
-        CliCommand::Type(options) => handle_type(options),
-        CliCommand::Submit(options) => handle_submit(options),
-        CliCommand::Paginate(options) => handle_paginate(options),
-        CliCommand::Expand(options) => handle_expand(options),
-        CliCommand::BrowserReplay(options) => handle_browser_replay(options),
-        CliCommand::SessionClose(options) => handle_session_close(options),
-        CliCommand::TelemetrySummary => handle_telemetry_summary(),
-        CliCommand::TelemetryRecent(options) => handle_telemetry_recent(options),
-        CliCommand::Replay { scenario } => handle_replay(&scenario),
-        CliCommand::MemorySummary { steps } => handle_memory_summary(steps),
+        CliCommand::Search(options) => handle_search(&ctx, options),
+        CliCommand::SearchOpenResult(options) => handle_search_open_result(&ctx, options),
+        CliCommand::SearchOpenTop(options) => handle_search_open_top(&ctx, options),
+        CliCommand::Open(options) => handle_open(&ctx, options),
+        CliCommand::Snapshot(options) => handle_open(&ctx, options),
+        CliCommand::CompactView(options) => handle_compact_view(&ctx, options),
+        CliCommand::ReadView(options) => handle_read_view(&ctx, options),
+        CliCommand::Extract(options) => handle_extract(&ctx, options),
+        CliCommand::Policy(options) => handle_policy(&ctx, options),
+        CliCommand::SessionSnapshot(options) => handle_session_snapshot(&ctx, options),
+        CliCommand::SessionCompact(options) => handle_session_compact(&ctx, options),
+        CliCommand::SessionRead(options) => handle_session_read(&ctx, options),
+        CliCommand::SessionRefresh(options) => handle_session_refresh(&ctx, options),
+        CliCommand::SessionExtract(options) => handle_session_extract(&ctx, options),
+        CliCommand::SessionCheckpoint(options) => handle_session_checkpoint(&ctx, options),
+        CliCommand::SessionPolicy(options) => handle_session_policy(&ctx, options),
+        CliCommand::SessionProfile(options) => handle_session_profile(&ctx, options),
+        CliCommand::SetProfile(options) => handle_set_profile(&ctx, options),
+        CliCommand::SessionSynthesize(options) => handle_session_synthesize(&ctx, options),
+        CliCommand::Approve(options) => handle_approve(&ctx, options),
+        CliCommand::Follow(options) => handle_follow(&ctx, options),
+        CliCommand::Click(options) => handle_click(&ctx, options),
+        CliCommand::Type(options) => handle_type(&ctx, options),
+        CliCommand::Submit(options) => handle_submit(&ctx, options),
+        CliCommand::Paginate(options) => handle_paginate(&ctx, options),
+        CliCommand::Expand(options) => handle_expand(&ctx, options),
+        CliCommand::BrowserReplay(options) => handle_browser_replay(&ctx, options),
+        CliCommand::SessionClose(options) => handle_session_close(&ctx, options),
+        CliCommand::TelemetrySummary => handle_telemetry_summary(&ctx),
+        CliCommand::TelemetryRecent(options) => handle_telemetry_recent(&ctx, options),
+        CliCommand::Replay { scenario } => handle_replay(&ctx, &scenario),
+        CliCommand::MemorySummary { steps } => handle_memory_summary(&ctx, steps),
         CliCommand::Serve => Err(CliError::Usage(
             "serve is handled directly and should not be dispatched.".to_string(),
         )),
     }
 }
 
-fn handle_search(options: SearchOptions) -> Result<Value, CliError> {
-    application::research_commands::handle_search(options)
+fn handle_search(
+    ctx: &application::context::CliAppContext<'_>,
+    options: SearchOptions,
+) -> Result<Value, CliError> {
+    serialize_output(application::research_commands::handle_search(ctx, options)?)
 }
 
-fn handle_search_open_result(options: SearchOpenResultOptions) -> Result<Value, CliError> {
-    application::research_commands::handle_search_open_result(options)
+fn handle_search_open_result(
+    ctx: &application::context::CliAppContext<'_>,
+    options: SearchOpenResultOptions,
+) -> Result<Value, CliError> {
+    serialize_output(application::research_commands::handle_search_open_result(
+        ctx, options,
+    )?)
 }
 
-fn handle_search_open_top(options: SearchOpenTopOptions) -> Result<Value, CliError> {
-    application::research_commands::handle_search_open_top(options)
+fn handle_search_open_top(
+    ctx: &application::context::CliAppContext<'_>,
+    options: SearchOpenTopOptions,
+) -> Result<Value, CliError> {
+    serialize_output(application::research_commands::handle_search_open_top(
+        ctx, options,
+    )?)
 }
 
-fn handle_open(options: TargetOptions) -> Result<Value, CliError> {
-    application::research_commands::handle_open(options)
+fn handle_open(
+    ctx: &application::context::CliAppContext<'_>,
+    options: TargetOptions,
+) -> Result<Value, CliError> {
+    serialize_output(application::research_commands::handle_open(ctx, options)?)
 }
 
-fn handle_compact_view(options: TargetOptions) -> Result<Value, CliError> {
-    application::research_commands::handle_compact_view(options)
+fn handle_compact_view(
+    ctx: &application::context::CliAppContext<'_>,
+    options: TargetOptions,
+) -> Result<Value, CliError> {
+    serialize_output(application::research_commands::handle_compact_view(
+        ctx, options,
+    )?)
 }
 
-fn handle_read_view(options: TargetOptions) -> Result<Value, CliError> {
-    application::research_commands::handle_read_view(options)
+fn handle_read_view(
+    ctx: &application::context::CliAppContext<'_>,
+    options: TargetOptions,
+) -> Result<Value, CliError> {
+    serialize_output(application::research_commands::handle_read_view(
+        ctx, options,
+    )?)
 }
 
-fn handle_extract(options: ExtractOptions) -> Result<Value, CliError> {
-    application::research_commands::handle_extract(options)
+fn handle_extract(
+    ctx: &application::context::CliAppContext<'_>,
+    options: ExtractOptions,
+) -> Result<Value, CliError> {
+    serialize_output(application::research_commands::handle_extract(
+        ctx, options,
+    )?)
 }
 
-fn handle_policy(options: TargetOptions) -> Result<Value, CliError> {
-    application::research_commands::handle_policy(options)
+fn handle_policy(
+    ctx: &application::context::CliAppContext<'_>,
+    options: TargetOptions,
+) -> Result<Value, CliError> {
+    serialize_output(application::research_commands::handle_policy(ctx, options)?)
 }
 
-fn handle_replay(scenario: &str) -> Result<Value, CliError> {
-    application::research_commands::handle_replay(scenario)
+fn handle_replay(
+    ctx: &application::context::CliAppContext<'_>,
+    scenario: &str,
+) -> Result<Value, CliError> {
+    serialize_output(application::research_commands::handle_replay(
+        ctx, scenario,
+    )?)
 }
 
-fn handle_memory_summary(steps: usize) -> Result<Value, CliError> {
-    application::research_commands::handle_memory_summary(steps)
+fn handle_memory_summary(
+    ctx: &application::context::CliAppContext<'_>,
+    steps: usize,
+) -> Result<Value, CliError> {
+    serialize_output(application::research_commands::handle_memory_summary(
+        ctx, steps,
+    )?)
 }
 
-fn handle_session_snapshot(options: SessionFileOptions) -> Result<Value, CliError> {
-    application::session_commands::handle_session_snapshot(options)
+fn handle_session_snapshot(
+    ctx: &application::context::CliAppContext<'_>,
+    options: SessionFileOptions,
+) -> Result<Value, CliError> {
+    serialize_output(application::session_commands::handle_session_snapshot(
+        ctx, options,
+    )?)
 }
 
-fn handle_session_compact(options: SessionFileOptions) -> Result<Value, CliError> {
-    application::session_commands::handle_session_compact(options)
+fn handle_session_compact(
+    ctx: &application::context::CliAppContext<'_>,
+    options: SessionFileOptions,
+) -> Result<Value, CliError> {
+    serialize_output(application::session_commands::handle_session_compact(
+        ctx, options,
+    )?)
 }
 
-fn handle_session_read(options: SessionReadOptions) -> Result<Value, CliError> {
-    application::session_commands::handle_session_read(options)
+fn handle_session_read(
+    ctx: &application::context::CliAppContext<'_>,
+    options: SessionReadOptions,
+) -> Result<Value, CliError> {
+    serialize_output(application::session_commands::handle_session_read(
+        ctx, options,
+    )?)
 }
 
-fn handle_session_refresh(options: SessionRefreshOptions) -> Result<Value, CliError> {
-    application::session_commands::handle_session_refresh(options)
+fn handle_session_refresh(
+    ctx: &application::context::CliAppContext<'_>,
+    options: SessionRefreshOptions,
+) -> Result<Value, CliError> {
+    serialize_output(application::session_commands::handle_session_refresh(
+        ctx, options,
+    )?)
 }
 
-fn handle_session_extract(options: SessionExtractOptions) -> Result<Value, CliError> {
-    application::session_commands::handle_session_extract(options)
+fn handle_session_extract(
+    ctx: &application::context::CliAppContext<'_>,
+    options: SessionExtractOptions,
+) -> Result<Value, CliError> {
+    serialize_output(application::session_commands::handle_session_extract(
+        ctx, options,
+    )?)
 }
 
-fn handle_session_policy(options: SessionFileOptions) -> Result<Value, CliError> {
-    application::session_commands::handle_session_policy(options)
+fn handle_session_policy(
+    ctx: &application::context::CliAppContext<'_>,
+    options: SessionFileOptions,
+) -> Result<Value, CliError> {
+    serialize_output(application::session_commands::handle_session_policy(
+        ctx, options,
+    )?)
 }
 
-fn handle_session_profile(options: SessionFileOptions) -> Result<Value, CliError> {
-    application::session_commands::handle_session_profile(options)
+fn handle_session_profile(
+    ctx: &application::context::CliAppContext<'_>,
+    options: SessionFileOptions,
+) -> Result<Value, CliError> {
+    serialize_output(application::session_commands::handle_session_profile(
+        ctx, options,
+    )?)
 }
 
-fn handle_set_profile(options: SessionProfileSetOptions) -> Result<Value, CliError> {
-    application::session_commands::handle_set_profile(options)
+fn handle_set_profile(
+    ctx: &application::context::CliAppContext<'_>,
+    options: SessionProfileSetOptions,
+) -> Result<Value, CliError> {
+    serialize_output(application::session_commands::handle_set_profile(
+        ctx, options,
+    )?)
 }
 
-fn handle_session_checkpoint(options: SessionFileOptions) -> Result<Value, CliError> {
-    application::session_commands::handle_session_checkpoint(options)
+fn handle_session_checkpoint(
+    ctx: &application::context::CliAppContext<'_>,
+    options: SessionFileOptions,
+) -> Result<Value, CliError> {
+    serialize_output(application::session_commands::handle_session_checkpoint(
+        ctx, options,
+    )?)
 }
 
-fn handle_session_synthesize(options: SessionSynthesizeOptions) -> Result<Value, CliError> {
-    application::session_commands::handle_session_synthesize(options)
+fn handle_session_synthesize(
+    ctx: &application::context::CliAppContext<'_>,
+    options: SessionSynthesizeOptions,
+) -> Result<Value, CliError> {
+    serialize_output(application::session_commands::handle_session_synthesize(
+        ctx, options,
+    )?)
 }
 
-fn handle_approve(options: ApproveOptions) -> Result<Value, CliError> {
-    application::session_commands::handle_approve(options)
+fn handle_approve(
+    ctx: &application::context::CliAppContext<'_>,
+    options: ApproveOptions,
+) -> Result<Value, CliError> {
+    serialize_output(application::session_commands::handle_approve(ctx, options)?)
 }
 
-fn handle_telemetry_summary() -> Result<Value, CliError> {
-    application::session_commands::handle_telemetry_summary()
+fn handle_telemetry_summary(
+    ctx: &application::context::CliAppContext<'_>,
+) -> Result<Value, CliError> {
+    serialize_output(application::session_commands::handle_telemetry_summary(
+        ctx,
+    )?)
 }
 
-fn handle_telemetry_recent(options: TelemetryRecentOptions) -> Result<Value, CliError> {
-    application::session_commands::handle_telemetry_recent(options)
+fn handle_telemetry_recent(
+    ctx: &application::context::CliAppContext<'_>,
+    options: TelemetryRecentOptions,
+) -> Result<Value, CliError> {
+    serialize_output(application::session_commands::handle_telemetry_recent(
+        ctx, options,
+    )?)
 }
 
-fn handle_follow(options: FollowOptions) -> Result<Value, CliError> {
-    application::browser_session_actions::handle_follow(options)
+fn handle_follow(
+    ctx: &application::context::CliAppContext<'_>,
+    options: FollowOptions,
+) -> Result<Value, CliError> {
+    serialize_output(application::browser_session_actions::handle_follow(
+        ctx, options,
+    )?)
 }
 
-fn handle_click(options: ClickOptions) -> Result<Value, CliError> {
-    application::browser_session_actions::handle_click(options)
+fn handle_click(
+    ctx: &application::context::CliAppContext<'_>,
+    options: ClickOptions,
+) -> Result<Value, CliError> {
+    serialize_output(application::browser_session_actions::handle_click(
+        ctx, options,
+    )?)
 }
 
-fn handle_type(options: TypeOptions) -> Result<Value, CliError> {
-    application::browser_session_actions::handle_type(options)
+fn handle_type(
+    ctx: &application::context::CliAppContext<'_>,
+    options: TypeOptions,
+) -> Result<Value, CliError> {
+    serialize_output(application::browser_session_actions::handle_type(
+        ctx, options,
+    )?)
 }
 
-fn handle_submit(options: SubmitOptions) -> Result<Value, CliError> {
-    application::browser_session_actions::handle_submit(options)
+fn handle_submit(
+    ctx: &application::context::CliAppContext<'_>,
+    options: SubmitOptions,
+) -> Result<Value, CliError> {
+    serialize_output(application::browser_session_actions::handle_submit(
+        ctx, options,
+    )?)
 }
 
-fn handle_paginate(options: PaginateOptions) -> Result<Value, CliError> {
-    application::browser_session_actions::handle_paginate(options)
+fn handle_paginate(
+    ctx: &application::context::CliAppContext<'_>,
+    options: PaginateOptions,
+) -> Result<Value, CliError> {
+    serialize_output(application::browser_session_actions::handle_paginate(
+        ctx, options,
+    )?)
 }
 
-fn handle_expand(options: ExpandOptions) -> Result<Value, CliError> {
-    application::browser_session_actions::handle_expand(options)
+fn handle_expand(
+    ctx: &application::context::CliAppContext<'_>,
+    options: ExpandOptions,
+) -> Result<Value, CliError> {
+    serialize_output(application::browser_session_actions::handle_expand(
+        ctx, options,
+    )?)
 }
 
-fn handle_session_close(options: SessionFileOptions) -> Result<Value, CliError> {
-    application::session_commands::handle_session_close(options)
+fn handle_session_close(
+    ctx: &application::context::CliAppContext<'_>,
+    options: SessionFileOptions,
+) -> Result<Value, CliError> {
+    serialize_output(application::session_commands::handle_session_close(
+        ctx, options,
+    )?)
 }
 
-fn handle_browser_replay(options: SessionFileOptions) -> Result<Value, CliError> {
-    application::session_commands::handle_browser_replay(options)
+fn handle_browser_replay(
+    ctx: &application::context::CliAppContext<'_>,
+    options: SessionFileOptions,
+) -> Result<Value, CliError> {
+    serialize_output(application::session_commands::handle_browser_replay(
+        ctx, options,
+    )?)
 }
 
 fn handle_serve() -> Result<(), CliError> {

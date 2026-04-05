@@ -1,6 +1,6 @@
 use std::{collections::BTreeSet, path::Path};
 
-use serde_json::{json, Value};
+use serde::Serialize;
 
 use crate::*;
 
@@ -18,23 +18,23 @@ pub(crate) fn current_policy_with_allowlist(
     })
 }
 
-pub(crate) fn succeed_action(
+pub(crate) fn succeed_action<T: Serialize>(
     action: ActionName,
     payload_type: &str,
-    output: Value,
+    output: T,
     message: &str,
     policy: Option<PolicyReport>,
-) -> ActionResult {
-    ActionResult {
+) -> Result<ActionResult, CliError> {
+    Ok(ActionResult {
         version: CONTRACT_VERSION.to_string(),
         action,
         status: ActionStatus::Succeeded,
         payload_type: payload_type.to_string(),
-        output: Some(output),
+        output: Some(serde_json::to_value(output)?),
         policy,
         failure_kind: None,
         message: message.to_string(),
-    }
+    })
 }
 
 pub(crate) fn fail_action(
@@ -265,27 +265,28 @@ pub(crate) fn checkpoint_approval_panel(
     active_profile: PolicyProfile,
     recommended_profile: PolicyProfile,
     policy: &PolicyReport,
-) -> Value {
+) -> CheckpointApprovalPanel {
     let severity = match policy.decision {
         touch_browser_contracts::PolicyDecision::Block => "block",
         touch_browser_contracts::PolicyDecision::Review => "review",
         touch_browser_contracts::PolicyDecision::Allow => "allow",
     };
-    let mut actions = vec![json!({
-        "id": "refresh",
-        "label": "Refresh after manual continuation",
-        "command": "refresh",
-    })];
+    let mut actions = vec![CheckpointAction {
+        id: "refresh".to_string(),
+        label: "Refresh after manual continuation".to_string(),
+        command: "refresh".to_string(),
+        required_ack_risks: Vec::new(),
+    }];
 
     if !required_ack_risks.is_empty() {
         actions.insert(
             0,
-            json!({
-                "id": "approve",
-                "label": "Approve supervised continuation",
-                "command": "approve",
-                "requiredAckRisks": required_ack_risks,
-            }),
+            CheckpointAction {
+                id: "approve".to_string(),
+                label: "Approve supervised continuation".to_string(),
+                command: "approve".to_string(),
+                required_ack_risks: required_ack_risks.to_vec(),
+            },
         );
     }
 
@@ -293,23 +294,27 @@ pub(crate) fn checkpoint_approval_panel(
         .iter()
         .any(|risk| risk == "auth" || risk == "mfa")
     {
-        actions.push(json!({
-            "id": "store-secret",
-            "label": "Store daemon secret for supervised auth",
-            "command": "secret.store",
-        }));
+        actions.push(CheckpointAction {
+            id: "store-secret".to_string(),
+            label: "Store daemon secret for supervised auth".to_string(),
+            command: "secret.store".to_string(),
+            required_ack_risks: Vec::new(),
+        });
     }
 
-    json!({
-        "title": "Supervised continuation required",
-        "severity": severity,
-        "provider": provider_hints.first().cloned().unwrap_or_else(|| "generic".to_string()),
-        "activePolicyProfile": policy_profile_label(active_profile),
-        "recommendedPolicyProfile": policy_profile_label(recommended_profile),
-        "requiredAckRisks": required_ack_risks,
-        "approvedRisks": approved_risks,
-        "actions": actions,
-    })
+    CheckpointApprovalPanel {
+        title: "Supervised continuation required".to_string(),
+        severity: severity.to_string(),
+        provider: provider_hints
+            .first()
+            .cloned()
+            .unwrap_or_else(|| "generic".to_string()),
+        active_policy_profile: policy_profile_label(active_profile).to_string(),
+        recommended_policy_profile: policy_profile_label(recommended_profile).to_string(),
+        required_ack_risks: required_ack_risks.to_vec(),
+        approved_risks: approved_risks.to_vec(),
+        actions,
+    }
 }
 
 pub(crate) fn checkpoint_playbook(
@@ -318,7 +323,7 @@ pub(crate) fn checkpoint_playbook(
     approved_risks: &[String],
     snapshot: &SnapshotDocument,
     recommended_profile: PolicyProfile,
-) -> Value {
+) -> CheckpointPlaybook {
     let provider = provider_hints
         .first()
         .cloned()
@@ -365,25 +370,23 @@ pub(crate) fn checkpoint_playbook(
         .iter()
         .filter(|block| currentish_block_is_sensitive(block))
         .take(6)
-        .map(|block| {
-            json!({
-                "ref": block.stable_ref,
-                "text": block.text,
-            })
+        .map(|block| CheckpointSensitiveTarget {
+            r#ref: block.stable_ref.clone(),
+            text: block.text.clone(),
         })
         .collect::<Vec<_>>();
 
-    json!({
-        "provider": provider,
-        "recommendedPolicyProfile": policy_profile_label(recommended_profile),
-        "requiredAckRisks": required_ack_risks,
-        "approvedRisks": approved_risks,
-        "steps": steps,
-        "sensitiveTargets": sensitive_targets,
-    })
+    CheckpointPlaybook {
+        provider,
+        recommended_policy_profile: policy_profile_label(recommended_profile).to_string(),
+        required_ack_risks: required_ack_risks.to_vec(),
+        approved_risks: approved_risks.to_vec(),
+        steps,
+        sensitive_targets,
+    }
 }
 
-pub(crate) fn checkpoint_candidates(snapshot: &SnapshotDocument) -> Vec<Value> {
+pub(crate) fn checkpoint_candidates(snapshot: &SnapshotDocument) -> Vec<CheckpointCandidate> {
     snapshot
         .blocks
         .iter()
@@ -397,12 +400,10 @@ pub(crate) fn checkpoint_candidates(snapshot: &SnapshotDocument) -> Vec<Value> {
             )
         })
         .take(12)
-        .map(|block| {
-            json!({
-                "kind": block.kind,
-                "ref": block.stable_ref,
-                "text": block.text,
-            })
+        .map(|block| CheckpointCandidate {
+            kind: block.kind.clone(),
+            r#ref: block.stable_ref.clone(),
+            text: block.text.clone(),
         })
         .collect()
 }
@@ -412,13 +413,13 @@ fn currentish_block_is_sensitive(block: &SnapshotBlock) -> bool {
     let name = block
         .attributes
         .get("name")
-        .and_then(Value::as_str)
+        .and_then(serde_json::Value::as_str)
         .unwrap_or_default()
         .to_ascii_lowercase();
     let input_type = block
         .attributes
         .get("inputType")
-        .and_then(Value::as_str)
+        .and_then(serde_json::Value::as_str)
         .unwrap_or_default()
         .to_ascii_lowercase();
 

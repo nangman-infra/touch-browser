@@ -1,22 +1,21 @@
-use serde_json::{json, Value};
-
-use super::ports::default_cli_ports;
+use super::context::CliAppContext;
 use crate::*;
 
-pub(crate) fn handle_follow(options: FollowOptions) -> Result<Value, CliError> {
-    let ports = default_cli_ports();
-    let runtime = ReadOnlyRuntime::default();
-    let kernel = PolicyKernel;
+pub(crate) fn handle_follow(
+    ctx: &CliAppContext<'_>,
+    options: FollowOptions,
+) -> Result<SessionCommandOutput, CliError> {
+    let ports = ctx.ports;
     let mut persisted = ports.session_store.load_session(&options.session_file)?;
     if let Some(rejected) = preflight_ref_action(
         &persisted,
-        &kernel,
+        ctx.policy_kernel,
         ActionName::Follow,
         &options.target_ref,
         "Follow target is blocked by the current policy boundary.",
         &options.session_file,
     ) {
-        return Ok(json!(rejected));
+        return Ok(rejected);
     }
     let source = ports.browser.current_browser_action_source(&persisted)?;
     let target_text = ports
@@ -53,7 +52,7 @@ pub(crate) fn handle_follow(options: FollowOptions) -> Result<Value, CliError> {
             .browser
             .compile_snapshot(&source_url, &result.html, persisted.requested_budget)?;
     let timestamp = ports.browser.next_session_timestamp(&persisted.session);
-    let snapshot = runtime.open_snapshot(
+    let snapshot = ctx.runtime.open_snapshot(
         &mut persisted.session,
         &source_url,
         snapshot,
@@ -80,38 +79,43 @@ pub(crate) fn handle_follow(options: FollowOptions) -> Result<Value, CliError> {
     let action_result = succeed_action(
         ActionName::Follow,
         "browser-action-result",
-        json!({
-            "snapshot": snapshot,
-            "adapter": {
-                "followedRef": result.followed_ref,
-                "targetText": result.target_text,
-                "targetHref": result.target_href,
-                "clickedText": result.clicked_text,
-                "title": result.title,
-                "visibleText": result.visible_text,
-                "finalUrl": result.final_url,
-            }
-        }),
+        BrowserActionPayload {
+            snapshot,
+            adapter: FollowAdapterOutput {
+                followed_ref: result.followed_ref,
+                target_text: result.target_text,
+                target_href: result.target_href,
+                clicked_text: result.clicked_text,
+                title: result.title,
+                visible_text: result.visible_text,
+                final_url: result.final_url,
+            },
+        },
         "Followed a link in the persisted browser session.",
-        current_policy_with_allowlist(&persisted.session, &kernel, &persisted.allowlisted_domains),
-    );
+        current_policy_with_allowlist(
+            &persisted.session,
+            ctx.policy_kernel,
+            &persisted.allowlisted_domains,
+        ),
+    )?;
 
-    Ok(json!(SessionCommandOutput {
+    Ok(SessionCommandOutput {
         action: action_result.clone(),
         result: action_result,
         session_state: persisted.session.state,
         session_file: options.session_file.display().to_string(),
-    }))
+    })
 }
 
-pub(crate) fn handle_click(options: ClickOptions) -> Result<Value, CliError> {
-    let ports = default_cli_ports();
-    let runtime = ReadOnlyRuntime::default();
-    let kernel = PolicyKernel;
+pub(crate) fn handle_click(
+    ctx: &CliAppContext<'_>,
+    options: ClickOptions,
+) -> Result<SessionCommandOutput, CliError> {
+    let ports = ctx.ports;
     let mut persisted = ports.session_store.load_session(&options.session_file)?;
     if let Some(rejected) = preflight_interactive_action(
         &persisted,
-        &kernel,
+        ctx.policy_kernel,
         InteractivePreflightOptions {
             action: ActionName::Click,
             target_ref: Some(&options.target_ref),
@@ -121,7 +125,7 @@ pub(crate) fn handle_click(options: ClickOptions) -> Result<Value, CliError> {
             session_file: &options.session_file,
         },
     ) {
-        return Ok(json!(rejected));
+        return Ok(rejected);
     }
 
     let source = ports.browser.current_browser_action_source(&persisted)?;
@@ -159,7 +163,7 @@ pub(crate) fn handle_click(options: ClickOptions) -> Result<Value, CliError> {
             .browser
             .compile_snapshot(&source_url, &result.html, persisted.requested_budget)?;
     let timestamp = ports.browser.next_session_timestamp(&persisted.session);
-    let snapshot = runtime.open_snapshot(
+    let snapshot = ctx.runtime.open_snapshot(
         &mut persisted.session,
         &source_url,
         snapshot,
@@ -189,38 +193,43 @@ pub(crate) fn handle_click(options: ClickOptions) -> Result<Value, CliError> {
     let action_result = succeed_action(
         ActionName::Click,
         "browser-action-result",
-        json!({
-            "snapshot": snapshot,
-            "adapter": {
-                "clickedRef": result.clicked_ref,
-                "targetText": result.target_text,
-                "targetHref": result.target_href,
-                "clickedText": result.clicked_text,
-                "title": result.title,
-                "visibleText": result.visible_text,
-                "finalUrl": result.final_url,
-            }
-        }),
+        BrowserActionPayload {
+            snapshot,
+            adapter: ClickAdapterOutput {
+                clicked_ref: result.clicked_ref,
+                target_text: result.target_text,
+                target_href: result.target_href,
+                clicked_text: result.clicked_text,
+                title: result.title,
+                visible_text: result.visible_text,
+                final_url: result.final_url,
+            },
+        },
         "Clicked an interactive target in the persisted browser session.",
-        current_policy_with_allowlist(&persisted.session, &kernel, &persisted.allowlisted_domains),
-    );
+        current_policy_with_allowlist(
+            &persisted.session,
+            ctx.policy_kernel,
+            &persisted.allowlisted_domains,
+        ),
+    )?;
 
-    Ok(json!(SessionCommandOutput {
+    Ok(SessionCommandOutput {
         action: action_result.clone(),
         result: action_result,
         session_state: persisted.session.state,
         session_file: options.session_file.display().to_string(),
-    }))
+    })
 }
 
-pub(crate) fn handle_type(options: TypeOptions) -> Result<Value, CliError> {
-    let ports = default_cli_ports();
-    let runtime = ReadOnlyRuntime::default();
-    let kernel = PolicyKernel;
+pub(crate) fn handle_type(
+    ctx: &CliAppContext<'_>,
+    options: TypeOptions,
+) -> Result<SessionCommandOutput, CliError> {
+    let ports = ctx.ports;
     let mut persisted = ports.session_store.load_session(&options.session_file)?;
     if let Some(rejected) = preflight_interactive_action(
         &persisted,
-        &kernel,
+        ctx.policy_kernel,
         InteractivePreflightOptions {
             action: ActionName::Type,
             target_ref: Some(&options.target_ref),
@@ -230,7 +239,7 @@ pub(crate) fn handle_type(options: TypeOptions) -> Result<Value, CliError> {
             session_file: &options.session_file,
         },
     ) {
-        return Ok(json!(rejected));
+        return Ok(rejected);
     }
 
     if ports
@@ -244,16 +253,16 @@ pub(crate) fn handle_type(options: TypeOptions) -> Result<Value, CliError> {
             "Sensitive credential-like inputs require explicit `--sensitive` opt-in.",
             current_policy_with_allowlist(
                 &persisted.session,
-                &kernel,
+                ctx.policy_kernel,
                 &persisted.allowlisted_domains,
             ),
         );
-        return Ok(json!(SessionCommandOutput {
+        return Ok(SessionCommandOutput {
             action: action_result.clone(),
             result: action_result,
             session_state: persisted.session.state,
             session_file: options.session_file.display().to_string(),
-        }));
+        });
     }
 
     let source = ports.browser.current_browser_action_source(&persisted)?;
@@ -300,7 +309,7 @@ pub(crate) fn handle_type(options: TypeOptions) -> Result<Value, CliError> {
             .browser
             .compile_snapshot(&source_url, &result.html, persisted.requested_budget)?;
     let timestamp = ports.browser.next_session_timestamp(&persisted.session);
-    let snapshot = runtime.open_snapshot(
+    let snapshot = ctx.runtime.open_snapshot(
         &mut persisted.session,
         &source_url,
         snapshot,
@@ -338,38 +347,43 @@ pub(crate) fn handle_type(options: TypeOptions) -> Result<Value, CliError> {
     let action_result = succeed_action(
         ActionName::Type,
         "browser-action-result",
-        json!({
-            "snapshot": snapshot,
-            "adapter": {
-                "typedRef": result.typed_ref,
-                "targetText": result.target_text,
-                "typedLength": result.typed_length,
-                "sensitive": options.sensitive,
-                "title": result.title,
-                "visibleText": result.visible_text,
-                "finalUrl": result.final_url,
-            }
-        }),
+        BrowserActionPayload {
+            snapshot,
+            adapter: TypeAdapterOutput {
+                typed_ref: result.typed_ref,
+                target_text: result.target_text,
+                typed_length: result.typed_length,
+                sensitive: options.sensitive,
+                title: result.title,
+                visible_text: result.visible_text,
+                final_url: result.final_url,
+            },
+        },
         "Typed into an interactive field in the persisted browser session.",
-        current_policy_with_allowlist(&persisted.session, &kernel, &persisted.allowlisted_domains),
-    );
+        current_policy_with_allowlist(
+            &persisted.session,
+            ctx.policy_kernel,
+            &persisted.allowlisted_domains,
+        ),
+    )?;
 
-    Ok(json!(SessionCommandOutput {
+    Ok(SessionCommandOutput {
         action: action_result.clone(),
         result: action_result,
         session_state: persisted.session.state,
         session_file: options.session_file.display().to_string(),
-    }))
+    })
 }
 
-pub(crate) fn handle_submit(options: SubmitOptions) -> Result<Value, CliError> {
-    let ports = default_cli_ports();
-    let runtime = ReadOnlyRuntime::default();
-    let kernel = PolicyKernel;
+pub(crate) fn handle_submit(
+    ctx: &CliAppContext<'_>,
+    options: SubmitOptions,
+) -> Result<SessionCommandOutput, CliError> {
+    let ports = ctx.ports;
     let mut persisted = ports.session_store.load_session(&options.session_file)?;
     if let Some(rejected) = preflight_interactive_action(
         &persisted,
-        &kernel,
+        ctx.policy_kernel,
         InteractivePreflightOptions {
             action: ActionName::Submit,
             target_ref: Some(&options.target_ref),
@@ -379,7 +393,7 @@ pub(crate) fn handle_submit(options: SubmitOptions) -> Result<Value, CliError> {
             session_file: &options.session_file,
         },
     ) {
-        return Ok(json!(rejected));
+        return Ok(rejected);
     }
 
     let source = ports.browser.current_browser_action_source(&persisted)?;
@@ -428,7 +442,7 @@ pub(crate) fn handle_submit(options: SubmitOptions) -> Result<Value, CliError> {
             .browser
             .compile_snapshot(&source_url, &result.html, persisted.requested_budget)?;
     let timestamp = ports.browser.next_session_timestamp(&persisted.session);
-    let snapshot = runtime.open_snapshot(
+    let snapshot = ctx.runtime.open_snapshot(
         &mut persisted.session,
         &source_url,
         snapshot,
@@ -458,41 +472,46 @@ pub(crate) fn handle_submit(options: SubmitOptions) -> Result<Value, CliError> {
     let action_result = succeed_action(
         ActionName::Submit,
         "browser-action-result",
-        json!({
-            "snapshot": snapshot,
-            "adapter": {
-                "submittedRef": result.submitted_ref,
-                "targetText": result.target_text,
-                "title": result.title,
-                "visibleText": result.visible_text,
-                "finalUrl": result.final_url,
-            }
-        }),
+        BrowserActionPayload {
+            snapshot,
+            adapter: SubmitAdapterOutput {
+                submitted_ref: result.submitted_ref,
+                target_text: result.target_text,
+                title: result.title,
+                visible_text: result.visible_text,
+                final_url: result.final_url,
+            },
+        },
         "Submitted an interactive form or submit control in the persisted browser session.",
-        current_policy_with_allowlist(&persisted.session, &kernel, &persisted.allowlisted_domains),
-    );
+        current_policy_with_allowlist(
+            &persisted.session,
+            ctx.policy_kernel,
+            &persisted.allowlisted_domains,
+        ),
+    )?;
 
-    Ok(json!(SessionCommandOutput {
+    Ok(SessionCommandOutput {
         action: action_result.clone(),
         result: action_result,
         session_state: persisted.session.state,
         session_file: options.session_file.display().to_string(),
-    }))
+    })
 }
 
-pub(crate) fn handle_paginate(options: PaginateOptions) -> Result<Value, CliError> {
-    let ports = default_cli_ports();
-    let runtime = ReadOnlyRuntime::default();
-    let kernel = PolicyKernel;
+pub(crate) fn handle_paginate(
+    ctx: &CliAppContext<'_>,
+    options: PaginateOptions,
+) -> Result<SessionCommandOutput, CliError> {
+    let ports = ctx.ports;
     let mut persisted = ports.session_store.load_session(&options.session_file)?;
     if let Some(rejected) = preflight_session_block(
         &persisted,
-        &kernel,
+        ctx.policy_kernel,
         ActionName::Paginate,
         "Paginate is blocked because the current snapshot requires review/block.",
         &options.session_file,
     ) {
-        return Ok(json!(rejected));
+        return Ok(rejected);
     }
     let source = ports.browser.current_browser_action_source(&persisted)?;
     let current_page = persisted.session.snapshots.len();
@@ -516,7 +535,7 @@ pub(crate) fn handle_paginate(options: PaginateOptions) -> Result<Value, CliErro
             .browser
             .compile_snapshot(&source_url, &result.html, persisted.requested_budget)?;
     let timestamp = ports.browser.next_session_timestamp(&persisted.session);
-    let snapshot = runtime.open_snapshot(
+    let snapshot = ctx.runtime.open_snapshot(
         &mut persisted.session,
         &source_url,
         snapshot,
@@ -546,42 +565,47 @@ pub(crate) fn handle_paginate(options: PaginateOptions) -> Result<Value, CliErro
     let action_result = succeed_action(
         ActionName::Paginate,
         "browser-action-result",
-        json!({
-            "snapshot": snapshot,
-            "adapter": {
-                "page": result.page,
-                "clickedText": result.clicked_text,
-                "title": result.title,
-                "visibleText": result.visible_text,
-                "finalUrl": result.final_url,
-            }
-        }),
+        BrowserActionPayload {
+            snapshot,
+            adapter: PaginateAdapterOutput {
+                page: result.page,
+                clicked_text: result.clicked_text,
+                title: result.title,
+                visible_text: result.visible_text,
+                final_url: result.final_url,
+            },
+        },
         "Paginated persisted browser session.",
-        current_policy_with_allowlist(&persisted.session, &kernel, &persisted.allowlisted_domains),
-    );
+        current_policy_with_allowlist(
+            &persisted.session,
+            ctx.policy_kernel,
+            &persisted.allowlisted_domains,
+        ),
+    )?;
 
-    Ok(json!(SessionCommandOutput {
+    Ok(SessionCommandOutput {
         action: action_result.clone(),
         result: action_result,
         session_state: persisted.session.state,
         session_file: options.session_file.display().to_string(),
-    }))
+    })
 }
 
-pub(crate) fn handle_expand(options: ExpandOptions) -> Result<Value, CliError> {
-    let ports = default_cli_ports();
-    let runtime = ReadOnlyRuntime::default();
-    let kernel = PolicyKernel;
+pub(crate) fn handle_expand(
+    ctx: &CliAppContext<'_>,
+    options: ExpandOptions,
+) -> Result<SessionCommandOutput, CliError> {
+    let ports = ctx.ports;
     let mut persisted = ports.session_store.load_session(&options.session_file)?;
     if let Some(rejected) = preflight_ref_action(
         &persisted,
-        &kernel,
+        ctx.policy_kernel,
         ActionName::Expand,
         &options.target_ref,
         "Expand target is blocked by the current policy boundary.",
         &options.session_file,
     ) {
-        return Ok(json!(rejected));
+        return Ok(rejected);
     }
     let source = ports.browser.current_browser_action_source(&persisted)?;
     let target_text = ports
@@ -614,7 +638,7 @@ pub(crate) fn handle_expand(options: ExpandOptions) -> Result<Value, CliError> {
             .browser
             .compile_snapshot(&source_url, &result.html, persisted.requested_budget)?;
     let timestamp = ports.browser.next_session_timestamp(&persisted.session);
-    let snapshot = runtime.open_snapshot(
+    let snapshot = ctx.runtime.open_snapshot(
         &mut persisted.session,
         &source_url,
         snapshot,
@@ -641,25 +665,29 @@ pub(crate) fn handle_expand(options: ExpandOptions) -> Result<Value, CliError> {
     let action_result = succeed_action(
         ActionName::Expand,
         "browser-action-result",
-        json!({
-            "snapshot": snapshot,
-            "adapter": {
-                "expandedRef": result.expanded_ref,
-                "targetText": result.target_text,
-                "clickedText": result.clicked_text,
-                "title": result.title,
-                "visibleText": result.visible_text,
-                "finalUrl": result.final_url,
-            }
-        }),
+        BrowserActionPayload {
+            snapshot,
+            adapter: ExpandAdapterOutput {
+                expanded_ref: result.expanded_ref,
+                target_text: result.target_text,
+                clicked_text: result.clicked_text,
+                title: result.title,
+                visible_text: result.visible_text,
+                final_url: result.final_url,
+            },
+        },
         "Expanded persisted browser session.",
-        current_policy_with_allowlist(&persisted.session, &kernel, &persisted.allowlisted_domains),
-    );
+        current_policy_with_allowlist(
+            &persisted.session,
+            ctx.policy_kernel,
+            &persisted.allowlisted_domains,
+        ),
+    )?;
 
-    Ok(json!(SessionCommandOutput {
+    Ok(SessionCommandOutput {
         action: action_result.clone(),
         result: action_result,
         session_state: persisted.session.state,
         session_file: options.session_file.display().to_string(),
-    }))
+    })
 }

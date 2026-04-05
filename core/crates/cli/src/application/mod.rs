@@ -1,4 +1,6 @@
 pub(super) mod browser_session_actions;
+pub(super) mod context;
+pub(super) mod models;
 pub(super) mod policy_support;
 pub(super) mod ports;
 pub(super) mod research_commands;

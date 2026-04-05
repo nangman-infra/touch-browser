@@ -494,10 +494,12 @@ fn serve_dispatch(request: ServeJsonRpcRequest, daemon_state: &mut ServeDaemonSt
             "runtime.tab.list" => serve_tab_list(&params, daemon_state),
             "runtime.tab.select" => serve_tab_select(&params, daemon_state),
             "runtime.tab.close" => serve_tab_close(&params, daemon_state),
-            "runtime.telemetry.summary" => handle_telemetry_summary(),
+            "runtime.telemetry.summary" => dispatch(CliCommand::TelemetrySummary),
             "runtime.telemetry.recent" => {
                 let limit = json_usize(&params, "limit").unwrap_or(10);
-                handle_telemetry_recent(TelemetryRecentOptions { limit })
+                dispatch(CliCommand::TelemetryRecent(TelemetryRecentOptions {
+                    limit,
+                }))
             }
             _ => Err(CliError::Usage(format!(
                 "Unsupported serve method `{method}`."
@@ -709,6 +711,7 @@ pub(crate) fn serve_search_open_result(
             "serve params `rank` must be a positive number.".to_string(),
         ));
     }
+    let prefer_official = json_bool(params, "preferOfficial").unwrap_or(false);
     let headed = json_bool(params, "headed");
     let (resolved_search_tab_id, search_session_file) =
         daemon_state.opened_tab_file(&session_id, search_tab_id.as_deref())?;
@@ -726,12 +729,12 @@ pub(crate) fn serve_search_open_result(
                 .unwrap_or_else(|| "Saved search results are not ready to open.".to_string()),
         ));
     }
-    let selected = latest_search
-        .results
-        .iter()
-        .find(|result| result.rank == rank)
-        .cloned()
-        .ok_or_else(|| CliError::Usage(format!("Search results do not contain rank {rank}.")))?;
+    let (selected, selection_strategy) =
+        crate::application::research_commands::selected_search_result(
+            &latest_search,
+            rank,
+            prefer_official,
+        )?;
     let target_tab_id = daemon_state.create_tab_for_session(&session_id)?;
     daemon_state.select_tab(&session_id, &target_tab_id)?;
     let open_result = serve_session_open_internal(
@@ -740,7 +743,7 @@ pub(crate) fn serve_search_open_result(
             session_id: session_id.clone(),
             requested_tab_id: Some(target_tab_id.clone()),
             target: selected.url.clone(),
-            budget: DEFAULT_REQUESTED_TOKENS,
+            budget: persisted.requested_budget,
             source_risk: Some(SourceRisk::Low),
             source_label: None,
             new_allowlisted_domains: Vec::new(),
@@ -753,6 +756,7 @@ pub(crate) fn serve_search_open_result(
         "sessionId": session_id,
         "searchTabId": resolved_search_tab_id,
         "openedTabId": target_tab_id,
+        "selectionStrategy": selection_strategy,
         "selectedResult": selected,
         "result": open_result,
     }))

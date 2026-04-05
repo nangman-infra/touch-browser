@@ -134,6 +134,7 @@ pub(crate) trait AcquisitionFactoryPort {
     fn create_engine(&self) -> Result<AcquisitionEngine, CliError>;
 }
 
+#[derive(Clone, Copy)]
 pub(crate) struct CliPorts<'a> {
     pub(crate) session_store: &'a dyn SessionStorePort,
     pub(crate) browser: &'a dyn BrowserAutomationPort,

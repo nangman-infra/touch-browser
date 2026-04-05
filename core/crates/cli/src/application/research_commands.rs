@@ -1,4 +1,4 @@
-use super::{ports::default_cli_ports, search_support::default_search_session_file};
+use super::{context::CliAppContext, search_support::default_search_session_file};
 use crate::*;
 
 use serde_json::json;
@@ -26,7 +26,7 @@ fn shell_quote(value: &str) -> String {
     format!("'{}'", value.replace('\'', "'\"'\"'"))
 }
 
-fn selected_search_result(
+pub(crate) fn selected_search_result(
     latest_search: &SearchReport,
     requested_rank: usize,
     prefer_official: bool,
@@ -63,8 +63,11 @@ fn selected_search_result(
         })
 }
 
-pub(crate) fn handle_search(options: SearchOptions) -> Result<Value, CliError> {
-    let ports = default_cli_ports();
+pub(crate) fn handle_search(
+    ctx: &CliAppContext<'_>,
+    options: SearchOptions,
+) -> Result<SearchCommandOutput, CliError> {
+    let ports = ctx.ports;
     let search_url = build_search_url(options.engine, &options.query)?;
     let session_file = resolve_search_session_file(options.session_file.as_ref(), options.engine);
     let browser_profile_dir = options
@@ -123,24 +126,25 @@ pub(crate) fn handle_search(options: SearchOptions) -> Result<Value, CliError> {
         ),
     )?;
 
-    Ok(json!({
-        "query": options.query,
-        "engine": options.engine,
-        "searchUrl": search_url,
-        "resultCount": report.result_count,
-        "search": report.clone(),
-        "result": report,
-        "browserContextDir": browser_context_dir,
-        "browserProfileDir": browser_profile_dir,
-        "sessionState": context.session.state,
-        "sessionFile": session_file.display().to_string(),
-    }))
+    Ok(SearchCommandOutput {
+        query: options.query,
+        engine: options.engine,
+        search_url,
+        result_count: report.result_count,
+        search: report.clone(),
+        result: report,
+        browser_context_dir,
+        browser_profile_dir,
+        session_state: context.session.state,
+        session_file: session_file.display().to_string(),
+    })
 }
 
 pub(crate) fn handle_search_open_result(
+    ctx: &CliAppContext<'_>,
     options: SearchOpenResultOptions,
-) -> Result<Value, CliError> {
-    let ports = default_cli_ports();
+) -> Result<SearchOpenResultCommandOutput, CliError> {
+    let ports = ctx.ports;
     let session_file = resolve_search_session_file(options.session_file.as_ref(), options.engine);
     let persisted = ports.session_store.load_session(&session_file)?;
     let latest_search = persisted.latest_search.clone().ok_or_else(|| {
@@ -189,17 +193,17 @@ pub(crate) fn handle_search_open_result(
             Some(latest_search.clone()),
         ),
     )?;
-    let opened = json!(succeed_action(
+    let opened = succeed_action(
         ActionName::Open,
         "snapshot-document",
-        json!(context.snapshot),
+        context.snapshot,
         "Opened browser-backed document.",
         current_policy_with_allowlist(
             &context.session,
-            &PolicyKernel,
-            &persisted.allowlisted_domains
+            ctx.policy_kernel,
+            &persisted.allowlisted_domains,
         ),
-    ));
+    )?;
 
     let session_extract_hint = if session_file == default_search_session_file(latest_search.engine)
     {
@@ -217,24 +221,27 @@ pub(crate) fn handle_search_open_result(
         )
     };
 
-    Ok(json!({
-        "selectedResult": selected,
-        "requestedRank": options.rank,
-        "selectionStrategy": selection_strategy,
-        "result": opened,
-        "sessionFile": session_file.display().to_string(),
-        "nextCommands": {
-            "sessionExtract": session_extract_hint,
-            "sessionRead": format!(
+    Ok(SearchOpenResultCommandOutput {
+        selected_result: selected,
+        requested_rank: options.rank,
+        selection_strategy: selection_strategy.to_string(),
+        result: opened,
+        session_file: session_file.display().to_string(),
+        next_commands: SearchNextCommands {
+            session_extract: session_extract_hint,
+            session_read: format!(
                 "touch-browser session-read --session-file {} --main-only",
                 shell_quote(&session_file.display().to_string())
             ),
-        }
-    }))
+        },
+    })
 }
 
-pub(crate) fn handle_search_open_top(options: SearchOpenTopOptions) -> Result<Value, CliError> {
-    let ports = default_cli_ports();
+pub(crate) fn handle_search_open_top(
+    ctx: &CliAppContext<'_>,
+    options: SearchOpenTopOptions,
+) -> Result<SearchOpenTopCommandOutput, CliError> {
+    let ports = ctx.ports;
     let search_session_file =
         resolve_search_session_file(options.session_file.as_ref(), options.engine);
     let persisted = ports.session_store.load_session(&search_session_file)?;
@@ -310,36 +317,39 @@ pub(crate) fn handle_search_open_top(options: SearchOpenTopOptions) -> Result<Va
                     None,
                 ),
             )?;
-            let opened = json!(succeed_action(
+            let opened = succeed_action(
                 ActionName::Open,
                 "snapshot-document",
-                json!(context.snapshot),
+                context.snapshot,
                 "Opened browser-backed document.",
                 current_policy_with_allowlist(
                     &context.session,
-                    &PolicyKernel,
+                    ctx.policy_kernel,
                     &persisted.allowlisted_domains,
                 ),
-            ));
+            )?;
 
-            Ok::<Value, CliError>(json!({
-                "rank": selected.rank,
-                "selectedResult": selected,
-                "sessionFile": result_session_file.display().to_string(),
-                "result": opened,
-            }))
+            Ok::<SearchOpenTopItem, CliError>(SearchOpenTopItem {
+                rank: selected.rank,
+                selected_result: selected,
+                session_file: result_session_file.display().to_string(),
+                result: opened,
+            })
         })
         .collect::<Result<Vec<_>, _>>()?;
 
-    Ok(json!({
-        "searchSessionFile": search_session_file.display().to_string(),
-        "openedCount": opened.len(),
-        "opened": opened,
-    }))
+    Ok(SearchOpenTopCommandOutput {
+        search_session_file: search_session_file.display().to_string(),
+        opened_count: opened.len(),
+        opened,
+    })
 }
 
-pub(crate) fn handle_open(options: TargetOptions) -> Result<Value, CliError> {
-    let ports = default_cli_ports();
+pub(crate) fn handle_open(
+    ctx: &CliAppContext<'_>,
+    options: TargetOptions,
+) -> Result<ActionResult, CliError> {
+    let ports = ctx.ports;
     if options.session_file.is_some() && !options.browser {
         return Err(CliError::Usage(
             "`--session-file` is currently supported only with `--browser`.".to_string(),
@@ -347,15 +357,13 @@ pub(crate) fn handle_open(options: TargetOptions) -> Result<Value, CliError> {
     }
 
     if options.browser {
-        return handle_browser_open(options);
+        return handle_browser_open(ctx, options);
     }
 
     if is_fixture_target(&options.target) {
         let catalog = ports.fixtures.load_catalog()?;
-        let runtime = ReadOnlyRuntime::default();
-        let vm = ReadOnlyActionVm::default();
-        let mut session = runtime.start_session("scliopen001", DEFAULT_OPENED_AT);
-        let result = vm.execute_fixture(
+        let mut session = ctx.runtime.start_session("scliopen001", DEFAULT_OPENED_AT);
+        let result = ctx.action_vm.execute_fixture(
             &mut session,
             &catalog,
             ActionCommand {
@@ -369,15 +377,13 @@ pub(crate) fn handle_open(options: TargetOptions) -> Result<Value, CliError> {
             },
             DEFAULT_OPENED_AT,
         );
-        return Ok(json!(result));
+        return Ok(result);
     }
 
-    let runtime = ReadOnlyRuntime::default();
-    let kernel = PolicyKernel;
     let mut acquisition = ports.acquisition.create_engine()?;
-    let mut session = runtime.start_session("scliopen001", DEFAULT_OPENED_AT);
+    let mut session = ctx.runtime.start_session("scliopen001", DEFAULT_OPENED_AT);
     let source_risk = options.source_risk.unwrap_or(SourceRisk::Low);
-    let snapshot = runtime.open_live(
+    let snapshot = ctx.runtime.open_live(
         &mut session,
         &mut acquisition,
         &options.target,
@@ -386,20 +392,23 @@ pub(crate) fn handle_open(options: TargetOptions) -> Result<Value, CliError> {
         options.source_label,
         DEFAULT_OPENED_AT,
     )?;
-    let policy = current_policy_with_allowlist(&session, &kernel, &options.allowlisted_domains);
+    let policy =
+        current_policy_with_allowlist(&session, ctx.policy_kernel, &options.allowlisted_domains);
 
-    Ok(json!(succeed_action(
+    succeed_action(
         ActionName::Open,
         "snapshot-document",
-        json!(snapshot),
+        snapshot,
         "Opened live document.",
         policy,
-    )))
+    )
 }
 
-pub(crate) fn handle_browser_open(options: TargetOptions) -> Result<Value, CliError> {
-    let ports = default_cli_ports();
-    let kernel = PolicyKernel;
+pub(crate) fn handle_browser_open(
+    ctx: &CliAppContext<'_>,
+    options: TargetOptions,
+) -> Result<ActionResult, CliError> {
+    let ports = ctx.ports;
     let browser_context_dir = options
         .session_file
         .as_ref()
@@ -408,7 +417,7 @@ pub(crate) fn handle_browser_open(options: TargetOptions) -> Result<Value, CliEr
                 .session_store
                 .browser_context_dir_for_session(path.as_path())
         })
-        .map(|path| path.display().to_string());
+        .map(|path: std::path::PathBuf| path.display().to_string());
     let context = ports.browser.open_browser_session(
         &options.target,
         options.budget,
@@ -442,17 +451,24 @@ pub(crate) fn handle_browser_open(options: TargetOptions) -> Result<Value, CliEr
         )?;
     }
 
-    Ok(json!(succeed_action(
+    succeed_action(
         ActionName::Open,
         "snapshot-document",
-        json!(context.snapshot),
+        context.snapshot,
         "Opened browser-backed document.",
-        current_policy_with_allowlist(&context.session, &kernel, &options.allowlisted_domains,),
-    )))
+        current_policy_with_allowlist(
+            &context.session,
+            ctx.policy_kernel,
+            &options.allowlisted_domains,
+        ),
+    )
 }
 
-pub(crate) fn handle_compact_view(options: TargetOptions) -> Result<Value, CliError> {
-    let ports = default_cli_ports();
+pub(crate) fn handle_compact_view(
+    ctx: &CliAppContext<'_>,
+    options: TargetOptions,
+) -> Result<CompactSnapshotOutput, CliError> {
+    let ports = ctx.ports;
     if options.browser {
         let browser_context_dir = options
             .session_file
@@ -462,7 +478,7 @@ pub(crate) fn handle_compact_view(options: TargetOptions) -> Result<Value, CliEr
                     .session_store
                     .browser_context_dir_for_session(path.as_path())
             })
-            .map(|path| path.display().to_string());
+            .map(|path: std::path::PathBuf| path.display().to_string());
         let context = ports.browser.open_browser_session(
             &options.target,
             options.budget,
@@ -497,29 +513,33 @@ pub(crate) fn handle_compact_view(options: TargetOptions) -> Result<Value, CliEr
             )?;
         }
 
-        return Ok(json!(CompactSnapshotOutput::new(
+        return Ok(CompactSnapshotOutput::new(
             &context.snapshot,
             Some(context.session.state),
             options.session_file.map(|path| path.display().to_string()),
-        )));
+        ));
     }
 
     if is_fixture_target(&options.target) {
         let catalog = ports.fixtures.load_catalog()?;
-        let runtime = ReadOnlyRuntime::default();
-        let mut session = runtime.start_session("sclicompact001", DEFAULT_OPENED_AT);
-        let snapshot = runtime.open(&mut session, &catalog, &options.target, DEFAULT_OPENED_AT)?;
-        return Ok(json!(CompactSnapshotOutput::new(
+        let mut session = ctx
+            .runtime
+            .start_session("sclicompact001", DEFAULT_OPENED_AT);
+        let snapshot =
+            ctx.runtime
+                .open(&mut session, &catalog, &options.target, DEFAULT_OPENED_AT)?;
+        return Ok(CompactSnapshotOutput::new(
             &snapshot,
             Some(session.state),
             None,
-        )));
+        ));
     }
 
-    let runtime = ReadOnlyRuntime::default();
     let mut acquisition = ports.acquisition.create_engine()?;
-    let mut session = runtime.start_session("sclicompact001", DEFAULT_OPENED_AT);
-    let snapshot = runtime.open_live(
+    let mut session = ctx
+        .runtime
+        .start_session("sclicompact001", DEFAULT_OPENED_AT);
+    let snapshot = ctx.runtime.open_live(
         &mut session,
         &mut acquisition,
         &options.target,
@@ -529,15 +549,18 @@ pub(crate) fn handle_compact_view(options: TargetOptions) -> Result<Value, CliEr
         DEFAULT_OPENED_AT,
     )?;
 
-    Ok(json!(CompactSnapshotOutput::new(
+    Ok(CompactSnapshotOutput::new(
         &snapshot,
         Some(session.state),
         None,
-    )))
+    ))
 }
 
-pub(crate) fn handle_read_view(options: TargetOptions) -> Result<Value, CliError> {
-    let ports = default_cli_ports();
+pub(crate) fn handle_read_view(
+    ctx: &CliAppContext<'_>,
+    options: TargetOptions,
+) -> Result<ReadViewOutput, CliError> {
+    let ports = ctx.ports;
     if options.browser {
         let browser_context_dir = options
             .session_file
@@ -547,7 +570,7 @@ pub(crate) fn handle_read_view(options: TargetOptions) -> Result<Value, CliError
                     .session_store
                     .browser_context_dir_for_session(path.as_path())
             })
-            .map(|path| path.display().to_string());
+            .map(|path: std::path::PathBuf| path.display().to_string());
         let context = ports.browser.open_browser_session(
             &options.target,
             options.budget,
@@ -582,31 +605,31 @@ pub(crate) fn handle_read_view(options: TargetOptions) -> Result<Value, CliError
             )?;
         }
 
-        return Ok(json!(ReadViewOutput::new(
+        return Ok(ReadViewOutput::new(
             &context.snapshot,
             Some(context.session.state),
             options.session_file.map(|path| path.display().to_string()),
             options.main_only,
-        )));
+        ));
     }
 
     if is_fixture_target(&options.target) {
         let catalog = ports.fixtures.load_catalog()?;
-        let runtime = ReadOnlyRuntime::default();
-        let mut session = runtime.start_session("scliread001", DEFAULT_OPENED_AT);
-        let snapshot = runtime.open(&mut session, &catalog, &options.target, DEFAULT_OPENED_AT)?;
-        return Ok(json!(ReadViewOutput::new(
+        let mut session = ctx.runtime.start_session("scliread001", DEFAULT_OPENED_AT);
+        let snapshot =
+            ctx.runtime
+                .open(&mut session, &catalog, &options.target, DEFAULT_OPENED_AT)?;
+        return Ok(ReadViewOutput::new(
             &snapshot,
             Some(session.state),
             None,
             options.main_only,
-        )));
+        ));
     }
 
-    let runtime = ReadOnlyRuntime::default();
     let mut acquisition = ports.acquisition.create_engine()?;
-    let mut session = runtime.start_session("scliread001", DEFAULT_OPENED_AT);
-    let snapshot = runtime.open_live(
+    let mut session = ctx.runtime.start_session("scliread001", DEFAULT_OPENED_AT);
+    let snapshot = ctx.runtime.open_live(
         &mut session,
         &mut acquisition,
         &options.target,
@@ -616,16 +639,19 @@ pub(crate) fn handle_read_view(options: TargetOptions) -> Result<Value, CliError
         DEFAULT_OPENED_AT,
     )?;
 
-    Ok(json!(ReadViewOutput::new(
+    Ok(ReadViewOutput::new(
         &snapshot,
         Some(session.state),
         None,
         options.main_only,
-    )))
+    ))
 }
 
-pub(crate) fn handle_extract(options: ExtractOptions) -> Result<Value, CliError> {
-    let ports = default_cli_ports();
+pub(crate) fn handle_extract(
+    ctx: &CliAppContext<'_>,
+    options: ExtractOptions,
+) -> Result<ExtractCommandOutput, CliError> {
+    let ports = ctx.ports;
     if options.session_file.is_some() && !options.browser {
         return Err(CliError::Usage(
             "`--session-file` is currently supported only with `--browser` on target commands. Use `session-extract` for persisted sessions.".to_string(),
@@ -635,7 +661,6 @@ pub(crate) fn handle_extract(options: ExtractOptions) -> Result<Value, CliError>
     let claims = claim_inputs_from_statements(&options.claims)?;
 
     if options.browser {
-        let kernel = PolicyKernel;
         let browser_context_dir = options
             .session_file
             .as_ref()
@@ -644,7 +669,7 @@ pub(crate) fn handle_extract(options: ExtractOptions) -> Result<Value, CliError>
                     .session_store
                     .browser_context_dir_for_session(path.as_path())
             })
-            .map(|path| path.display().to_string());
+            .map(|path: std::path::PathBuf| path.display().to_string());
         let context = ports.browser.open_browser_session(
             &options.target,
             options.budget,
@@ -659,10 +684,14 @@ pub(crate) fn handle_extract(options: ExtractOptions) -> Result<Value, CliError>
         let open_result = succeed_action(
             ActionName::Open,
             "snapshot-document",
-            json!(context.snapshot),
+            context.snapshot.clone(),
             "Opened browser-backed document.",
-            current_policy_with_allowlist(&context.session, &kernel, &options.allowlisted_domains),
-        );
+            current_policy_with_allowlist(
+                &context.session,
+                ctx.policy_kernel,
+                &options.allowlisted_domains,
+            ),
+        )?;
         let mut session = context.session;
         let extract_timestamp = slot_timestamp(1, 30);
         let report = context
@@ -671,12 +700,16 @@ pub(crate) fn handle_extract(options: ExtractOptions) -> Result<Value, CliError>
         let extract_result = succeed_action(
             ActionName::Extract,
             "evidence-report",
-            json!(report),
+            report,
             "Extracted evidence report from browser-backed snapshot.",
-            current_policy_with_allowlist(&session, &kernel, &options.allowlisted_domains),
+            current_policy_with_allowlist(
+                &session,
+                ctx.policy_kernel,
+                &options.allowlisted_domains,
+            ),
         );
         let extract_result = verify_action_result_if_requested(
-            extract_result,
+            extract_result?,
             &mut session,
             &claims,
             options.verifier_command.as_deref(),
@@ -704,20 +737,20 @@ pub(crate) fn handle_extract(options: ExtractOptions) -> Result<Value, CliError>
             )?;
         }
 
-        return Ok(json!(ExtractCommandOutput {
+        return Ok(ExtractCommandOutput {
             open: open_result,
             extract: extract_result,
             session_state: session.state,
-        }));
+        });
     }
 
     if is_fixture_target(&options.target) {
         let catalog = ports.fixtures.load_catalog()?;
-        let runtime = ReadOnlyRuntime::default();
-        let vm = ReadOnlyActionVm::default();
-        let mut session = runtime.start_session("scliextract001", DEFAULT_OPENED_AT);
+        let mut session = ctx
+            .runtime
+            .start_session("scliextract001", DEFAULT_OPENED_AT);
 
-        let open_result = vm.execute_fixture(
+        let open_result = ctx.action_vm.execute_fixture(
             &mut session,
             &catalog,
             ActionCommand {
@@ -733,7 +766,7 @@ pub(crate) fn handle_extract(options: ExtractOptions) -> Result<Value, CliError>
         );
         let extract_result = if open_result.status == ActionStatus::Succeeded {
             let current_url = session.state.current_url.clone();
-            let extract_result = vm.execute_fixture(
+            let extract_result = ctx.action_vm.execute_fixture(
                 &mut session,
                 &catalog,
                 ActionCommand {
@@ -763,20 +796,20 @@ pub(crate) fn handle_extract(options: ExtractOptions) -> Result<Value, CliError>
             )
         };
 
-        return Ok(json!(ExtractCommandOutput {
+        return Ok(ExtractCommandOutput {
             open: open_result,
             extract: extract_result,
             session_state: session.state,
-        }));
+        });
     }
 
-    let runtime = ReadOnlyRuntime::default();
-    let kernel = PolicyKernel;
     let mut acquisition = ports.acquisition.create_engine()?;
-    let mut session = runtime.start_session("scliextract001", DEFAULT_OPENED_AT);
+    let mut session = ctx
+        .runtime
+        .start_session("scliextract001", DEFAULT_OPENED_AT);
     let source_risk = options.source_risk.unwrap_or(SourceRisk::Low);
 
-    let snapshot = runtime.open_live(
+    let snapshot = ctx.runtime.open_live(
         &mut session,
         &mut acquisition,
         &options.target,
@@ -786,42 +819,46 @@ pub(crate) fn handle_extract(options: ExtractOptions) -> Result<Value, CliError>
         DEFAULT_OPENED_AT,
     )?;
     let open_policy =
-        current_policy_with_allowlist(&session, &kernel, &options.allowlisted_domains);
+        current_policy_with_allowlist(&session, ctx.policy_kernel, &options.allowlisted_domains);
     let open_result = succeed_action(
         ActionName::Open,
         "snapshot-document",
-        json!(snapshot),
+        snapshot,
         "Opened live document.",
         open_policy.clone(),
-    );
+    )?;
 
     let extract_timestamp = slot_timestamp(1, 30);
-    let report = runtime.extract(&mut session, claims.clone(), &extract_timestamp)?;
+    let report = ctx
+        .runtime
+        .extract(&mut session, claims.clone(), &extract_timestamp)?;
     let extract_result = succeed_action(
         ActionName::Extract,
         "evidence-report",
-        json!(report),
+        report,
         "Extracted evidence report.",
-        current_policy_with_allowlist(&session, &kernel, &options.allowlisted_domains),
+        current_policy_with_allowlist(&session, ctx.policy_kernel, &options.allowlisted_domains),
     );
     let extract_result = verify_action_result_if_requested(
-        extract_result,
+        extract_result?,
         &mut session,
         &claims,
         options.verifier_command.as_deref(),
         &extract_timestamp,
     )?;
 
-    Ok(json!(ExtractCommandOutput {
+    Ok(ExtractCommandOutput {
         open: open_result,
         extract: extract_result,
         session_state: session.state,
-    }))
+    })
 }
 
-pub(crate) fn handle_policy(options: TargetOptions) -> Result<Value, CliError> {
-    let ports = default_cli_ports();
-    let kernel = PolicyKernel;
+pub(crate) fn handle_policy(
+    ctx: &CliAppContext<'_>,
+    options: TargetOptions,
+) -> Result<PolicyCommandOutput, CliError> {
+    let ports = ctx.ports;
 
     if options.session_file.is_some() {
         return Err(CliError::Usage(
@@ -839,7 +876,7 @@ pub(crate) fn handle_policy(options: TargetOptions) -> Result<Value, CliError> {
                     .session_store
                     .browser_context_dir_for_session(path.as_path())
             })
-            .map(|path| path.display().to_string());
+            .map(|path: std::path::PathBuf| path.display().to_string());
         let context = ports.browser.open_browser_session(
             &options.target,
             options.budget,
@@ -851,36 +888,42 @@ pub(crate) fn handle_policy(options: TargetOptions) -> Result<Value, CliError> {
             "sclipolicy001",
             DEFAULT_OPENED_AT,
         )?;
-        let report =
-            current_policy_with_allowlist(&context.session, &kernel, &options.allowlisted_domains)
-                .ok_or_else(|| {
-                    CliError::Usage("Policy command requires an open snapshot.".to_string())
-                })?;
-        return Ok(json!(PolicyCommandOutput {
+        let report = current_policy_with_allowlist(
+            &context.session,
+            ctx.policy_kernel,
+            &options.allowlisted_domains,
+        )
+        .ok_or_else(|| CliError::Usage("Policy command requires an open snapshot.".to_string()))?;
+        return Ok(PolicyCommandOutput {
             policy: report,
             session_state: context.session.state,
-        }));
+        });
     }
 
     if is_fixture_target(&options.target) {
         let catalog = ports.fixtures.load_catalog()?;
-        let runtime = ReadOnlyRuntime::default();
-        let mut session = runtime.start_session("sclipolicy001", DEFAULT_OPENED_AT);
-        runtime.open(&mut session, &catalog, &options.target, DEFAULT_OPENED_AT)?;
-        let report = current_policy_with_allowlist(&session, &kernel, &options.allowlisted_domains)
-            .ok_or_else(|| {
-                CliError::Usage("Policy command requires an open snapshot.".to_string())
-            })?;
-        return Ok(json!(PolicyCommandOutput {
+        let mut session = ctx
+            .runtime
+            .start_session("sclipolicy001", DEFAULT_OPENED_AT);
+        ctx.runtime
+            .open(&mut session, &catalog, &options.target, DEFAULT_OPENED_AT)?;
+        let report = current_policy_with_allowlist(
+            &session,
+            ctx.policy_kernel,
+            &options.allowlisted_domains,
+        )
+        .ok_or_else(|| CliError::Usage("Policy command requires an open snapshot.".to_string()))?;
+        return Ok(PolicyCommandOutput {
             policy: report,
             session_state: session.state,
-        }));
+        });
     }
 
-    let runtime = ReadOnlyRuntime::default();
     let mut acquisition = ports.acquisition.create_engine()?;
-    let mut session = runtime.start_session("sclipolicy001", DEFAULT_OPENED_AT);
-    runtime.open_live(
+    let mut session = ctx
+        .runtime
+        .start_session("sclipolicy001", DEFAULT_OPENED_AT);
+    ctx.runtime.open_live(
         &mut session,
         &mut acquisition,
         &options.target,
@@ -889,43 +932,54 @@ pub(crate) fn handle_policy(options: TargetOptions) -> Result<Value, CliError> {
         options.source_label,
         DEFAULT_OPENED_AT,
     )?;
-    let report = current_policy_with_allowlist(&session, &kernel, &options.allowlisted_domains)
-        .ok_or_else(|| CliError::Usage("Policy command requires an open snapshot.".to_string()))?;
+    let report =
+        current_policy_with_allowlist(&session, ctx.policy_kernel, &options.allowlisted_domains)
+            .ok_or_else(|| {
+                CliError::Usage("Policy command requires an open snapshot.".to_string())
+            })?;
 
-    Ok(json!(PolicyCommandOutput {
+    Ok(PolicyCommandOutput {
         policy: report,
         session_state: session.state,
-    }))
+    })
 }
 
-pub(crate) fn handle_replay(scenario: &str) -> Result<Value, CliError> {
-    let catalog = default_cli_ports().fixtures.load_catalog()?;
-    let runtime = ReadOnlyRuntime::default();
+pub(crate) fn handle_replay(
+    ctx: &CliAppContext<'_>,
+    scenario: &str,
+) -> Result<ReplayCommandOutput, CliError> {
+    let catalog = ctx.ports.fixtures.load_catalog()?;
     let transcript_path = repo_root()
         .join("fixtures/scenarios")
         .join(scenario)
         .join("replay-transcript.json");
     let transcript: ReplayTranscript = serde_json::from_str(&fs::read_to_string(transcript_path)?)?;
-    let session = runtime.replay(&catalog, &transcript, DEFAULT_OPENED_AT)?;
+    let session = ctx
+        .runtime
+        .replay(&catalog, &transcript, DEFAULT_OPENED_AT)?;
 
-    Ok(json!(ReplayCommandOutput {
+    Ok(ReplayCommandOutput {
         session_state: session.state,
         replay_transcript: session.transcript,
         snapshot_count: session.snapshots.len(),
         evidence_report_count: session.evidence_reports.len(),
-    }))
+    })
 }
 
-pub(crate) fn handle_memory_summary(steps: usize) -> Result<Value, CliError> {
+pub(crate) fn handle_memory_summary(
+    ctx: &CliAppContext<'_>,
+    steps: usize,
+) -> Result<MemorySummaryOutput, CliError> {
     if steps == 0 || !steps.is_multiple_of(2) {
         return Err(CliError::Usage(
             "memory-summary requires an even `--steps` value greater than 0.".to_string(),
         ));
     }
 
-    let runtime = ReadOnlyRuntime::default();
-    let catalog = default_cli_ports().fixtures.load_catalog()?;
-    let mut session = runtime.start_session("sclimemory001", DEFAULT_OPENED_AT);
+    let catalog = ctx.ports.fixtures.load_catalog()?;
+    let mut session = ctx
+        .runtime
+        .start_session("sclimemory001", DEFAULT_OPENED_AT);
     let sequence = [
         (
             "fixture://research/static-docs/getting-started",
@@ -949,7 +1003,7 @@ pub(crate) fn handle_memory_summary(steps: usize) -> Result<Value, CliError> {
         let open_timestamp = slot_timestamp(pair_index * 2, 0);
         let extract_timestamp = slot_timestamp(pair_index * 2 + 1, 30);
 
-        runtime
+        ctx.runtime
             .open(&mut session, &catalog, step.0, &open_timestamp)
             .map_err(CliError::Runtime)?;
         let snapshot_record = session
@@ -966,7 +1020,7 @@ pub(crate) fn handle_memory_summary(steps: usize) -> Result<Value, CliError> {
         memory_refs = open_turn.kept_refs.clone();
         memory_turns.push(open_turn);
 
-        runtime
+        ctx.runtime
             .extract(
                 &mut session,
                 vec![ClaimInput {
@@ -995,10 +1049,10 @@ pub(crate) fn handle_memory_summary(steps: usize) -> Result<Value, CliError> {
         memory_turns.push(extract_turn);
     }
 
-    Ok(json!(MemorySummaryOutput {
+    Ok(MemorySummaryOutput {
         requested_actions: steps,
         action_count: steps,
         session_state: session.state,
         memory_summary: summarize_turns(&memory_turns, 12),
-    }))
+    })
 }
