@@ -1,0 +1,71 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "policy-report.schema.json",
+  "title": "PolicyReport",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["decision", "sourceRisk", "riskClass", "blockedRefs", "signals"],
+  "properties": {
+    "decision": {
+      "type": "string",
+      "enum": ["allow", "review", "block"]
+    },
+    "sourceRisk": {
+      "type": "string",
+      "enum": ["low", "medium", "hostile"]
+    },
+    "riskClass": {
+      "type": "string",
+      "enum": ["low", "medium", "high", "blocked"]
+    },
+    "blockedRefs": {
+      "type": "array",
+      "items": {
+        "type": "string",
+        "pattern": "^r[a-zA-Z0-9:_-]+$"
+      },
+      "uniqueItems": true
+    },
+    "signals": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["kind", "detail"],
+        "properties": {
+          "kind": {
+            "type": "string",
+            "enum": [
+              "hostile-source",
+              "untrusted-system-language",
+              "suspicious-cta",
+              "external-actionable",
+              "hostile-form-control",
+              "domain-not-allowlisted",
+              "bot-challenge",
+              "mfa-challenge",
+              "sensitive-auth-flow",
+              "high-risk-write"
+            ]
+          },
+          "stableRef": {
+            "type": "string",
+            "pattern": "^r[a-zA-Z0-9:_-]+$"
+          },
+          "detail": {
+            "type": "string",
+            "minLength": 1
+          }
+        }
+      }
+    },
+    "allowlistedDomains": {
+      "type": "array",
+      "items": {
+        "type": "string",
+        "pattern": "^(?:\\*\\.)?[a-zA-Z0-9.-]+$"
+      },
+      "uniqueItems": true
+    }
+  }
+}

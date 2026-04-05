@@ -1,0 +1,15 @@
+[package]
+name = "touch-browser-action-vm"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+
+[dependencies]
+serde.workspace = true
+serde_json.workspace = true
+touch-browser-contracts = { path = "../contracts" }
+touch-browser-policy = { path = "../policy" }
+touch-browser-runtime = { path = "../runtime" }
+
+[lib]
+path = "src/lib.rs"

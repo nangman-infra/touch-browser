@@ -1,0 +1,111 @@
+{
+  "version": "1.0.0",
+  "stableRefVersion": "1",
+  "source": {
+    "sourceUrl": "fixture://research/citation-heavy/release-notes",
+    "sourceType": "fixture",
+    "title": "Release Notes"
+  },
+  "budget": {
+    "requestedTokens": 512,
+    "estimatedTokens": 80,
+    "emittedTokens": 80,
+    "truncated": false
+  },
+  "blocks": [
+    {
+      "version": "1.0.0",
+      "id": "b1",
+      "kind": "metadata",
+      "ref": "rhead:metadata:release-notes",
+      "role": "metadata",
+      "text": "Release Notes",
+      "attributes": {
+        "source": "title",
+        "tagName": "title",
+        "textLength": 13,
+        "zone": "head"
+      },
+      "evidence": {
+        "sourceUrl": "fixture://research/citation-heavy/release-notes",
+        "sourceType": "fixture",
+        "domPathHint": "html > head"
+      }
+    },
+    {
+      "version": "1.0.0",
+      "id": "b2",
+      "kind": "heading",
+      "ref": "rmain:heading:release-notes",
+      "role": "content",
+      "text": "Release Notes",
+      "attributes": {
+        "level": 1,
+        "tagName": "h1",
+        "textLength": 13,
+        "zone": "main"
+      },
+      "evidence": {
+        "sourceUrl": "fixture://research/citation-heavy/release-notes",
+        "sourceType": "fixture",
+        "domPathHint": "html > body > main"
+      }
+    },
+    {
+      "version": "1.0.0",
+      "id": "b3",
+      "kind": "text",
+      "ref": "rmain:text:touch-browser-documents-major-runtime-changes-in",
+      "role": "content",
+      "text": "Touch Browser documents major runtime changes in a citation-heavy release log.",
+      "attributes": {
+        "tagName": "p",
+        "textLength": 78,
+        "zone": "main"
+      },
+      "evidence": {
+        "sourceUrl": "fixture://research/citation-heavy/release-notes",
+        "sourceType": "fixture",
+        "domPathHint": "html > body > main"
+      }
+    },
+    {
+      "version": "1.0.0",
+      "id": "b4",
+      "kind": "table",
+      "ref": "rmain:table:version-date-highlights-0-1-0-2026-02-10-added-r",
+      "role": "content",
+      "text": "Version | Date | Highlights\n0.1.0 | 2026-02-10 | Added read-only replay sessions.\n0.2.0 | 2026-03-01 | Added hostile policy reports.",
+      "attributes": {
+        "columns": 3,
+        "rows": 3,
+        "tagName": "table",
+        "textLength": 132,
+        "zone": "main"
+      },
+      "evidence": {
+        "sourceUrl": "fixture://research/citation-heavy/release-notes",
+        "sourceType": "fixture",
+        "domPathHint": "html > body > main"
+      }
+    },
+    {
+      "version": "1.0.0",
+      "id": "b5",
+      "kind": "text",
+      "ref": "rmain:text:each-release-entry-is-intended-to-support-citati",
+      "role": "content",
+      "text": "Each release entry is intended to support citation-ready research answers.",
+      "attributes": {
+        "tagName": "p",
+        "textLength": 74,
+        "zone": "main"
+      },
+      "evidence": {
+        "sourceUrl": "fixture://research/citation-heavy/release-notes",
+        "sourceType": "fixture",
+        "domPathHint": "html > body > main"
+      }
+    }
+  ]
+}

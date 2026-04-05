@@ -1,0 +1,99 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "snapshot-block.schema.json",
+  "title": "SnapshotBlock",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "version",
+    "id",
+    "kind",
+    "ref",
+    "role",
+    "text",
+    "attributes",
+    "evidence"
+  ],
+  "properties": {
+    "version": {
+      "const": "1.0.0"
+    },
+    "id": {
+      "type": "string",
+      "pattern": "^b[0-9]+$"
+    },
+    "kind": {
+      "type": "string",
+      "enum": [
+        "text",
+        "heading",
+        "link",
+        "form",
+        "table",
+        "list",
+        "button",
+        "input",
+        "metadata"
+      ]
+    },
+    "ref": {
+      "type": "string",
+      "pattern": "^r[a-zA-Z0-9:_-]+$"
+    },
+    "role": {
+      "type": "string",
+      "enum": [
+        "content",
+        "primary-nav",
+        "secondary-nav",
+        "cta",
+        "metadata",
+        "supporting",
+        "form-control",
+        "table-cell"
+      ]
+    },
+    "text": {
+      "type": "string",
+      "minLength": 1
+    },
+    "attributes": {
+      "type": "object",
+      "additionalProperties": {
+        "$ref": "#/$defs/jsonScalar"
+      }
+    },
+    "evidence": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["sourceUrl", "sourceType"],
+      "properties": {
+        "sourceUrl": {
+          "type": "string",
+          "minLength": 1
+        },
+        "sourceType": {
+          "type": "string",
+          "enum": ["fixture", "http", "playwright"]
+        },
+        "domPathHint": {
+          "type": "string",
+          "minLength": 1
+        },
+        "byteRangeStart": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "byteRangeEnd": {
+          "type": "integer",
+          "minimum": 0
+        }
+      }
+    }
+  },
+  "$defs": {
+    "jsonScalar": {
+      "type": ["string", "number", "integer", "boolean", "null"]
+    }
+  }
+}

@@ -1,0 +1,21 @@
+[package]
+name = "touch-browser-runtime"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+
+[lib]
+path = "src/lib.rs"
+
+[dependencies]
+serde.workspace = true
+serde_json.workspace = true
+thiserror.workspace = true
+touch-browser-acquisition = { path = "../acquisition" }
+touch-browser-contracts = { path = "../contracts" }
+touch-browser-evidence = { path = "../evidence" }
+touch-browser-memory = { path = "../memory" }
+touch-browser-observation = { path = "../observation" }
+
+[dev-dependencies]
+tiny_http.workspace = true

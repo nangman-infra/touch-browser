@@ -1,0 +1,36 @@
+{
+  "id": "tutorial-index",
+  "title": "Navigation-heavy tutorial index page",
+  "category": "navigation",
+  "sourceUri": "fixture://research/navigation/tutorial-index",
+  "htmlPath": "fixtures/research/navigation/tutorial-index/index.html",
+  "expectedSnapshotPath": "fixtures/research/navigation/tutorial-index/expected-snapshot.json",
+  "expectedEvidencePath": "fixtures/research/navigation/tutorial-index/expected-evidence.json",
+  "risk": "low",
+  "expectations": {
+    "mustContainTexts": [
+      "Tutorial Index",
+      "CLI tutorial",
+      "replay a saved scenario deterministically"
+    ],
+    "expectedKinds": ["heading", "text", "link"],
+    "expectedCitationUrl": "fixture://research/navigation/tutorial-index",
+    "claimChecks": [
+      {
+        "id": "c1",
+        "statement": "The tutorials index links readers to CLI, Policy, and Replay walkthroughs.",
+        "expectedStatus": "supported"
+      },
+      {
+        "id": "c2",
+        "statement": "The replay tutorial demonstrates how to replay a saved scenario deterministically.",
+        "expectedStatus": "supported"
+      },
+      {
+        "id": "c3",
+        "statement": "The tutorials index includes purchase automation lessons.",
+        "expectedStatus": "unsupported"
+      }
+    ]
+  }
+}

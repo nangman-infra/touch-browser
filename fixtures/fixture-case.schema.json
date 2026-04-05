@@ -1,0 +1,176 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "fixture-case.schema.json",
+  "title": "FixtureCase",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "id",
+    "title",
+    "category",
+    "sourceUri",
+    "htmlPath",
+    "expectedSnapshotPath",
+    "expectedEvidencePath",
+    "risk",
+    "expectations"
+  ],
+  "properties": {
+    "id": {
+      "type": "string",
+      "pattern": "^[a-z0-9-]+$"
+    },
+    "title": {
+      "type": "string",
+      "minLength": 1
+    },
+    "category": {
+      "type": "string",
+      "enum": ["static-docs", "navigation", "citation-heavy", "hostile"]
+    },
+    "sourceUri": {
+      "type": "string",
+      "pattern": "^fixture://.+"
+    },
+    "htmlPath": {
+      "type": "string",
+      "minLength": 1
+    },
+    "expectedSnapshotPath": {
+      "type": "string",
+      "minLength": 1
+    },
+    "expectedEvidencePath": {
+      "type": "string",
+      "minLength": 1
+    },
+    "risk": {
+      "type": "string",
+      "enum": ["low", "medium", "hostile"]
+    },
+    "expectations": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["mustContainTexts", "claimChecks"],
+      "properties": {
+        "mustContainTexts": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "minLength": 1
+          },
+          "minItems": 1
+        },
+        "expectedCitationUrl": {
+          "type": "string",
+          "minLength": 1
+        },
+        "expectedKinds": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "minLength": 1
+          },
+          "minItems": 1,
+          "uniqueItems": true
+        },
+        "claimChecks": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["id", "statement", "expectedStatus"],
+            "properties": {
+              "id": {
+                "type": "string",
+                "pattern": "^c[0-9]+$"
+              },
+              "statement": {
+                "type": "string",
+                "minLength": 1
+              },
+              "expectedStatus": {
+                "type": "string",
+                "enum": ["supported", "unsupported"]
+              }
+            }
+          },
+          "minItems": 1
+        },
+        "hostileSignals": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "minLength": 1
+          },
+          "minItems": 1
+        }
+      }
+    }
+  },
+  "allOf": [
+    {
+      "if": {
+        "type": "object",
+        "properties": {
+          "category": {
+            "const": "hostile"
+          }
+        }
+      },
+      "then": {
+        "type": "object",
+        "properties": {
+          "risk": {
+            "const": "hostile"
+          },
+          "expectations": {
+            "type": "object",
+            "properties": {
+              "mustContainTexts": {
+                "type": "array",
+                "items": {
+                  "type": "string",
+                  "minLength": 1
+                },
+                "minItems": 1
+              },
+              "claimChecks": {
+                "type": "array",
+                "items": {
+                  "type": "object",
+                  "additionalProperties": false,
+                  "required": ["id", "statement", "expectedStatus"],
+                  "properties": {
+                    "id": {
+                      "type": "string",
+                      "pattern": "^c[0-9]+$"
+                    },
+                    "statement": {
+                      "type": "string",
+                      "minLength": 1
+                    },
+                    "expectedStatus": {
+                      "type": "string",
+                      "enum": ["supported", "unsupported"]
+                    }
+                  }
+                },
+                "minItems": 1
+              },
+              "hostileSignals": {
+                "type": "array",
+                "items": {
+                  "type": "string",
+                  "minLength": 1
+                },
+                "minItems": 1
+              }
+            },
+            "required": ["mustContainTexts", "claimChecks", "hostileSignals"]
+          }
+        }
+      }
+    }
+  ]
+}

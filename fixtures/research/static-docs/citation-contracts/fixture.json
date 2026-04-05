@@ -1,0 +1,36 @@
+{
+  "id": "citation-contracts",
+  "title": "Citation contracts",
+  "category": "static-docs",
+  "sourceUri": "fixture://research/static-docs/citation-contracts",
+  "htmlPath": "fixtures/research/static-docs/citation-contracts/index.html",
+  "expectedSnapshotPath": "fixtures/research/static-docs/citation-contracts/expected-snapshot.json",
+  "expectedEvidencePath": "fixtures/research/static-docs/citation-contracts/expected-evidence.json",
+  "risk": "low",
+  "expectations": {
+    "mustContainTexts": [
+      "Citation Contracts",
+      "Citation Contracts require supported claims to carry a source URL and retrieved timestamp.",
+      "Support refs point to stable snapshot blocks."
+    ],
+    "expectedKinds": ["heading", "text", "list", "link"],
+    "expectedCitationUrl": "fixture://research/static-docs/citation-contracts",
+    "claimChecks": [
+      {
+        "id": "c1",
+        "statement": "Citation Contracts require supported claims to carry a source URL and retrieved timestamp.",
+        "expectedStatus": "supported"
+      },
+      {
+        "id": "c2",
+        "statement": "Support refs point to stable snapshot blocks.",
+        "expectedStatus": "supported"
+      },
+      {
+        "id": "c3",
+        "statement": "Citation Contracts require screenshot uploads.",
+        "expectedStatus": "unsupported"
+      }
+    ]
+  }
+}

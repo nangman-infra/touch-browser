@@ -1,0 +1,36 @@
+{
+  "id": "browser-tabs",
+  "title": "Browser tabs navigation",
+  "category": "navigation",
+  "sourceUri": "fixture://research/navigation/browser-tabs",
+  "htmlPath": "fixtures/research/navigation/browser-tabs/index.html",
+  "expectedSnapshotPath": "fixtures/research/navigation/browser-tabs/expected-snapshot.json",
+  "expectedEvidencePath": "fixtures/research/navigation/browser-tabs/expected-evidence.json",
+  "risk": "low",
+  "expectations": {
+    "mustContainTexts": [
+      "Browser Tabs",
+      "Browser Tabs highlights overview, policies, and logs as the main navigation targets.",
+      "Overview tab"
+    ],
+    "expectedKinds": ["heading", "text", "list", "button"],
+    "expectedCitationUrl": "fixture://research/navigation/browser-tabs",
+    "claimChecks": [
+      {
+        "id": "c1",
+        "statement": "Browser Tabs highlights overview, policies, and logs as the main navigation targets.",
+        "expectedStatus": "supported"
+      },
+      {
+        "id": "c2",
+        "statement": "Overview tab",
+        "expectedStatus": "supported"
+      },
+      {
+        "id": "c3",
+        "statement": "The page includes a payment checkout flow.",
+        "expectedStatus": "unsupported"
+      }
+    ]
+  }
+}

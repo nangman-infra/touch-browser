@@ -1,0 +1,53 @@
+{
+  "version": "1.0.0",
+  "generatedAt": "2026-03-14T00:00:00+09:00",
+  "source": {
+    "sourceUrl": "fixture://research/citation-heavy/release-notes",
+    "sourceType": "fixture",
+    "sourceRisk": "low",
+    "sourceLabel": "Citation-heavy release notes page"
+  },
+  "supportedClaims": [
+    {
+      "version": "1.0.0",
+      "claimId": "c1",
+      "statement": "Version 0.1.0 added read-only replay sessions.",
+      "support": ["b4"],
+      "confidence": 0.95,
+      "citation": {
+        "url": "fixture://research/citation-heavy/release-notes",
+        "retrievedAt": "2026-03-14T00:00:00+09:00",
+        "sourceType": "fixture",
+        "sourceRisk": "low",
+        "sourceLabel": "Citation-heavy release notes page"
+      }
+    },
+    {
+      "version": "1.0.0",
+      "claimId": "c2",
+      "statement": "Version 0.2.0 added hostile policy reports.",
+      "support": ["b4"],
+      "confidence": 0.95,
+      "citation": {
+        "url": "fixture://research/citation-heavy/release-notes",
+        "retrievedAt": "2026-03-14T00:00:00+09:00",
+        "sourceType": "fixture",
+        "sourceRisk": "low",
+        "sourceLabel": "Citation-heavy release notes page"
+      }
+    }
+  ],
+  "unsupportedClaims": [
+    {
+      "version": "1.0.0",
+      "claimId": "c3",
+      "statement": "The release notes announce autonomous drone shipping.",
+      "reason": "insufficient-confidence",
+      "checkedBlockRefs": [
+        "rmain:heading:release-notes",
+        "rhead:metadata:release-notes",
+        "rmain:text:touch-browser-documents-major-runtime-changes-in"
+      ]
+    }
+  ]
+}

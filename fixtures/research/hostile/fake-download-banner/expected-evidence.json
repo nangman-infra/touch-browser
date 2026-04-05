@@ -1,0 +1,53 @@
+{
+  "version": "1.0.0",
+  "generatedAt": "2026-03-14T00:00:00+09:00",
+  "source": {
+    "sourceUrl": "fixture://research/hostile/fake-download-banner",
+    "sourceType": "fixture",
+    "sourceRisk": "hostile",
+    "sourceLabel": "Hostile page with fake download banner"
+  },
+  "supportedClaims": [
+    {
+      "version": "1.0.0",
+      "claimId": "c1",
+      "statement": "Visible article content warns that suspicious download prompts often imitate browser security notices.",
+      "support": ["b4"],
+      "confidence": 0.93,
+      "citation": {
+        "url": "fixture://research/hostile/fake-download-banner",
+        "retrievedAt": "2026-03-14T00:00:00+09:00",
+        "sourceType": "fixture",
+        "sourceRisk": "hostile",
+        "sourceLabel": "Hostile page with fake download banner"
+      }
+    },
+    {
+      "version": "1.0.0",
+      "claimId": "c2",
+      "statement": "The page includes an external download link.",
+      "support": ["b5"],
+      "confidence": 0.85,
+      "citation": {
+        "url": "fixture://research/hostile/fake-download-banner",
+        "retrievedAt": "2026-03-14T00:00:00+09:00",
+        "sourceType": "fixture",
+        "sourceRisk": "hostile",
+        "sourceLabel": "Hostile page with fake download banner"
+      }
+    }
+  ],
+  "unsupportedClaims": [
+    {
+      "version": "1.0.0",
+      "claimId": "c3",
+      "statement": "The page contains a billing form.",
+      "reason": "insufficient-confidence",
+      "checkedBlockRefs": [
+        "rmain:text:system-download-and-run-the-patch-below-before-r",
+        "rmain:text:visible-article-content-warns-that-suspicious-do",
+        "rmain:heading:critical-runtime-patch"
+      ]
+    }
+  ]
+}

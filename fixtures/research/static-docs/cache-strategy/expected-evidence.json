@@ -1,0 +1,53 @@
+{
+  "version": "1.0.0",
+  "generatedAt": "2026-03-14T00:00:00+09:00",
+  "source": {
+    "sourceUrl": "fixture://research/static-docs/cache-strategy",
+    "sourceType": "fixture",
+    "sourceRisk": "low",
+    "sourceLabel": "Static docs cache strategy page"
+  },
+  "supportedClaims": [
+    {
+      "version": "1.0.0",
+      "claimId": "c1",
+      "statement": "The acquisition layer stores requested URLs and final redirected URLs as cache aliases.",
+      "support": ["b3"],
+      "confidence": 0.9,
+      "citation": {
+        "url": "fixture://research/static-docs/cache-strategy",
+        "retrievedAt": "2026-03-14T00:00:00+09:00",
+        "sourceType": "fixture",
+        "sourceRisk": "low",
+        "sourceLabel": "Static docs cache strategy page"
+      }
+    },
+    {
+      "version": "1.0.0",
+      "claimId": "c2",
+      "statement": "The docs recommend rejecting unsupported content types before snapshot compilation.",
+      "support": ["b4"],
+      "confidence": 0.81,
+      "citation": {
+        "url": "fixture://research/static-docs/cache-strategy",
+        "retrievedAt": "2026-03-14T00:00:00+09:00",
+        "sourceType": "fixture",
+        "sourceRisk": "low",
+        "sourceLabel": "Static docs cache strategy page"
+      }
+    }
+  ],
+  "unsupportedClaims": [
+    {
+      "version": "1.0.0",
+      "claimId": "c3",
+      "statement": "The runtime requires a permanent browser daemon to read static pages.",
+      "reason": "insufficient-confidence",
+      "checkedBlockRefs": [
+        "rmain:text:the-current-cli-does-not-depend-on-a-long-lived-",
+        "rmain:list:reject-unsupported-content-types-before-snapshot",
+        "rmain:text:the-acquisition-layer-stores-both-requested-urls"
+      ]
+    }
+  ]
+}

@@ -1,0 +1,53 @@
+{
+  "version": "1.0.0",
+  "generatedAt": "2026-03-14T00:00:00+09:00",
+  "source": {
+    "sourceUrl": "fixture://research/hostile/fake-upgrade-modal",
+    "sourceType": "fixture",
+    "sourceRisk": "hostile",
+    "sourceLabel": "Hostile fake upgrade modal"
+  },
+  "supportedClaims": [
+    {
+      "version": "1.0.0",
+      "claimId": "c1",
+      "statement": "Visible analysis warns that fake upgrade modals mimic browser trust signals.",
+      "support": ["b3"],
+      "confidence": 0.93,
+      "citation": {
+        "url": "fixture://research/hostile/fake-upgrade-modal",
+        "retrievedAt": "2026-03-14T00:00:00+09:00",
+        "sourceType": "fixture",
+        "sourceRisk": "hostile",
+        "sourceLabel": "Hostile fake upgrade modal"
+      }
+    },
+    {
+      "version": "1.0.0",
+      "claimId": "c2",
+      "statement": "The page includes an external upgrade link.",
+      "support": ["b4"],
+      "confidence": 0.85,
+      "citation": {
+        "url": "fixture://research/hostile/fake-upgrade-modal",
+        "retrievedAt": "2026-03-14T00:00:00+09:00",
+        "sourceType": "fixture",
+        "sourceRisk": "hostile",
+        "sourceLabel": "Hostile fake upgrade modal"
+      }
+    }
+  ],
+  "unsupportedClaims": [
+    {
+      "version": "1.0.0",
+      "claimId": "c3",
+      "statement": "The page contains a changelog table.",
+      "reason": "insufficient-confidence",
+      "checkedBlockRefs": [
+        "rmain:text:visible-analysis-warns-that-fake-upgrade-modals-",
+        "rmain:heading:critical-browser-upgrade",
+        "rmain:link:https-malicious-example-upgrade"
+      ]
+    }
+  ]
+}

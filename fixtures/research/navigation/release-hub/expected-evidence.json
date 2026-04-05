@@ -1,0 +1,53 @@
+{
+  "version": "1.0.0",
+  "generatedAt": "2026-03-14T00:00:00+09:00",
+  "source": {
+    "sourceUrl": "fixture://research/navigation/release-hub",
+    "sourceType": "fixture",
+    "sourceRisk": "low",
+    "sourceLabel": "Release hub navigation"
+  },
+  "supportedClaims": [
+    {
+      "version": "1.0.0",
+      "claimId": "c1",
+      "statement": "Release Hub groups stable, beta, and archived release tracks.",
+      "support": ["b3", "b4"],
+      "confidence": 0.93,
+      "citation": {
+        "url": "fixture://research/navigation/release-hub",
+        "retrievedAt": "2026-03-14T00:00:00+09:00",
+        "sourceType": "fixture",
+        "sourceRisk": "low",
+        "sourceLabel": "Release hub navigation"
+      }
+    },
+    {
+      "version": "1.0.0",
+      "claimId": "c2",
+      "statement": "Stable track",
+      "support": ["b4", "b3"],
+      "confidence": 0.94,
+      "citation": {
+        "url": "fixture://research/navigation/release-hub",
+        "retrievedAt": "2026-03-14T00:00:00+09:00",
+        "sourceType": "fixture",
+        "sourceRisk": "low",
+        "sourceLabel": "Release hub navigation"
+      }
+    }
+  ],
+  "unsupportedClaims": [
+    {
+      "version": "1.0.0",
+      "claimId": "c3",
+      "statement": "The release hub contains a credential reset form.",
+      "reason": "insufficient-confidence",
+      "checkedBlockRefs": [
+        "rmain:text:release-hub-groups-stable-beta-and-archived-rele",
+        "rmain:heading:release-hub",
+        "rhead:metadata:release-hub"
+      ]
+    }
+  ]
+}

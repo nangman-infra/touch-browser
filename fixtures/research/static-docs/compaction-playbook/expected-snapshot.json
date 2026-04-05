@@ -1,0 +1,113 @@
+{
+  "version": "1.0.0",
+  "stableRefVersion": "1",
+  "source": {
+    "sourceUrl": "fixture://research/static-docs/compaction-playbook",
+    "sourceType": "fixture",
+    "title": "Compaction Playbook"
+  },
+  "budget": {
+    "requestedTokens": 512,
+    "estimatedTokens": 61,
+    "emittedTokens": 61,
+    "truncated": false
+  },
+  "blocks": [
+    {
+      "version": "1.0.0",
+      "id": "b1",
+      "kind": "metadata",
+      "ref": "rhead:metadata:compaction-playbook",
+      "role": "metadata",
+      "text": "Compaction Playbook",
+      "attributes": {
+        "source": "title",
+        "tagName": "title",
+        "textLength": 19,
+        "zone": "head"
+      },
+      "evidence": {
+        "sourceUrl": "fixture://research/static-docs/compaction-playbook",
+        "sourceType": "fixture",
+        "domPathHint": "html > head"
+      }
+    },
+    {
+      "version": "1.0.0",
+      "id": "b2",
+      "kind": "heading",
+      "ref": "rmain:heading:compaction-playbook",
+      "role": "content",
+      "text": "Compaction Playbook",
+      "attributes": {
+        "level": 1,
+        "tagName": "h1",
+        "textLength": 19,
+        "zone": "main"
+      },
+      "evidence": {
+        "sourceUrl": "fixture://research/static-docs/compaction-playbook",
+        "sourceType": "fixture",
+        "domPathHint": "html > body > main"
+      }
+    },
+    {
+      "version": "1.0.0",
+      "id": "b3",
+      "kind": "text",
+      "ref": "rmain:text:compaction-playbook-keeps-working-sets-small-by-",
+      "role": "content",
+      "text": "Compaction Playbook keeps working sets small by promoting supported claims and recent refs.",
+      "attributes": {
+        "tagName": "p",
+        "textLength": 91,
+        "zone": "main"
+      },
+      "evidence": {
+        "sourceUrl": "fixture://research/static-docs/compaction-playbook",
+        "sourceType": "fixture",
+        "domPathHint": "html > body > main"
+      }
+    },
+    {
+      "version": "1.0.0",
+      "id": "b4",
+      "kind": "list",
+      "ref": "rmain:list:recent-refs-remain-in-the-active-working-set-uns",
+      "role": "content",
+      "text": "- Recent refs remain in the active working set. - Unsupported claims drop into audit notes.",
+      "attributes": {
+        "items": 2,
+        "ordered": false,
+        "tagName": "ul",
+        "textLength": 91,
+        "zone": "main"
+      },
+      "evidence": {
+        "sourceUrl": "fixture://research/static-docs/compaction-playbook",
+        "sourceType": "fixture",
+        "domPathHint": "html > body > main"
+      }
+    },
+    {
+      "version": "1.0.0",
+      "id": "b5",
+      "kind": "link",
+      "ref": "rmain:link:compaction-playbook",
+      "role": "content",
+      "text": "Compaction reference",
+      "attributes": {
+        "external": false,
+        "href": "/compaction-playbook",
+        "tagName": "a",
+        "textLength": 20,
+        "zone": "main"
+      },
+      "evidence": {
+        "sourceUrl": "fixture://research/static-docs/compaction-playbook",
+        "sourceType": "fixture",
+        "domPathHint": "html > body > main"
+      }
+    }
+  ]
+}

@@ -1,0 +1,55 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "acquisition-record.schema.json",
+  "title": "AcquisitionRecord",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "version",
+    "requestedUrl",
+    "finalUrl",
+    "sourceType",
+    "statusCode",
+    "contentType",
+    "redirectChain",
+    "cacheStatus"
+  ],
+  "properties": {
+    "version": {
+      "const": "1.0.0"
+    },
+    "requestedUrl": {
+      "type": "string",
+      "minLength": 1
+    },
+    "finalUrl": {
+      "type": "string",
+      "minLength": 1
+    },
+    "sourceType": {
+      "type": "string",
+      "enum": ["fixture", "http", "playwright"]
+    },
+    "statusCode": {
+      "type": "integer",
+      "minimum": 100,
+      "maximum": 599
+    },
+    "contentType": {
+      "type": "string",
+      "minLength": 1
+    },
+    "redirectChain": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "string",
+        "minLength": 1
+      }
+    },
+    "cacheStatus": {
+      "type": "string",
+      "enum": ["hit", "miss"]
+    }
+  }
+}

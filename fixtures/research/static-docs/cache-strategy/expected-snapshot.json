@@ -1,0 +1,111 @@
+{
+  "version": "1.0.0",
+  "stableRefVersion": "1",
+  "source": {
+    "sourceUrl": "fixture://research/static-docs/cache-strategy",
+    "sourceType": "fixture",
+    "title": "Cache Strategy"
+  },
+  "budget": {
+    "requestedTokens": 512,
+    "estimatedTokens": 77,
+    "emittedTokens": 77,
+    "truncated": false
+  },
+  "blocks": [
+    {
+      "version": "1.0.0",
+      "id": "b1",
+      "kind": "metadata",
+      "ref": "rhead:metadata:cache-strategy",
+      "role": "metadata",
+      "text": "Cache Strategy",
+      "attributes": {
+        "source": "title",
+        "tagName": "title",
+        "textLength": 14,
+        "zone": "head"
+      },
+      "evidence": {
+        "sourceUrl": "fixture://research/static-docs/cache-strategy",
+        "sourceType": "fixture",
+        "domPathHint": "html > head"
+      }
+    },
+    {
+      "version": "1.0.0",
+      "id": "b2",
+      "kind": "heading",
+      "ref": "rmain:heading:cache-strategy",
+      "role": "content",
+      "text": "Cache Strategy",
+      "attributes": {
+        "level": 1,
+        "tagName": "h1",
+        "textLength": 14,
+        "zone": "main"
+      },
+      "evidence": {
+        "sourceUrl": "fixture://research/static-docs/cache-strategy",
+        "sourceType": "fixture",
+        "domPathHint": "html > body > main"
+      }
+    },
+    {
+      "version": "1.0.0",
+      "id": "b3",
+      "kind": "text",
+      "ref": "rmain:text:the-acquisition-layer-stores-both-requested-urls",
+      "role": "content",
+      "text": "The acquisition layer stores both requested URLs and final redirected URLs as cache aliases.",
+      "attributes": {
+        "tagName": "p",
+        "textLength": 92,
+        "zone": "main"
+      },
+      "evidence": {
+        "sourceUrl": "fixture://research/static-docs/cache-strategy",
+        "sourceType": "fixture",
+        "domPathHint": "html > body > main"
+      }
+    },
+    {
+      "version": "1.0.0",
+      "id": "b4",
+      "kind": "list",
+      "ref": "rmain:list:reject-unsupported-content-types-before-snapshot",
+      "role": "content",
+      "text": "- Reject unsupported content types before snapshot compilation. - Reuse cache hits to avoid repeated network fetches.",
+      "attributes": {
+        "items": 2,
+        "ordered": false,
+        "tagName": "ul",
+        "textLength": 117,
+        "zone": "main"
+      },
+      "evidence": {
+        "sourceUrl": "fixture://research/static-docs/cache-strategy",
+        "sourceType": "fixture",
+        "domPathHint": "html > body > main"
+      }
+    },
+    {
+      "version": "1.0.0",
+      "id": "b5",
+      "kind": "text",
+      "ref": "rmain:text:the-current-cli-does-not-depend-on-a-long-lived-",
+      "role": "content",
+      "text": "The current CLI does not depend on a long-lived browser daemon.",
+      "attributes": {
+        "tagName": "p",
+        "textLength": 63,
+        "zone": "main"
+      },
+      "evidence": {
+        "sourceUrl": "fixture://research/static-docs/cache-strategy",
+        "sourceType": "fixture",
+        "domPathHint": "html > body > main"
+      }
+    }
+  ]
+}

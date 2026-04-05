@@ -1,0 +1,148 @@
+{
+  "version": "1.0.0",
+  "stableRefVersion": "1",
+  "source": {
+    "sourceUrl": "fixture://research/navigation/browser-mfa-challenge",
+    "sourceType": "fixture",
+    "title": "Browser MFA Challenge"
+  },
+  "budget": {
+    "requestedTokens": 512,
+    "estimatedTokens": 49,
+    "emittedTokens": 49,
+    "truncated": false
+  },
+  "blocks": [
+    {
+      "version": "1.0.0",
+      "id": "b1",
+      "kind": "metadata",
+      "ref": "rhead:metadata:browser-mfa-challenge",
+      "role": "metadata",
+      "text": "Browser MFA Challenge",
+      "attributes": {
+        "source": "title",
+        "tagName": "title",
+        "textLength": 21,
+        "zone": "head"
+      },
+      "evidence": {
+        "sourceUrl": "fixture://research/navigation/browser-mfa-challenge",
+        "sourceType": "fixture",
+        "domPathHint": "html > head"
+      }
+    },
+    {
+      "version": "1.0.0",
+      "id": "b2",
+      "kind": "heading",
+      "ref": "rmain:heading:two-factor-verification",
+      "role": "content",
+      "text": "Two-factor verification",
+      "attributes": {
+        "level": 1,
+        "tagName": "h1",
+        "textLength": 23,
+        "zone": "main"
+      },
+      "evidence": {
+        "sourceUrl": "fixture://research/navigation/browser-mfa-challenge",
+        "sourceType": "fixture",
+        "domPathHint": "html > body > main"
+      }
+    },
+    {
+      "version": "1.0.0",
+      "id": "b3",
+      "kind": "text",
+      "ref": "rmain:text:enter-the-6-digit-verification-code-from-your-au",
+      "role": "content",
+      "text": "Enter the 6-digit verification code from your authenticator app.",
+      "attributes": {
+        "tagName": "p",
+        "textLength": 64,
+        "zone": "main"
+      },
+      "evidence": {
+        "sourceUrl": "fixture://research/navigation/browser-mfa-challenge",
+        "sourceType": "fixture",
+        "domPathHint": "html > body > main"
+      }
+    },
+    {
+      "version": "1.0.0",
+      "id": "b4",
+      "kind": "form",
+      "ref": "rmain:form:verify-form",
+      "role": "form-control",
+      "text": "Verification code Verify code",
+      "attributes": {
+        "controls": 2,
+        "tagName": "form",
+        "textLength": 29,
+        "zone": "main"
+      },
+      "evidence": {
+        "sourceUrl": "fixture://research/navigation/browser-mfa-challenge",
+        "sourceType": "fixture",
+        "domPathHint": "html > body > main"
+      }
+    },
+    {
+      "version": "1.0.0",
+      "id": "b5",
+      "kind": "input",
+      "ref": "rmain:input:otp-text",
+      "role": "form-control",
+      "text": "otp text",
+      "attributes": {
+        "inputType": "text",
+        "name": "otp",
+        "tagName": "input",
+        "textLength": 8,
+        "zone": "main"
+      },
+      "evidence": {
+        "sourceUrl": "fixture://research/navigation/browser-mfa-challenge",
+        "sourceType": "fixture",
+        "domPathHint": "html > body > main > form > label"
+      }
+    },
+    {
+      "version": "1.0.0",
+      "id": "b6",
+      "kind": "button",
+      "ref": "rmain:button:verify-code",
+      "role": "form-control",
+      "text": "Verify code",
+      "attributes": {
+        "tagName": "button",
+        "textLength": 11,
+        "zone": "main"
+      },
+      "evidence": {
+        "sourceUrl": "fixture://research/navigation/browser-mfa-challenge",
+        "sourceType": "fixture",
+        "domPathHint": "html > body > main > form"
+      }
+    },
+    {
+      "version": "1.0.0",
+      "id": "b7",
+      "kind": "text",
+      "ref": "rmain:text:status",
+      "role": "content",
+      "text": "Waiting for verification code.",
+      "attributes": {
+        "tagName": "p",
+        "textLength": 30,
+        "zone": "main"
+      },
+      "evidence": {
+        "sourceUrl": "fixture://research/navigation/browser-mfa-challenge",
+        "sourceType": "fixture",
+        "domPathHint": "html > body > main"
+      }
+    }
+  ]
+}

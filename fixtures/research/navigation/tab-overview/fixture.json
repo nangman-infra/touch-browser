@@ -1,0 +1,36 @@
+{
+  "id": "tab-overview",
+  "title": "Navigation tab overview page",
+  "category": "navigation",
+  "sourceUri": "fixture://research/navigation/tab-overview",
+  "htmlPath": "fixtures/research/navigation/tab-overview/index.html",
+  "expectedSnapshotPath": "fixtures/research/navigation/tab-overview/expected-snapshot.json",
+  "expectedEvidencePath": "fixtures/research/navigation/tab-overview/expected-evidence.json",
+  "risk": "low",
+  "expectations": {
+    "mustContainTexts": [
+      "Tab Overview",
+      "Architecture",
+      "open the Architecture tab first"
+    ],
+    "expectedKinds": ["heading", "text", "list", "link"],
+    "expectedCitationUrl": "fixture://research/navigation/tab-overview",
+    "claimChecks": [
+      {
+        "id": "c1",
+        "statement": "Researchers often open the Architecture tab first.",
+        "expectedStatus": "supported"
+      },
+      {
+        "id": "c2",
+        "statement": "The page lists Architecture, Benchmarks, and Policy tabs.",
+        "expectedStatus": "supported"
+      },
+      {
+        "id": "c3",
+        "statement": "The page contains a payment form.",
+        "expectedStatus": "unsupported"
+      }
+    ]
+  }
+}

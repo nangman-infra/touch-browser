@@ -1,0 +1,53 @@
+{
+  "version": "1.0.0",
+  "generatedAt": "2026-03-14T00:00:00+09:00",
+  "source": {
+    "sourceUrl": "fixture://research/navigation/browser-expand",
+    "sourceType": "fixture",
+    "sourceRisk": "low",
+    "sourceLabel": "Browser-backed expand seed"
+  },
+  "supportedClaims": [
+    {
+      "version": "1.0.0",
+      "claimId": "c1",
+      "statement": "The page asks the runtime to expand hidden details.",
+      "support": ["b3", "b5", "b4"],
+      "confidence": 0.79,
+      "citation": {
+        "url": "fixture://research/navigation/browser-expand",
+        "retrievedAt": "2026-03-14T00:00:00+09:00",
+        "sourceType": "fixture",
+        "sourceRisk": "low",
+        "sourceLabel": "Browser-backed expand seed"
+      }
+    },
+    {
+      "version": "1.0.0",
+      "claimId": "c2",
+      "statement": "The page includes an Expand details button.",
+      "support": ["b4", "b3", "b5"],
+      "confidence": 0.84,
+      "citation": {
+        "url": "fixture://research/navigation/browser-expand",
+        "retrievedAt": "2026-03-14T00:00:00+09:00",
+        "sourceType": "fixture",
+        "sourceRisk": "low",
+        "sourceLabel": "Browser-backed expand seed"
+      }
+    }
+  ],
+  "unsupportedClaims": [
+    {
+      "version": "1.0.0",
+      "claimId": "c3",
+      "statement": "The page starts with a visible pricing table.",
+      "reason": "insufficient-confidence",
+      "checkedBlockRefs": [
+        "rmain:text:expand-hidden-details-to-reveal-the-supporting-n",
+        "rmain:text:details",
+        "rmain:heading:browser-expand"
+      ]
+    }
+  ]
+}

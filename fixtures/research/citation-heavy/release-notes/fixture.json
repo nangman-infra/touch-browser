@@ -1,0 +1,36 @@
+{
+  "id": "release-notes",
+  "title": "Citation-heavy release notes page",
+  "category": "citation-heavy",
+  "sourceUri": "fixture://research/citation-heavy/release-notes",
+  "htmlPath": "fixtures/research/citation-heavy/release-notes/index.html",
+  "expectedSnapshotPath": "fixtures/research/citation-heavy/release-notes/expected-snapshot.json",
+  "expectedEvidencePath": "fixtures/research/citation-heavy/release-notes/expected-evidence.json",
+  "risk": "low",
+  "expectations": {
+    "mustContainTexts": [
+      "Release Notes",
+      "Added read-only replay sessions",
+      "hostile policy reports"
+    ],
+    "expectedKinds": ["heading", "text", "table"],
+    "expectedCitationUrl": "fixture://research/citation-heavy/release-notes",
+    "claimChecks": [
+      {
+        "id": "c1",
+        "statement": "Version 0.1.0 added read-only replay sessions.",
+        "expectedStatus": "supported"
+      },
+      {
+        "id": "c2",
+        "statement": "Version 0.2.0 added hostile policy reports.",
+        "expectedStatus": "supported"
+      },
+      {
+        "id": "c3",
+        "statement": "The release notes announce autonomous drone shipping.",
+        "expectedStatus": "unsupported"
+      }
+    ]
+  }
+}

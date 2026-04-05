@@ -1,0 +1,36 @@
+{
+  "id": "trusted-sources",
+  "title": "Trusted sources guide",
+  "category": "static-docs",
+  "sourceUri": "fixture://research/static-docs/trusted-sources",
+  "htmlPath": "fixtures/research/static-docs/trusted-sources/index.html",
+  "expectedSnapshotPath": "fixtures/research/static-docs/trusted-sources/expected-snapshot.json",
+  "expectedEvidencePath": "fixtures/research/static-docs/trusted-sources/expected-evidence.json",
+  "risk": "low",
+  "expectations": {
+    "mustContainTexts": [
+      "Trusted Sources",
+      "Trusted Sources recommends domain allowlists before enabling browser actions.",
+      "High-risk domains require review."
+    ],
+    "expectedKinds": ["heading", "text", "list", "link"],
+    "expectedCitationUrl": "fixture://research/static-docs/trusted-sources",
+    "claimChecks": [
+      {
+        "id": "c1",
+        "statement": "Trusted Sources recommends domain allowlists before enabling browser actions.",
+        "expectedStatus": "supported"
+      },
+      {
+        "id": "c2",
+        "statement": "High-risk domains require review.",
+        "expectedStatus": "supported"
+      },
+      {
+        "id": "c3",
+        "statement": "Trusted Sources enables automatic purchases.",
+        "expectedStatus": "unsupported"
+      }
+    ]
+  }
+}

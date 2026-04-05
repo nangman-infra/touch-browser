@@ -1,0 +1,171 @@
+{
+  "version": "1.0.0",
+  "stableRefVersion": "1",
+  "source": {
+    "sourceUrl": "fixture://research/static-docs/troubleshooting",
+    "sourceType": "fixture",
+    "title": "Troubleshooting"
+  },
+  "budget": {
+    "requestedTokens": 512,
+    "estimatedTokens": 91,
+    "emittedTokens": 91,
+    "truncated": false
+  },
+  "blocks": [
+    {
+      "version": "1.0.0",
+      "id": "b1",
+      "kind": "metadata",
+      "ref": "rhead:metadata:troubleshooting",
+      "role": "metadata",
+      "text": "Troubleshooting",
+      "attributes": {
+        "source": "title",
+        "tagName": "title",
+        "textLength": 15,
+        "zone": "head"
+      },
+      "evidence": {
+        "sourceUrl": "fixture://research/static-docs/troubleshooting",
+        "sourceType": "fixture",
+        "domPathHint": "html > head"
+      }
+    },
+    {
+      "version": "1.0.0",
+      "id": "b2",
+      "kind": "link",
+      "ref": "rnav:link:docs",
+      "role": "primary-nav",
+      "text": "Docs",
+      "attributes": {
+        "external": false,
+        "href": "/docs",
+        "tagName": "a",
+        "textLength": 4,
+        "zone": "nav"
+      },
+      "evidence": {
+        "sourceUrl": "fixture://research/static-docs/troubleshooting",
+        "sourceType": "fixture",
+        "domPathHint": "html > body > nav"
+      }
+    },
+    {
+      "version": "1.0.0",
+      "id": "b3",
+      "kind": "link",
+      "ref": "rnav:link:troubleshooting",
+      "role": "primary-nav",
+      "text": "Troubleshooting",
+      "attributes": {
+        "external": false,
+        "href": "/troubleshooting",
+        "tagName": "a",
+        "textLength": 15,
+        "zone": "nav"
+      },
+      "evidence": {
+        "sourceUrl": "fixture://research/static-docs/troubleshooting",
+        "sourceType": "fixture",
+        "domPathHint": "html > body > nav"
+      }
+    },
+    {
+      "version": "1.0.0",
+      "id": "b4",
+      "kind": "link",
+      "ref": "rnav:link:replay",
+      "role": "primary-nav",
+      "text": "Replay",
+      "attributes": {
+        "external": false,
+        "href": "/replay",
+        "tagName": "a",
+        "textLength": 6,
+        "zone": "nav"
+      },
+      "evidence": {
+        "sourceUrl": "fixture://research/static-docs/troubleshooting",
+        "sourceType": "fixture",
+        "domPathHint": "html > body > nav"
+      }
+    },
+    {
+      "version": "1.0.0",
+      "id": "b5",
+      "kind": "heading",
+      "ref": "rmain:heading:troubleshooting",
+      "role": "content",
+      "text": "Troubleshooting",
+      "attributes": {
+        "level": 1,
+        "tagName": "h1",
+        "textLength": 15,
+        "zone": "main"
+      },
+      "evidence": {
+        "sourceUrl": "fixture://research/static-docs/troubleshooting",
+        "sourceType": "fixture",
+        "domPathHint": "html > body > main"
+      }
+    },
+    {
+      "version": "1.0.0",
+      "id": "b6",
+      "kind": "text",
+      "ref": "rmain:text:if-stable-refs-go-stale-after-a-page-change-capt",
+      "role": "content",
+      "text": "If stable refs go stale after a page change, capture a new semantic snapshot before acting again.",
+      "attributes": {
+        "tagName": "p",
+        "textLength": 97,
+        "zone": "main"
+      },
+      "evidence": {
+        "sourceUrl": "fixture://research/static-docs/troubleshooting",
+        "sourceType": "fixture",
+        "domPathHint": "html > body > main"
+      }
+    },
+    {
+      "version": "1.0.0",
+      "id": "b7",
+      "kind": "text",
+      "ref": "rmain:text:memory-compaction-keeps-the-working-set-bounded-",
+      "role": "content",
+      "text": "Memory compaction keeps the working set bounded during long research sessions.",
+      "attributes": {
+        "tagName": "p",
+        "textLength": 78,
+        "zone": "main"
+      },
+      "evidence": {
+        "sourceUrl": "fixture://research/static-docs/troubleshooting",
+        "sourceType": "fixture",
+        "domPathHint": "html > body > main"
+      }
+    },
+    {
+      "version": "1.0.0",
+      "id": "b8",
+      "kind": "list",
+      "ref": "rmain:list:1-open-the-current-page-2-read-the-latest-snapsh",
+      "role": "content",
+      "text": "1. Open the current page. 2. Read the latest snapshot. 3. Re-run replay if the issue must be reproduced deterministically.",
+      "attributes": {
+        "items": 3,
+        "ordered": true,
+        "tagName": "ol",
+        "textLength": 122,
+        "zone": "main"
+      },
+      "evidence": {
+        "sourceUrl": "fixture://research/static-docs/troubleshooting",
+        "sourceType": "fixture",
+        "domPathHint": "html > body > main"
+      }
+    }
+  ]
+}

@@ -1,0 +1,148 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "session-synthesis-report.schema.json",
+  "title": "SessionSynthesisReport",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "version",
+    "sessionId",
+    "generatedAt",
+    "snapshotCount",
+    "evidenceReportCount",
+    "visitedUrls",
+    "workingSetRefs",
+    "synthesizedNotes",
+    "supportedClaims",
+    "unsupportedClaims"
+  ],
+  "properties": {
+    "version": {
+      "const": "1.0.0"
+    },
+    "sessionId": {
+      "type": "string",
+      "pattern": "^s[a-zA-Z0-9_-]+$"
+    },
+    "generatedAt": {
+      "type": "string",
+      "pattern": "^\\d{4}-\\d{2}-\\d{2}T\\d{2}:\\d{2}:\\d{2}(?:\\.\\d+)?(?:Z|[+-]\\d{2}:\\d{2})$"
+    },
+    "snapshotCount": {
+      "type": "integer",
+      "minimum": 0
+    },
+    "evidenceReportCount": {
+      "type": "integer",
+      "minimum": 0
+    },
+    "visitedUrls": {
+      "type": "array",
+      "items": {
+        "type": "string",
+        "minLength": 1
+      },
+      "uniqueItems": true
+    },
+    "workingSetRefs": {
+      "type": "array",
+      "items": {
+        "type": "string",
+        "pattern": "^r[a-zA-Z0-9:_-]+$"
+      },
+      "uniqueItems": true
+    },
+    "synthesizedNotes": {
+      "type": "array",
+      "items": {
+        "type": "string",
+        "minLength": 1
+      }
+    },
+    "supportedClaims": {
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/synthesisClaim"
+      }
+    },
+    "unsupportedClaims": {
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/synthesisClaim"
+      }
+    }
+  },
+  "$defs": {
+    "citation": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["url", "retrievedAt", "sourceType", "sourceRisk"],
+      "properties": {
+        "url": {
+          "type": "string",
+          "minLength": 1
+        },
+        "retrievedAt": {
+          "type": "string",
+          "pattern": "^\\d{4}-\\d{2}-\\d{2}T\\d{2}:\\d{2}:\\d{2}(?:\\.\\d+)?(?:Z|[+-]\\d{2}:\\d{2})$"
+        },
+        "sourceType": {
+          "type": "string",
+          "enum": ["fixture", "http", "playwright"]
+        },
+        "sourceRisk": {
+          "type": "string",
+          "enum": ["low", "medium", "hostile"]
+        },
+        "sourceLabel": {
+          "type": "string",
+          "minLength": 1
+        }
+      }
+    },
+    "synthesisClaim": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["version", "claimId", "statement", "status"],
+      "properties": {
+        "version": {
+          "const": "1.0.0"
+        },
+        "claimId": {
+          "type": "string",
+          "minLength": 1
+        },
+        "statement": {
+          "type": "string",
+          "minLength": 1
+        },
+        "status": {
+          "type": "string",
+          "enum": ["supported", "unsupported"]
+        },
+        "snapshotIds": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "pattern": "^snap_[a-zA-Z0-9_-]+$"
+          },
+          "uniqueItems": true
+        },
+        "supportRefs": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "pattern": "^r[a-zA-Z0-9:_-]+$"
+          },
+          "uniqueItems": true
+        },
+        "citations": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/citation"
+          }
+        }
+      }
+    }
+  }
+}

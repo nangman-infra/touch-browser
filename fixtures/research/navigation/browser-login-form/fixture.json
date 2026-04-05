@@ -1,0 +1,36 @@
+{
+  "id": "browser-login-form",
+  "title": "Browser-backed login form seed",
+  "category": "navigation",
+  "sourceUri": "fixture://research/navigation/browser-login-form",
+  "htmlPath": "fixtures/research/navigation/browser-login-form/index.html",
+  "expectedSnapshotPath": "fixtures/research/navigation/browser-login-form/expected-snapshot.json",
+  "expectedEvidencePath": "fixtures/research/navigation/browser-login-form/expected-evidence.json",
+  "risk": "low",
+  "expectations": {
+    "mustContainTexts": [
+      "Browser Login Form",
+      "Waiting for credentials",
+      "Sign in"
+    ],
+    "expectedKinds": ["heading", "text", "input", "button"],
+    "expectedCitationUrl": "fixture://research/navigation/browser-login-form",
+    "claimChecks": [
+      {
+        "id": "c1",
+        "statement": "The page contains a work email field.",
+        "expectedStatus": "supported"
+      },
+      {
+        "id": "c2",
+        "statement": "The page includes a Sign in button.",
+        "expectedStatus": "supported"
+      },
+      {
+        "id": "c3",
+        "statement": "The page starts with an authenticated dashboard.",
+        "expectedStatus": "unsupported"
+      }
+    ]
+  }
+}

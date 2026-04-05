@@ -1,0 +1,58 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "evidence-report.schema.json",
+  "title": "EvidenceReport",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "version",
+    "generatedAt",
+    "source",
+    "supportedClaims",
+    "unsupportedClaims"
+  ],
+  "properties": {
+    "version": {
+      "const": "1.0.0"
+    },
+    "generatedAt": {
+      "type": "string",
+      "pattern": "^\\d{4}-\\d{2}-\\d{2}T\\d{2}:\\d{2}:\\d{2}(?:\\.\\d+)?(?:Z|[+-]\\d{2}:\\d{2})$"
+    },
+    "source": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["sourceUrl", "sourceType", "sourceRisk"],
+      "properties": {
+        "sourceUrl": {
+          "type": "string",
+          "minLength": 1
+        },
+        "sourceType": {
+          "type": "string",
+          "enum": ["fixture", "http", "playwright"]
+        },
+        "sourceRisk": {
+          "type": "string",
+          "enum": ["low", "medium", "hostile"]
+        },
+        "sourceLabel": {
+          "type": "string",
+          "minLength": 1
+        }
+      }
+    },
+    "supportedClaims": {
+      "type": "array",
+      "items": {
+        "$ref": "evidence-block.schema.json"
+      }
+    },
+    "unsupportedClaims": {
+      "type": "array",
+      "items": {
+        "$ref": "unsupported-claim.schema.json"
+      }
+    }
+  }
+}

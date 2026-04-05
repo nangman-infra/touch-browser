@@ -1,0 +1,32 @@
+{
+  "id": "security-model",
+  "title": "Static docs security model page",
+  "category": "static-docs",
+  "sourceUri": "fixture://research/static-docs/security-model",
+  "htmlPath": "fixtures/research/static-docs/security-model/index.html",
+  "expectedSnapshotPath": "fixtures/research/static-docs/security-model/expected-snapshot.json",
+  "expectedEvidencePath": "fixtures/research/static-docs/security-model/expected-evidence.json",
+  "risk": "low",
+  "expectations": {
+    "mustContainTexts": ["Security Model", "policy state", "audit logs"],
+    "expectedKinds": ["heading", "text", "list", "link"],
+    "expectedCitationUrl": "fixture://research/static-docs/security-model",
+    "claimChecks": [
+      {
+        "id": "c1",
+        "statement": "The runtime separates page content, policy state, and action inputs into distinct channels.",
+        "expectedStatus": "supported"
+      },
+      {
+        "id": "c2",
+        "statement": "Replayable sessions emit audit logs that can be reviewed after each action.",
+        "expectedStatus": "supported"
+      },
+      {
+        "id": "c3",
+        "statement": "The security model includes automatic form submission.",
+        "expectedStatus": "unsupported"
+      }
+    ]
+  }
+}

@@ -1,0 +1,151 @@
+{
+  "version": "1.0.0",
+  "stableRefVersion": "1",
+  "source": {
+    "sourceUrl": "fixture://research/navigation/browser-follow-duplicate",
+    "sourceType": "fixture",
+    "title": "Browser Follow Duplicate"
+  },
+  "budget": {
+    "requestedTokens": 512,
+    "estimatedTokens": 40,
+    "emittedTokens": 40,
+    "truncated": false
+  },
+  "blocks": [
+    {
+      "version": "1.0.0",
+      "id": "b1",
+      "kind": "metadata",
+      "ref": "rhead:metadata:browser-follow-duplicate",
+      "role": "metadata",
+      "text": "Browser Follow Duplicate",
+      "attributes": {
+        "source": "title",
+        "tagName": "title",
+        "textLength": 24,
+        "zone": "head"
+      },
+      "evidence": {
+        "sourceUrl": "fixture://research/navigation/browser-follow-duplicate",
+        "sourceType": "fixture",
+        "domPathHint": "html > head"
+      }
+    },
+    {
+      "version": "1.0.0",
+      "id": "b2",
+      "kind": "heading",
+      "ref": "rmain:heading:browser-follow-duplicate",
+      "role": "content",
+      "text": "Browser Follow Duplicate",
+      "attributes": {
+        "level": 1,
+        "tagName": "h1",
+        "textLength": 24,
+        "zone": "main"
+      },
+      "evidence": {
+        "sourceUrl": "fixture://research/navigation/browser-follow-duplicate",
+        "sourceType": "fixture",
+        "domPathHint": "html > body > main"
+      }
+    },
+    {
+      "version": "1.0.0",
+      "id": "b3",
+      "kind": "text",
+      "ref": "rmain:text:follow-content",
+      "role": "content",
+      "text": "Select the correct Open docs link to continue the research flow.",
+      "attributes": {
+        "tagName": "p",
+        "textLength": 64,
+        "zone": "main"
+      },
+      "evidence": {
+        "sourceUrl": "fixture://research/navigation/browser-follow-duplicate",
+        "sourceType": "fixture",
+        "domPathHint": "html > body > main"
+      }
+    },
+    {
+      "version": "1.0.0",
+      "id": "b4",
+      "kind": "heading",
+      "ref": "rmain:heading:legacy-docs",
+      "role": "content",
+      "text": "Legacy docs",
+      "attributes": {
+        "level": 2,
+        "tagName": "h2",
+        "textLength": 11,
+        "zone": "main"
+      },
+      "evidence": {
+        "sourceUrl": "fixture://research/navigation/browser-follow-duplicate",
+        "sourceType": "fixture",
+        "domPathHint": "html > body > main > section"
+      }
+    },
+    {
+      "version": "1.0.0",
+      "id": "b5",
+      "kind": "link",
+      "ref": "rmain:link:docs",
+      "role": "content",
+      "text": "Open docs",
+      "attributes": {
+        "external": false,
+        "href": "#docs",
+        "tagName": "a",
+        "textLength": 9,
+        "zone": "main"
+      },
+      "evidence": {
+        "sourceUrl": "fixture://research/navigation/browser-follow-duplicate",
+        "sourceType": "fixture",
+        "domPathHint": "html > body > main > section"
+      }
+    },
+    {
+      "version": "1.0.0",
+      "id": "b6",
+      "kind": "heading",
+      "ref": "rmain:heading:current-docs",
+      "role": "content",
+      "text": "Current docs",
+      "attributes": {
+        "level": 2,
+        "tagName": "h2",
+        "textLength": 12,
+        "zone": "main"
+      },
+      "evidence": {
+        "sourceUrl": "fixture://research/navigation/browser-follow-duplicate",
+        "sourceType": "fixture",
+        "domPathHint": "html > body > main > section"
+      }
+    },
+    {
+      "version": "1.0.0",
+      "id": "b7",
+      "kind": "link",
+      "ref": "rmain:link:docs:2",
+      "role": "content",
+      "text": "Open docs",
+      "attributes": {
+        "external": false,
+        "href": "#docs",
+        "tagName": "a",
+        "textLength": 9,
+        "zone": "main"
+      },
+      "evidence": {
+        "sourceUrl": "fixture://research/navigation/browser-follow-duplicate",
+        "sourceType": "fixture",
+        "domPathHint": "html > body > main > section"
+      }
+    }
+  ]
+}

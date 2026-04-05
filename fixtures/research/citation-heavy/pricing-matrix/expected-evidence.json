@@ -1,0 +1,53 @@
+{
+  "version": "1.0.0",
+  "generatedAt": "2026-03-14T00:00:00+09:00",
+  "source": {
+    "sourceUrl": "fixture://research/citation-heavy/pricing-matrix",
+    "sourceType": "fixture",
+    "sourceRisk": "low",
+    "sourceLabel": "Pricing matrix summary"
+  },
+  "supportedClaims": [
+    {
+      "version": "1.0.0",
+      "claimId": "c1",
+      "statement": "Pricing Matrix lists Research at $49 per month and Enterprise as custom.",
+      "support": ["b3", "b4"],
+      "confidence": 0.95,
+      "citation": {
+        "url": "fixture://research/citation-heavy/pricing-matrix",
+        "retrievedAt": "2026-03-14T00:00:00+09:00",
+        "sourceType": "fixture",
+        "sourceRisk": "low",
+        "sourceLabel": "Pricing matrix summary"
+      }
+    },
+    {
+      "version": "1.0.0",
+      "claimId": "c2",
+      "statement": "Enterprise | Custom | Contact sales",
+      "support": ["b4", "b3"],
+      "confidence": 0.95,
+      "citation": {
+        "url": "fixture://research/citation-heavy/pricing-matrix",
+        "retrievedAt": "2026-03-14T00:00:00+09:00",
+        "sourceType": "fixture",
+        "sourceRisk": "low",
+        "sourceLabel": "Pricing matrix summary"
+      }
+    }
+  ],
+  "unsupportedClaims": [
+    {
+      "version": "1.0.0",
+      "claimId": "c3",
+      "statement": "The pricing matrix offers a free GPU tier.",
+      "reason": "insufficient-confidence",
+      "checkedBlockRefs": [
+        "rmain:table:tier-price-notes-research-49-5-seats-enterprise-",
+        "rmain:text:pricing-matrix-lists-research-at-49-per-month-an",
+        "rmain:heading:pricing-matrix"
+      ]
+    }
+  ]
+}

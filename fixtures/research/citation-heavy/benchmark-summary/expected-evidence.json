@@ -1,0 +1,53 @@
+{
+  "version": "1.0.0",
+  "generatedAt": "2026-03-14T00:00:00+09:00",
+  "source": {
+    "sourceUrl": "fixture://research/citation-heavy/benchmark-summary",
+    "sourceType": "fixture",
+    "sourceRisk": "low",
+    "sourceLabel": "Citation-heavy benchmark summary page"
+  },
+  "supportedClaims": [
+    {
+      "version": "1.0.0",
+      "claimId": "c1",
+      "statement": "The Core research suite reported citation precision of 97%.",
+      "support": ["b4", "b5"],
+      "confidence": 0.88,
+      "citation": {
+        "url": "fixture://research/citation-heavy/benchmark-summary",
+        "retrievedAt": "2026-03-14T00:00:00+09:00",
+        "sourceType": "fixture",
+        "sourceRisk": "low",
+        "sourceLabel": "Citation-heavy benchmark summary page"
+      }
+    },
+    {
+      "version": "1.0.0",
+      "claimId": "c2",
+      "statement": "The Hostile review suite reported recall of 91%.",
+      "support": ["b4"],
+      "confidence": 0.88,
+      "citation": {
+        "url": "fixture://research/citation-heavy/benchmark-summary",
+        "retrievedAt": "2026-03-14T00:00:00+09:00",
+        "sourceType": "fixture",
+        "sourceRisk": "low",
+        "sourceLabel": "Citation-heavy benchmark summary page"
+      }
+    }
+  ],
+  "unsupportedClaims": [
+    {
+      "version": "1.0.0",
+      "claimId": "c3",
+      "statement": "The benchmark announces a native mobile SDK launch.",
+      "reason": "insufficient-confidence",
+      "checkedBlockRefs": [
+        "rmain:text:the-internal-benchmark-compares-semantic-snapsho",
+        "rmain:heading:benchmark-summary",
+        "rhead:metadata:benchmark-summary"
+      ]
+    }
+  ]
+}

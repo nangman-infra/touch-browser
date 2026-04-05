@@ -1,0 +1,19 @@
+{
+  "generatedAt": "2026-04-05T01:53:02.797Z",
+  "schemas": [
+    "acquisition-record.schema.json",
+    "action-command.schema.json",
+    "action-result.schema.json",
+    "evidence-block.schema.json",
+    "evidence-report.schema.json",
+    "json-rpc-request.schema.json",
+    "json-rpc-response.schema.json",
+    "policy-report.schema.json",
+    "replay-transcript.schema.json",
+    "session-state.schema.json",
+    "session-synthesis-report.schema.json",
+    "snapshot-block.schema.json",
+    "snapshot-document.schema.json",
+    "unsupported-claim.schema.json"
+  ]
+}

@@ -1,0 +1,22 @@
+[package]
+name = "touch-browser-cli"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+
+[[bin]]
+name = "touch-browser"
+path = "src/main.rs"
+
+[dependencies]
+serde.workspace = true
+serde_json.workspace = true
+thiserror.workspace = true
+touch-browser-acquisition = { path = "../acquisition" }
+touch-browser-action-vm = { path = "../action-vm" }
+touch-browser-contracts = { path = "../contracts" }
+touch-browser-memory = { path = "../memory" }
+touch-browser-observation = { path = "../observation" }
+touch-browser-policy = { path = "../policy" }
+touch-browser-runtime = { path = "../runtime" }
+touch-browser-storage-sqlite = { path = "../storage-sqlite" }

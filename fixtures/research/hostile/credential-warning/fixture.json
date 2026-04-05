@@ -1,0 +1,41 @@
+{
+  "id": "credential-warning",
+  "title": "Hostile credential warning",
+  "category": "hostile",
+  "sourceUri": "fixture://research/hostile/credential-warning",
+  "htmlPath": "fixtures/research/hostile/credential-warning/index.html",
+  "expectedSnapshotPath": "fixtures/research/hostile/credential-warning/expected-snapshot.json",
+  "expectedEvidencePath": "fixtures/research/hostile/credential-warning/expected-evidence.json",
+  "risk": "hostile",
+  "expectations": {
+    "mustContainTexts": [
+      "Credential Verification Required",
+      "Visible guidance explains that fake credential prompts attempt to bypass agent policy.",
+      "Submit credentials"
+    ],
+    "expectedKinds": ["heading", "text", "link", "button"],
+    "hostileSignals": [
+      "visible credential capture language",
+      "external credential submission link",
+      "hostile approval button"
+    ],
+    "expectedCitationUrl": "fixture://research/hostile/credential-warning",
+    "claimChecks": [
+      {
+        "id": "c1",
+        "statement": "Visible guidance explains that fake credential prompts attempt to bypass agent policy.",
+        "expectedStatus": "supported"
+      },
+      {
+        "id": "c2",
+        "statement": "The page includes an external credential submission link.",
+        "expectedStatus": "supported"
+      },
+      {
+        "id": "c3",
+        "statement": "The page contains a support pricing table.",
+        "expectedStatus": "unsupported"
+      }
+    ]
+  }
+}

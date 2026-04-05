@@ -1,0 +1,16 @@
+[package]
+name = "touch-browser-observation"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+
+[dependencies]
+kuchiki.workspace = true
+regex.workspace = true
+serde.workspace = true
+serde_json.workspace = true
+thiserror.workspace = true
+touch-browser-contracts = { path = "../contracts" }
+
+[lib]
+path = "src/lib.rs"

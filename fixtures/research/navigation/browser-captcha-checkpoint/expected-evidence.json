@@ -1,0 +1,39 @@
+{
+  "version": "1.0.0",
+  "generatedAt": "2026-03-14T00:00:00+09:00",
+  "source": {
+    "sourceUrl": "fixture://research/navigation/browser-captcha-checkpoint",
+    "sourceType": "fixture",
+    "sourceRisk": "low",
+    "sourceLabel": "Browser CAPTCHA checkpoint seed"
+  },
+  "supportedClaims": [
+    {
+      "version": "1.0.0",
+      "claimId": "c1",
+      "statement": "Verify you are human before continuing to the research workspace.",
+      "support": ["b3"],
+      "confidence": 0.93,
+      "citation": {
+        "url": "fixture://research/navigation/browser-captcha-checkpoint",
+        "retrievedAt": "2026-03-14T00:00:00+09:00",
+        "sourceType": "fixture",
+        "sourceRisk": "low",
+        "sourceLabel": "Browser CAPTCHA checkpoint seed"
+      }
+    }
+  ],
+  "unsupportedClaims": [
+    {
+      "version": "1.0.0",
+      "claimId": "c2",
+      "statement": "The page already grants access to the workspace.",
+      "reason": "insufficient-confidence",
+      "checkedBlockRefs": [
+        "rmain:text:verify-you-are-human-before-continuing-to-the-re",
+        "rmain:form:challenge-form",
+        "rmain:input:human-checkbox"
+      ]
+    }
+  ]
+}

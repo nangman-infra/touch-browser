@@ -1,0 +1,36 @@
+{
+  "id": "browser-expand",
+  "title": "Browser-backed expand seed",
+  "category": "navigation",
+  "sourceUri": "fixture://research/navigation/browser-expand",
+  "htmlPath": "fixtures/research/navigation/browser-expand/index.html",
+  "expectedSnapshotPath": "fixtures/research/navigation/browser-expand/expected-snapshot.json",
+  "expectedEvidencePath": "fixtures/research/navigation/browser-expand/expected-evidence.json",
+  "risk": "low",
+  "expectations": {
+    "mustContainTexts": [
+      "Browser Expand",
+      "Expand hidden details",
+      "collapsed notes"
+    ],
+    "expectedKinds": ["heading", "text", "button"],
+    "expectedCitationUrl": "fixture://research/navigation/browser-expand",
+    "claimChecks": [
+      {
+        "id": "c1",
+        "statement": "The page asks the runtime to expand hidden details.",
+        "expectedStatus": "supported"
+      },
+      {
+        "id": "c2",
+        "statement": "The page includes an Expand details button.",
+        "expectedStatus": "supported"
+      },
+      {
+        "id": "c3",
+        "statement": "The page starts with a visible pricing table.",
+        "expectedStatus": "unsupported"
+      }
+    ]
+  }
+}

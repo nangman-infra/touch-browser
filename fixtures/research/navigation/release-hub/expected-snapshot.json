@@ -1,0 +1,113 @@
+{
+  "version": "1.0.0",
+  "stableRefVersion": "1",
+  "source": {
+    "sourceUrl": "fixture://research/navigation/release-hub",
+    "sourceType": "fixture",
+    "title": "Release Hub"
+  },
+  "budget": {
+    "requestedTokens": 512,
+    "estimatedTokens": 37,
+    "emittedTokens": 37,
+    "truncated": false
+  },
+  "blocks": [
+    {
+      "version": "1.0.0",
+      "id": "b1",
+      "kind": "metadata",
+      "ref": "rhead:metadata:release-hub",
+      "role": "metadata",
+      "text": "Release Hub",
+      "attributes": {
+        "source": "title",
+        "tagName": "title",
+        "textLength": 11,
+        "zone": "head"
+      },
+      "evidence": {
+        "sourceUrl": "fixture://research/navigation/release-hub",
+        "sourceType": "fixture",
+        "domPathHint": "html > head"
+      }
+    },
+    {
+      "version": "1.0.0",
+      "id": "b2",
+      "kind": "heading",
+      "ref": "rmain:heading:release-hub",
+      "role": "content",
+      "text": "Release Hub",
+      "attributes": {
+        "level": 1,
+        "tagName": "h1",
+        "textLength": 11,
+        "zone": "main"
+      },
+      "evidence": {
+        "sourceUrl": "fixture://research/navigation/release-hub",
+        "sourceType": "fixture",
+        "domPathHint": "html > body > main"
+      }
+    },
+    {
+      "version": "1.0.0",
+      "id": "b3",
+      "kind": "text",
+      "ref": "rmain:text:release-hub-groups-stable-beta-and-archived-rele",
+      "role": "content",
+      "text": "Release Hub groups stable, beta, and archived release tracks.",
+      "attributes": {
+        "tagName": "p",
+        "textLength": 61,
+        "zone": "main"
+      },
+      "evidence": {
+        "sourceUrl": "fixture://research/navigation/release-hub",
+        "sourceType": "fixture",
+        "domPathHint": "html > body > main"
+      }
+    },
+    {
+      "version": "1.0.0",
+      "id": "b4",
+      "kind": "list",
+      "ref": "rmain:list:stable-track-beta-track-archived-track",
+      "role": "content",
+      "text": "- Stable track - Beta track - Archived track",
+      "attributes": {
+        "items": 3,
+        "ordered": false,
+        "tagName": "ul",
+        "textLength": 44,
+        "zone": "main"
+      },
+      "evidence": {
+        "sourceUrl": "fixture://research/navigation/release-hub",
+        "sourceType": "fixture",
+        "domPathHint": "html > body > main"
+      }
+    },
+    {
+      "version": "1.0.0",
+      "id": "b5",
+      "kind": "link",
+      "ref": "rmain:link:releases",
+      "role": "content",
+      "text": "Release archive",
+      "attributes": {
+        "external": false,
+        "href": "/releases",
+        "tagName": "a",
+        "textLength": 15,
+        "zone": "main"
+      },
+      "evidence": {
+        "sourceUrl": "fixture://research/navigation/release-hub",
+        "sourceType": "fixture",
+        "domPathHint": "html > body > main"
+      }
+    }
+  ]
+}

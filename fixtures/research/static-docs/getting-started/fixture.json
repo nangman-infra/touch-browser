@@ -1,0 +1,36 @@
+{
+  "id": "getting-started",
+  "title": "Static docs getting started page",
+  "category": "static-docs",
+  "sourceUri": "fixture://research/static-docs/getting-started",
+  "htmlPath": "fixtures/research/static-docs/getting-started/index.html",
+  "expectedSnapshotPath": "fixtures/research/static-docs/getting-started/expected-snapshot.json",
+  "expectedEvidencePath": "fixtures/research/static-docs/getting-started/expected-evidence.json",
+  "risk": "low",
+  "expectations": {
+    "mustContainTexts": [
+      "Getting Started",
+      "semantic state for research agents",
+      "Capture a semantic snapshot."
+    ],
+    "expectedKinds": ["heading", "text", "list", "link"],
+    "expectedCitationUrl": "fixture://research/static-docs/getting-started",
+    "claimChecks": [
+      {
+        "id": "c1",
+        "statement": "Touch Browser compiles web pages into semantic state for research agents.",
+        "expectedStatus": "supported"
+      },
+      {
+        "id": "c2",
+        "statement": "Quickstart includes opening a research URL.",
+        "expectedStatus": "supported"
+      },
+      {
+        "id": "c3",
+        "statement": "Touch Browser includes a built-in checkout flow.",
+        "expectedStatus": "unsupported"
+      }
+    ]
+  }
+}

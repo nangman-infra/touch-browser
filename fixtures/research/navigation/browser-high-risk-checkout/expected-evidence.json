@@ -1,0 +1,39 @@
+{
+  "version": "1.0.0",
+  "generatedAt": "2026-03-14T00:00:00+09:00",
+  "source": {
+    "sourceUrl": "fixture://research/navigation/browser-high-risk-checkout",
+    "sourceType": "fixture",
+    "sourceRisk": "low",
+    "sourceLabel": "Browser high-risk checkout seed"
+  },
+  "supportedClaims": [
+    {
+      "version": "1.0.0",
+      "claimId": "c1",
+      "statement": "The page contains a Confirm purchase button.",
+      "support": ["b6", "b4"],
+      "confidence": 0.84,
+      "citation": {
+        "url": "fixture://research/navigation/browser-high-risk-checkout",
+        "retrievedAt": "2026-03-14T00:00:00+09:00",
+        "sourceType": "fixture",
+        "sourceRisk": "low",
+        "sourceLabel": "Browser high-risk checkout seed"
+      }
+    }
+  ],
+  "unsupportedClaims": [
+    {
+      "version": "1.0.0",
+      "claimId": "c2",
+      "statement": "The page is a read-only documentation article.",
+      "reason": "insufficient-confidence",
+      "checkedBlockRefs": [
+        "rmain:form:checkout-form",
+        "rmain:text:confirm-payment-to-place-order-for-the-research-",
+        "rmain:input:amount-text-149-00"
+      ]
+    }
+  ]
+}

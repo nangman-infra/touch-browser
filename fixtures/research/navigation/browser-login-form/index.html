@@ -1,0 +1,36 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <title>Browser Login Form</title>
+  </head>
+  <body>
+    <main>
+      <h1>Browser Login Form</h1>
+      <p id="login-status">Waiting for credentials.</p>
+      <form
+        onsubmit="event.preventDefault(); document.getElementById('login-status').textContent = 'Signed in draft session ready for review.';"
+      >
+        <label>
+          Work Email
+          <input
+            type="email"
+            name="email"
+            placeholder="agent@example.com"
+            oninput="document.getElementById('typed-email').textContent = this.value;"
+          />
+        </label>
+        <label>
+          Password
+          <input
+            type="password"
+            name="password"
+            placeholder="Enter password"
+          />
+        </label>
+        <p id="typed-email">No email typed yet.</p>
+        <button type="submit">Sign in</button>
+      </form>
+    </main>
+  </body>
+</html>

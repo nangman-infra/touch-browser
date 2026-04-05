@@ -1,0 +1,36 @@
+{
+  "id": "browser-follow",
+  "title": "Browser-backed follow seed",
+  "category": "navigation",
+  "sourceUri": "fixture://research/navigation/browser-follow",
+  "htmlPath": "fixtures/research/navigation/browser-follow/index.html",
+  "expectedSnapshotPath": "fixtures/research/navigation/browser-follow/expected-snapshot.json",
+  "expectedEvidencePath": "fixtures/research/navigation/browser-follow/expected-evidence.json",
+  "risk": "low",
+  "expectations": {
+    "mustContainTexts": [
+      "Browser Follow",
+      "Follow the Advanced guide link",
+      "research step"
+    ],
+    "expectedKinds": ["heading", "text", "link"],
+    "expectedCitationUrl": "fixture://research/navigation/browser-follow",
+    "claimChecks": [
+      {
+        "id": "c1",
+        "statement": "The page asks the runtime to follow the Advanced guide link.",
+        "expectedStatus": "supported"
+      },
+      {
+        "id": "c2",
+        "statement": "The page includes an Advanced guide link.",
+        "expectedStatus": "supported"
+      },
+      {
+        "id": "c3",
+        "statement": "The page contains a payment form.",
+        "expectedStatus": "unsupported"
+      }
+    ]
+  }
+}

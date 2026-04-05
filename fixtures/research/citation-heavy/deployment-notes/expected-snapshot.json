@@ -1,0 +1,113 @@
+{
+  "version": "1.0.0",
+  "stableRefVersion": "1",
+  "source": {
+    "sourceUrl": "fixture://research/citation-heavy/deployment-notes",
+    "sourceType": "fixture",
+    "title": "Deployment Notes"
+  },
+  "budget": {
+    "requestedTokens": 512,
+    "estimatedTokens": 56,
+    "emittedTokens": 56,
+    "truncated": false
+  },
+  "blocks": [
+    {
+      "version": "1.0.0",
+      "id": "b1",
+      "kind": "metadata",
+      "ref": "rhead:metadata:deployment-notes",
+      "role": "metadata",
+      "text": "Deployment Notes",
+      "attributes": {
+        "source": "title",
+        "tagName": "title",
+        "textLength": 16,
+        "zone": "head"
+      },
+      "evidence": {
+        "sourceUrl": "fixture://research/citation-heavy/deployment-notes",
+        "sourceType": "fixture",
+        "domPathHint": "html > head"
+      }
+    },
+    {
+      "version": "1.0.0",
+      "id": "b2",
+      "kind": "heading",
+      "ref": "rmain:heading:deployment-notes",
+      "role": "content",
+      "text": "Deployment Notes",
+      "attributes": {
+        "level": 1,
+        "tagName": "h1",
+        "textLength": 16,
+        "zone": "main"
+      },
+      "evidence": {
+        "sourceUrl": "fixture://research/citation-heavy/deployment-notes",
+        "sourceType": "fixture",
+        "domPathHint": "html > body > main"
+      }
+    },
+    {
+      "version": "1.0.0",
+      "id": "b3",
+      "kind": "text",
+      "ref": "rmain:text:deployment-notes-record-that-blue-green-rollouts",
+      "role": "content",
+      "text": "Deployment notes record that blue-green rollouts cut recovery time to 8 minutes.",
+      "attributes": {
+        "tagName": "p",
+        "textLength": 80,
+        "zone": "main"
+      },
+      "evidence": {
+        "sourceUrl": "fixture://research/citation-heavy/deployment-notes",
+        "sourceType": "fixture",
+        "domPathHint": "html > body > main"
+      }
+    },
+    {
+      "version": "1.0.0",
+      "id": "b4",
+      "kind": "table",
+      "ref": "rmain:table:stage-recovery-mode-rollback-8-minutes-automatic",
+      "role": "content",
+      "text": "Stage | Recovery | Mode\nRollback | 8 minutes | Automatic\nAudit review | 15 minutes | Manual",
+      "attributes": {
+        "columns": 3,
+        "rows": 3,
+        "tagName": "table",
+        "textLength": 91,
+        "zone": "main"
+      },
+      "evidence": {
+        "sourceUrl": "fixture://research/citation-heavy/deployment-notes",
+        "sourceType": "fixture",
+        "domPathHint": "html > body > main"
+      }
+    },
+    {
+      "version": "1.0.0",
+      "id": "b5",
+      "kind": "link",
+      "ref": "rmain:link:deployments",
+      "role": "content",
+      "text": "Deployment archive",
+      "attributes": {
+        "external": false,
+        "href": "/deployments",
+        "tagName": "a",
+        "textLength": 18,
+        "zone": "main"
+      },
+      "evidence": {
+        "sourceUrl": "fixture://research/citation-heavy/deployment-notes",
+        "sourceType": "fixture",
+        "domPathHint": "html > body > main"
+      }
+    }
+  ]
+}

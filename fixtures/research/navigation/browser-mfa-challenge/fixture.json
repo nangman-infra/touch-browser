@@ -1,0 +1,31 @@
+{
+  "id": "browser-mfa-challenge",
+  "title": "Browser MFA challenge seed",
+  "category": "navigation",
+  "sourceUri": "fixture://research/navigation/browser-mfa-challenge",
+  "htmlPath": "fixtures/research/navigation/browser-mfa-challenge/index.html",
+  "expectedSnapshotPath": "fixtures/research/navigation/browser-mfa-challenge/expected-snapshot.json",
+  "expectedEvidencePath": "fixtures/research/navigation/browser-mfa-challenge/expected-evidence.json",
+  "risk": "low",
+  "expectations": {
+    "mustContainTexts": [
+      "Two-factor verification",
+      "verification code",
+      "Waiting for verification code"
+    ],
+    "expectedKinds": ["heading", "text", "form", "input", "button"],
+    "expectedCitationUrl": "fixture://research/navigation/browser-mfa-challenge",
+    "claimChecks": [
+      {
+        "id": "c1",
+        "statement": "The page asks for a verification code.",
+        "expectedStatus": "supported"
+      },
+      {
+        "id": "c2",
+        "statement": "The page already shows a signed-in dashboard.",
+        "expectedStatus": "unsupported"
+      }
+    ]
+  }
+}

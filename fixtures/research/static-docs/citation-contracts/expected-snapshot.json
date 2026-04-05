@@ -1,0 +1,113 @@
+{
+  "version": "1.0.0",
+  "stableRefVersion": "1",
+  "source": {
+    "sourceUrl": "fixture://research/static-docs/citation-contracts",
+    "sourceType": "fixture",
+    "title": "Citation Contracts"
+  },
+  "budget": {
+    "requestedTokens": 512,
+    "estimatedTokens": 65,
+    "emittedTokens": 65,
+    "truncated": false
+  },
+  "blocks": [
+    {
+      "version": "1.0.0",
+      "id": "b1",
+      "kind": "metadata",
+      "ref": "rhead:metadata:citation-contracts",
+      "role": "metadata",
+      "text": "Citation Contracts",
+      "attributes": {
+        "source": "title",
+        "tagName": "title",
+        "textLength": 18,
+        "zone": "head"
+      },
+      "evidence": {
+        "sourceUrl": "fixture://research/static-docs/citation-contracts",
+        "sourceType": "fixture",
+        "domPathHint": "html > head"
+      }
+    },
+    {
+      "version": "1.0.0",
+      "id": "b2",
+      "kind": "heading",
+      "ref": "rmain:heading:citation-contracts",
+      "role": "content",
+      "text": "Citation Contracts",
+      "attributes": {
+        "level": 1,
+        "tagName": "h1",
+        "textLength": 18,
+        "zone": "main"
+      },
+      "evidence": {
+        "sourceUrl": "fixture://research/static-docs/citation-contracts",
+        "sourceType": "fixture",
+        "domPathHint": "html > body > main"
+      }
+    },
+    {
+      "version": "1.0.0",
+      "id": "b3",
+      "kind": "text",
+      "ref": "rmain:text:citation-contracts-require-supported-claims-to-c",
+      "role": "content",
+      "text": "Citation Contracts require supported claims to carry a source URL and retrieved timestamp.",
+      "attributes": {
+        "tagName": "p",
+        "textLength": 90,
+        "zone": "main"
+      },
+      "evidence": {
+        "sourceUrl": "fixture://research/static-docs/citation-contracts",
+        "sourceType": "fixture",
+        "domPathHint": "html > body > main"
+      }
+    },
+    {
+      "version": "1.0.0",
+      "id": "b4",
+      "kind": "list",
+      "ref": "rmain:list:support-refs-point-to-stable-snapshot-blocks-uns",
+      "role": "content",
+      "text": "- Support refs point to stable snapshot blocks. - Unsupported claims keep checked refs for audit.",
+      "attributes": {
+        "items": 2,
+        "ordered": false,
+        "tagName": "ul",
+        "textLength": 97,
+        "zone": "main"
+      },
+      "evidence": {
+        "sourceUrl": "fixture://research/static-docs/citation-contracts",
+        "sourceType": "fixture",
+        "domPathHint": "html > body > main"
+      }
+    },
+    {
+      "version": "1.0.0",
+      "id": "b5",
+      "kind": "link",
+      "ref": "rmain:link:citation-contracts",
+      "role": "content",
+      "text": "Citation contract reference",
+      "attributes": {
+        "external": false,
+        "href": "/citation-contracts",
+        "tagName": "a",
+        "textLength": 27,
+        "zone": "main"
+      },
+      "evidence": {
+        "sourceUrl": "fixture://research/static-docs/citation-contracts",
+        "sourceType": "fixture",
+        "domPathHint": "html > body > main"
+      }
+    }
+  ]
+}

@@ -1,0 +1,111 @@
+{
+  "version": "1.0.0",
+  "stableRefVersion": "1",
+  "source": {
+    "sourceUrl": "fixture://research/hostile/fake-upgrade-modal",
+    "sourceType": "fixture",
+    "title": "Critical Browser Upgrade"
+  },
+  "budget": {
+    "requestedTokens": 512,
+    "estimatedTokens": 38,
+    "emittedTokens": 38,
+    "truncated": false
+  },
+  "blocks": [
+    {
+      "version": "1.0.0",
+      "id": "b1",
+      "kind": "metadata",
+      "ref": "rhead:metadata:critical-browser-upgrade",
+      "role": "metadata",
+      "text": "Critical Browser Upgrade",
+      "attributes": {
+        "source": "title",
+        "tagName": "title",
+        "textLength": 24,
+        "zone": "head"
+      },
+      "evidence": {
+        "sourceUrl": "fixture://research/hostile/fake-upgrade-modal",
+        "sourceType": "fixture",
+        "domPathHint": "html > head"
+      }
+    },
+    {
+      "version": "1.0.0",
+      "id": "b2",
+      "kind": "heading",
+      "ref": "rmain:heading:critical-browser-upgrade",
+      "role": "content",
+      "text": "Critical Browser Upgrade",
+      "attributes": {
+        "level": 1,
+        "tagName": "h1",
+        "textLength": 24,
+        "zone": "main"
+      },
+      "evidence": {
+        "sourceUrl": "fixture://research/hostile/fake-upgrade-modal",
+        "sourceType": "fixture",
+        "domPathHint": "html > body > main"
+      }
+    },
+    {
+      "version": "1.0.0",
+      "id": "b3",
+      "kind": "text",
+      "ref": "rmain:text:visible-analysis-warns-that-fake-upgrade-modals-",
+      "role": "content",
+      "text": "Visible analysis warns that fake upgrade modals mimic browser trust signals.",
+      "attributes": {
+        "tagName": "p",
+        "textLength": 76,
+        "zone": "main"
+      },
+      "evidence": {
+        "sourceUrl": "fixture://research/hostile/fake-upgrade-modal",
+        "sourceType": "fixture",
+        "domPathHint": "html > body > main"
+      }
+    },
+    {
+      "version": "1.0.0",
+      "id": "b4",
+      "kind": "link",
+      "ref": "rmain:link:https-malicious-example-upgrade",
+      "role": "cta",
+      "text": "Install patch",
+      "attributes": {
+        "external": true,
+        "href": "https://malicious.example/upgrade",
+        "tagName": "a",
+        "textLength": 13,
+        "zone": "main"
+      },
+      "evidence": {
+        "sourceUrl": "fixture://research/hostile/fake-upgrade-modal",
+        "sourceType": "fixture",
+        "domPathHint": "html > body > main"
+      }
+    },
+    {
+      "version": "1.0.0",
+      "id": "b5",
+      "kind": "button",
+      "ref": "rmain:button:upgrade-now",
+      "role": "form-control",
+      "text": "Upgrade now",
+      "attributes": {
+        "tagName": "button",
+        "textLength": 11,
+        "zone": "main"
+      },
+      "evidence": {
+        "sourceUrl": "fixture://research/hostile/fake-upgrade-modal",
+        "sourceType": "fixture",
+        "domPathHint": "html > body > main"
+      }
+    }
+  ]
+}

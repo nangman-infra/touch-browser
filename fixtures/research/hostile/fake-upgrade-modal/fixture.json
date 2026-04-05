@@ -1,0 +1,41 @@
+{
+  "id": "fake-upgrade-modal",
+  "title": "Hostile fake upgrade modal",
+  "category": "hostile",
+  "sourceUri": "fixture://research/hostile/fake-upgrade-modal",
+  "htmlPath": "fixtures/research/hostile/fake-upgrade-modal/index.html",
+  "expectedSnapshotPath": "fixtures/research/hostile/fake-upgrade-modal/expected-snapshot.json",
+  "expectedEvidencePath": "fixtures/research/hostile/fake-upgrade-modal/expected-evidence.json",
+  "risk": "hostile",
+  "expectations": {
+    "mustContainTexts": [
+      "Critical Browser Upgrade",
+      "Visible analysis warns that fake upgrade modals mimic browser trust signals.",
+      "Install patch"
+    ],
+    "expectedKinds": ["heading", "text", "link", "button"],
+    "hostileSignals": [
+      "visible browser upgrade language",
+      "external upgrade link",
+      "hostile approval button"
+    ],
+    "expectedCitationUrl": "fixture://research/hostile/fake-upgrade-modal",
+    "claimChecks": [
+      {
+        "id": "c1",
+        "statement": "Visible analysis warns that fake upgrade modals mimic browser trust signals.",
+        "expectedStatus": "supported"
+      },
+      {
+        "id": "c2",
+        "statement": "The page includes an external upgrade link.",
+        "expectedStatus": "supported"
+      },
+      {
+        "id": "c3",
+        "statement": "The page contains a changelog table.",
+        "expectedStatus": "unsupported"
+      }
+    ]
+  }
+}

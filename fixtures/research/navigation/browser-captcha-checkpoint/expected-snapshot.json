@@ -1,0 +1,148 @@
+{
+  "version": "1.0.0",
+  "stableRefVersion": "1",
+  "source": {
+    "sourceUrl": "fixture://research/navigation/browser-captcha-checkpoint",
+    "sourceType": "fixture",
+    "title": "Browser CAPTCHA Checkpoint"
+  },
+  "budget": {
+    "requestedTokens": 512,
+    "estimatedTokens": 45,
+    "emittedTokens": 45,
+    "truncated": false
+  },
+  "blocks": [
+    {
+      "version": "1.0.0",
+      "id": "b1",
+      "kind": "metadata",
+      "ref": "rhead:metadata:browser-captcha-checkpoint",
+      "role": "metadata",
+      "text": "Browser CAPTCHA Checkpoint",
+      "attributes": {
+        "source": "title",
+        "tagName": "title",
+        "textLength": 26,
+        "zone": "head"
+      },
+      "evidence": {
+        "sourceUrl": "fixture://research/navigation/browser-captcha-checkpoint",
+        "sourceType": "fixture",
+        "domPathHint": "html > head"
+      }
+    },
+    {
+      "version": "1.0.0",
+      "id": "b2",
+      "kind": "heading",
+      "ref": "rmain:heading:security-checkpoint",
+      "role": "content",
+      "text": "Security checkpoint",
+      "attributes": {
+        "level": 1,
+        "tagName": "h1",
+        "textLength": 19,
+        "zone": "main"
+      },
+      "evidence": {
+        "sourceUrl": "fixture://research/navigation/browser-captcha-checkpoint",
+        "sourceType": "fixture",
+        "domPathHint": "html > body > main"
+      }
+    },
+    {
+      "version": "1.0.0",
+      "id": "b3",
+      "kind": "text",
+      "ref": "rmain:text:verify-you-are-human-before-continuing-to-the-re",
+      "role": "content",
+      "text": "Verify you are human before continuing to the research workspace.",
+      "attributes": {
+        "tagName": "p",
+        "textLength": 65,
+        "zone": "main"
+      },
+      "evidence": {
+        "sourceUrl": "fixture://research/navigation/browser-captcha-checkpoint",
+        "sourceType": "fixture",
+        "domPathHint": "html > body > main"
+      }
+    },
+    {
+      "version": "1.0.0",
+      "id": "b4",
+      "kind": "form",
+      "ref": "rmain:form:challenge-form",
+      "role": "form-control",
+      "text": "I am human Continue",
+      "attributes": {
+        "controls": 2,
+        "tagName": "form",
+        "textLength": 19,
+        "zone": "main"
+      },
+      "evidence": {
+        "sourceUrl": "fixture://research/navigation/browser-captcha-checkpoint",
+        "sourceType": "fixture",
+        "domPathHint": "html > body > main"
+      }
+    },
+    {
+      "version": "1.0.0",
+      "id": "b5",
+      "kind": "input",
+      "ref": "rmain:input:human-checkbox",
+      "role": "form-control",
+      "text": "human checkbox",
+      "attributes": {
+        "inputType": "checkbox",
+        "name": "human",
+        "tagName": "input",
+        "textLength": 14,
+        "zone": "main"
+      },
+      "evidence": {
+        "sourceUrl": "fixture://research/navigation/browser-captcha-checkpoint",
+        "sourceType": "fixture",
+        "domPathHint": "html > body > main > form > label"
+      }
+    },
+    {
+      "version": "1.0.0",
+      "id": "b6",
+      "kind": "button",
+      "ref": "rmain:button:continue",
+      "role": "form-control",
+      "text": "Continue",
+      "attributes": {
+        "tagName": "button",
+        "textLength": 8,
+        "zone": "main"
+      },
+      "evidence": {
+        "sourceUrl": "fixture://research/navigation/browser-captcha-checkpoint",
+        "sourceType": "fixture",
+        "domPathHint": "html > body > main > form"
+      }
+    },
+    {
+      "version": "1.0.0",
+      "id": "b7",
+      "kind": "text",
+      "ref": "rmain:text:status",
+      "role": "content",
+      "text": "Challenge pending.",
+      "attributes": {
+        "tagName": "p",
+        "textLength": 18,
+        "zone": "main"
+      },
+      "evidence": {
+        "sourceUrl": "fixture://research/navigation/browser-captcha-checkpoint",
+        "sourceType": "fixture",
+        "domPathHint": "html > body > main"
+      }
+    }
+  ]
+}

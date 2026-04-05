@@ -1,0 +1,36 @@
+{
+  "id": "cache-strategy",
+  "title": "Static docs cache strategy page",
+  "category": "static-docs",
+  "sourceUri": "fixture://research/static-docs/cache-strategy",
+  "htmlPath": "fixtures/research/static-docs/cache-strategy/index.html",
+  "expectedSnapshotPath": "fixtures/research/static-docs/cache-strategy/expected-snapshot.json",
+  "expectedEvidencePath": "fixtures/research/static-docs/cache-strategy/expected-evidence.json",
+  "risk": "low",
+  "expectations": {
+    "mustContainTexts": [
+      "Cache Strategy",
+      "final redirected URLs as cache aliases",
+      "Reject unsupported content types"
+    ],
+    "expectedKinds": ["heading", "text", "list"],
+    "expectedCitationUrl": "fixture://research/static-docs/cache-strategy",
+    "claimChecks": [
+      {
+        "id": "c1",
+        "statement": "The acquisition layer stores requested URLs and final redirected URLs as cache aliases.",
+        "expectedStatus": "supported"
+      },
+      {
+        "id": "c2",
+        "statement": "The docs recommend rejecting unsupported content types before snapshot compilation.",
+        "expectedStatus": "supported"
+      },
+      {
+        "id": "c3",
+        "statement": "The runtime requires a permanent browser daemon to read static pages.",
+        "expectedStatus": "unsupported"
+      }
+    ]
+  }
+}

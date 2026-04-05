@@ -1,0 +1,172 @@
+{
+  "version": "1.0.0",
+  "stableRefVersion": "1",
+  "source": {
+    "sourceUrl": "fixture://research/static-docs/getting-started",
+    "sourceType": "fixture",
+    "title": "Touch Browser Docs - Getting Started"
+  },
+  "budget": {
+    "requestedTokens": 512,
+    "estimatedTokens": 59,
+    "emittedTokens": 59,
+    "truncated": false
+  },
+  "blocks": [
+    {
+      "version": "1.0.0",
+      "id": "b1",
+      "kind": "metadata",
+      "ref": "rhead:metadata:touch-browser-docs-getting-started",
+      "role": "metadata",
+      "text": "Touch Browser Docs - Getting Started",
+      "attributes": {
+        "source": "title",
+        "tagName": "title",
+        "textLength": 36,
+        "zone": "head"
+      },
+      "evidence": {
+        "sourceUrl": "fixture://research/static-docs/getting-started",
+        "sourceType": "fixture",
+        "domPathHint": "html > head"
+      }
+    },
+    {
+      "version": "1.0.0",
+      "id": "b2",
+      "kind": "link",
+      "ref": "rnav:link:docs",
+      "role": "primary-nav",
+      "text": "Docs",
+      "attributes": {
+        "external": false,
+        "href": "/docs",
+        "tagName": "a",
+        "textLength": 4,
+        "zone": "nav"
+      },
+      "evidence": {
+        "sourceUrl": "fixture://research/static-docs/getting-started",
+        "sourceType": "fixture",
+        "domPathHint": "html > body > nav"
+      }
+    },
+    {
+      "version": "1.0.0",
+      "id": "b3",
+      "kind": "link",
+      "ref": "rnav:link:pricing",
+      "role": "primary-nav",
+      "text": "Pricing",
+      "attributes": {
+        "external": false,
+        "href": "/pricing",
+        "tagName": "a",
+        "textLength": 7,
+        "zone": "nav"
+      },
+      "evidence": {
+        "sourceUrl": "fixture://research/static-docs/getting-started",
+        "sourceType": "fixture",
+        "domPathHint": "html > body > nav"
+      }
+    },
+    {
+      "version": "1.0.0",
+      "id": "b4",
+      "kind": "link",
+      "ref": "rnav:link:api",
+      "role": "primary-nav",
+      "text": "API",
+      "attributes": {
+        "external": false,
+        "href": "/api",
+        "tagName": "a",
+        "textLength": 3,
+        "zone": "nav"
+      },
+      "evidence": {
+        "sourceUrl": "fixture://research/static-docs/getting-started",
+        "sourceType": "fixture",
+        "domPathHint": "html > body > nav"
+      }
+    },
+    {
+      "version": "1.0.0",
+      "id": "b5",
+      "kind": "heading",
+      "ref": "rmain:heading:getting-started",
+      "role": "content",
+      "text": "Getting Started",
+      "attributes": {
+        "level": 1,
+        "tagName": "h1",
+        "textLength": 15,
+        "zone": "main"
+      },
+      "evidence": {
+        "sourceUrl": "fixture://research/static-docs/getting-started",
+        "sourceType": "fixture",
+        "domPathHint": "html > body > main"
+      }
+    },
+    {
+      "version": "1.0.0",
+      "id": "b6",
+      "kind": "text",
+      "ref": "rmain:text:touch-browser-compiles-web-pages-into-semantic-s",
+      "role": "content",
+      "text": "Touch Browser compiles web pages into semantic state for research agents.",
+      "attributes": {
+        "tagName": "p",
+        "textLength": 73,
+        "zone": "main"
+      },
+      "evidence": {
+        "sourceUrl": "fixture://research/static-docs/getting-started",
+        "sourceType": "fixture",
+        "domPathHint": "html > body > main"
+      }
+    },
+    {
+      "version": "1.0.0",
+      "id": "b7",
+      "kind": "heading",
+      "ref": "rmain:heading:quickstart",
+      "role": "content",
+      "text": "Quickstart",
+      "attributes": {
+        "level": 2,
+        "tagName": "h2",
+        "textLength": 10,
+        "zone": "main"
+      },
+      "evidence": {
+        "sourceUrl": "fixture://research/static-docs/getting-started",
+        "sourceType": "fixture",
+        "domPathHint": "html > body > main"
+      }
+    },
+    {
+      "version": "1.0.0",
+      "id": "b8",
+      "kind": "list",
+      "ref": "rmain:list:1-install-the-runtime-2-open-a-research-url-3-ca",
+      "role": "content",
+      "text": "1. Install the runtime. 2. Open a research URL. 3. Capture a semantic snapshot.",
+      "attributes": {
+        "items": 3,
+        "ordered": true,
+        "tagName": "ol",
+        "textLength": 79,
+        "zone": "main"
+      },
+      "evidence": {
+        "sourceUrl": "fixture://research/static-docs/getting-started",
+        "sourceType": "fixture",
+        "domPathHint": "html > body > main"
+      }
+    }
+  ]
+}

@@ -1,0 +1,93 @@
+{
+  "version": "1.0.0",
+  "stableRefVersion": "1",
+  "source": {
+    "sourceUrl": "fixture://research/navigation/browser-follow",
+    "sourceType": "fixture",
+    "title": "Browser Follow"
+  },
+  "budget": {
+    "requestedTokens": 512,
+    "estimatedTokens": 28,
+    "emittedTokens": 28,
+    "truncated": false
+  },
+  "blocks": [
+    {
+      "version": "1.0.0",
+      "id": "b1",
+      "kind": "metadata",
+      "ref": "rhead:metadata:browser-follow",
+      "role": "metadata",
+      "text": "Browser Follow",
+      "attributes": {
+        "source": "title",
+        "tagName": "title",
+        "textLength": 14,
+        "zone": "head"
+      },
+      "evidence": {
+        "sourceUrl": "fixture://research/navigation/browser-follow",
+        "sourceType": "fixture",
+        "domPathHint": "html > head"
+      }
+    },
+    {
+      "version": "1.0.0",
+      "id": "b2",
+      "kind": "heading",
+      "ref": "rmain:heading:browser-follow",
+      "role": "content",
+      "text": "Browser Follow",
+      "attributes": {
+        "level": 1,
+        "tagName": "h1",
+        "textLength": 14,
+        "zone": "main"
+      },
+      "evidence": {
+        "sourceUrl": "fixture://research/navigation/browser-follow",
+        "sourceType": "fixture",
+        "domPathHint": "html > body > main"
+      }
+    },
+    {
+      "version": "1.0.0",
+      "id": "b3",
+      "kind": "text",
+      "ref": "rmain:text:follow-content",
+      "role": "content",
+      "text": "Follow the Advanced guide link to reveal the next research step.",
+      "attributes": {
+        "tagName": "p",
+        "textLength": 64,
+        "zone": "main"
+      },
+      "evidence": {
+        "sourceUrl": "fixture://research/navigation/browser-follow",
+        "sourceType": "fixture",
+        "domPathHint": "html > body > main"
+      }
+    },
+    {
+      "version": "1.0.0",
+      "id": "b4",
+      "kind": "link",
+      "ref": "rmain:link:advanced",
+      "role": "content",
+      "text": "Advanced guide",
+      "attributes": {
+        "external": false,
+        "href": "#advanced",
+        "tagName": "a",
+        "textLength": 14,
+        "zone": "main"
+      },
+      "evidence": {
+        "sourceUrl": "fixture://research/navigation/browser-follow",
+        "sourceType": "fixture",
+        "domPathHint": "html > body > main"
+      }
+    }
+  ]
+}

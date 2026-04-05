@@ -1,0 +1,23 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <title>Browser Pagination</title>
+  </head>
+  <body>
+    <main>
+      <h1>Browser Pagination</h1>
+      <p id="page-label">Page 1</p>
+      <p id="page-content">
+        Page 1 collects the first batch of release highlights.
+      </p>
+      <button
+        type="button"
+        data-direction="next"
+        onclick="document.getElementById('page-label').textContent = 'Page 2'; document.getElementById('page-content').textContent = 'Page 2 reveals the next batch of release highlights.'; this.remove();"
+      >
+        Next
+      </button>
+    </main>
+  </body>
+</html>

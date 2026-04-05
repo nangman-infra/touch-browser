@@ -1,0 +1,153 @@
+{
+  "version": "1.0.0",
+  "stableRefVersion": "1",
+  "source": {
+    "sourceUrl": "fixture://research/navigation/docs-switcher",
+    "sourceType": "fixture",
+    "title": "Docs Switcher"
+  },
+  "budget": {
+    "requestedTokens": 512,
+    "estimatedTokens": 58,
+    "emittedTokens": 58,
+    "truncated": false
+  },
+  "blocks": [
+    {
+      "version": "1.0.0",
+      "id": "b1",
+      "kind": "metadata",
+      "ref": "rhead:metadata:docs-switcher",
+      "role": "metadata",
+      "text": "Docs Switcher",
+      "attributes": {
+        "source": "title",
+        "tagName": "title",
+        "textLength": 13,
+        "zone": "head"
+      },
+      "evidence": {
+        "sourceUrl": "fixture://research/navigation/docs-switcher",
+        "sourceType": "fixture",
+        "domPathHint": "html > head"
+      }
+    },
+    {
+      "version": "1.0.0",
+      "id": "b2",
+      "kind": "heading",
+      "ref": "rmain:heading:docs-switcher",
+      "role": "content",
+      "text": "Docs Switcher",
+      "attributes": {
+        "level": 1,
+        "tagName": "h1",
+        "textLength": 13,
+        "zone": "main"
+      },
+      "evidence": {
+        "sourceUrl": "fixture://research/navigation/docs-switcher",
+        "sourceType": "fixture",
+        "domPathHint": "html > body > main"
+      }
+    },
+    {
+      "version": "1.0.0",
+      "id": "b3",
+      "kind": "text",
+      "ref": "rmain:text:docs-switcher-links-architecture-policy-and-repl",
+      "role": "content",
+      "text": "Docs Switcher links architecture, policy, and replay references from one index.",
+      "attributes": {
+        "tagName": "p",
+        "textLength": 79,
+        "zone": "main"
+      },
+      "evidence": {
+        "sourceUrl": "fixture://research/navigation/docs-switcher",
+        "sourceType": "fixture",
+        "domPathHint": "html > body > main"
+      }
+    },
+    {
+      "version": "1.0.0",
+      "id": "b4",
+      "kind": "list",
+      "ref": "rmain:list:architecture-reference-policy-reference-replay-r",
+      "role": "content",
+      "text": "- Architecture reference - Policy reference - Replay reference",
+      "attributes": {
+        "items": 3,
+        "ordered": false,
+        "tagName": "ul",
+        "textLength": 62,
+        "zone": "main"
+      },
+      "evidence": {
+        "sourceUrl": "fixture://research/navigation/docs-switcher",
+        "sourceType": "fixture",
+        "domPathHint": "html > body > main"
+      }
+    },
+    {
+      "version": "1.0.0",
+      "id": "b5",
+      "kind": "link",
+      "ref": "rmain:link:architecture",
+      "role": "content",
+      "text": "Architecture reference",
+      "attributes": {
+        "external": false,
+        "href": "/architecture",
+        "tagName": "a",
+        "textLength": 22,
+        "zone": "main"
+      },
+      "evidence": {
+        "sourceUrl": "fixture://research/navigation/docs-switcher",
+        "sourceType": "fixture",
+        "domPathHint": "html > body > main > ul > li"
+      }
+    },
+    {
+      "version": "1.0.0",
+      "id": "b6",
+      "kind": "link",
+      "ref": "rmain:link:policy",
+      "role": "content",
+      "text": "Policy reference",
+      "attributes": {
+        "external": false,
+        "href": "/policy",
+        "tagName": "a",
+        "textLength": 16,
+        "zone": "main"
+      },
+      "evidence": {
+        "sourceUrl": "fixture://research/navigation/docs-switcher",
+        "sourceType": "fixture",
+        "domPathHint": "html > body > main > ul > li"
+      }
+    },
+    {
+      "version": "1.0.0",
+      "id": "b7",
+      "kind": "link",
+      "ref": "rmain:link:replay",
+      "role": "content",
+      "text": "Replay reference",
+      "attributes": {
+        "external": false,
+        "href": "/replay",
+        "tagName": "a",
+        "textLength": 16,
+        "zone": "main"
+      },
+      "evidence": {
+        "sourceUrl": "fixture://research/navigation/docs-switcher",
+        "sourceType": "fixture",
+        "domPathHint": "html > body > main > ul > li"
+      }
+    }
+  ]
+}

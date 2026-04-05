@@ -1,0 +1,113 @@
+{
+  "version": "1.0.0",
+  "stableRefVersion": "1",
+  "source": {
+    "sourceUrl": "fixture://research/citation-heavy/pricing-matrix",
+    "sourceType": "fixture",
+    "title": "Pricing Matrix"
+  },
+  "budget": {
+    "requestedTokens": 512,
+    "estimatedTokens": 53,
+    "emittedTokens": 53,
+    "truncated": false
+  },
+  "blocks": [
+    {
+      "version": "1.0.0",
+      "id": "b1",
+      "kind": "metadata",
+      "ref": "rhead:metadata:pricing-matrix",
+      "role": "metadata",
+      "text": "Pricing Matrix",
+      "attributes": {
+        "source": "title",
+        "tagName": "title",
+        "textLength": 14,
+        "zone": "head"
+      },
+      "evidence": {
+        "sourceUrl": "fixture://research/citation-heavy/pricing-matrix",
+        "sourceType": "fixture",
+        "domPathHint": "html > head"
+      }
+    },
+    {
+      "version": "1.0.0",
+      "id": "b2",
+      "kind": "heading",
+      "ref": "rmain:heading:pricing-matrix",
+      "role": "content",
+      "text": "Pricing Matrix",
+      "attributes": {
+        "level": 1,
+        "tagName": "h1",
+        "textLength": 14,
+        "zone": "main"
+      },
+      "evidence": {
+        "sourceUrl": "fixture://research/citation-heavy/pricing-matrix",
+        "sourceType": "fixture",
+        "domPathHint": "html > body > main"
+      }
+    },
+    {
+      "version": "1.0.0",
+      "id": "b3",
+      "kind": "text",
+      "ref": "rmain:text:pricing-matrix-lists-research-at-49-per-month-an",
+      "role": "content",
+      "text": "Pricing Matrix lists Research at $49 per month and Enterprise as custom.",
+      "attributes": {
+        "tagName": "p",
+        "textLength": 72,
+        "zone": "main"
+      },
+      "evidence": {
+        "sourceUrl": "fixture://research/citation-heavy/pricing-matrix",
+        "sourceType": "fixture",
+        "domPathHint": "html > body > main"
+      }
+    },
+    {
+      "version": "1.0.0",
+      "id": "b4",
+      "kind": "table",
+      "ref": "rmain:table:tier-price-notes-research-49-5-seats-enterprise-",
+      "role": "content",
+      "text": "Tier | Price | Notes\nResearch | $49 | 5 seats\nEnterprise | Custom | Contact sales",
+      "attributes": {
+        "columns": 3,
+        "rows": 3,
+        "tagName": "table",
+        "textLength": 81,
+        "zone": "main"
+      },
+      "evidence": {
+        "sourceUrl": "fixture://research/citation-heavy/pricing-matrix",
+        "sourceType": "fixture",
+        "domPathHint": "html > body > main"
+      }
+    },
+    {
+      "version": "1.0.0",
+      "id": "b5",
+      "kind": "link",
+      "ref": "rmain:link:pricing-matrix",
+      "role": "content",
+      "text": "Pricing matrix reference",
+      "attributes": {
+        "external": false,
+        "href": "/pricing-matrix",
+        "tagName": "a",
+        "textLength": 24,
+        "zone": "main"
+      },
+      "evidence": {
+        "sourceUrl": "fixture://research/citation-heavy/pricing-matrix",
+        "sourceType": "fixture",
+        "domPathHint": "html > body > main"
+      }
+    }
+  ]
+}

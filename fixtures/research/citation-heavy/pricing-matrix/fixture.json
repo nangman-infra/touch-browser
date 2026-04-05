@@ -1,0 +1,36 @@
+{
+  "id": "pricing-matrix",
+  "title": "Pricing matrix summary",
+  "category": "citation-heavy",
+  "sourceUri": "fixture://research/citation-heavy/pricing-matrix",
+  "htmlPath": "fixtures/research/citation-heavy/pricing-matrix/index.html",
+  "expectedSnapshotPath": "fixtures/research/citation-heavy/pricing-matrix/expected-snapshot.json",
+  "expectedEvidencePath": "fixtures/research/citation-heavy/pricing-matrix/expected-evidence.json",
+  "risk": "low",
+  "expectations": {
+    "mustContainTexts": [
+      "Pricing Matrix",
+      "Pricing Matrix lists Research at $49 per month and Enterprise as custom.",
+      "Enterprise | Custom | Contact sales"
+    ],
+    "expectedKinds": ["heading", "text", "table", "link"],
+    "expectedCitationUrl": "fixture://research/citation-heavy/pricing-matrix",
+    "claimChecks": [
+      {
+        "id": "c1",
+        "statement": "Pricing Matrix lists Research at $49 per month and Enterprise as custom.",
+        "expectedStatus": "supported"
+      },
+      {
+        "id": "c2",
+        "statement": "Enterprise | Custom | Contact sales",
+        "expectedStatus": "supported"
+      },
+      {
+        "id": "c3",
+        "statement": "The pricing matrix offers a free GPU tier.",
+        "expectedStatus": "unsupported"
+      }
+    ]
+  }
+}

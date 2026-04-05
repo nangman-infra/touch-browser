@@ -1,0 +1,5 @@
+{
+  "name": "@touch-browser/playwright-adapter",
+  "private": true,
+  "type": "module"
+}

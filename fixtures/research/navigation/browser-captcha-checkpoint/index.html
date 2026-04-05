@@ -1,0 +1,32 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <title>Browser CAPTCHA Checkpoint</title>
+  </head>
+  <body>
+    <main>
+      <h1>Security checkpoint</h1>
+      <p>Verify you are human before continuing to the research workspace.</p>
+      <form id="challenge-form">
+        <label>
+          <input type="checkbox" name="human" />
+          I am human
+        </label>
+        <button type="submit">Continue</button>
+      </form>
+      <p id="status">Challenge pending.</p>
+    </main>
+    <script>
+      const form = document.getElementById("challenge-form");
+      const checkbox = form.querySelector("input[name='human']");
+      const status = document.getElementById("status");
+      form.addEventListener("submit", (event) => {
+        event.preventDefault();
+        status.textContent = checkbox.checked
+          ? "Human checkpoint marked for manual review."
+          : "Complete the CAPTCHA checkpoint before continuing.";
+      });
+    </script>
+  </body>
+</html>

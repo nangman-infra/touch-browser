@@ -1,0 +1,25 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <title>Security Model</title>
+  </head>
+  <body>
+    <nav>
+      <a href="/docs">Docs</a>
+      <a href="/security-model">Security Model</a>
+      <a href="/policy">Policy</a>
+    </nav>
+    <main>
+      <h1>Security Model</h1>
+      <p>The runtime separates page content, policy state, and action inputs into distinct channels.</p>
+      <p>All replayable sessions emit audit logs that can be reviewed after each action.</p>
+      <h2>Core Rules</h2>
+      <ul>
+        <li>Read-only research sessions default to low-risk actions.</li>
+        <li>Hostile pages are escalated through the policy kernel.</li>
+        <li>Evidence blocks must retain their source metadata.</li>
+      </ul>
+    </main>
+  </body>
+</html>

@@ -1,0 +1,171 @@
+{
+  "version": "1.0.0",
+  "stableRefVersion": "1",
+  "source": {
+    "sourceUrl": "fixture://research/navigation/tab-overview",
+    "sourceType": "fixture",
+    "title": "Tab Overview"
+  },
+  "budget": {
+    "requestedTokens": 512,
+    "estimatedTokens": 54,
+    "emittedTokens": 54,
+    "truncated": false
+  },
+  "blocks": [
+    {
+      "version": "1.0.0",
+      "id": "b1",
+      "kind": "metadata",
+      "ref": "rhead:metadata:tab-overview",
+      "role": "metadata",
+      "text": "Tab Overview",
+      "attributes": {
+        "source": "title",
+        "tagName": "title",
+        "textLength": 12,
+        "zone": "head"
+      },
+      "evidence": {
+        "sourceUrl": "fixture://research/navigation/tab-overview",
+        "sourceType": "fixture",
+        "domPathHint": "html > head"
+      }
+    },
+    {
+      "version": "1.0.0",
+      "id": "b2",
+      "kind": "heading",
+      "ref": "rmain:heading:tab-overview",
+      "role": "content",
+      "text": "Tab Overview",
+      "attributes": {
+        "level": 1,
+        "tagName": "h1",
+        "textLength": 12,
+        "zone": "main"
+      },
+      "evidence": {
+        "sourceUrl": "fixture://research/navigation/tab-overview",
+        "sourceType": "fixture",
+        "domPathHint": "html > body > main"
+      }
+    },
+    {
+      "version": "1.0.0",
+      "id": "b3",
+      "kind": "text",
+      "ref": "rmain:text:the-runtime-can-scan-documentation-tabs-before-o",
+      "role": "content",
+      "text": "The runtime can scan documentation tabs before opening a deeper page.",
+      "attributes": {
+        "tagName": "p",
+        "textLength": 69,
+        "zone": "main"
+      },
+      "evidence": {
+        "sourceUrl": "fixture://research/navigation/tab-overview",
+        "sourceType": "fixture",
+        "domPathHint": "html > body > main"
+      }
+    },
+    {
+      "version": "1.0.0",
+      "id": "b4",
+      "kind": "list",
+      "ref": "rmain:list:architecture-benchmarks-policy",
+      "role": "content",
+      "text": "- Architecture - Benchmarks - Policy",
+      "attributes": {
+        "items": 3,
+        "ordered": false,
+        "tagName": "ul",
+        "textLength": 36,
+        "zone": "main"
+      },
+      "evidence": {
+        "sourceUrl": "fixture://research/navigation/tab-overview",
+        "sourceType": "fixture",
+        "domPathHint": "html > body > main"
+      }
+    },
+    {
+      "version": "1.0.0",
+      "id": "b5",
+      "kind": "link",
+      "ref": "rmain:link:architecture",
+      "role": "content",
+      "text": "Architecture",
+      "attributes": {
+        "external": false,
+        "href": "/architecture",
+        "tagName": "a",
+        "textLength": 12,
+        "zone": "main"
+      },
+      "evidence": {
+        "sourceUrl": "fixture://research/navigation/tab-overview",
+        "sourceType": "fixture",
+        "domPathHint": "html > body > main > ul > li"
+      }
+    },
+    {
+      "version": "1.0.0",
+      "id": "b6",
+      "kind": "link",
+      "ref": "rmain:link:benchmarks",
+      "role": "content",
+      "text": "Benchmarks",
+      "attributes": {
+        "external": false,
+        "href": "/benchmarks",
+        "tagName": "a",
+        "textLength": 10,
+        "zone": "main"
+      },
+      "evidence": {
+        "sourceUrl": "fixture://research/navigation/tab-overview",
+        "sourceType": "fixture",
+        "domPathHint": "html > body > main > ul > li"
+      }
+    },
+    {
+      "version": "1.0.0",
+      "id": "b7",
+      "kind": "link",
+      "ref": "rmain:link:policy",
+      "role": "content",
+      "text": "Policy",
+      "attributes": {
+        "external": false,
+        "href": "/policy",
+        "tagName": "a",
+        "textLength": 6,
+        "zone": "main"
+      },
+      "evidence": {
+        "sourceUrl": "fixture://research/navigation/tab-overview",
+        "sourceType": "fixture",
+        "domPathHint": "html > body > main > ul > li"
+      }
+    },
+    {
+      "version": "1.0.0",
+      "id": "b8",
+      "kind": "text",
+      "ref": "rmain:text:researchers-often-open-the-architecture-tab-firs",
+      "role": "content",
+      "text": "Researchers often open the Architecture tab first.",
+      "attributes": {
+        "tagName": "p",
+        "textLength": 50,
+        "zone": "main"
+      },
+      "evidence": {
+        "sourceUrl": "fixture://research/navigation/tab-overview",
+        "sourceType": "fixture",
+        "domPathHint": "html > body > main"
+      }
+    }
+  ]
+}

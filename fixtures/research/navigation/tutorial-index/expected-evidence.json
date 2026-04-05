@@ -1,0 +1,53 @@
+{
+  "version": "1.0.0",
+  "generatedAt": "2026-03-14T00:00:00+09:00",
+  "source": {
+    "sourceUrl": "fixture://research/navigation/tutorial-index",
+    "sourceType": "fixture",
+    "sourceRisk": "low",
+    "sourceLabel": "Navigation-heavy tutorial index page"
+  },
+  "supportedClaims": [
+    {
+      "version": "1.0.0",
+      "claimId": "c1",
+      "statement": "The tutorials index links readers to CLI, Policy, and Replay walkthroughs.",
+      "support": ["b6", "b8"],
+      "confidence": 0.93,
+      "citation": {
+        "url": "fixture://research/navigation/tutorial-index",
+        "retrievedAt": "2026-03-14T00:00:00+09:00",
+        "sourceType": "fixture",
+        "sourceRisk": "low",
+        "sourceLabel": "Navigation-heavy tutorial index page"
+      }
+    },
+    {
+      "version": "1.0.0",
+      "claimId": "c2",
+      "statement": "The replay tutorial demonstrates how to replay a saved scenario deterministically.",
+      "support": ["b12"],
+      "confidence": 0.93,
+      "citation": {
+        "url": "fixture://research/navigation/tutorial-index",
+        "retrievedAt": "2026-03-14T00:00:00+09:00",
+        "sourceType": "fixture",
+        "sourceRisk": "low",
+        "sourceLabel": "Navigation-heavy tutorial index page"
+      }
+    }
+  ],
+  "unsupportedClaims": [
+    {
+      "version": "1.0.0",
+      "claimId": "c3",
+      "statement": "The tutorials index includes purchase automation lessons.",
+      "reason": "insufficient-confidence",
+      "checkedBlockRefs": [
+        "rmain:text:the-tutorials-index-links-readers-to-cli-policy-",
+        "rmain:heading:tutorial-index",
+        "rhead:metadata:tutorial-index"
+      ]
+    }
+  ]
+}

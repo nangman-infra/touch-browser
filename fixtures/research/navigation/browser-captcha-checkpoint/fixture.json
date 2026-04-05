@@ -1,0 +1,31 @@
+{
+  "id": "browser-captcha-checkpoint",
+  "title": "Browser CAPTCHA checkpoint seed",
+  "category": "navigation",
+  "sourceUri": "fixture://research/navigation/browser-captcha-checkpoint",
+  "htmlPath": "fixtures/research/navigation/browser-captcha-checkpoint/index.html",
+  "expectedSnapshotPath": "fixtures/research/navigation/browser-captcha-checkpoint/expected-snapshot.json",
+  "expectedEvidencePath": "fixtures/research/navigation/browser-captcha-checkpoint/expected-evidence.json",
+  "risk": "low",
+  "expectations": {
+    "mustContainTexts": [
+      "Security checkpoint",
+      "Verify you are human",
+      "Challenge pending"
+    ],
+    "expectedKinds": ["heading", "text", "form", "input", "button"],
+    "expectedCitationUrl": "fixture://research/navigation/browser-captcha-checkpoint",
+    "claimChecks": [
+      {
+        "id": "c1",
+        "statement": "Verify you are human before continuing to the research workspace.",
+        "expectedStatus": "supported"
+      },
+      {
+        "id": "c2",
+        "statement": "The page already grants access to the workspace.",
+        "expectedStatus": "unsupported"
+      }
+    ]
+  }
+}

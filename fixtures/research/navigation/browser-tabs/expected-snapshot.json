@@ -1,0 +1,111 @@
+{
+  "version": "1.0.0",
+  "stableRefVersion": "1",
+  "source": {
+    "sourceUrl": "fixture://research/navigation/browser-tabs",
+    "sourceType": "fixture",
+    "title": "Browser Tabs"
+  },
+  "budget": {
+    "requestedTokens": 512,
+    "estimatedTokens": 42,
+    "emittedTokens": 42,
+    "truncated": false
+  },
+  "blocks": [
+    {
+      "version": "1.0.0",
+      "id": "b1",
+      "kind": "metadata",
+      "ref": "rhead:metadata:browser-tabs",
+      "role": "metadata",
+      "text": "Browser Tabs",
+      "attributes": {
+        "source": "title",
+        "tagName": "title",
+        "textLength": 12,
+        "zone": "head"
+      },
+      "evidence": {
+        "sourceUrl": "fixture://research/navigation/browser-tabs",
+        "sourceType": "fixture",
+        "domPathHint": "html > head"
+      }
+    },
+    {
+      "version": "1.0.0",
+      "id": "b2",
+      "kind": "heading",
+      "ref": "rmain:heading:browser-tabs",
+      "role": "content",
+      "text": "Browser Tabs",
+      "attributes": {
+        "level": 1,
+        "tagName": "h1",
+        "textLength": 12,
+        "zone": "main"
+      },
+      "evidence": {
+        "sourceUrl": "fixture://research/navigation/browser-tabs",
+        "sourceType": "fixture",
+        "domPathHint": "html > body > main"
+      }
+    },
+    {
+      "version": "1.0.0",
+      "id": "b3",
+      "kind": "text",
+      "ref": "rmain:text:browser-tabs-highlights-overview-policies-and-lo",
+      "role": "content",
+      "text": "Browser Tabs highlights overview, policies, and logs as the main navigation targets.",
+      "attributes": {
+        "tagName": "p",
+        "textLength": 84,
+        "zone": "main"
+      },
+      "evidence": {
+        "sourceUrl": "fixture://research/navigation/browser-tabs",
+        "sourceType": "fixture",
+        "domPathHint": "html > body > main"
+      }
+    },
+    {
+      "version": "1.0.0",
+      "id": "b4",
+      "kind": "list",
+      "ref": "rmain:list:overview-tab-policies-tab-logs-tab",
+      "role": "content",
+      "text": "- Overview tab - Policies tab - Logs tab",
+      "attributes": {
+        "items": 3,
+        "ordered": false,
+        "tagName": "ul",
+        "textLength": 40,
+        "zone": "main"
+      },
+      "evidence": {
+        "sourceUrl": "fixture://research/navigation/browser-tabs",
+        "sourceType": "fixture",
+        "domPathHint": "html > body > main"
+      }
+    },
+    {
+      "version": "1.0.0",
+      "id": "b5",
+      "kind": "button",
+      "ref": "rmain:button:switch-to-overview",
+      "role": "form-control",
+      "text": "Switch to overview",
+      "attributes": {
+        "tagName": "button",
+        "textLength": 18,
+        "zone": "main"
+      },
+      "evidence": {
+        "sourceUrl": "fixture://research/navigation/browser-tabs",
+        "sourceType": "fixture",
+        "domPathHint": "html > body > main"
+      }
+    }
+  ]
+}

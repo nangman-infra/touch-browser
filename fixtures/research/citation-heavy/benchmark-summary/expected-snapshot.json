@@ -1,0 +1,111 @@
+{
+  "version": "1.0.0",
+  "stableRefVersion": "1",
+  "source": {
+    "sourceUrl": "fixture://research/citation-heavy/benchmark-summary",
+    "sourceType": "fixture",
+    "title": "Benchmark Summary"
+  },
+  "budget": {
+    "requestedTokens": 512,
+    "estimatedTokens": 68,
+    "emittedTokens": 68,
+    "truncated": false
+  },
+  "blocks": [
+    {
+      "version": "1.0.0",
+      "id": "b1",
+      "kind": "metadata",
+      "ref": "rhead:metadata:benchmark-summary",
+      "role": "metadata",
+      "text": "Benchmark Summary",
+      "attributes": {
+        "source": "title",
+        "tagName": "title",
+        "textLength": 17,
+        "zone": "head"
+      },
+      "evidence": {
+        "sourceUrl": "fixture://research/citation-heavy/benchmark-summary",
+        "sourceType": "fixture",
+        "domPathHint": "html > head"
+      }
+    },
+    {
+      "version": "1.0.0",
+      "id": "b2",
+      "kind": "heading",
+      "ref": "rmain:heading:benchmark-summary",
+      "role": "content",
+      "text": "Benchmark Summary",
+      "attributes": {
+        "level": 1,
+        "tagName": "h1",
+        "textLength": 17,
+        "zone": "main"
+      },
+      "evidence": {
+        "sourceUrl": "fixture://research/citation-heavy/benchmark-summary",
+        "sourceType": "fixture",
+        "domPathHint": "html > body > main"
+      }
+    },
+    {
+      "version": "1.0.0",
+      "id": "b3",
+      "kind": "text",
+      "ref": "rmain:text:the-internal-benchmark-compares-semantic-snapsho",
+      "role": "content",
+      "text": "The internal benchmark compares semantic snapshot quality across research tasks.",
+      "attributes": {
+        "tagName": "p",
+        "textLength": 80,
+        "zone": "main"
+      },
+      "evidence": {
+        "sourceUrl": "fixture://research/citation-heavy/benchmark-summary",
+        "sourceType": "fixture",
+        "domPathHint": "html > body > main"
+      }
+    },
+    {
+      "version": "1.0.0",
+      "id": "b4",
+      "kind": "table",
+      "ref": "rmain:table:suite-recall-citation-precision-core-research-95",
+      "role": "content",
+      "text": "Suite | Recall | Citation Precision\nCore research | 95% | 97%\nHostile review | 91% | 99%",
+      "attributes": {
+        "columns": 3,
+        "rows": 3,
+        "tagName": "table",
+        "textLength": 88,
+        "zone": "main"
+      },
+      "evidence": {
+        "sourceUrl": "fixture://research/citation-heavy/benchmark-summary",
+        "sourceType": "fixture",
+        "domPathHint": "html > body > main"
+      }
+    },
+    {
+      "version": "1.0.0",
+      "id": "b5",
+      "kind": "text",
+      "ref": "rmain:text:core-research-kept-citation-precision-above-the-",
+      "role": "content",
+      "text": "Core research kept citation precision above the go threshold.",
+      "attributes": {
+        "tagName": "p",
+        "textLength": 61,
+        "zone": "main"
+      },
+      "evidence": {
+        "sourceUrl": "fixture://research/citation-heavy/benchmark-summary",
+        "sourceType": "fixture",
+        "domPathHint": "html > body > main"
+      }
+    }
+  ]
+}

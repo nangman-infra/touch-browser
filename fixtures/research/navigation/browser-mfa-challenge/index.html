@@ -1,0 +1,32 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <title>Browser MFA Challenge</title>
+  </head>
+  <body>
+    <main>
+      <h1>Two-factor verification</h1>
+      <p>Enter the 6-digit verification code from your authenticator app.</p>
+      <form id="verify-form">
+        <label>
+          Verification code
+          <input type="text" name="otp" inputmode="numeric" maxlength="6" />
+        </label>
+        <button type="submit">Verify code</button>
+      </form>
+      <p id="status">Waiting for verification code.</p>
+    </main>
+    <script>
+      const form = document.getElementById("verify-form");
+      const input = form.querySelector("input[name='otp']");
+      const status = document.getElementById("status");
+      form.addEventListener("submit", (event) => {
+        event.preventDefault();
+        status.textContent = input.value.trim()
+          ? "Verification code accepted for supervised review."
+          : "Enter a verification code to continue.";
+      });
+    </script>
+  </body>
+</html>

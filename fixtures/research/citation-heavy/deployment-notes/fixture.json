@@ -1,0 +1,36 @@
+{
+  "id": "deployment-notes",
+  "title": "Deployment notes summary",
+  "category": "citation-heavy",
+  "sourceUri": "fixture://research/citation-heavy/deployment-notes",
+  "htmlPath": "fixtures/research/citation-heavy/deployment-notes/index.html",
+  "expectedSnapshotPath": "fixtures/research/citation-heavy/deployment-notes/expected-snapshot.json",
+  "expectedEvidencePath": "fixtures/research/citation-heavy/deployment-notes/expected-evidence.json",
+  "risk": "low",
+  "expectations": {
+    "mustContainTexts": [
+      "Deployment Notes",
+      "Deployment notes record that blue-green rollouts cut recovery time to 8 minutes.",
+      "Rollback | 8 minutes | Automatic"
+    ],
+    "expectedKinds": ["heading", "text", "table", "link"],
+    "expectedCitationUrl": "fixture://research/citation-heavy/deployment-notes",
+    "claimChecks": [
+      {
+        "id": "c1",
+        "statement": "Deployment notes record that blue-green rollouts cut recovery time to 8 minutes.",
+        "expectedStatus": "supported"
+      },
+      {
+        "id": "c2",
+        "statement": "Rollback | 8 minutes | Automatic",
+        "expectedStatus": "supported"
+      },
+      {
+        "id": "c3",
+        "statement": "The deployment notes include a billing calculator.",
+        "expectedStatus": "unsupported"
+      }
+    ]
+  }
+}

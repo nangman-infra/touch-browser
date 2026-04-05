@@ -1,0 +1,12 @@
+[package]
+name = "touch-browser-memory"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+
+[dependencies]
+serde.workspace = true
+touch-browser-contracts = { path = "../contracts" }
+
+[lib]
+path = "src/lib.rs"

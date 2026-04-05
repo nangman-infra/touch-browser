@@ -1,0 +1,80 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "session-state.schema.json",
+  "title": "SessionState",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "version",
+    "sessionId",
+    "mode",
+    "status",
+    "policyProfile",
+    "openedAt",
+    "updatedAt",
+    "visitedUrls",
+    "snapshotIds"
+  ],
+  "properties": {
+    "version": {
+      "const": "1.0.0"
+    },
+    "sessionId": {
+      "type": "string",
+      "pattern": "^s[a-zA-Z0-9_-]+$"
+    },
+    "mode": {
+      "type": "string",
+      "enum": ["read-only", "interactive"]
+    },
+    "status": {
+      "type": "string",
+      "enum": ["idle", "active", "completed", "blocked", "failed"]
+    },
+    "policyProfile": {
+      "type": "string",
+      "enum": [
+        "research-read-only",
+        "research-restricted",
+        "interactive-review",
+        "interactive-supervised-auth",
+        "interactive-supervised-write"
+      ]
+    },
+    "currentUrl": {
+      "type": ["string", "null"]
+    },
+    "openedAt": {
+      "type": "string",
+      "pattern": "^\\d{4}-\\d{2}-\\d{2}T\\d{2}:\\d{2}:\\d{2}(?:\\.\\d+)?(?:Z|[+-]\\d{2}:\\d{2})$"
+    },
+    "updatedAt": {
+      "type": "string",
+      "pattern": "^\\d{4}-\\d{2}-\\d{2}T\\d{2}:\\d{2}:\\d{2}(?:\\.\\d+)?(?:Z|[+-]\\d{2}:\\d{2})$"
+    },
+    "visitedUrls": {
+      "type": "array",
+      "items": {
+        "type": "string",
+        "minLength": 1
+      },
+      "uniqueItems": true
+    },
+    "snapshotIds": {
+      "type": "array",
+      "items": {
+        "type": "string",
+        "pattern": "^snap_[a-zA-Z0-9_-]+$"
+      },
+      "uniqueItems": true
+    },
+    "workingSetRefs": {
+      "type": "array",
+      "items": {
+        "type": "string",
+        "pattern": "^r[a-zA-Z0-9:_-]+$"
+      },
+      "uniqueItems": true
+    }
+  }
+}

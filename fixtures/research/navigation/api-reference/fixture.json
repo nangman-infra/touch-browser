@@ -1,0 +1,36 @@
+{
+  "id": "api-reference",
+  "title": "Navigation-heavy API reference page",
+  "category": "navigation",
+  "sourceUri": "fixture://research/navigation/api-reference",
+  "htmlPath": "fixtures/research/navigation/api-reference/index.html",
+  "expectedSnapshotPath": "fixtures/research/navigation/api-reference/expected-snapshot.json",
+  "expectedEvidencePath": "fixtures/research/navigation/api-reference/expected-evidence.json",
+  "risk": "low",
+  "expectations": {
+    "mustContainTexts": [
+      "API Reference",
+      "stable refs",
+      "Evidence blocks must point back"
+    ],
+    "expectedKinds": ["heading", "text", "link"],
+    "expectedCitationUrl": "fixture://research/navigation/api-reference",
+    "claimChecks": [
+      {
+        "id": "c1",
+        "statement": "The runtime exposes open, snapshot, extract, diff, compact, and replay commands.",
+        "expectedStatus": "supported"
+      },
+      {
+        "id": "c2",
+        "statement": "Snapshot responses include stable refs and evidence metadata.",
+        "expectedStatus": "supported"
+      },
+      {
+        "id": "c3",
+        "statement": "The API reference documents a purchase command.",
+        "expectedStatus": "unsupported"
+      }
+    ]
+  }
+}

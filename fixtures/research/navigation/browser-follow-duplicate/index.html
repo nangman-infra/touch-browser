@@ -1,0 +1,33 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <title>Browser Follow Duplicate</title>
+  </head>
+  <body>
+    <main>
+      <h1>Browser Follow Duplicate</h1>
+      <p id="follow-content">
+        Select the correct Open docs link to continue the research flow.
+      </p>
+      <section>
+        <h2>Legacy docs</h2>
+        <a
+          href="#docs"
+          onclick="document.getElementById('follow-content').textContent = 'Legacy docs opened by mistake.';"
+        >
+          Open docs
+        </a>
+      </section>
+      <section>
+        <h2>Current docs</h2>
+        <a
+          href="#docs"
+          onclick="document.getElementById('follow-content').textContent = 'Current docs opened for the research step.';"
+        >
+          Open docs
+        </a>
+      </section>
+    </main>
+  </body>
+</html>

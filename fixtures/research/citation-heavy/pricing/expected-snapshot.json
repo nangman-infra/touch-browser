@@ -1,0 +1,111 @@
+{
+  "version": "1.0.0",
+  "stableRefVersion": "1",
+  "source": {
+    "sourceUrl": "fixture://research/citation-heavy/pricing",
+    "sourceType": "fixture",
+    "title": "Pricing"
+  },
+  "budget": {
+    "requestedTokens": 512,
+    "estimatedTokens": 52,
+    "emittedTokens": 52,
+    "truncated": false
+  },
+  "blocks": [
+    {
+      "version": "1.0.0",
+      "id": "b1",
+      "kind": "metadata",
+      "ref": "rhead:metadata:pricing",
+      "role": "metadata",
+      "text": "Pricing",
+      "attributes": {
+        "source": "title",
+        "tagName": "title",
+        "textLength": 7,
+        "zone": "head"
+      },
+      "evidence": {
+        "sourceUrl": "fixture://research/citation-heavy/pricing",
+        "sourceType": "fixture",
+        "domPathHint": "html > head"
+      }
+    },
+    {
+      "version": "1.0.0",
+      "id": "b2",
+      "kind": "heading",
+      "ref": "rmain:heading:pricing",
+      "role": "content",
+      "text": "Pricing",
+      "attributes": {
+        "level": 1,
+        "tagName": "h1",
+        "textLength": 7,
+        "zone": "main"
+      },
+      "evidence": {
+        "sourceUrl": "fixture://research/citation-heavy/pricing",
+        "sourceType": "fixture",
+        "domPathHint": "html > body > main"
+      }
+    },
+    {
+      "version": "1.0.0",
+      "id": "b3",
+      "kind": "text",
+      "ref": "rmain:text:touch-browser-offers-starter-and-team-plans-bill",
+      "role": "content",
+      "text": "Touch Browser offers Starter and Team plans billed monthly.",
+      "attributes": {
+        "tagName": "p",
+        "textLength": 59,
+        "zone": "main"
+      },
+      "evidence": {
+        "sourceUrl": "fixture://research/citation-heavy/pricing",
+        "sourceType": "fixture",
+        "domPathHint": "html > body > main"
+      }
+    },
+    {
+      "version": "1.0.0",
+      "id": "b4",
+      "kind": "table",
+      "ref": "rmain:table:plan-monthly-price-snapshots-starter-29-10-000-t",
+      "role": "content",
+      "text": "Plan | Monthly Price | Snapshots\nStarter | $29 | 10,000\nTeam | $199 | 100,000",
+      "attributes": {
+        "columns": 3,
+        "rows": 3,
+        "tagName": "table",
+        "textLength": 77,
+        "zone": "main"
+      },
+      "evidence": {
+        "sourceUrl": "fixture://research/citation-heavy/pricing",
+        "sourceType": "fixture",
+        "domPathHint": "html > body > main"
+      }
+    },
+    {
+      "version": "1.0.0",
+      "id": "b5",
+      "kind": "text",
+      "ref": "rmain:text:all-plans-include-citation-ready-evidence-blocks",
+      "role": "content",
+      "text": "All plans include citation-ready evidence blocks.",
+      "attributes": {
+        "tagName": "p",
+        "textLength": 49,
+        "zone": "main"
+      },
+      "evidence": {
+        "sourceUrl": "fixture://research/citation-heavy/pricing",
+        "sourceType": "fixture",
+        "domPathHint": "html > body > main"
+      }
+    }
+  ]
+}

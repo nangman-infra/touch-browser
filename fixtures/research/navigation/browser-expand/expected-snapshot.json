@@ -1,0 +1,109 @@
+{
+  "version": "1.0.0",
+  "stableRefVersion": "1",
+  "source": {
+    "sourceUrl": "fixture://research/navigation/browser-expand",
+    "sourceType": "fixture",
+    "title": "Browser Expand"
+  },
+  "budget": {
+    "requestedTokens": 512,
+    "estimatedTokens": 43,
+    "emittedTokens": 43,
+    "truncated": false
+  },
+  "blocks": [
+    {
+      "version": "1.0.0",
+      "id": "b1",
+      "kind": "metadata",
+      "ref": "rhead:metadata:browser-expand",
+      "role": "metadata",
+      "text": "Browser Expand",
+      "attributes": {
+        "source": "title",
+        "tagName": "title",
+        "textLength": 14,
+        "zone": "head"
+      },
+      "evidence": {
+        "sourceUrl": "fixture://research/navigation/browser-expand",
+        "sourceType": "fixture",
+        "domPathHint": "html > head"
+      }
+    },
+    {
+      "version": "1.0.0",
+      "id": "b2",
+      "kind": "heading",
+      "ref": "rmain:heading:browser-expand",
+      "role": "content",
+      "text": "Browser Expand",
+      "attributes": {
+        "level": 1,
+        "tagName": "h1",
+        "textLength": 14,
+        "zone": "main"
+      },
+      "evidence": {
+        "sourceUrl": "fixture://research/navigation/browser-expand",
+        "sourceType": "fixture",
+        "domPathHint": "html > body > main"
+      }
+    },
+    {
+      "version": "1.0.0",
+      "id": "b3",
+      "kind": "text",
+      "ref": "rmain:text:expand-hidden-details-to-reveal-the-supporting-n",
+      "role": "content",
+      "text": "Expand hidden details to reveal the supporting note.",
+      "attributes": {
+        "tagName": "p",
+        "textLength": 52,
+        "zone": "main"
+      },
+      "evidence": {
+        "sourceUrl": "fixture://research/navigation/browser-expand",
+        "sourceType": "fixture",
+        "domPathHint": "html > body > main"
+      }
+    },
+    {
+      "version": "1.0.0",
+      "id": "b4",
+      "kind": "button",
+      "ref": "rmain:button:expand-details",
+      "role": "form-control",
+      "text": "Expand details",
+      "attributes": {
+        "tagName": "button",
+        "textLength": 14,
+        "zone": "main"
+      },
+      "evidence": {
+        "sourceUrl": "fixture://research/navigation/browser-expand",
+        "sourceType": "fixture",
+        "domPathHint": "html > body > main"
+      }
+    },
+    {
+      "version": "1.0.0",
+      "id": "b5",
+      "kind": "text",
+      "ref": "rmain:text:details",
+      "role": "content",
+      "text": "Expanded details confirm that the runtime can reveal collapsed notes.",
+      "attributes": {
+        "tagName": "p",
+        "textLength": 69,
+        "zone": "main"
+      },
+      "evidence": {
+        "sourceUrl": "fixture://research/navigation/browser-expand",
+        "sourceType": "fixture",
+        "domPathHint": "html > body > main"
+      }
+    }
+  ]
+}

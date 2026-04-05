@@ -1,0 +1,36 @@
+{
+  "id": "docs-switcher",
+  "title": "Docs switcher",
+  "category": "navigation",
+  "sourceUri": "fixture://research/navigation/docs-switcher",
+  "htmlPath": "fixtures/research/navigation/docs-switcher/index.html",
+  "expectedSnapshotPath": "fixtures/research/navigation/docs-switcher/expected-snapshot.json",
+  "expectedEvidencePath": "fixtures/research/navigation/docs-switcher/expected-evidence.json",
+  "risk": "low",
+  "expectations": {
+    "mustContainTexts": [
+      "Docs Switcher",
+      "Docs Switcher links architecture, policy, and replay references from one index.",
+      "Replay reference"
+    ],
+    "expectedKinds": ["heading", "text", "link", "list"],
+    "expectedCitationUrl": "fixture://research/navigation/docs-switcher",
+    "claimChecks": [
+      {
+        "id": "c1",
+        "statement": "Docs Switcher links architecture, policy, and replay references from one index.",
+        "expectedStatus": "supported"
+      },
+      {
+        "id": "c2",
+        "statement": "Replay reference",
+        "expectedStatus": "supported"
+      },
+      {
+        "id": "c3",
+        "statement": "The docs switcher submits a purchase form.",
+        "expectedStatus": "unsupported"
+      }
+    ]
+  }
+}

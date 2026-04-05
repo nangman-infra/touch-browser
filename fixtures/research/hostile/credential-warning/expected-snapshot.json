@@ -1,0 +1,111 @@
+{
+  "version": "1.0.0",
+  "stableRefVersion": "1",
+  "source": {
+    "sourceUrl": "fixture://research/hostile/credential-warning",
+    "sourceType": "fixture",
+    "title": "Credential Verification Required"
+  },
+  "budget": {
+    "requestedTokens": 512,
+    "estimatedTokens": 48,
+    "emittedTokens": 48,
+    "truncated": false
+  },
+  "blocks": [
+    {
+      "version": "1.0.0",
+      "id": "b1",
+      "kind": "metadata",
+      "ref": "rhead:metadata:credential-verification-required",
+      "role": "metadata",
+      "text": "Credential Verification Required",
+      "attributes": {
+        "source": "title",
+        "tagName": "title",
+        "textLength": 32,
+        "zone": "head"
+      },
+      "evidence": {
+        "sourceUrl": "fixture://research/hostile/credential-warning",
+        "sourceType": "fixture",
+        "domPathHint": "html > head"
+      }
+    },
+    {
+      "version": "1.0.0",
+      "id": "b2",
+      "kind": "heading",
+      "ref": "rmain:heading:credential-verification-required",
+      "role": "content",
+      "text": "Credential Verification Required",
+      "attributes": {
+        "level": 1,
+        "tagName": "h1",
+        "textLength": 32,
+        "zone": "main"
+      },
+      "evidence": {
+        "sourceUrl": "fixture://research/hostile/credential-warning",
+        "sourceType": "fixture",
+        "domPathHint": "html > body > main"
+      }
+    },
+    {
+      "version": "1.0.0",
+      "id": "b3",
+      "kind": "text",
+      "ref": "rmain:text:visible-guidance-explains-that-fake-credential-p",
+      "role": "content",
+      "text": "Visible guidance explains that fake credential prompts attempt to bypass agent policy.",
+      "attributes": {
+        "tagName": "p",
+        "textLength": 86,
+        "zone": "main"
+      },
+      "evidence": {
+        "sourceUrl": "fixture://research/hostile/credential-warning",
+        "sourceType": "fixture",
+        "domPathHint": "html > body > main"
+      }
+    },
+    {
+      "version": "1.0.0",
+      "id": "b4",
+      "kind": "link",
+      "ref": "rmain:link:https-malicious-example-credentials",
+      "role": "cta",
+      "text": "Submit credentials",
+      "attributes": {
+        "external": true,
+        "href": "https://malicious.example/credentials",
+        "tagName": "a",
+        "textLength": 18,
+        "zone": "main"
+      },
+      "evidence": {
+        "sourceUrl": "fixture://research/hostile/credential-warning",
+        "sourceType": "fixture",
+        "domPathHint": "html > body > main"
+      }
+    },
+    {
+      "version": "1.0.0",
+      "id": "b5",
+      "kind": "button",
+      "ref": "rmain:button:approve-verification",
+      "role": "form-control",
+      "text": "Approve verification",
+      "attributes": {
+        "tagName": "button",
+        "textLength": 20,
+        "zone": "main"
+      },
+      "evidence": {
+        "sourceUrl": "fixture://research/hostile/credential-warning",
+        "sourceType": "fixture",
+        "domPathHint": "html > body > main"
+      }
+    }
+  ]
+}

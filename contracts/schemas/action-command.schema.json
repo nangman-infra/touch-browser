@@ -1,0 +1,70 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "action-command.schema.json",
+  "title": "ActionCommand",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["version", "action", "riskClass", "reason"],
+  "properties": {
+    "version": {
+      "const": "1.0.0"
+    },
+    "action": {
+      "type": "string",
+      "enum": [
+        "open",
+        "read",
+        "follow",
+        "extract",
+        "diff",
+        "compact",
+        "click",
+        "type",
+        "submit",
+        "select-tab",
+        "paginate",
+        "expand"
+      ]
+    },
+    "targetRef": {
+      "type": "string",
+      "pattern": "^r[a-zA-Z0-9:_-]+$"
+    },
+    "targetUrl": {
+      "type": "string",
+      "minLength": 1
+    },
+    "riskClass": {
+      "type": "string",
+      "enum": ["low", "medium", "high", "blocked"]
+    },
+    "reason": {
+      "type": "string",
+      "minLength": 1
+    },
+    "input": {
+      "type": "object",
+      "additionalProperties": true
+    }
+  },
+  "allOf": [
+    {
+      "if": {
+        "properties": {
+          "action": {
+            "const": "open"
+          }
+        }
+      },
+      "then": {
+        "properties": {
+          "targetUrl": {
+            "type": "string",
+            "minLength": 1
+          }
+        },
+        "required": ["targetUrl"]
+      }
+    }
+  ]
+}

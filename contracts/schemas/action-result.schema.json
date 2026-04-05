@@ -1,0 +1,65 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "action-result.schema.json",
+  "title": "ActionResult",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["version", "action", "status", "payloadType", "message"],
+  "properties": {
+    "version": {
+      "const": "1.0.0"
+    },
+    "action": {
+      "type": "string",
+      "enum": [
+        "open",
+        "read",
+        "follow",
+        "extract",
+        "diff",
+        "compact",
+        "click",
+        "select-tab",
+        "paginate",
+        "expand"
+      ]
+    },
+    "status": {
+      "type": "string",
+      "enum": ["succeeded", "rejected", "failed"]
+    },
+    "payloadType": {
+      "type": "string",
+      "enum": [
+        "none",
+        "snapshot-document",
+        "evidence-report",
+        "snapshot-diff",
+        "compaction-result"
+      ]
+    },
+    "output": {
+      "type": ["object", "null"]
+    },
+    "policy": {
+      "$ref": "policy-report.schema.json"
+    },
+    "failureKind": {
+      "type": "string",
+      "enum": [
+        "unsupported-action",
+        "policy-blocked",
+        "missing-target",
+        "missing-href",
+        "unresolved-link",
+        "unknown-source",
+        "invalid-input",
+        "internal"
+      ]
+    },
+    "message": {
+      "type": "string",
+      "minLength": 1
+    }
+  }
+}

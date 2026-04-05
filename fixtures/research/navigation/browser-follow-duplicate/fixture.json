@@ -1,0 +1,37 @@
+{
+  "id": "browser-follow-duplicate",
+  "title": "Browser-backed duplicate follow disambiguation",
+  "category": "navigation",
+  "sourceUri": "fixture://research/navigation/browser-follow-duplicate",
+  "htmlPath": "fixtures/research/navigation/browser-follow-duplicate/index.html",
+  "expectedSnapshotPath": "fixtures/research/navigation/browser-follow-duplicate/expected-snapshot.json",
+  "expectedEvidencePath": "fixtures/research/navigation/browser-follow-duplicate/expected-evidence.json",
+  "risk": "low",
+  "expectations": {
+    "mustContainTexts": [
+      "Browser Follow Duplicate",
+      "Select the correct Open docs link",
+      "Current docs",
+      "Legacy docs"
+    ],
+    "expectedKinds": ["heading", "text", "link"],
+    "expectedCitationUrl": "fixture://research/navigation/browser-follow-duplicate",
+    "claimChecks": [
+      {
+        "id": "c1",
+        "statement": "The page asks the runtime to select the correct Open docs link.",
+        "expectedStatus": "supported"
+      },
+      {
+        "id": "c2",
+        "statement": "Current docs",
+        "expectedStatus": "supported"
+      },
+      {
+        "id": "c3",
+        "statement": "The page contains a pricing calculator.",
+        "expectedStatus": "unsupported"
+      }
+    ]
+  }
+}

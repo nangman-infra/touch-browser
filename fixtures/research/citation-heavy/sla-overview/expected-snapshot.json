@@ -1,0 +1,113 @@
+{
+  "version": "1.0.0",
+  "stableRefVersion": "1",
+  "source": {
+    "sourceUrl": "fixture://research/citation-heavy/sla-overview",
+    "sourceType": "fixture",
+    "title": "SLA Overview"
+  },
+  "budget": {
+    "requestedTokens": 512,
+    "estimatedTokens": 51,
+    "emittedTokens": 51,
+    "truncated": false
+  },
+  "blocks": [
+    {
+      "version": "1.0.0",
+      "id": "b1",
+      "kind": "metadata",
+      "ref": "rhead:metadata:sla-overview",
+      "role": "metadata",
+      "text": "SLA Overview",
+      "attributes": {
+        "source": "title",
+        "tagName": "title",
+        "textLength": 12,
+        "zone": "head"
+      },
+      "evidence": {
+        "sourceUrl": "fixture://research/citation-heavy/sla-overview",
+        "sourceType": "fixture",
+        "domPathHint": "html > head"
+      }
+    },
+    {
+      "version": "1.0.0",
+      "id": "b2",
+      "kind": "heading",
+      "ref": "rmain:heading:sla-overview",
+      "role": "content",
+      "text": "SLA Overview",
+      "attributes": {
+        "level": 1,
+        "tagName": "h1",
+        "textLength": 12,
+        "zone": "main"
+      },
+      "evidence": {
+        "sourceUrl": "fixture://research/citation-heavy/sla-overview",
+        "sourceType": "fixture",
+        "domPathHint": "html > body > main"
+      }
+    },
+    {
+      "version": "1.0.0",
+      "id": "b3",
+      "kind": "text",
+      "ref": "rmain:text:sla-overview-states-that-priority-incidents-rece",
+      "role": "content",
+      "text": "SLA Overview states that Priority incidents receive updates every 30 minutes.",
+      "attributes": {
+        "tagName": "p",
+        "textLength": 77,
+        "zone": "main"
+      },
+      "evidence": {
+        "sourceUrl": "fixture://research/citation-heavy/sla-overview",
+        "sourceType": "fixture",
+        "domPathHint": "html > body > main"
+      }
+    },
+    {
+      "version": "1.0.0",
+      "id": "b4",
+      "kind": "table",
+      "ref": "rmain:table:severity-updates-availability-priority-30-minute",
+      "role": "content",
+      "text": "Severity | Updates | Availability\nPriority | 30 minutes | 99.9\nStandard | 4 hours | 99.5",
+      "attributes": {
+        "columns": 3,
+        "rows": 3,
+        "tagName": "table",
+        "textLength": 88,
+        "zone": "main"
+      },
+      "evidence": {
+        "sourceUrl": "fixture://research/citation-heavy/sla-overview",
+        "sourceType": "fixture",
+        "domPathHint": "html > body > main"
+      }
+    },
+    {
+      "version": "1.0.0",
+      "id": "b5",
+      "kind": "link",
+      "ref": "rmain:link:sla",
+      "role": "content",
+      "text": "SLA handbook",
+      "attributes": {
+        "external": false,
+        "href": "/sla",
+        "tagName": "a",
+        "textLength": 12,
+        "zone": "main"
+      },
+      "evidence": {
+        "sourceUrl": "fixture://research/citation-heavy/sla-overview",
+        "sourceType": "fixture",
+        "domPathHint": "html > body > main"
+      }
+    }
+  ]
+}

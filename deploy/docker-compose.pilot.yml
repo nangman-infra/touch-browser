@@ -1,0 +1,19 @@
+services:
+  touch-browser-serve:
+    build:
+      context: ..
+      dockerfile: deploy/Dockerfile
+    image: touch-browser:pilot
+    command: ["target/release/touch-browser", "serve"]
+    stdin_open: true
+    tty: true
+    env_file:
+      - ./touch-browser.env.example
+    volumes:
+      - ../output/pilot:/data
+    healthcheck:
+      test: ["CMD", "node", "scripts/pilot-healthcheck.mjs"]
+      interval: 30s
+      timeout: 10s
+      start_period: 10s
+      retries: 3

@@ -1,0 +1,36 @@
+{
+  "id": "compaction-playbook",
+  "title": "Compaction playbook",
+  "category": "static-docs",
+  "sourceUri": "fixture://research/static-docs/compaction-playbook",
+  "htmlPath": "fixtures/research/static-docs/compaction-playbook/index.html",
+  "expectedSnapshotPath": "fixtures/research/static-docs/compaction-playbook/expected-snapshot.json",
+  "expectedEvidencePath": "fixtures/research/static-docs/compaction-playbook/expected-evidence.json",
+  "risk": "low",
+  "expectations": {
+    "mustContainTexts": [
+      "Compaction Playbook",
+      "Compaction Playbook keeps working sets small by promoting supported claims and recent refs.",
+      "Recent refs remain in the active working set."
+    ],
+    "expectedKinds": ["heading", "text", "list", "link"],
+    "expectedCitationUrl": "fixture://research/static-docs/compaction-playbook",
+    "claimChecks": [
+      {
+        "id": "c1",
+        "statement": "Compaction Playbook keeps working sets small by promoting supported claims and recent refs.",
+        "expectedStatus": "supported"
+      },
+      {
+        "id": "c2",
+        "statement": "Recent refs remain in the active working set.",
+        "expectedStatus": "supported"
+      },
+      {
+        "id": "c3",
+        "statement": "Compaction Playbook requires screenshot rendering.",
+        "expectedStatus": "unsupported"
+      }
+    ]
+  }
+}

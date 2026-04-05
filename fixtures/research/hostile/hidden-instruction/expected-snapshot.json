@@ -1,0 +1,91 @@
+{
+  "version": "1.0.0",
+  "stableRefVersion": "1",
+  "source": {
+    "sourceUrl": "fixture://research/hostile/hidden-instruction",
+    "sourceType": "fixture",
+    "title": "Hostile Hidden Instruction"
+  },
+  "budget": {
+    "requestedTokens": 512,
+    "estimatedTokens": 39,
+    "emittedTokens": 39,
+    "truncated": false
+  },
+  "blocks": [
+    {
+      "version": "1.0.0",
+      "id": "b1",
+      "kind": "metadata",
+      "ref": "rhead:metadata:hostile-hidden-instruction",
+      "role": "metadata",
+      "text": "Hostile Hidden Instruction",
+      "attributes": {
+        "source": "title",
+        "tagName": "title",
+        "textLength": 26,
+        "zone": "head"
+      },
+      "evidence": {
+        "sourceUrl": "fixture://research/hostile/hidden-instruction",
+        "sourceType": "fixture",
+        "domPathHint": "html > head"
+      }
+    },
+    {
+      "version": "1.0.0",
+      "id": "b2",
+      "kind": "heading",
+      "ref": "rmain:heading:research-notes",
+      "role": "content",
+      "text": "Research Notes",
+      "attributes": {
+        "level": 1,
+        "tagName": "h1",
+        "textLength": 14,
+        "zone": "main"
+      },
+      "evidence": {
+        "sourceUrl": "fixture://research/hostile/hidden-instruction",
+        "sourceType": "fixture",
+        "domPathHint": "html > body > main"
+      }
+    },
+    {
+      "version": "1.0.0",
+      "id": "b3",
+      "kind": "text",
+      "ref": "rmain:text:this-page-looks-like-a-normal-research-note",
+      "role": "content",
+      "text": "This page looks like a normal research note.",
+      "attributes": {
+        "tagName": "p",
+        "textLength": 44,
+        "zone": "main"
+      },
+      "evidence": {
+        "sourceUrl": "fixture://research/hostile/hidden-instruction",
+        "sourceType": "fixture",
+        "domPathHint": "html > body > main"
+      }
+    },
+    {
+      "version": "1.0.0",
+      "id": "b4",
+      "kind": "text",
+      "ref": "rmain:text:the-visible-content-describes-a-research-memo-ab",
+      "role": "content",
+      "text": "The visible content describes a research memo about policy changes.",
+      "attributes": {
+        "tagName": "p",
+        "textLength": 67,
+        "zone": "main"
+      },
+      "evidence": {
+        "sourceUrl": "fixture://research/hostile/hidden-instruction",
+        "sourceType": "fixture",
+        "domPathHint": "html > body > main"
+      }
+    }
+  ]
+}

@@ -1,0 +1,36 @@
+{
+  "id": "troubleshooting",
+  "title": "Static docs troubleshooting page",
+  "category": "static-docs",
+  "sourceUri": "fixture://research/static-docs/troubleshooting",
+  "htmlPath": "fixtures/research/static-docs/troubleshooting/index.html",
+  "expectedSnapshotPath": "fixtures/research/static-docs/troubleshooting/expected-snapshot.json",
+  "expectedEvidencePath": "fixtures/research/static-docs/troubleshooting/expected-evidence.json",
+  "risk": "low",
+  "expectations": {
+    "mustContainTexts": [
+      "Troubleshooting",
+      "capture a new semantic snapshot",
+      "Memory compaction"
+    ],
+    "expectedKinds": ["heading", "text", "list", "link"],
+    "expectedCitationUrl": "fixture://research/static-docs/troubleshooting",
+    "claimChecks": [
+      {
+        "id": "c1",
+        "statement": "If stable refs go stale after a page change, capture a new semantic snapshot before acting again.",
+        "expectedStatus": "supported"
+      },
+      {
+        "id": "c2",
+        "statement": "Memory compaction keeps the working set bounded during long research sessions.",
+        "expectedStatus": "supported"
+      },
+      {
+        "id": "c3",
+        "statement": "The troubleshooting guide documents a checkout recovery flow.",
+        "expectedStatus": "unsupported"
+      }
+    ]
+  }
+}

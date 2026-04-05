@@ -1,0 +1,148 @@
+{
+  "version": "1.0.0",
+  "stableRefVersion": "1",
+  "source": {
+    "sourceUrl": "fixture://research/navigation/browser-high-risk-checkout",
+    "sourceType": "fixture",
+    "title": "Browser High-Risk Checkout"
+  },
+  "budget": {
+    "requestedTokens": 512,
+    "estimatedTokens": 49,
+    "emittedTokens": 49,
+    "truncated": false
+  },
+  "blocks": [
+    {
+      "version": "1.0.0",
+      "id": "b1",
+      "kind": "metadata",
+      "ref": "rhead:metadata:browser-high-risk-checkout",
+      "role": "metadata",
+      "text": "Browser High-Risk Checkout",
+      "attributes": {
+        "source": "title",
+        "tagName": "title",
+        "textLength": 26,
+        "zone": "head"
+      },
+      "evidence": {
+        "sourceUrl": "fixture://research/navigation/browser-high-risk-checkout",
+        "sourceType": "fixture",
+        "domPathHint": "html > head"
+      }
+    },
+    {
+      "version": "1.0.0",
+      "id": "b2",
+      "kind": "heading",
+      "ref": "rmain:heading:checkout-review",
+      "role": "content",
+      "text": "Checkout review",
+      "attributes": {
+        "level": 1,
+        "tagName": "h1",
+        "textLength": 15,
+        "zone": "main"
+      },
+      "evidence": {
+        "sourceUrl": "fixture://research/navigation/browser-high-risk-checkout",
+        "sourceType": "fixture",
+        "domPathHint": "html > body > main"
+      }
+    },
+    {
+      "version": "1.0.0",
+      "id": "b3",
+      "kind": "text",
+      "ref": "rmain:text:confirm-payment-to-place-order-for-the-research-",
+      "role": "content",
+      "text": "Confirm payment to place order for the research plan.",
+      "attributes": {
+        "tagName": "p",
+        "textLength": 53,
+        "zone": "main"
+      },
+      "evidence": {
+        "sourceUrl": "fixture://research/navigation/browser-high-risk-checkout",
+        "sourceType": "fixture",
+        "domPathHint": "html > body > main"
+      }
+    },
+    {
+      "version": "1.0.0",
+      "id": "b4",
+      "kind": "form",
+      "ref": "rmain:form:checkout-form",
+      "role": "form-control",
+      "text": "Order total Confirm purchase",
+      "attributes": {
+        "controls": 2,
+        "tagName": "form",
+        "textLength": 28,
+        "zone": "main"
+      },
+      "evidence": {
+        "sourceUrl": "fixture://research/navigation/browser-high-risk-checkout",
+        "sourceType": "fixture",
+        "domPathHint": "html > body > main"
+      }
+    },
+    {
+      "version": "1.0.0",
+      "id": "b5",
+      "kind": "input",
+      "ref": "rmain:input:amount-text-149-00",
+      "role": "form-control",
+      "text": "amount text $149.00",
+      "attributes": {
+        "inputType": "text",
+        "name": "amount",
+        "tagName": "input",
+        "textLength": 19,
+        "zone": "main"
+      },
+      "evidence": {
+        "sourceUrl": "fixture://research/navigation/browser-high-risk-checkout",
+        "sourceType": "fixture",
+        "domPathHint": "html > body > main > form > label"
+      }
+    },
+    {
+      "version": "1.0.0",
+      "id": "b6",
+      "kind": "button",
+      "ref": "rmain:button:confirm-purchase",
+      "role": "form-control",
+      "text": "Confirm purchase",
+      "attributes": {
+        "tagName": "button",
+        "textLength": 16,
+        "zone": "main"
+      },
+      "evidence": {
+        "sourceUrl": "fixture://research/navigation/browser-high-risk-checkout",
+        "sourceType": "fixture",
+        "domPathHint": "html > body > main > form"
+      }
+    },
+    {
+      "version": "1.0.0",
+      "id": "b7",
+      "kind": "text",
+      "ref": "rmain:text:status",
+      "role": "content",
+      "text": "Awaiting payment confirmation.",
+      "attributes": {
+        "tagName": "p",
+        "textLength": 30,
+        "zone": "main"
+      },
+      "evidence": {
+        "sourceUrl": "fixture://research/navigation/browser-high-risk-checkout",
+        "sourceType": "fixture",
+        "domPathHint": "html > body > main"
+      }
+    }
+  ]
+}

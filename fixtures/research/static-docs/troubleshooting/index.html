@@ -1,0 +1,24 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <title>Troubleshooting</title>
+  </head>
+  <body>
+    <nav>
+      <a href="/docs">Docs</a>
+      <a href="/troubleshooting">Troubleshooting</a>
+      <a href="/replay">Replay</a>
+    </nav>
+    <main>
+      <h1>Troubleshooting</h1>
+      <p>If stable refs go stale after a page change, capture a new semantic snapshot before acting again.</p>
+      <p>Memory compaction keeps the working set bounded during long research sessions.</p>
+      <ol>
+        <li>Open the current page.</li>
+        <li>Read the latest snapshot.</li>
+        <li>Re-run replay if the issue must be reproduced deterministically.</li>
+      </ol>
+    </main>
+  </body>
+</html>

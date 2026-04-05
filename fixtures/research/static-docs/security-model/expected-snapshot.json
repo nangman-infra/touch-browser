@@ -1,0 +1,190 @@
+{
+  "version": "1.0.0",
+  "stableRefVersion": "1",
+  "source": {
+    "sourceUrl": "fixture://research/static-docs/security-model",
+    "sourceType": "fixture",
+    "title": "Security Model"
+  },
+  "budget": {
+    "requestedTokens": 512,
+    "estimatedTokens": 103,
+    "emittedTokens": 103,
+    "truncated": false
+  },
+  "blocks": [
+    {
+      "version": "1.0.0",
+      "id": "b1",
+      "kind": "metadata",
+      "ref": "rhead:metadata:security-model",
+      "role": "metadata",
+      "text": "Security Model",
+      "attributes": {
+        "source": "title",
+        "tagName": "title",
+        "textLength": 14,
+        "zone": "head"
+      },
+      "evidence": {
+        "sourceUrl": "fixture://research/static-docs/security-model",
+        "sourceType": "fixture",
+        "domPathHint": "html > head"
+      }
+    },
+    {
+      "version": "1.0.0",
+      "id": "b2",
+      "kind": "link",
+      "ref": "rnav:link:docs",
+      "role": "primary-nav",
+      "text": "Docs",
+      "attributes": {
+        "external": false,
+        "href": "/docs",
+        "tagName": "a",
+        "textLength": 4,
+        "zone": "nav"
+      },
+      "evidence": {
+        "sourceUrl": "fixture://research/static-docs/security-model",
+        "sourceType": "fixture",
+        "domPathHint": "html > body > nav"
+      }
+    },
+    {
+      "version": "1.0.0",
+      "id": "b3",
+      "kind": "link",
+      "ref": "rnav:link:security-model",
+      "role": "primary-nav",
+      "text": "Security Model",
+      "attributes": {
+        "external": false,
+        "href": "/security-model",
+        "tagName": "a",
+        "textLength": 14,
+        "zone": "nav"
+      },
+      "evidence": {
+        "sourceUrl": "fixture://research/static-docs/security-model",
+        "sourceType": "fixture",
+        "domPathHint": "html > body > nav"
+      }
+    },
+    {
+      "version": "1.0.0",
+      "id": "b4",
+      "kind": "link",
+      "ref": "rnav:link:policy",
+      "role": "primary-nav",
+      "text": "Policy",
+      "attributes": {
+        "external": false,
+        "href": "/policy",
+        "tagName": "a",
+        "textLength": 6,
+        "zone": "nav"
+      },
+      "evidence": {
+        "sourceUrl": "fixture://research/static-docs/security-model",
+        "sourceType": "fixture",
+        "domPathHint": "html > body > nav"
+      }
+    },
+    {
+      "version": "1.0.0",
+      "id": "b5",
+      "kind": "heading",
+      "ref": "rmain:heading:security-model",
+      "role": "content",
+      "text": "Security Model",
+      "attributes": {
+        "level": 1,
+        "tagName": "h1",
+        "textLength": 14,
+        "zone": "main"
+      },
+      "evidence": {
+        "sourceUrl": "fixture://research/static-docs/security-model",
+        "sourceType": "fixture",
+        "domPathHint": "html > body > main"
+      }
+    },
+    {
+      "version": "1.0.0",
+      "id": "b6",
+      "kind": "text",
+      "ref": "rmain:text:the-runtime-separates-page-content-policy-state-",
+      "role": "content",
+      "text": "The runtime separates page content, policy state, and action inputs into distinct channels.",
+      "attributes": {
+        "tagName": "p",
+        "textLength": 91,
+        "zone": "main"
+      },
+      "evidence": {
+        "sourceUrl": "fixture://research/static-docs/security-model",
+        "sourceType": "fixture",
+        "domPathHint": "html > body > main"
+      }
+    },
+    {
+      "version": "1.0.0",
+      "id": "b7",
+      "kind": "text",
+      "ref": "rmain:text:all-replayable-sessions-emit-audit-logs-that-can",
+      "role": "content",
+      "text": "All replayable sessions emit audit logs that can be reviewed after each action.",
+      "attributes": {
+        "tagName": "p",
+        "textLength": 79,
+        "zone": "main"
+      },
+      "evidence": {
+        "sourceUrl": "fixture://research/static-docs/security-model",
+        "sourceType": "fixture",
+        "domPathHint": "html > body > main"
+      }
+    },
+    {
+      "version": "1.0.0",
+      "id": "b8",
+      "kind": "heading",
+      "ref": "rmain:heading:core-rules",
+      "role": "content",
+      "text": "Core Rules",
+      "attributes": {
+        "level": 2,
+        "tagName": "h2",
+        "textLength": 10,
+        "zone": "main"
+      },
+      "evidence": {
+        "sourceUrl": "fixture://research/static-docs/security-model",
+        "sourceType": "fixture",
+        "domPathHint": "html > body > main"
+      }
+    },
+    {
+      "version": "1.0.0",
+      "id": "b9",
+      "kind": "list",
+      "ref": "rmain:list:read-only-research-sessions-default-to-low-risk-",
+      "role": "content",
+      "text": "- Read-only research sessions default to low-risk actions. - Hostile pages are escalated through the policy kernel. - Evidence blocks must retain their source metadata.",
+      "attributes": {
+        "items": 3,
+        "ordered": false,
+        "tagName": "ul",
+        "textLength": 168,
+        "zone": "main"
+      },
+      "evidence": {
+        "sourceUrl": "fixture://research/static-docs/security-model",
+        "sourceType": "fixture",
+        "domPathHint": "html > body > main"
+      }
+    }
+  ]
+}

@@ -1,0 +1,113 @@
+{
+  "version": "1.0.0",
+  "stableRefVersion": "1",
+  "source": {
+    "sourceUrl": "fixture://research/static-docs/trusted-sources",
+    "sourceType": "fixture",
+    "title": "Trusted Sources"
+  },
+  "budget": {
+    "requestedTokens": 512,
+    "estimatedTokens": 56,
+    "emittedTokens": 56,
+    "truncated": false
+  },
+  "blocks": [
+    {
+      "version": "1.0.0",
+      "id": "b1",
+      "kind": "metadata",
+      "ref": "rhead:metadata:trusted-sources",
+      "role": "metadata",
+      "text": "Trusted Sources",
+      "attributes": {
+        "source": "title",
+        "tagName": "title",
+        "textLength": 15,
+        "zone": "head"
+      },
+      "evidence": {
+        "sourceUrl": "fixture://research/static-docs/trusted-sources",
+        "sourceType": "fixture",
+        "domPathHint": "html > head"
+      }
+    },
+    {
+      "version": "1.0.0",
+      "id": "b2",
+      "kind": "heading",
+      "ref": "rmain:heading:trusted-sources",
+      "role": "content",
+      "text": "Trusted Sources",
+      "attributes": {
+        "level": 1,
+        "tagName": "h1",
+        "textLength": 15,
+        "zone": "main"
+      },
+      "evidence": {
+        "sourceUrl": "fixture://research/static-docs/trusted-sources",
+        "sourceType": "fixture",
+        "domPathHint": "html > body > main"
+      }
+    },
+    {
+      "version": "1.0.0",
+      "id": "b3",
+      "kind": "text",
+      "ref": "rmain:text:trusted-sources-recommends-domain-allowlists-bef",
+      "role": "content",
+      "text": "Trusted Sources recommends domain allowlists before enabling browser actions.",
+      "attributes": {
+        "tagName": "p",
+        "textLength": 77,
+        "zone": "main"
+      },
+      "evidence": {
+        "sourceUrl": "fixture://research/static-docs/trusted-sources",
+        "sourceType": "fixture",
+        "domPathHint": "html > body > main"
+      }
+    },
+    {
+      "version": "1.0.0",
+      "id": "b4",
+      "kind": "list",
+      "ref": "rmain:list:high-risk-domains-require-review-trusted-domains",
+      "role": "content",
+      "text": "- High-risk domains require review. - Trusted domains can stay in the read-only lane.",
+      "attributes": {
+        "items": 2,
+        "ordered": false,
+        "tagName": "ul",
+        "textLength": 85,
+        "zone": "main"
+      },
+      "evidence": {
+        "sourceUrl": "fixture://research/static-docs/trusted-sources",
+        "sourceType": "fixture",
+        "domPathHint": "html > body > main"
+      }
+    },
+    {
+      "version": "1.0.0",
+      "id": "b5",
+      "kind": "link",
+      "ref": "rmain:link:trusted-sources",
+      "role": "content",
+      "text": "Trusted source reference",
+      "attributes": {
+        "external": false,
+        "href": "/trusted-sources",
+        "tagName": "a",
+        "textLength": 24,
+        "zone": "main"
+      },
+      "evidence": {
+        "sourceUrl": "fixture://research/static-docs/trusted-sources",
+        "sourceType": "fixture",
+        "domPathHint": "html > body > main"
+      }
+    }
+  ]
+}

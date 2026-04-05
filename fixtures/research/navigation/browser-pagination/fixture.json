@@ -1,0 +1,32 @@
+{
+  "id": "browser-pagination",
+  "title": "Browser-backed pagination seed",
+  "category": "navigation",
+  "sourceUri": "fixture://research/navigation/browser-pagination",
+  "htmlPath": "fixtures/research/navigation/browser-pagination/index.html",
+  "expectedSnapshotPath": "fixtures/research/navigation/browser-pagination/expected-snapshot.json",
+  "expectedEvidencePath": "fixtures/research/navigation/browser-pagination/expected-evidence.json",
+  "risk": "low",
+  "expectations": {
+    "mustContainTexts": ["Browser Pagination", "Page 1", "release highlights"],
+    "expectedKinds": ["heading", "text", "button"],
+    "expectedCitationUrl": "fixture://research/navigation/browser-pagination",
+    "claimChecks": [
+      {
+        "id": "c1",
+        "statement": "Page 1 collects the first batch of release highlights.",
+        "expectedStatus": "supported"
+      },
+      {
+        "id": "c2",
+        "statement": "Page 1 includes a Next button.",
+        "expectedStatus": "unsupported"
+      },
+      {
+        "id": "c3",
+        "statement": "Page 1 includes a pricing table.",
+        "expectedStatus": "unsupported"
+      }
+    ]
+  }
+}

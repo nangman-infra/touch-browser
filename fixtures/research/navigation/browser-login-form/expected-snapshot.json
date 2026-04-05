@@ -1,0 +1,168 @@
+{
+  "version": "1.0.0",
+  "stableRefVersion": "1",
+  "source": {
+    "sourceUrl": "fixture://research/navigation/browser-login-form",
+    "sourceType": "fixture",
+    "title": "Browser Login Form"
+  },
+  "budget": {
+    "requestedTokens": 512,
+    "estimatedTokens": 51,
+    "emittedTokens": 51,
+    "truncated": false
+  },
+  "blocks": [
+    {
+      "version": "1.0.0",
+      "id": "b1",
+      "kind": "metadata",
+      "ref": "rhead:metadata:browser-login-form",
+      "role": "metadata",
+      "text": "Browser Login Form",
+      "attributes": {
+        "source": "title",
+        "tagName": "title",
+        "textLength": 18,
+        "zone": "head"
+      },
+      "evidence": {
+        "sourceUrl": "fixture://research/navigation/browser-login-form",
+        "sourceType": "fixture",
+        "domPathHint": "html > head"
+      }
+    },
+    {
+      "version": "1.0.0",
+      "id": "b2",
+      "kind": "heading",
+      "ref": "rmain:heading:browser-login-form",
+      "role": "content",
+      "text": "Browser Login Form",
+      "attributes": {
+        "level": 1,
+        "tagName": "h1",
+        "textLength": 18,
+        "zone": "main"
+      },
+      "evidence": {
+        "sourceUrl": "fixture://research/navigation/browser-login-form",
+        "sourceType": "fixture",
+        "domPathHint": "html > body > main"
+      }
+    },
+    {
+      "version": "1.0.0",
+      "id": "b3",
+      "kind": "text",
+      "ref": "rmain:text:login-status",
+      "role": "content",
+      "text": "Waiting for credentials.",
+      "attributes": {
+        "tagName": "p",
+        "textLength": 24,
+        "zone": "main"
+      },
+      "evidence": {
+        "sourceUrl": "fixture://research/navigation/browser-login-form",
+        "sourceType": "fixture",
+        "domPathHint": "html > body > main"
+      }
+    },
+    {
+      "version": "1.0.0",
+      "id": "b4",
+      "kind": "form",
+      "ref": "rmain:form:work-email-password-no-email-typed-yet-sign-in",
+      "role": "form-control",
+      "text": "Work Email Password No email typed yet. Sign in",
+      "attributes": {
+        "controls": 3,
+        "tagName": "form",
+        "textLength": 47,
+        "zone": "main"
+      },
+      "evidence": {
+        "sourceUrl": "fixture://research/navigation/browser-login-form",
+        "sourceType": "fixture",
+        "domPathHint": "html > body > main"
+      }
+    },
+    {
+      "version": "1.0.0",
+      "id": "b5",
+      "kind": "input",
+      "ref": "rmain:input:email-email-agent-example-com",
+      "role": "form-control",
+      "text": "email email agent@example.com",
+      "attributes": {
+        "inputType": "email",
+        "name": "email",
+        "tagName": "input",
+        "textLength": 29,
+        "zone": "main"
+      },
+      "evidence": {
+        "sourceUrl": "fixture://research/navigation/browser-login-form",
+        "sourceType": "fixture",
+        "domPathHint": "html > body > main > form > label"
+      }
+    },
+    {
+      "version": "1.0.0",
+      "id": "b6",
+      "kind": "input",
+      "ref": "rmain:input:password-password-enter-password",
+      "role": "form-control",
+      "text": "password password Enter password",
+      "attributes": {
+        "inputType": "password",
+        "name": "password",
+        "tagName": "input",
+        "textLength": 32,
+        "zone": "main"
+      },
+      "evidence": {
+        "sourceUrl": "fixture://research/navigation/browser-login-form",
+        "sourceType": "fixture",
+        "domPathHint": "html > body > main > form > label"
+      }
+    },
+    {
+      "version": "1.0.0",
+      "id": "b7",
+      "kind": "text",
+      "ref": "rmain:text:typed-email",
+      "role": "content",
+      "text": "No email typed yet.",
+      "attributes": {
+        "tagName": "p",
+        "textLength": 19,
+        "zone": "main"
+      },
+      "evidence": {
+        "sourceUrl": "fixture://research/navigation/browser-login-form",
+        "sourceType": "fixture",
+        "domPathHint": "html > body > main > form"
+      }
+    },
+    {
+      "version": "1.0.0",
+      "id": "b8",
+      "kind": "button",
+      "ref": "rmain:button:sign-in",
+      "role": "form-control",
+      "text": "Sign in",
+      "attributes": {
+        "tagName": "button",
+        "textLength": 7,
+        "zone": "main"
+      },
+      "evidence": {
+        "sourceUrl": "fixture://research/navigation/browser-login-form",
+        "sourceType": "fixture",
+        "domPathHint": "html > body > main > form"
+      }
+    }
+  ]
+}

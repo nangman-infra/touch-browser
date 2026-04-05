@@ -1,0 +1,36 @@
+{
+  "id": "release-hub",
+  "title": "Release hub navigation",
+  "category": "navigation",
+  "sourceUri": "fixture://research/navigation/release-hub",
+  "htmlPath": "fixtures/research/navigation/release-hub/index.html",
+  "expectedSnapshotPath": "fixtures/research/navigation/release-hub/expected-snapshot.json",
+  "expectedEvidencePath": "fixtures/research/navigation/release-hub/expected-evidence.json",
+  "risk": "low",
+  "expectations": {
+    "mustContainTexts": [
+      "Release Hub",
+      "Release Hub groups stable, beta, and archived release tracks.",
+      "Stable track"
+    ],
+    "expectedKinds": ["heading", "text", "list", "link"],
+    "expectedCitationUrl": "fixture://research/navigation/release-hub",
+    "claimChecks": [
+      {
+        "id": "c1",
+        "statement": "Release Hub groups stable, beta, and archived release tracks.",
+        "expectedStatus": "supported"
+      },
+      {
+        "id": "c2",
+        "statement": "Stable track",
+        "expectedStatus": "supported"
+      },
+      {
+        "id": "c3",
+        "statement": "The release hub contains a credential reset form.",
+        "expectedStatus": "unsupported"
+      }
+    ]
+  }
+}

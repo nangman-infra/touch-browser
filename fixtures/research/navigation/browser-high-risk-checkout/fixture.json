@@ -1,0 +1,31 @@
+{
+  "id": "browser-high-risk-checkout",
+  "title": "Browser high-risk checkout seed",
+  "category": "navigation",
+  "sourceUri": "fixture://research/navigation/browser-high-risk-checkout",
+  "htmlPath": "fixtures/research/navigation/browser-high-risk-checkout/index.html",
+  "expectedSnapshotPath": "fixtures/research/navigation/browser-high-risk-checkout/expected-snapshot.json",
+  "expectedEvidencePath": "fixtures/research/navigation/browser-high-risk-checkout/expected-evidence.json",
+  "risk": "low",
+  "expectations": {
+    "mustContainTexts": [
+      "Checkout review",
+      "Confirm payment",
+      "Awaiting payment confirmation"
+    ],
+    "expectedKinds": ["heading", "text", "form", "input", "button"],
+    "expectedCitationUrl": "fixture://research/navigation/browser-high-risk-checkout",
+    "claimChecks": [
+      {
+        "id": "c1",
+        "statement": "The page contains a Confirm purchase button.",
+        "expectedStatus": "supported"
+      },
+      {
+        "id": "c2",
+        "statement": "The page is a read-only documentation article.",
+        "expectedStatus": "unsupported"
+      }
+    ]
+  }
+}
