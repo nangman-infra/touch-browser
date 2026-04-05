@@ -84,7 +84,21 @@ fn main() {
 
     let stdout_mode = stdout_mode_for_command(&command);
 
-    match dispatch(command) {
+    match dispatch(command).and_then(|output| {
+        match stdout_mode {
+            CliStdoutMode::Json => println!(
+                "{}",
+                serde_json::to_string_pretty(&output).expect("cli output should serialize")
+            ),
+            CliStdoutMode::ReadMarkdown => {
+                println!("{}", required_output_string(&output, "markdownText")?)
+            }
+            CliStdoutMode::SynthesisMarkdown => {
+                println!("{}", required_output_string(&output, "markdown")?)
+            }
+        }
+        Ok(output)
+    }) {
         Ok(output) => {
             let _ = log_telemetry_success(
                 &telemetry_surface_label("cli"),
@@ -92,18 +106,6 @@ fn main() {
                 &output,
                 &Value::Null,
             );
-            match stdout_mode {
-                CliStdoutMode::Json => println!(
-                    "{}",
-                    serde_json::to_string_pretty(&output).expect("cli output should serialize")
-                ),
-                CliStdoutMode::ReadMarkdown => {
-                    println!("{}", required_output_string(&output, "markdownText"))
-                }
-                CliStdoutMode::SynthesisMarkdown => {
-                    println!("{}", required_output_string(&output, "markdown"))
-                }
-            }
         }
         Err(error) => {
             let _ = log_telemetry_error(
@@ -136,11 +138,12 @@ fn stdout_mode_for_command(command: &CliCommand) -> CliStdoutMode {
     }
 }
 
-fn required_output_string<'a>(output: &'a Value, field: &str) -> &'a str {
-    output
-        .get(field)
-        .and_then(Value::as_str)
-        .unwrap_or_else(|| panic!("expected `{field}` string output"))
+fn required_output_string<'a>(output: &'a Value, field: &str) -> Result<&'a str, CliError> {
+    output.get(field).and_then(Value::as_str).ok_or_else(|| {
+        CliError::Usage(format!(
+            "Expected `{field}` string output in CLI response payload."
+        ))
+    })
 }
 
 fn serialize_output<T: Serialize>(output: T) -> Result<Value, CliError> {
