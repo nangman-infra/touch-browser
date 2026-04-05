@@ -3,7 +3,7 @@ use std::{env, path::PathBuf};
 use serde_json::{json, Value};
 use touch_browser_storage_sqlite::{PilotTelemetryEvent, PilotTelemetryStore};
 
-use crate::*;
+use crate::{repo_root, CliError};
 
 pub(crate) fn default_telemetry_db_path() -> PathBuf {
     env::var_os("TOUCH_BROWSER_TELEMETRY_DB")

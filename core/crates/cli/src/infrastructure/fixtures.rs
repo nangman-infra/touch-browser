@@ -2,7 +2,7 @@ use std::{fs, path::PathBuf};
 
 use serde::Deserialize;
 
-use crate::*;
+use crate::{repo_root, CatalogDocument, CliError, FixtureCatalog, SourceRisk, SourceType};
 
 #[derive(Debug, Deserialize)]
 #[serde(rename_all = "camelCase")]

@@ -40,8 +40,7 @@ pub(crate) use application::policy_support::{
     reject_action, required_ack_risks, succeed_action, InteractivePreflightOptions,
 };
 pub(crate) use application::search_support::{
-    build_search_report, derived_search_result_session_file, is_search_results_target,
-    resolve_latest_search_session_file,
+    is_search_results_target, resolve_latest_search_session_file,
 };
 pub(crate) use application::session_reporting::{
     render_session_synthesis_markdown, verify_action_result_if_requested,
@@ -595,17 +594,19 @@ mod tests {
     };
 
     use super::{
-        application::search_support::default_search_session_file,
-        browser_context_dir_for_session_file, build_browser_cli_session, build_search_report,
-        derived_search_result_session_file, dispatch, load_browser_cli_session, parse_command,
-        repo_root, save_browser_cli_session, AckRisk, ApproveOptions, CliCommand, ClickOptions,
-        ExpandOptions, ExtractOptions, FollowOptions, ObservationCompiler, ObservationInput,
-        OutputFormat, PaginateOptions, PaginationDirection, PersistedBrowserState, PolicyProfile,
-        ReadViewOutput, SearchActionActor, SearchEngine, SearchOpenResultOptions,
-        SearchOpenTopOptions, SearchOptions, SearchReportStatus, SessionExtractOptions,
-        SessionFileOptions, SessionProfileSetOptions, SessionReadOptions, SessionRefreshOptions,
-        SessionSynthesizeOptions, SubmitOptions, TargetOptions, TelemetryRecentOptions,
-        TypeOptions, DEFAULT_OPENED_AT, DEFAULT_REQUESTED_TOKENS, DEFAULT_SEARCH_TOKENS,
+        application::search_support::{
+            build_search_report, default_search_session_file, derived_search_result_session_file,
+        },
+        browser_context_dir_for_session_file, build_browser_cli_session, dispatch,
+        load_browser_cli_session, parse_command, repo_root, save_browser_cli_session, AckRisk,
+        ApproveOptions, CliCommand, ClickOptions, ExpandOptions, ExtractOptions, FollowOptions,
+        ObservationCompiler, ObservationInput, OutputFormat, PaginateOptions, PaginationDirection,
+        PersistedBrowserState, PolicyProfile, ReadViewOutput, SearchActionActor, SearchEngine,
+        SearchOpenResultOptions, SearchOpenTopOptions, SearchOptions, SearchReportStatus,
+        SessionExtractOptions, SessionFileOptions, SessionProfileSetOptions, SessionReadOptions,
+        SessionRefreshOptions, SessionSynthesizeOptions, SubmitOptions, TargetOptions,
+        TelemetryRecentOptions, TypeOptions, DEFAULT_OPENED_AT, DEFAULT_REQUESTED_TOKENS,
+        DEFAULT_SEARCH_TOKENS,
     };
 
     fn temp_session_path(name: &str) -> PathBuf {
