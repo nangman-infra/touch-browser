@@ -1,4 +1,4 @@
-use std::collections::BTreeMap;
+use std::collections::{BTreeMap, BTreeSet};
 
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
@@ -266,42 +266,74 @@ fn layout_zone_for_dom_segment(segment: &str) -> Option<LayoutZone> {
     if normalized.is_empty() {
         return None;
     }
+    let marker_tokens = segment_marker_tokens(&normalized);
 
     if segment_matches_zone(&normalized, "footer")
-        || normalized.contains("footer-")
-        || normalized.contains("contentinfo")
+        || segment_has_any_marker(
+            &marker_tokens,
+            &["contentinfo", "site-footer", "page-footer"],
+        )
+        || segment_has_marker_prefix(&marker_tokens, "footer-")
     {
         return Some(LayoutZone::Footer);
     }
     if segment_matches_zone(&normalized, "header")
-        || normalized.contains("masthead")
-        || normalized.contains("banner")
+        || segment_has_any_marker(
+            &marker_tokens,
+            &[
+                "masthead",
+                "banner",
+                "mw-body-header",
+                "vector-page-titlebar",
+                "p-lang-btn",
+                "mw-portlet-lang",
+                "language-selector",
+                "interlanguage-link",
+            ],
+        )
     {
         return Some(LayoutZone::Header);
     }
     if segment_matches_zone(&normalized, "aside")
-        || normalized.contains("sidebar")
-        || normalized.contains("side-panel")
-        || normalized.contains("mw-panel")
+        || segment_has_any_marker(&marker_tokens, &["sidebar", "side-panel", "mw-panel"])
     {
         return Some(LayoutZone::Aside);
     }
     if segment_matches_zone(&normalized, "nav")
-        || normalized.contains("menu")
-        || normalized.contains("toolbar")
-        || normalized.contains("breadcrumb")
-        || normalized.contains("toc")
-        || normalized.contains("navbox")
-        || normalized.contains("pagination")
-        || normalized.contains("tablist")
+        || segment_has_any_marker(
+            &marker_tokens,
+            &[
+                "vector-page-titlebar-toc",
+                "mw-panel-toc",
+                "vector-page-toolbar",
+                "p-associated-pages",
+                "p-views",
+                "p-cactions",
+                "p-tb",
+                "p-electronpdfservice-sidebar-portlet-heading",
+                "p-wikibase-otherprojects",
+                "p-variants",
+                "breadcrumb",
+                "navbox",
+                "pagination",
+                "tablist",
+            ],
+        )
     {
         return Some(LayoutZone::Nav);
     }
     if segment_matches_zone(&normalized, "main")
-        || normalized.contains("main-content")
-        || normalized.contains("bodycontent")
-        || normalized.contains("mw-parser-output")
-        || normalized.contains("article-body")
+        || segment_has_any_marker(
+            &marker_tokens,
+            &[
+                "main-content",
+                "bodycontent",
+                "mw-content-text",
+                "mw-parser-output",
+                "vector-body",
+                "article-body",
+            ],
+        )
     {
         return Some(LayoutZone::Main);
     }
@@ -314,6 +346,23 @@ fn segment_matches_zone(segment: &str, zone: &str) -> bool {
         || segment.starts_with(&format!("{zone}."))
         || segment.starts_with(&format!("{zone}#"))
         || segment.starts_with(&format!("{zone}["))
+}
+
+fn segment_marker_tokens(segment: &str) -> BTreeSet<String> {
+    segment
+        .split(|character: char| matches!(character, '#' | '.'))
+        .map(str::trim)
+        .filter(|token| !token.is_empty())
+        .map(ToOwned::to_owned)
+        .collect()
+}
+
+fn segment_has_any_marker(tokens: &BTreeSet<String>, markers: &[&str]) -> bool {
+    markers.iter().any(|marker| tokens.contains(*marker))
+}
+
+fn segment_has_marker_prefix(tokens: &BTreeSet<String>, prefix: &str) -> bool {
+    tokens.iter().any(|token| token.starts_with(prefix))
 }
 
 fn is_salient_text_block(text: &str) -> bool {
@@ -1556,6 +1605,87 @@ mod tests {
         assert!(markdown.contains("Jazz originated in African-American communities"));
         assert!(!markdown.contains("Contents"));
         assert!(!markdown.contains("Privacy policy"));
+    }
+
+    #[test]
+    fn ignores_global_html_toc_markers_when_inferring_main_only_boundaries() {
+        let snapshot = SnapshotDocument {
+            version: CONTRACT_VERSION.to_string(),
+            stable_ref_version: STABLE_REF_VERSION.to_string(),
+            source: SnapshotSource {
+                source_url: "https://zh.wikipedia.org/wiki/%E4%B8%AD%E5%9B%BD".to_string(),
+                source_type: SourceType::Http,
+                title: Some("中國".to_string()),
+            },
+            budget: SnapshotBudget {
+                requested_tokens: 512,
+                estimated_tokens: 32,
+                emitted_tokens: 32,
+                truncated: false,
+            },
+            blocks: vec![
+                SnapshotBlock {
+                    version: CONTRACT_VERSION.to_string(),
+                    id: "b1".to_string(),
+                    kind: SnapshotBlockKind::Heading,
+                    stable_ref: "rmain:heading:firstheading".to_string(),
+                    role: SnapshotBlockRole::Content,
+                    text: "中國".to_string(),
+                    attributes: BTreeMap::new(),
+                    evidence: SnapshotEvidence {
+                        source_url: "https://zh.wikipedia.org/wiki/%E4%B8%AD%E5%9B%BD".to_string(),
+                        source_type: SourceType::Http,
+                        dom_path_hint: Some(
+                            "html.client-nojs.vector-toc-available > body.skin-vector > div.mw-page-container > main#content.mw-body > header.mw-body-header.vector-page-titlebar".to_string(),
+                        ),
+                        byte_range_start: None,
+                        byte_range_end: None,
+                    },
+                },
+                SnapshotBlock {
+                    version: CONTRACT_VERSION.to_string(),
+                    id: "b2".to_string(),
+                    kind: SnapshotBlockKind::Text,
+                    stable_ref: "rmain:text:intro".to_string(),
+                    role: SnapshotBlockRole::Content,
+                    text: "中國位於東亞。".to_string(),
+                    attributes: BTreeMap::new(),
+                    evidence: SnapshotEvidence {
+                        source_url: "https://zh.wikipedia.org/wiki/%E4%B8%AD%E5%9B%BD".to_string(),
+                        source_type: SourceType::Http,
+                        dom_path_hint: Some(
+                            "html.client-nojs.vector-toc-available > body.skin-vector > div.mw-page-container > div.mw-content-container > main#content.mw-body > div#mw-content-text > div.mw-parser-output > p".to_string(),
+                        ),
+                        byte_range_start: None,
+                        byte_range_end: None,
+                    },
+                },
+                SnapshotBlock {
+                    version: CONTRACT_VERSION.to_string(),
+                    id: "b3".to_string(),
+                    kind: SnapshotBlockKind::Link,
+                    stable_ref: "rnav:link:toc".to_string(),
+                    role: SnapshotBlockRole::PrimaryNav,
+                    text: "目录".to_string(),
+                    attributes: BTreeMap::new(),
+                    evidence: SnapshotEvidence {
+                        source_url: "https://zh.wikipedia.org/wiki/%E4%B8%AD%E5%9B%BD".to_string(),
+                        source_type: SourceType::Http,
+                        dom_path_hint: Some(
+                            "html.client-nojs.vector-toc-available > body.skin-vector > div.mw-page-container > div.vector-column-start > nav#mw-panel-toc.mw-table-of-contents-container > div#vector-toc.vector-toc".to_string(),
+                        ),
+                        byte_range_start: None,
+                        byte_range_end: None,
+                    },
+                },
+            ],
+        };
+
+        let markdown = render_main_read_view_markdown(&snapshot);
+
+        assert!(markdown.contains("# 中國"));
+        assert!(markdown.contains("中國位於東亞。"));
+        assert!(!markdown.contains("目录"));
     }
 }
 

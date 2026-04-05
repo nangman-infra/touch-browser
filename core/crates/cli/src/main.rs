@@ -5,7 +5,7 @@ use std::{
 
 use serde_json::Value;
 use thiserror::Error;
-use touch_browser_acquisition::{AcquisitionConfig, AcquisitionEngine, AcquisitionError};
+use touch_browser_acquisition::AcquisitionError;
 use touch_browser_action_vm::ReadOnlyActionVm;
 use touch_browser_contracts::{
     ActionCommand, ActionFailureKind, ActionName, ActionResult, ActionStatus, EvidenceCitation,
@@ -49,7 +49,6 @@ pub(crate) use application::session_reporting::{
 pub(crate) use infrastructure::fixtures::load_fixture_catalog;
 pub(crate) use infrastructure::{browser_models::*, browser_runtime::*, telemetry::*};
 pub(crate) use interface::cli_models::*;
-pub(crate) use interface::serve_runtime::ServeDaemonState;
 
 const DEFAULT_OPENED_AT: &str = "2026-03-14T00:00:00+09:00";
 const DEFAULT_REQUESTED_TOKENS: usize = 512;
@@ -359,7 +358,7 @@ fn usage() -> String {
         "Usage:",
         "  Stable research commands:",
         "  touch-browser search <query> [--engine google|brave] [--headed] [--profile-dir <path>] [--budget <tokens>] [--session-file <path>]",
-        "  touch-browser search-open-result --rank <number> [--engine google|brave] [--session-file <path>] [--headed]",
+        "  touch-browser search-open-result --rank <number> [--prefer-official] [--engine google|brave] [--session-file <path>] [--headed]",
         "  touch-browser search-open-top [--limit <count>] [--engine google|brave] [--session-file <path>] [--headed]",
         "  touch-browser open <target> [--browser] [--headed] [--budget <tokens>] [--session-file <path>] [--source-risk low|medium|hostile] [--source-label <label>] [--allow-domain <host> ...]",
         "  touch-browser snapshot <target> [--browser] [--headed] [--budget <tokens>] [--session-file <path>] [--source-risk low|medium|hostile] [--source-label <label>] [--allow-domain <host> ...]",
@@ -369,7 +368,7 @@ fn usage() -> String {
         "  touch-browser policy <target> [--browser] [--headed] [--budget <tokens>] [--source-risk low|medium|hostile] [--source-label <label>] [--allow-domain <host> ...]",
         "  touch-browser session-snapshot --session-file <path>",
         "  touch-browser session-compact --session-file <path>",
-        "  touch-browser session-extract [--session-file <path>] --claim <statement> [--claim <statement> ...] [--verifier-command <shell-command>]",
+        "  touch-browser session-extract [--session-file <path>] [--engine google|brave] --claim <statement> [--claim <statement> ...] [--verifier-command <shell-command>]",
         "  touch-browser session-read --session-file <path> [--main-only]",
         "  touch-browser session-synthesize --session-file <path> [--note-limit <count>] [--format json|markdown]",
         "  touch-browser follow --session-file <path> --ref <stable-ref> [--headed]",
@@ -445,14 +444,15 @@ mod tests {
     };
 
     use super::{
+        application::search_support::default_search_session_file,
         browser_context_dir_for_session_file, build_browser_cli_session, build_search_report,
         derived_search_result_session_file, dispatch, load_browser_cli_session, parse_command,
         repo_root, save_browser_cli_session, AckRisk, ApproveOptions, CliCommand, ClickOptions,
-        ExpandOptions, ExtractOptions, FollowOptions, OutputFormat, PaginateOptions,
-        PaginationDirection, PersistedBrowserState, PolicyProfile, ReadViewOutput,
-        SearchActionActor, SearchEngine, SearchOpenResultOptions, SearchOpenTopOptions,
-        SearchOptions, SearchReportStatus, SessionExtractOptions, SessionFileOptions,
-        SessionProfileSetOptions, SessionReadOptions, SessionRefreshOptions,
+        ExpandOptions, ExtractOptions, FollowOptions, ObservationCompiler, ObservationInput,
+        OutputFormat, PaginateOptions, PaginationDirection, PersistedBrowserState, PolicyProfile,
+        ReadViewOutput, SearchActionActor, SearchEngine, SearchOpenResultOptions,
+        SearchOpenTopOptions, SearchOptions, SearchReportStatus, SessionExtractOptions,
+        SessionFileOptions, SessionProfileSetOptions, SessionReadOptions, SessionRefreshOptions,
         SessionSynthesizeOptions, SubmitOptions, TargetOptions, TelemetryRecentOptions,
         TypeOptions, DEFAULT_OPENED_AT, DEFAULT_REQUESTED_TOKENS, DEFAULT_SEARCH_TOKENS,
     };
@@ -577,6 +577,7 @@ mod tests {
             "search-open-result".to_string(),
             "--session-file".to_string(),
             "/tmp/search-session.json".to_string(),
+            "--prefer-official".to_string(),
             "--rank".to_string(),
             "2".to_string(),
         ])
@@ -588,7 +589,30 @@ mod tests {
                 engine: SearchEngine::Google,
                 session_file: Some(PathBuf::from("/tmp/search-session.json")),
                 rank: 2,
+                prefer_official: true,
                 headed: false,
+            })
+        );
+    }
+
+    #[test]
+    fn parses_session_extract_command_with_engine_hint() {
+        let command = parse_command(&[
+            "session-extract".to_string(),
+            "--engine".to_string(),
+            "brave".to_string(),
+            "--claim".to_string(),
+            "Example claim".to_string(),
+        ])
+        .expect("session-extract with engine should parse");
+
+        assert_eq!(
+            command,
+            CliCommand::SessionExtract(SessionExtractOptions {
+                session_file: None,
+                engine: Some(SearchEngine::Brave),
+                claims: vec!["Example claim".to_string()],
+                verifier_command: None,
             })
         );
     }
@@ -785,6 +809,45 @@ mod tests {
     }
 
     #[test]
+    fn read_view_main_only_filters_wikipedia_language_header_noise() {
+        let snapshot = ObservationCompiler
+            .compile(&ObservationInput::new(
+                "https://zh.wikipedia.org/wiki/%E4%B8%AD%E5%9B%BD",
+                SourceType::Http,
+                r##"
+                    <html>
+                      <body>
+                        <main>
+                          <header class="mw-body-header vector-page-titlebar">
+                            <h1 id="firstHeading">中國</h1>
+                            <div id="vector-page-titlebar-toc"><a href="#history">目录</a></div>
+                            <div id="p-lang-btn">
+                              <ul>
+                                <li><a class="interlanguage-link-target" href="https://en.wikipedia.org/wiki/China">English</a></li>
+                              </ul>
+                            </div>
+                          </header>
+                          <div id="mw-content-text">
+                            <div class="mw-parser-output">
+                              <p>中國位於東亞。</p>
+                            </div>
+                          </div>
+                        </main>
+                      </body>
+                    </html>
+                "##,
+                512,
+            ))
+            .expect("observation should compile");
+
+        let main = ReadViewOutput::new(&snapshot, None, None, true);
+        assert!(main.markdown_text.contains("# 中國"));
+        assert!(main.markdown_text.contains("中國位於東亞。"));
+        assert!(!main.markdown_text.contains("English"));
+        assert!(!main.markdown_text.contains("目录"));
+    }
+
+    #[test]
     fn structures_google_style_search_results_from_snapshot_blocks() {
         let snapshot = SnapshotDocument {
             version: "1.0.0".to_string(),
@@ -935,6 +998,63 @@ mod tests {
     }
 
     #[test]
+    fn deduplicates_youtube_timestamp_variants_in_search_results() {
+        let snapshot = SnapshotDocument {
+            version: "1.0.0".to_string(),
+            stable_ref_version: "1".to_string(),
+            source: SnapshotSource {
+                source_url: "https://www.google.com/search?q=postgresql+mvcc".to_string(),
+                source_type: SourceType::Playwright,
+                title: Some("postgresql mvcc - Google Search".to_string()),
+            },
+            budget: SnapshotBudget {
+                requested_tokens: DEFAULT_SEARCH_TOKENS,
+                estimated_tokens: 64,
+                emitted_tokens: 64,
+                truncated: false,
+            },
+            blocks: Vec::new(),
+        };
+        let html = r#"
+            <html>
+              <body>
+                <main>
+                  <div>
+                    <a href="https://www.youtube.com/watch?v=abc123&t=31s">PostgreSQL MVCC chapter 1</a>
+                    <p>Explain the first checkpoint.</p>
+                  </div>
+                  <div>
+                    <a href="https://www.youtube.com/watch?v=abc123&t=92s">PostgreSQL MVCC chapter 2</a>
+                    <p>Explain the second checkpoint.</p>
+                  </div>
+                  <div>
+                    <a href="https://www.postgresql.org/docs/current/mvcc-intro.html">PostgreSQL MVCC docs</a>
+                    <p>Official documentation.</p>
+                  </div>
+                </main>
+              </body>
+            </html>
+        "#;
+
+        let report = build_search_report(
+            SearchEngine::Google,
+            "PostgreSQL MVCC",
+            "https://www.google.com/search?q=postgresql+mvcc",
+            &snapshot,
+            html,
+            "https://www.google.com/search?q=postgresql+mvcc",
+            DEFAULT_OPENED_AT,
+        );
+
+        assert_eq!(report.result_count, 2);
+        assert_eq!(
+            report.results[0].url,
+            "https://www.youtube.com/watch?v=abc123"
+        );
+        assert_eq!(report.results[1].domain, "www.postgresql.org");
+    }
+
+    #[test]
     fn marks_google_sorry_pages_as_search_challenges() {
         let snapshot = SnapshotDocument {
             version: "1.0.0".to_string(),
@@ -1038,6 +1158,7 @@ mod tests {
             engine: SearchEngine::Google,
             session_file: Some(session_file.clone()),
             rank: 1,
+            prefer_official: false,
             headed: false,
         }))
         .expect("search-open-result should succeed");
@@ -1059,6 +1180,83 @@ mod tests {
             session_file: session_file.clone(),
         }))
         .expect("session close should clean search session");
+    }
+
+    #[test]
+    fn search_open_result_can_prefer_official_candidates() {
+        let session_file = temp_session_path("search-open-result-prefer-official");
+        dispatch(CliCommand::Open(TargetOptions {
+            target: "fixture://research/navigation/browser-pagination".to_string(),
+            budget: DEFAULT_REQUESTED_TOKENS,
+            source_risk: None,
+            source_label: None,
+            allowlisted_domains: Vec::new(),
+            browser: true,
+            headed: false,
+            main_only: false,
+            session_file: Some(session_file.clone()),
+        }))
+        .expect("browser-backed open should persist session");
+
+        let mut persisted =
+            load_browser_cli_session(&session_file).expect("session should load after open");
+        persisted.latest_search = Some(SearchReport {
+            version: "1.0.0".to_string(),
+            generated_at: DEFAULT_OPENED_AT.to_string(),
+            engine: SearchEngine::Google,
+            query: "browser pagination".to_string(),
+            search_url: "https://www.google.com/search?q=browser+pagination".to_string(),
+            final_url: "https://www.google.com/search?q=browser+pagination".to_string(),
+            status: SearchReportStatus::Ready,
+            status_detail: None,
+            result_count: 2,
+            results: vec![
+                SearchResultItem {
+                    rank: 1,
+                    title: "Video summary".to_string(),
+                    url: "fixture://research/navigation/browser-follow".to_string(),
+                    domain: "video.example".to_string(),
+                    snippet: Some("Video result".to_string()),
+                    stable_ref: None,
+                    official_likely: false,
+                    selection_score: Some(0.3),
+                    recommended_surface: Some("read-view".to_string()),
+                },
+                SearchResultItem {
+                    rank: 2,
+                    title: "Official docs".to_string(),
+                    url: "fixture://research/navigation/browser-pagination".to_string(),
+                    domain: "docs.example".to_string(),
+                    snippet: Some("Official result".to_string()),
+                    stable_ref: None,
+                    official_likely: true,
+                    selection_score: Some(0.9),
+                    recommended_surface: Some("extract".to_string()),
+                },
+            ],
+            recommended_result_ranks: vec![2, 1],
+            next_action_hints: Vec::new(),
+        });
+        save_browser_cli_session(&session_file, &persisted)
+            .expect("session should save with search state");
+
+        let output = dispatch(CliCommand::SearchOpenResult(SearchOpenResultOptions {
+            engine: SearchEngine::Google,
+            session_file: Some(session_file.clone()),
+            rank: 1,
+            prefer_official: true,
+            headed: false,
+        }))
+        .expect("prefer-official search-open-result should succeed");
+
+        assert_eq!(output["selectionStrategy"], "prefer-official");
+        assert_eq!(output["selectedResult"]["rank"], 2);
+        assert_eq!(output["selectedResult"]["title"], "Official docs");
+
+        dispatch(CliCommand::SessionClose(SessionFileOptions {
+            session_file,
+        }))
+        .expect("session close should succeed");
     }
 
     #[test]
@@ -1814,6 +2012,7 @@ mod tests {
 
         let extract_output = dispatch(CliCommand::SessionExtract(SessionExtractOptions {
             session_file: Some(session_file.clone()),
+            engine: None,
             claims: vec!["Advanced guide opened for the next research step.".to_string()],
             verifier_command: None,
         }))
@@ -1964,6 +2163,7 @@ mod tests {
 
         let extract_output = dispatch(CliCommand::SessionExtract(SessionExtractOptions {
             session_file: Some(session_file.clone()),
+            engine: None,
             claims: vec![
                 "Expanded details confirm that the runtime can reveal collapsed notes.".to_string(),
             ],
@@ -2061,6 +2261,7 @@ mod tests {
 
         let extract_output = dispatch(CliCommand::SessionExtract(SessionExtractOptions {
             session_file: None,
+            engine: None,
             claims: vec!["Latest session extraction target.".to_string()],
             verifier_command: None,
         }))
@@ -2076,6 +2277,106 @@ mod tests {
         );
 
         fs::remove_file(&session_file).expect("session file should be removable");
+    }
+
+    #[test]
+    fn session_extract_can_resolve_engine_default_search_session() {
+        let google_session_file = default_search_session_file(SearchEngine::Google);
+        let brave_session_file = default_search_session_file(SearchEngine::Brave);
+        if let Some(parent) = google_session_file.parent() {
+            fs::create_dir_all(parent).expect("search output dir should exist");
+        }
+
+        let runtime = touch_browser_runtime::ReadOnlyRuntime::default();
+        let build_session = |session_id: &str, text: &str| {
+            let mut session = runtime.start_session(session_id, DEFAULT_OPENED_AT);
+            runtime
+                .open_snapshot(
+                    &mut session,
+                    "https://example.com/engine-extract",
+                    SnapshotDocument {
+                        version: touch_browser_contracts::CONTRACT_VERSION.to_string(),
+                        stable_ref_version: touch_browser_contracts::STABLE_REF_VERSION.to_string(),
+                        source: SnapshotSource {
+                            source_url: "https://example.com/engine-extract".to_string(),
+                            source_type: SourceType::Fixture,
+                            title: Some("Engine Extract".to_string()),
+                        },
+                        budget: SnapshotBudget {
+                            requested_tokens: 128,
+                            estimated_tokens: 24,
+                            emitted_tokens: 24,
+                            truncated: false,
+                        },
+                        blocks: vec![SnapshotBlock {
+                            version: touch_browser_contracts::CONTRACT_VERSION.to_string(),
+                            id: "b1".to_string(),
+                            kind: SnapshotBlockKind::Text,
+                            stable_ref: "rmain:text:engine".to_string(),
+                            role: SnapshotBlockRole::Content,
+                            text: text.to_string(),
+                            attributes: Default::default(),
+                            evidence: SnapshotEvidence {
+                                source_url: "https://example.com/engine-extract".to_string(),
+                                source_type: SourceType::Fixture,
+                                dom_path_hint: Some("html > body > main > p".to_string()),
+                                byte_range_start: None,
+                                byte_range_end: None,
+                            },
+                        }],
+                    },
+                    touch_browser_contracts::SourceRisk::Low,
+                    None,
+                    DEFAULT_OPENED_AT,
+                )
+                .expect("snapshot should open");
+            build_browser_cli_session(
+                &session,
+                128,
+                true,
+                Some(PersistedBrowserState {
+                    current_url: "https://example.com/engine-extract".to_string(),
+                    current_html: format!("<html><body><main><p>{text}</p></main></body></html>"),
+                }),
+                None,
+                None,
+                None,
+                Vec::new(),
+                Vec::new(),
+                None,
+            )
+        };
+
+        save_browser_cli_session(
+            &google_session_file,
+            &build_session("stest-google-engine", "Google engine target."),
+        )
+        .expect("google search session should save");
+        save_browser_cli_session(
+            &brave_session_file,
+            &build_session("stest-brave-engine", "Brave engine target."),
+        )
+        .expect("brave search session should save");
+
+        let extract_output = dispatch(CliCommand::SessionExtract(SessionExtractOptions {
+            session_file: None,
+            engine: Some(SearchEngine::Brave),
+            claims: vec!["Brave engine target.".to_string()],
+            verifier_command: None,
+        }))
+        .expect("session extract should use engine-specific session");
+
+        assert_eq!(
+            extract_output["sessionFile"],
+            brave_session_file.display().to_string()
+        );
+        assert_eq!(
+            extract_output["extract"]["output"]["evidenceSupportedClaims"][0]["statement"],
+            "Brave engine target."
+        );
+
+        let _ = fs::remove_file(google_session_file);
+        let _ = fs::remove_file(brave_session_file);
     }
 
     #[test]

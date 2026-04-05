@@ -80,6 +80,7 @@ pub(crate) fn parse_search_open_result_options(
     let mut session_file = None;
     let mut engine = SearchEngine::Google;
     let mut rank = None;
+    let mut prefer_official = false;
     let mut headed = false;
     let mut index = 0;
 
@@ -114,6 +115,10 @@ pub(crate) fn parse_search_open_result_options(
                 rank = Some(parsed);
                 index += 2;
             }
+            "--prefer-official" => {
+                prefer_official = true;
+                index += 1;
+            }
             "--headed" => {
                 headed = true;
                 index += 1;
@@ -136,6 +141,7 @@ pub(crate) fn parse_search_open_result_options(
         rank: rank.ok_or_else(|| {
             CliError::Usage("search-open-result requires `--rank <number>`.".to_string())
         })?,
+        prefer_official,
         headed,
     })
 }

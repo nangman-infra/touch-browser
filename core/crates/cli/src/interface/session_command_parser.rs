@@ -435,6 +435,7 @@ pub(crate) fn parse_session_extract_options(
     args: &[String],
 ) -> Result<SessionExtractOptions, CliError> {
     let mut session_file = None;
+    let mut engine = None;
     let mut claims = Vec::new();
     let mut verifier_command = None;
     let mut index = 0;
@@ -446,6 +447,13 @@ pub(crate) fn parse_session_extract_options(
                     CliError::Usage("--session-file requires a path.".to_string())
                 })?;
                 session_file = Some(PathBuf::from(value));
+                index += 2;
+            }
+            "--engine" => {
+                let value = args
+                    .get(index + 1)
+                    .ok_or_else(|| CliError::Usage("--engine requires a value.".to_string()))?;
+                engine = Some(parse_search_engine(value)?);
                 index += 2;
             }
             "--claim" => {
@@ -475,6 +483,7 @@ pub(crate) fn parse_session_extract_options(
 
     Ok(SessionExtractOptions {
         session_file,
+        engine,
         claims,
         verifier_command,
     })

@@ -33,7 +33,7 @@ impl Default for AcquisitionConfig {
             persistent_cache_dir: Some(
                 std::env::temp_dir().join("touch-browser-acquisition-cache"),
             ),
-            persistent_cache_ttl: Duration::from_secs(300),
+            persistent_cache_ttl: Duration::from_secs(60),
         }
     }
 }

@@ -28,7 +28,7 @@ fn search_engine_slug(engine: SearchEngine) -> &'static str {
     }
 }
 
-fn default_search_session_file(engine: SearchEngine) -> PathBuf {
+pub(crate) fn default_search_session_file(engine: SearchEngine) -> PathBuf {
     default_search_output_dir().join(format!(
         "{}.search-session.json",
         search_engine_slug(engine)
@@ -50,14 +50,28 @@ pub(crate) fn resolve_search_session_file(
 
 pub(crate) fn resolve_latest_search_session_file(
     session_file: Option<&PathBuf>,
+    engine: Option<SearchEngine>,
 ) -> Result<PathBuf, CliError> {
     match session_file {
         Some(path) => Ok(path.clone()),
-        None => latest_search_session_file_in(&default_search_output_dir())?.ok_or_else(|| {
-            CliError::Usage(
-                "No persisted search session was found. Run `touch-browser search ...` first or pass `--session-file <path>`.".to_string(),
-            )
-        }),
+        None => {
+            if let Some(engine) = engine {
+                let engine_default = default_search_session_file(engine);
+                if engine_default.is_file() {
+                    return Ok(engine_default);
+                }
+                return Err(CliError::Usage(format!(
+                    "No persisted {} search session was found. Run `touch-browser search ... --engine {}` first or pass `--session-file <path>`.",
+                    search_engine_slug(engine),
+                    search_engine_slug(engine)
+                )));
+            }
+            latest_search_session_file_in(&default_search_output_dir())?.ok_or_else(|| {
+                CliError::Usage(
+                    "No persisted search session was found. Run `touch-browser search ...` first or pass `--session-file <path>`.".to_string(),
+                )
+            })
+        }
     }
 }
 
@@ -210,7 +224,8 @@ fn extract_search_results_from_snapshot(
         else {
             continue;
         };
-        if !seen_urls.insert(url.clone()) {
+        let identity = search_result_identity_key(&url);
+        if !seen_urls.insert(identity) {
             continue;
         }
         let title = block.text.trim().to_string();
@@ -257,7 +272,8 @@ fn extract_search_results_from_html(
         let Some(url) = normalize_search_result_url(engine, base_url, &attributes) else {
             continue;
         };
-        if !seen_urls.insert(url.clone()) {
+        let identity = search_result_identity_key(&url);
+        if !seen_urls.insert(identity) {
             continue;
         }
 
@@ -290,10 +306,10 @@ fn extract_search_results_from_html(
 fn merge_search_results(results: &mut Vec<SearchResultItem>, additional: Vec<SearchResultItem>) {
     let mut seen = results
         .iter()
-        .map(|result| result.url.clone())
+        .map(|result| search_result_identity_key(&result.url))
         .collect::<BTreeSet<_>>();
     for candidate in additional {
-        if !seen.insert(candidate.url.clone()) {
+        if !seen.insert(search_result_identity_key(&candidate.url)) {
             continue;
         }
         let mut candidate = candidate;
@@ -470,7 +486,8 @@ fn normalize_search_result_url(
                         .map(|(_, value)| value.into_owned())
                     {
                         if value.starts_with("http://") || value.starts_with("https://") {
-                            return Some(value);
+                            let nested = Url::parse(&value).ok()?;
+                            return canonicalize_search_result_url(nested);
                         }
                     }
                 }
@@ -478,8 +495,48 @@ fn normalize_search_result_url(
             None
         }
         SearchEngine::Brave if is_brave_host(host) => None,
-        _ => matches!(resolved.scheme(), "http" | "https").then(|| resolved.to_string()),
+        _ => matches!(resolved.scheme(), "http" | "https")
+            .then_some(resolved)
+            .and_then(canonicalize_search_result_url),
     }
+}
+
+fn canonicalize_search_result_url(mut resolved: Url) -> Option<String> {
+    resolved.set_fragment(None);
+    let host = resolved.host_str()?.to_ascii_lowercase();
+
+    if matches!(
+        host.as_str(),
+        "youtube.com" | "www.youtube.com" | "m.youtube.com"
+    ) {
+        if resolved.path() == "/watch" {
+            let video_id = resolved
+                .query_pairs()
+                .find(|(key, _)| key == "v")
+                .map(|(_, value)| value.into_owned())?;
+            let mut canonical = Url::parse("https://www.youtube.com/watch").ok()?;
+            canonical.query_pairs_mut().append_pair("v", &video_id);
+            return Some(canonical.to_string());
+        }
+        if resolved.path().starts_with("/shorts/") {
+            resolved.set_query(None);
+            return Some(resolved.to_string());
+        }
+    }
+
+    if host == "youtu.be" {
+        resolved.set_query(None);
+        return Some(resolved.to_string());
+    }
+
+    Some(resolved.to_string())
+}
+
+fn search_result_identity_key(url: &str) -> String {
+    Url::parse(url)
+        .ok()
+        .and_then(canonicalize_search_result_url)
+        .unwrap_or_else(|| url.to_string())
 }
 
 fn is_google_host(host: &str) -> bool {

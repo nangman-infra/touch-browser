@@ -76,6 +76,7 @@ pub(crate) struct SearchOpenResultOptions {
     pub(crate) engine: SearchEngine,
     pub(crate) session_file: Option<PathBuf>,
     pub(crate) rank: usize,
+    pub(crate) prefer_official: bool,
     pub(crate) headed: bool,
 }
 
@@ -115,6 +116,7 @@ pub(crate) struct SessionReadOptions {
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub(crate) struct SessionExtractOptions {
     pub(crate) session_file: Option<PathBuf>,
+    pub(crate) engine: Option<SearchEngine>,
     pub(crate) claims: Vec<String>,
     pub(crate) verifier_command: Option<String>,
 }

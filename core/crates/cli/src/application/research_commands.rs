@@ -1,3 +1,4 @@
+use super::{ports::default_cli_ports, search_support::default_search_session_file};
 use crate::*;
 
 use serde_json::json;
@@ -25,7 +26,45 @@ fn shell_quote(value: &str) -> String {
     format!("'{}'", value.replace('\'', "'\"'\"'"))
 }
 
+fn selected_search_result(
+    latest_search: &SearchReport,
+    requested_rank: usize,
+    prefer_official: bool,
+) -> Result<(SearchResultItem, &'static str), CliError> {
+    if prefer_official {
+        let official_results = latest_search
+            .results
+            .iter()
+            .filter(|result| result.official_likely)
+            .cloned()
+            .collect::<Vec<_>>();
+        if let Some(selected) = official_results.get(requested_rank.saturating_sub(1)) {
+            return Ok((selected.clone(), "prefer-official"));
+        }
+        if !official_results.is_empty() {
+            return Err(CliError::Usage(format!(
+                "Official-like search results do not contain rank {}.",
+                requested_rank
+            )));
+        }
+    }
+
+    latest_search
+        .results
+        .iter()
+        .find(|result| result.rank == requested_rank)
+        .cloned()
+        .map(|selected| (selected, "rank"))
+        .ok_or_else(|| {
+            CliError::Usage(format!(
+                "Saved search results do not contain rank {}.",
+                requested_rank
+            ))
+        })
+}
+
 pub(crate) fn handle_search(options: SearchOptions) -> Result<Value, CliError> {
+    let ports = default_cli_ports();
     let search_url = build_search_url(options.engine, &options.query)?;
     let session_file = resolve_search_session_file(options.session_file.as_ref(), options.engine);
     let browser_profile_dir = options
@@ -36,12 +75,14 @@ pub(crate) fn handle_search(options: SearchOptions) -> Result<Value, CliError> {
         None
     } else {
         Some(
-            browser_context_dir_for_session_file(&session_file)
+            ports
+                .session_store
+                .browser_context_dir_for_session(&session_file)
                 .display()
                 .to_string(),
         )
     };
-    let context = open_browser_session(
+    let context = ports.browser.open_browser_session(
         &search_url,
         options.budget,
         Some(SourceRisk::Low),
@@ -62,9 +103,9 @@ pub(crate) fn handle_search(options: SearchOptions) -> Result<Value, CliError> {
         DEFAULT_OPENED_AT,
     );
 
-    save_browser_cli_session(
+    ports.session_store.save_session(
         &session_file,
-        &build_browser_cli_session(
+        &ports.browser.build_browser_cli_session(
             &context.session,
             context.snapshot.budget.requested_tokens,
             !options.headed,
@@ -99,8 +140,9 @@ pub(crate) fn handle_search(options: SearchOptions) -> Result<Value, CliError> {
 pub(crate) fn handle_search_open_result(
     options: SearchOpenResultOptions,
 ) -> Result<Value, CliError> {
+    let ports = default_cli_ports();
     let session_file = resolve_search_session_file(options.session_file.as_ref(), options.engine);
-    let persisted = load_browser_cli_session(&session_file)?;
+    let persisted = ports.session_store.load_session(&session_file)?;
     let latest_search = persisted.latest_search.clone().ok_or_else(|| {
         CliError::Usage(
             "This browser session does not contain saved search results. Run `touch-browser search ... --session-file <path>` first.".to_string(),
@@ -114,19 +156,10 @@ pub(crate) fn handle_search_open_result(
                 .unwrap_or_else(|| "Saved search results are not ready to open.".to_string()),
         ));
     }
-    let selected = latest_search
-        .results
-        .iter()
-        .find(|result| result.rank == options.rank)
-        .cloned()
-        .ok_or_else(|| {
-            CliError::Usage(format!(
-                "Saved search results do not contain rank {}.",
-                options.rank
-            ))
-        })?;
+    let (selected, selection_strategy) =
+        selected_search_result(&latest_search, options.rank, options.prefer_official)?;
 
-    let context = open_browser_session(
+    let context = ports.browser.open_browser_session(
         &selected.url,
         persisted.requested_budget,
         Some(SourceRisk::Low),
@@ -137,9 +170,9 @@ pub(crate) fn handle_search_open_result(
         "scliopen001",
         DEFAULT_OPENED_AT,
     )?;
-    save_browser_cli_session(
+    ports.session_store.save_session(
         &session_file,
-        &build_browser_cli_session(
+        &ports.browser.build_browser_cli_session(
             &context.session,
             context.snapshot.budget.requested_tokens,
             !options.headed,
@@ -168,15 +201,30 @@ pub(crate) fn handle_search_open_result(
         ),
     ));
 
+    let session_extract_hint = if session_file == default_search_session_file(latest_search.engine)
+    {
+        format!(
+            "touch-browser session-extract --engine {} --claim \"<statement>\"",
+            match latest_search.engine {
+                SearchEngine::Google => "google",
+                SearchEngine::Brave => "brave",
+            }
+        )
+    } else {
+        format!(
+            "touch-browser session-extract --session-file {} --claim \"<statement>\"",
+            shell_quote(&session_file.display().to_string())
+        )
+    };
+
     Ok(json!({
         "selectedResult": selected,
+        "requestedRank": options.rank,
+        "selectionStrategy": selection_strategy,
         "result": opened,
         "sessionFile": session_file.display().to_string(),
         "nextCommands": {
-            "sessionExtract": format!(
-                "touch-browser session-extract --session-file {} --claim \"<statement>\"",
-                shell_quote(&session_file.display().to_string())
-            ),
+            "sessionExtract": session_extract_hint,
             "sessionRead": format!(
                 "touch-browser session-read --session-file {} --main-only",
                 shell_quote(&session_file.display().to_string())
@@ -186,9 +234,10 @@ pub(crate) fn handle_search_open_result(
 }
 
 pub(crate) fn handle_search_open_top(options: SearchOpenTopOptions) -> Result<Value, CliError> {
+    let ports = default_cli_ports();
     let search_session_file =
         resolve_search_session_file(options.session_file.as_ref(), options.engine);
-    let persisted = load_browser_cli_session(&search_session_file)?;
+    let persisted = ports.session_store.load_session(&search_session_file)?;
     let latest_search = persisted.latest_search.clone().ok_or_else(|| {
         CliError::Usage(
             "This browser session does not contain saved search results. Run `touch-browser search ... --session-file <path>` first.".to_string(),
@@ -231,7 +280,7 @@ pub(crate) fn handle_search_open_top(options: SearchOpenTopOptions) -> Result<Va
         .map(|selected| {
             let result_session_file =
                 derived_search_result_session_file(&search_session_file, selected.rank);
-            let context = open_browser_session(
+            let context = ports.browser.open_browser_session(
                 &selected.url,
                 persisted.requested_budget,
                 Some(SourceRisk::Low),
@@ -242,9 +291,9 @@ pub(crate) fn handle_search_open_top(options: SearchOpenTopOptions) -> Result<Va
                 "scliopen001",
                 DEFAULT_OPENED_AT,
             )?;
-            save_browser_cli_session(
+            ports.session_store.save_session(
                 &result_session_file,
-                &build_browser_cli_session(
+                &ports.browser.build_browser_cli_session(
                     &context.session,
                     context.snapshot.budget.requested_tokens,
                     !options.headed,
@@ -290,6 +339,7 @@ pub(crate) fn handle_search_open_top(options: SearchOpenTopOptions) -> Result<Va
 }
 
 pub(crate) fn handle_open(options: TargetOptions) -> Result<Value, CliError> {
+    let ports = default_cli_ports();
     if options.session_file.is_some() && !options.browser {
         return Err(CliError::Usage(
             "`--session-file` is currently supported only with `--browser`.".to_string(),
@@ -301,7 +351,7 @@ pub(crate) fn handle_open(options: TargetOptions) -> Result<Value, CliError> {
     }
 
     if is_fixture_target(&options.target) {
-        let catalog = load_fixture_catalog()?;
+        let catalog = ports.fixtures.load_catalog()?;
         let runtime = ReadOnlyRuntime::default();
         let vm = ReadOnlyActionVm::default();
         let mut session = runtime.start_session("scliopen001", DEFAULT_OPENED_AT);
@@ -324,7 +374,7 @@ pub(crate) fn handle_open(options: TargetOptions) -> Result<Value, CliError> {
 
     let runtime = ReadOnlyRuntime::default();
     let kernel = PolicyKernel;
-    let mut acquisition = AcquisitionEngine::new(AcquisitionConfig::default())?;
+    let mut acquisition = ports.acquisition.create_engine()?;
     let mut session = runtime.start_session("scliopen001", DEFAULT_OPENED_AT);
     let source_risk = options.source_risk.unwrap_or(SourceRisk::Low);
     let snapshot = runtime.open_live(
@@ -348,13 +398,18 @@ pub(crate) fn handle_open(options: TargetOptions) -> Result<Value, CliError> {
 }
 
 pub(crate) fn handle_browser_open(options: TargetOptions) -> Result<Value, CliError> {
+    let ports = default_cli_ports();
     let kernel = PolicyKernel;
     let browser_context_dir = options
         .session_file
         .as_ref()
-        .map(|path| browser_context_dir_for_session_file(path.as_path()))
+        .map(|path| {
+            ports
+                .session_store
+                .browser_context_dir_for_session(path.as_path())
+        })
         .map(|path| path.display().to_string());
-    let context = open_browser_session(
+    let context = ports.browser.open_browser_session(
         &options.target,
         options.budget,
         options.source_risk.clone(),
@@ -366,9 +421,9 @@ pub(crate) fn handle_browser_open(options: TargetOptions) -> Result<Value, CliEr
         DEFAULT_OPENED_AT,
     )?;
     if let Some(session_file) = options.session_file.as_ref() {
-        save_browser_cli_session(
+        ports.session_store.save_session(
             session_file,
-            &build_browser_cli_session(
+            &ports.browser.build_browser_cli_session(
                 &context.session,
                 context.snapshot.budget.requested_tokens,
                 !options.headed,
@@ -397,13 +452,18 @@ pub(crate) fn handle_browser_open(options: TargetOptions) -> Result<Value, CliEr
 }
 
 pub(crate) fn handle_compact_view(options: TargetOptions) -> Result<Value, CliError> {
+    let ports = default_cli_ports();
     if options.browser {
         let browser_context_dir = options
             .session_file
             .as_ref()
-            .map(|path| browser_context_dir_for_session_file(path.as_path()))
+            .map(|path| {
+                ports
+                    .session_store
+                    .browser_context_dir_for_session(path.as_path())
+            })
             .map(|path| path.display().to_string());
-        let context = open_browser_session(
+        let context = ports.browser.open_browser_session(
             &options.target,
             options.budget,
             options.source_risk.clone(),
@@ -416,9 +476,9 @@ pub(crate) fn handle_compact_view(options: TargetOptions) -> Result<Value, CliEr
         )?;
 
         if let Some(session_file) = options.session_file.as_ref() {
-            save_browser_cli_session(
+            ports.session_store.save_session(
                 session_file,
-                &build_browser_cli_session(
+                &ports.browser.build_browser_cli_session(
                     &context.session,
                     context.snapshot.budget.requested_tokens,
                     !options.headed,
@@ -445,7 +505,7 @@ pub(crate) fn handle_compact_view(options: TargetOptions) -> Result<Value, CliEr
     }
 
     if is_fixture_target(&options.target) {
-        let catalog = load_fixture_catalog()?;
+        let catalog = ports.fixtures.load_catalog()?;
         let runtime = ReadOnlyRuntime::default();
         let mut session = runtime.start_session("sclicompact001", DEFAULT_OPENED_AT);
         let snapshot = runtime.open(&mut session, &catalog, &options.target, DEFAULT_OPENED_AT)?;
@@ -457,7 +517,7 @@ pub(crate) fn handle_compact_view(options: TargetOptions) -> Result<Value, CliEr
     }
 
     let runtime = ReadOnlyRuntime::default();
-    let mut acquisition = AcquisitionEngine::new(AcquisitionConfig::default())?;
+    let mut acquisition = ports.acquisition.create_engine()?;
     let mut session = runtime.start_session("sclicompact001", DEFAULT_OPENED_AT);
     let snapshot = runtime.open_live(
         &mut session,
@@ -477,13 +537,18 @@ pub(crate) fn handle_compact_view(options: TargetOptions) -> Result<Value, CliEr
 }
 
 pub(crate) fn handle_read_view(options: TargetOptions) -> Result<Value, CliError> {
+    let ports = default_cli_ports();
     if options.browser {
         let browser_context_dir = options
             .session_file
             .as_ref()
-            .map(|path| browser_context_dir_for_session_file(path.as_path()))
+            .map(|path| {
+                ports
+                    .session_store
+                    .browser_context_dir_for_session(path.as_path())
+            })
             .map(|path| path.display().to_string());
-        let context = open_browser_session(
+        let context = ports.browser.open_browser_session(
             &options.target,
             options.budget,
             options.source_risk.clone(),
@@ -496,9 +561,9 @@ pub(crate) fn handle_read_view(options: TargetOptions) -> Result<Value, CliError
         )?;
 
         if let Some(session_file) = options.session_file.as_ref() {
-            save_browser_cli_session(
+            ports.session_store.save_session(
                 session_file,
-                &build_browser_cli_session(
+                &ports.browser.build_browser_cli_session(
                     &context.session,
                     context.snapshot.budget.requested_tokens,
                     !options.headed,
@@ -526,7 +591,7 @@ pub(crate) fn handle_read_view(options: TargetOptions) -> Result<Value, CliError
     }
 
     if is_fixture_target(&options.target) {
-        let catalog = load_fixture_catalog()?;
+        let catalog = ports.fixtures.load_catalog()?;
         let runtime = ReadOnlyRuntime::default();
         let mut session = runtime.start_session("scliread001", DEFAULT_OPENED_AT);
         let snapshot = runtime.open(&mut session, &catalog, &options.target, DEFAULT_OPENED_AT)?;
@@ -539,7 +604,7 @@ pub(crate) fn handle_read_view(options: TargetOptions) -> Result<Value, CliError
     }
 
     let runtime = ReadOnlyRuntime::default();
-    let mut acquisition = AcquisitionEngine::new(AcquisitionConfig::default())?;
+    let mut acquisition = ports.acquisition.create_engine()?;
     let mut session = runtime.start_session("scliread001", DEFAULT_OPENED_AT);
     let snapshot = runtime.open_live(
         &mut session,
@@ -560,6 +625,7 @@ pub(crate) fn handle_read_view(options: TargetOptions) -> Result<Value, CliError
 }
 
 pub(crate) fn handle_extract(options: ExtractOptions) -> Result<Value, CliError> {
+    let ports = default_cli_ports();
     if options.session_file.is_some() && !options.browser {
         return Err(CliError::Usage(
             "`--session-file` is currently supported only with `--browser` on target commands. Use `session-extract` for persisted sessions.".to_string(),
@@ -573,9 +639,13 @@ pub(crate) fn handle_extract(options: ExtractOptions) -> Result<Value, CliError>
         let browser_context_dir = options
             .session_file
             .as_ref()
-            .map(|path| browser_context_dir_for_session_file(path.as_path()))
+            .map(|path| {
+                ports
+                    .session_store
+                    .browser_context_dir_for_session(path.as_path())
+            })
             .map(|path| path.display().to_string());
-        let context = open_browser_session(
+        let context = ports.browser.open_browser_session(
             &options.target,
             options.budget,
             options.source_risk.clone(),
@@ -613,9 +683,9 @@ pub(crate) fn handle_extract(options: ExtractOptions) -> Result<Value, CliError>
             &extract_timestamp,
         )?;
         if let Some(session_file) = options.session_file.as_ref() {
-            save_browser_cli_session(
+            ports.session_store.save_session(
                 session_file,
-                &build_browser_cli_session(
+                &ports.browser.build_browser_cli_session(
                     &session,
                     context.snapshot.budget.requested_tokens,
                     !options.headed,
@@ -642,7 +712,7 @@ pub(crate) fn handle_extract(options: ExtractOptions) -> Result<Value, CliError>
     }
 
     if is_fixture_target(&options.target) {
-        let catalog = load_fixture_catalog()?;
+        let catalog = ports.fixtures.load_catalog()?;
         let runtime = ReadOnlyRuntime::default();
         let vm = ReadOnlyActionVm::default();
         let mut session = runtime.start_session("scliextract001", DEFAULT_OPENED_AT);
@@ -702,7 +772,7 @@ pub(crate) fn handle_extract(options: ExtractOptions) -> Result<Value, CliError>
 
     let runtime = ReadOnlyRuntime::default();
     let kernel = PolicyKernel;
-    let mut acquisition = AcquisitionEngine::new(AcquisitionConfig::default())?;
+    let mut acquisition = ports.acquisition.create_engine()?;
     let mut session = runtime.start_session("scliextract001", DEFAULT_OPENED_AT);
     let source_risk = options.source_risk.unwrap_or(SourceRisk::Low);
 
@@ -750,6 +820,7 @@ pub(crate) fn handle_extract(options: ExtractOptions) -> Result<Value, CliError>
 }
 
 pub(crate) fn handle_policy(options: TargetOptions) -> Result<Value, CliError> {
+    let ports = default_cli_ports();
     let kernel = PolicyKernel;
 
     if options.session_file.is_some() {
@@ -763,9 +834,13 @@ pub(crate) fn handle_policy(options: TargetOptions) -> Result<Value, CliError> {
         let browser_context_dir = options
             .session_file
             .as_ref()
-            .map(|path| browser_context_dir_for_session_file(path.as_path()))
+            .map(|path| {
+                ports
+                    .session_store
+                    .browser_context_dir_for_session(path.as_path())
+            })
             .map(|path| path.display().to_string());
-        let context = open_browser_session(
+        let context = ports.browser.open_browser_session(
             &options.target,
             options.budget,
             options.source_risk.clone(),
@@ -788,7 +863,7 @@ pub(crate) fn handle_policy(options: TargetOptions) -> Result<Value, CliError> {
     }
 
     if is_fixture_target(&options.target) {
-        let catalog = load_fixture_catalog()?;
+        let catalog = ports.fixtures.load_catalog()?;
         let runtime = ReadOnlyRuntime::default();
         let mut session = runtime.start_session("sclipolicy001", DEFAULT_OPENED_AT);
         runtime.open(&mut session, &catalog, &options.target, DEFAULT_OPENED_AT)?;
@@ -803,7 +878,7 @@ pub(crate) fn handle_policy(options: TargetOptions) -> Result<Value, CliError> {
     }
 
     let runtime = ReadOnlyRuntime::default();
-    let mut acquisition = AcquisitionEngine::new(AcquisitionConfig::default())?;
+    let mut acquisition = ports.acquisition.create_engine()?;
     let mut session = runtime.start_session("sclipolicy001", DEFAULT_OPENED_AT);
     runtime.open_live(
         &mut session,
@@ -824,7 +899,7 @@ pub(crate) fn handle_policy(options: TargetOptions) -> Result<Value, CliError> {
 }
 
 pub(crate) fn handle_replay(scenario: &str) -> Result<Value, CliError> {
-    let catalog = load_fixture_catalog()?;
+    let catalog = default_cli_ports().fixtures.load_catalog()?;
     let runtime = ReadOnlyRuntime::default();
     let transcript_path = repo_root()
         .join("fixtures/scenarios")
@@ -849,7 +924,7 @@ pub(crate) fn handle_memory_summary(steps: usize) -> Result<Value, CliError> {
     }
 
     let runtime = ReadOnlyRuntime::default();
-    let catalog = load_fixture_catalog()?;
+    let catalog = default_cli_ports().fixtures.load_catalog()?;
     let mut session = runtime.start_session("sclimemory001", DEFAULT_OPENED_AT);
     let sequence = [
         (

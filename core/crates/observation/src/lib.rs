@@ -1,6 +1,6 @@
 use std::collections::{BTreeMap, BTreeSet, HashMap};
 
-use kuchiki::{parse_html, traits::TendrilSink, NodeRef};
+use kuchiki::{parse_html, traits::TendrilSink, ElementData, NodeRef};
 use regex::Regex;
 use serde_json::{json, Value};
 use thiserror::Error;
@@ -620,7 +620,50 @@ fn semantic_zone(node: &NodeRef, tag: &str) -> &'static str {
         "nav"
     } else if has_ancestor_tag(node, &["aside"]) {
         "aside"
-    } else if has_ancestor_tag(node, &["main"]) {
+    } else if has_ancestor_marker(
+        node,
+        &[
+            "p-lang-btn",
+            "interlanguage-link",
+            "language-selector",
+            "mw-portlet-lang",
+        ],
+    ) {
+        "header"
+    } else if has_ancestor_marker(
+        node,
+        &[
+            "vector-page-titlebar-toc",
+            "mw-panel-toc",
+            "vector-page-toolbar",
+            "p-associated-pages",
+            "p-views",
+            "p-cactions",
+            "p-tb",
+            "p-electronpdfservice-sidebar-portlet-heading",
+            "p-wikibase-otherprojects",
+            "p-variants",
+            "breadcrumb",
+            "navbox",
+        ],
+    ) {
+        "nav"
+    } else if has_ancestor_marker(node, &["sidebar", "side-panel", "mw-panel"]) {
+        "aside"
+    } else if has_ancestor_tag(node, &["main"])
+        || has_ancestor_role(node, "main")
+        || has_ancestor_marker(
+            node,
+            &[
+                "bodycontent",
+                "mw-content-text",
+                "mw-parser-output",
+                "article-body",
+                "main-content",
+                "vector-body",
+            ],
+        )
+    {
         "main"
     } else if has_ancestor_tag(node, &["header"]) {
         "header"
@@ -857,12 +900,50 @@ fn dom_path_hint(node: &NodeRef) -> String {
 
     for ancestor in node.ancestors() {
         if let Some(element) = ancestor.as_element() {
-            parts.push(element.name.local.to_string());
+            let attrs = element.attributes.borrow();
+            let mut segment = element.name.local.to_string();
+            if let Some(id) = attrs.get("id").and_then(normalize_dom_marker_token) {
+                segment.push('#');
+                segment.push_str(&id);
+            }
+            if let Some(class_attr) = attrs.get("class") {
+                for class_name in class_attr
+                    .split_whitespace()
+                    .filter_map(normalize_dom_marker_token)
+                    .take(2)
+                {
+                    segment.push('.');
+                    segment.push_str(&class_name);
+                }
+            }
+            parts.push(segment);
         }
     }
 
     parts.reverse();
     parts.join(" > ")
+}
+
+fn normalize_dom_marker_token(token: &str) -> Option<String> {
+    let normalized = token
+        .trim()
+        .to_ascii_lowercase()
+        .chars()
+        .map(|character| {
+            if character.is_ascii_alphanumeric() || matches!(character, '-' | '_') {
+                character
+            } else {
+                '-'
+            }
+        })
+        .collect::<String>()
+        .trim_matches('-')
+        .replace('_', "-");
+    if normalized.is_empty() {
+        None
+    } else {
+        Some(normalized.chars().take(48).collect())
+    }
 }
 
 fn has_ancestor_tag(node: &NodeRef, tags: &[&str]) -> bool {
@@ -872,6 +953,55 @@ fn has_ancestor_tag(node: &NodeRef, tags: &[&str]) -> bool {
             .map(|element| tags.contains(&element.name.local.as_ref()))
             .unwrap_or(false)
     })
+}
+
+fn has_ancestor_role(node: &NodeRef, role: &str) -> bool {
+    node.ancestors().any(|ancestor| {
+        ancestor
+            .as_element()
+            .and_then(|element| element.attributes.borrow().get("role").map(str::to_string))
+            .map(|value| value.eq_ignore_ascii_case(role))
+            .unwrap_or(false)
+    })
+}
+
+fn has_ancestor_marker(node: &NodeRef, markers: &[&str]) -> bool {
+    let expected_markers = markers
+        .iter()
+        .filter_map(|marker| normalize_dom_marker_token(marker))
+        .collect::<BTreeSet<_>>();
+    node.ancestors().any(|ancestor| {
+        let Some(element) = ancestor.as_element() else {
+            return false;
+        };
+        if matches!(element.name.local.as_ref(), "html" | "body") {
+            return false;
+        }
+        element_marker_tokens(element)
+            .iter()
+            .any(|token| expected_markers.contains(token))
+    })
+}
+
+fn element_marker_tokens(element: &ElementData) -> BTreeSet<String> {
+    let attrs = element.attributes.borrow();
+    let mut tokens = BTreeSet::new();
+
+    if let Some(id) = attrs.get("id").and_then(normalize_dom_marker_token) {
+        tokens.insert(id);
+    }
+    if let Some(class_attr) = attrs.get("class") {
+        tokens.extend(
+            class_attr
+                .split_whitespace()
+                .filter_map(normalize_dom_marker_token),
+        );
+    }
+    if let Some(role) = attrs.get("role").and_then(normalize_dom_marker_token) {
+        tokens.insert(role);
+    }
+
+    tokens
 }
 
 fn is_hidden(node: &NodeRef, hidden_rules: &HiddenRules) -> bool {

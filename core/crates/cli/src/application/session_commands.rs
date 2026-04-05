@@ -1,3 +1,4 @@
+use super::ports::default_cli_ports;
 use crate::*;
 
 use serde_json::json;
@@ -24,8 +25,9 @@ fn claim_inputs_from_statements(statements: &[String]) -> Result<Vec<ClaimInput>
 }
 
 pub(crate) fn handle_session_snapshot(options: SessionFileOptions) -> Result<Value, CliError> {
+    let ports = default_cli_ports();
     let kernel = PolicyKernel;
-    let persisted = load_browser_cli_session(&options.session_file)?;
+    let persisted = ports.session_store.load_session(&options.session_file)?;
     let snapshot = persisted
         .session
         .current_snapshot_record()
@@ -49,7 +51,9 @@ pub(crate) fn handle_session_snapshot(options: SessionFileOptions) -> Result<Val
 }
 
 pub(crate) fn handle_session_compact(options: SessionFileOptions) -> Result<Value, CliError> {
-    let persisted = load_browser_cli_session(&options.session_file)?;
+    let persisted = default_cli_ports()
+        .session_store
+        .load_session(&options.session_file)?;
     let snapshot = persisted
         .session
         .current_snapshot_record()
@@ -65,7 +69,9 @@ pub(crate) fn handle_session_compact(options: SessionFileOptions) -> Result<Valu
 }
 
 pub(crate) fn handle_session_read(options: SessionReadOptions) -> Result<Value, CliError> {
-    let persisted = load_browser_cli_session(&options.session_file)?;
+    let persisted = default_cli_ports()
+        .session_store
+        .load_session(&options.session_file)?;
     let snapshot = persisted
         .session
         .current_snapshot_record()
@@ -82,15 +88,16 @@ pub(crate) fn handle_session_read(options: SessionReadOptions) -> Result<Value, 
 }
 
 pub(crate) fn handle_session_refresh(options: SessionRefreshOptions) -> Result<Value, CliError> {
+    let ports = default_cli_ports();
     let runtime = ReadOnlyRuntime::default();
     let kernel = PolicyKernel;
-    let mut persisted = load_browser_cli_session(&options.session_file)?;
+    let mut persisted = ports.session_store.load_session(&options.session_file)?;
     let current_search_identity = persisted
         .session
         .current_snapshot_record()
         .map(|record| is_search_results_target(&record.snapshot.source.source_url))
         .unwrap_or(false);
-    let primary_capture = invoke_playwright_snapshot(PlaywrightSnapshotParams {
+    let primary_capture = ports.browser.invoke_snapshot(PlaywrightSnapshotParams {
         url: None,
         html: None,
         context_dir: persisted.browser_context_dir.clone(),
@@ -99,7 +106,7 @@ pub(crate) fn handle_session_refresh(options: SessionRefreshOptions) -> Result<V
         headless: !options.headed,
         search_identity: current_search_identity,
     })?;
-    let (capture, effective_budget, snapshot) = match compile_browser_snapshot(
+    let (capture, effective_budget, snapshot) = match ports.browser.compile_snapshot(
         &primary_capture.final_url,
         &primary_capture.html,
         recommend_requested_tokens(&primary_capture.html, persisted.requested_budget),
@@ -110,8 +117,8 @@ pub(crate) fn handle_session_refresh(options: SessionRefreshOptions) -> Result<V
             (primary_capture, effective_budget, snapshot)
         }
         Err(_) => {
-            let source = current_browser_action_source(&persisted)?;
-            let fallback_capture = invoke_playwright_snapshot(PlaywrightSnapshotParams {
+            let source = ports.browser.current_browser_action_source(&persisted)?;
+            let fallback_capture = ports.browser.invoke_snapshot(PlaywrightSnapshotParams {
                 url: source.url,
                 html: source.html,
                 context_dir: source.context_dir,
@@ -122,7 +129,7 @@ pub(crate) fn handle_session_refresh(options: SessionRefreshOptions) -> Result<V
             })?;
             let effective_budget =
                 recommend_requested_tokens(&fallback_capture.html, persisted.requested_budget);
-            let snapshot = compile_browser_snapshot(
+            let snapshot = ports.browser.compile_snapshot(
                 &fallback_capture.final_url,
                 &fallback_capture.html,
                 effective_budget,
@@ -130,7 +137,7 @@ pub(crate) fn handle_session_refresh(options: SessionRefreshOptions) -> Result<V
             (fallback_capture, effective_budget, snapshot)
         }
     };
-    let timestamp = next_session_timestamp(&persisted.session);
+    let timestamp = ports.browser.next_session_timestamp(&persisted.session);
     let source_risk = persisted
         .session
         .current_snapshot_record()
@@ -153,7 +160,9 @@ pub(crate) fn handle_session_refresh(options: SessionRefreshOptions) -> Result<V
         current_url: capture.final_url.clone(),
         current_html: capture.html.clone(),
     });
-    save_browser_cli_session(&options.session_file, &persisted)?;
+    ports
+        .session_store
+        .save_session(&options.session_file, &persisted)?;
 
     let action_result = succeed_action(
         ActionName::Read,
@@ -172,11 +181,13 @@ pub(crate) fn handle_session_refresh(options: SessionRefreshOptions) -> Result<V
 }
 
 pub(crate) fn handle_session_extract(options: SessionExtractOptions) -> Result<Value, CliError> {
+    let ports = default_cli_ports();
     let runtime = ReadOnlyRuntime::default();
     let kernel = PolicyKernel;
-    let session_file = resolve_latest_search_session_file(options.session_file.as_ref())?;
-    let mut persisted = load_browser_cli_session(&session_file)?;
-    let timestamp = next_session_timestamp(&persisted.session);
+    let session_file =
+        resolve_latest_search_session_file(options.session_file.as_ref(), options.engine)?;
+    let mut persisted = ports.session_store.load_session(&session_file)?;
+    let timestamp = ports.browser.next_session_timestamp(&persisted.session);
     let claims = claim_inputs_from_statements(&options.claims)?;
     let report = runtime.extract(&mut persisted.session, claims.clone(), &timestamp)?;
     let extract_result = succeed_action(
@@ -193,7 +204,9 @@ pub(crate) fn handle_session_extract(options: SessionExtractOptions) -> Result<V
         options.verifier_command.as_deref(),
         &timestamp,
     )?;
-    save_browser_cli_session(&session_file, &persisted)?;
+    ports
+        .session_store
+        .save_session(&session_file, &persisted)?;
 
     Ok(json!(SessionExtractCommandOutput {
         extract: extract_result.clone(),
@@ -204,8 +217,9 @@ pub(crate) fn handle_session_extract(options: SessionExtractOptions) -> Result<V
 }
 
 pub(crate) fn handle_session_policy(options: SessionFileOptions) -> Result<Value, CliError> {
+    let ports = default_cli_ports();
     let kernel = PolicyKernel;
-    let persisted = load_browser_cli_session(&options.session_file)?;
+    let persisted = ports.session_store.load_session(&options.session_file)?;
     let report =
         current_policy_with_allowlist(&persisted.session, &kernel, &persisted.allowlisted_domains)
             .ok_or_else(|| {
@@ -221,7 +235,9 @@ pub(crate) fn handle_session_policy(options: SessionFileOptions) -> Result<Value
 }
 
 pub(crate) fn handle_session_profile(options: SessionFileOptions) -> Result<Value, CliError> {
-    let persisted = load_browser_cli_session(&options.session_file)?;
+    let persisted = default_cli_ports()
+        .session_store
+        .load_session(&options.session_file)?;
     Ok(json!({
         "policyProfile": policy_profile_label(persisted.session.state.policy_profile),
         "result": {
@@ -233,9 +249,12 @@ pub(crate) fn handle_session_profile(options: SessionFileOptions) -> Result<Valu
 }
 
 pub(crate) fn handle_set_profile(options: SessionProfileSetOptions) -> Result<Value, CliError> {
-    let mut persisted = load_browser_cli_session(&options.session_file)?;
+    let ports = default_cli_ports();
+    let mut persisted = ports.session_store.load_session(&options.session_file)?;
     persisted.session.state.policy_profile = options.profile;
-    save_browser_cli_session(&options.session_file, &persisted)?;
+    ports
+        .session_store
+        .save_session(&options.session_file, &persisted)?;
 
     Ok(json!({
         "policyProfile": policy_profile_label(persisted.session.state.policy_profile),
@@ -248,8 +267,9 @@ pub(crate) fn handle_set_profile(options: SessionProfileSetOptions) -> Result<Va
 }
 
 pub(crate) fn handle_session_checkpoint(options: SessionFileOptions) -> Result<Value, CliError> {
+    let ports = default_cli_ports();
     let kernel = PolicyKernel;
-    let persisted = load_browser_cli_session(&options.session_file)?;
+    let persisted = ports.session_store.load_session(&options.session_file)?;
     let record = persisted
         .session
         .current_snapshot_record()
@@ -301,7 +321,9 @@ pub(crate) fn handle_session_synthesize(
     options: SessionSynthesizeOptions,
 ) -> Result<Value, CliError> {
     let runtime = ReadOnlyRuntime::default();
-    let persisted = load_browser_cli_session(&options.session_file)?;
+    let persisted = default_cli_ports()
+        .session_store
+        .load_session(&options.session_file)?;
     let report = runtime.synthesize_session(
         &persisted.session,
         &slot_timestamp(persisted.session.transcript.entries.len() + 1, 45),
@@ -321,7 +343,8 @@ pub(crate) fn handle_session_synthesize(
 }
 
 pub(crate) fn handle_approve(options: ApproveOptions) -> Result<Value, CliError> {
-    let mut persisted = load_browser_cli_session(&options.session_file)?;
+    let ports = default_cli_ports();
+    let mut persisted = ports.session_store.load_session(&options.session_file)?;
     for ack_risk in &options.ack_risks {
         persisted.approved_risks.insert(*ack_risk);
     }
@@ -329,7 +352,9 @@ pub(crate) fn handle_approve(options: ApproveOptions) -> Result<Value, CliError>
         persisted.session.state.policy_profile,
         &persisted.approved_risks,
     );
-    save_browser_cli_session(&options.session_file, &persisted)?;
+    ports
+        .session_store
+        .save_session(&options.session_file, &persisted)?;
 
     Ok(json!({
         "approvedRisks": approved_risk_labels(&persisted.approved_risks),
@@ -361,8 +386,9 @@ pub(crate) fn handle_telemetry_recent(options: TelemetryRecentOptions) -> Result
 }
 
 pub(crate) fn handle_session_close(options: SessionFileOptions) -> Result<Value, CliError> {
+    let ports = default_cli_ports();
     let persisted = if options.session_file.exists() {
-        Some(load_browser_cli_session(&options.session_file)?)
+        Some(ports.session_store.load_session(&options.session_file)?)
     } else {
         None
     };
@@ -372,7 +398,7 @@ pub(crate) fn handle_session_close(options: SessionFileOptions) -> Result<Value,
     } else {
         false
     };
-    let secret_store_path = browser_secret_store_path(&options.session_file);
+    let secret_store_path = ports.session_store.secret_store_path(&options.session_file);
     if secret_store_path.exists() {
         fs::remove_file(secret_store_path)?;
     }
@@ -399,9 +425,11 @@ pub(crate) fn handle_session_close(options: SessionFileOptions) -> Result<Value,
 }
 
 pub(crate) fn handle_browser_replay(options: SessionFileOptions) -> Result<Value, CliError> {
-    let persisted = load_browser_cli_session(&options.session_file)?;
-    let source_secrets =
-        load_browser_cli_secrets(&browser_secret_store_path(&options.session_file))?;
+    let ports = default_cli_ports();
+    let persisted = ports.session_store.load_session(&options.session_file)?;
+    let source_secrets = ports
+        .session_store
+        .load_secrets(&ports.session_store.secret_store_path(&options.session_file))?;
     let origin = persisted.browser_origin.clone().ok_or_else(|| {
         CliError::Usage("browser-replay requires a session created by browser open.".to_string())
     })?;
@@ -536,7 +564,7 @@ pub(crate) fn handle_browser_replay(options: SessionFileOptions) -> Result<Value
         }
     }
 
-    let replayed = load_browser_cli_session(&replay_session_file)?;
+    let replayed = ports.session_store.load_session(&replay_session_file)?;
     let compact = replayed
         .session
         .current_snapshot_record()
