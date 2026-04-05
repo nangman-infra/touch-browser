@@ -1,6 +1,9 @@
 use std::path::PathBuf;
 
-use crate::*;
+use crate::{
+    CliError, SearchEngine, SearchOpenResultOptions, SearchOpenTopOptions, SearchOptions,
+    DEFAULT_SEARCH_TOKENS,
+};
 
 pub(crate) fn parse_search_options(args: &[String]) -> Result<SearchOptions, CliError> {
     let query = args

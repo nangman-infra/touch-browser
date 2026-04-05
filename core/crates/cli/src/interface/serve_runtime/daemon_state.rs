@@ -5,8 +5,6 @@ use std::{
     time::{SystemTime, UNIX_EPOCH},
 };
 
-use serde_json::Value;
-
 use crate::{
     browser_context_dir_for_session_file, dispatch, load_browser_cli_session, AckRisk, CliCommand,
     CliError, SessionFileOptions,
@@ -199,7 +197,11 @@ impl ServeDaemonState {
         Ok(())
     }
 
-    pub(crate) fn tab_summary(&self, session_id: &str, tab_id: &str) -> Result<Value, CliError> {
+    pub(crate) fn tab_summary(
+        &self,
+        session_id: &str,
+        tab_id: &str,
+    ) -> Result<presenters::TabSummaryResponse, CliError> {
         let session = self.session(session_id)?;
         let tab = session.tabs.get(tab_id).ok_or_else(|| {
             CliError::Usage(format!(
@@ -232,20 +234,24 @@ impl ServeDaemonState {
             .map(|report| report.result_count)
             .unwrap_or(0);
 
-        presenters::present_tab_summary(
-            tab_id,
-            session.active_tab_id.as_deref() == Some(tab_id),
-            tab.session_file.display().to_string(),
-            persisted.is_some(),
+        Ok(presenters::TabSummaryResponse {
+            tab_id: tab_id.to_string(),
+            active: session.active_tab_id.as_deref() == Some(tab_id),
+            session_file: tab.session_file.display().to_string(),
+            has_state: persisted.is_some(),
             current_url,
             visited_url_count,
             snapshot_count,
             latest_search_query,
             latest_search_result_count,
-        )
+        })
     }
 
-    pub(crate) fn close_tab(&mut self, session_id: &str, tab_id: &str) -> Result<Value, CliError> {
+    pub(crate) fn close_tab(
+        &mut self,
+        session_id: &str,
+        tab_id: &str,
+    ) -> Result<presenters::TabCloseResponse, CliError> {
         self.ensure_tab(session_id, tab_id)?;
 
         let (session_file, was_active) = {
@@ -276,16 +282,20 @@ impl ServeDaemonState {
             session.active_tab_id = session.tabs.keys().next().cloned();
         }
 
-        presenters::present_tab_close(
-            session_id,
-            tab_id,
+        Ok(presenters::TabCloseResponse {
+            session_id: session_id.to_string(),
+            tab_id: tab_id.to_string(),
+            removed: true,
             removed_state,
-            session.active_tab_id.clone(),
-            session.tabs.len(),
-        )
+            active_tab_id: session.active_tab_id.clone(),
+            remaining_tab_count: session.tabs.len(),
+        })
     }
 
-    pub(crate) fn close_session(&mut self, session_id: &str) -> Result<Value, CliError> {
+    pub(crate) fn close_session(
+        &mut self,
+        session_id: &str,
+    ) -> Result<presenters::SessionCloseResponse, CliError> {
         let tab_ids = self
             .session(session_id)?
             .tabs
@@ -305,6 +315,10 @@ impl ServeDaemonState {
             fs::remove_dir_all(session_dir)?;
         }
 
-        presenters::present_session_close(session_id, removed_tabs)
+        Ok(presenters::SessionCloseResponse {
+            session_id: session_id.to_string(),
+            removed: true,
+            removed_tabs,
+        })
     }
 }

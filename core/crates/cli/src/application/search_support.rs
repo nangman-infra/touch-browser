@@ -8,7 +8,11 @@ use kuchiki::{parse_html, traits::*, NodeRef};
 use serde_json::Value;
 use url::{form_urlencoded, Url};
 
-use crate::*;
+use crate::{
+    repo_root, CliError, SearchActionActor, SearchActionHint, SearchEngine, SearchReport,
+    SearchReportStatus, SearchResultItem, SnapshotBlock, SnapshotBlockKind, SnapshotBlockRole,
+    SnapshotDocument, CONTRACT_VERSION,
+};
 
 pub(crate) fn build_search_url(engine: SearchEngine, query: &str) -> Result<String, CliError> {
     let base = match engine {

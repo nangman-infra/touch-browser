@@ -135,7 +135,7 @@ struct SessionSynthesizeResponse {
 struct TabOpenResponse {
     session_id: String,
     active_tab_id: String,
-    tab: Value,
+    tab: TabSummaryResponse,
 }
 
 #[derive(Serialize)]
@@ -143,7 +143,7 @@ struct TabOpenResponse {
 struct TabListResponse {
     session_id: String,
     active_tab_id: Option<String>,
-    tabs: Vec<Value>,
+    tabs: Vec<TabSummaryResponse>,
 }
 
 #[derive(Serialize)]
@@ -151,40 +151,40 @@ struct TabListResponse {
 struct TabSelectResponse {
     session_id: String,
     active_tab_id: String,
-    tab: Value,
+    tab: TabSummaryResponse,
 }
 
-#[derive(Serialize)]
+#[derive(Debug, Clone, Serialize)]
 #[serde(rename_all = "camelCase")]
-struct TabSummaryResponse {
-    tab_id: String,
-    active: bool,
-    session_file: String,
-    has_state: bool,
-    current_url: Option<String>,
-    visited_url_count: usize,
-    snapshot_count: usize,
-    latest_search_query: Option<String>,
-    latest_search_result_count: usize,
+pub(crate) struct TabSummaryResponse {
+    pub(crate) tab_id: String,
+    pub(crate) active: bool,
+    pub(crate) session_file: String,
+    pub(crate) has_state: bool,
+    pub(crate) current_url: Option<String>,
+    pub(crate) visited_url_count: usize,
+    pub(crate) snapshot_count: usize,
+    pub(crate) latest_search_query: Option<String>,
+    pub(crate) latest_search_result_count: usize,
 }
 
-#[derive(Serialize)]
+#[derive(Debug, Clone, Serialize)]
 #[serde(rename_all = "camelCase")]
-struct TabCloseResponse {
-    session_id: String,
-    tab_id: String,
-    removed: bool,
-    removed_state: bool,
-    active_tab_id: Option<String>,
-    remaining_tab_count: usize,
+pub(crate) struct TabCloseResponse {
+    pub(crate) session_id: String,
+    pub(crate) tab_id: String,
+    pub(crate) removed: bool,
+    pub(crate) removed_state: bool,
+    pub(crate) active_tab_id: Option<String>,
+    pub(crate) remaining_tab_count: usize,
 }
 
-#[derive(Serialize)]
+#[derive(Debug, Clone, Serialize)]
 #[serde(rename_all = "camelCase")]
-struct SessionCloseResponse {
-    session_id: String,
-    removed: bool,
-    removed_tabs: usize,
+pub(crate) struct SessionCloseResponse {
+    pub(crate) session_id: String,
+    pub(crate) removed: bool,
+    pub(crate) removed_tabs: usize,
 }
 
 pub(crate) fn present_json_rpc_result(id: Value, result: Value) -> Value {
@@ -348,7 +348,7 @@ pub(crate) fn present_session_synthesize(
 pub(crate) fn present_tab_open(
     session_id: impl Into<String>,
     active_tab_id: impl Into<String>,
-    tab: Value,
+    tab: TabSummaryResponse,
 ) -> Result<Value, CliError> {
     to_value(TabOpenResponse {
         session_id: session_id.into(),
@@ -360,7 +360,7 @@ pub(crate) fn present_tab_open(
 pub(crate) fn present_tab_list(
     session_id: impl Into<String>,
     active_tab_id: Option<String>,
-    tabs: Vec<Value>,
+    tabs: Vec<TabSummaryResponse>,
 ) -> Result<Value, CliError> {
     to_value(TabListResponse {
         session_id: session_id.into(),
@@ -372,7 +372,7 @@ pub(crate) fn present_tab_list(
 pub(crate) fn present_tab_select(
     session_id: impl Into<String>,
     active_tab_id: impl Into<String>,
-    tab: Value,
+    tab: TabSummaryResponse,
 ) -> Result<Value, CliError> {
     to_value(TabSelectResponse {
         session_id: session_id.into(),
@@ -381,54 +381,42 @@ pub(crate) fn present_tab_select(
     })
 }
 
-pub(crate) fn present_tab_summary(
-    tab_id: impl Into<String>,
-    active: bool,
-    session_file: impl Into<String>,
-    has_state: bool,
-    current_url: Option<String>,
-    visited_url_count: usize,
-    snapshot_count: usize,
-    latest_search_query: Option<String>,
-    latest_search_result_count: usize,
-) -> Result<Value, CliError> {
-    to_value(TabSummaryResponse {
-        tab_id: tab_id.into(),
-        active,
-        session_file: session_file.into(),
-        has_state,
-        current_url,
-        visited_url_count,
-        snapshot_count,
-        latest_search_query,
-        latest_search_result_count,
-    })
+pub(crate) fn present_tab_close(response: TabCloseResponse) -> Result<Value, CliError> {
+    to_value(response)
 }
 
-pub(crate) fn present_tab_close(
-    session_id: impl Into<String>,
-    tab_id: impl Into<String>,
-    removed_state: bool,
-    active_tab_id: Option<String>,
-    remaining_tab_count: usize,
-) -> Result<Value, CliError> {
-    to_value(TabCloseResponse {
-        session_id: session_id.into(),
-        tab_id: tab_id.into(),
-        removed: true,
-        removed_state,
-        active_tab_id,
-        remaining_tab_count,
-    })
+pub(crate) fn present_session_close(response: SessionCloseResponse) -> Result<Value, CliError> {
+    to_value(response)
 }
 
-pub(crate) fn present_session_close(
-    session_id: impl Into<String>,
-    removed_tabs: usize,
-) -> Result<Value, CliError> {
-    to_value(SessionCloseResponse {
-        session_id: session_id.into(),
-        removed: true,
-        removed_tabs,
-    })
+#[cfg(test)]
+mod tests {
+    use serde_json::json;
+
+    use super::{present_tab_close, TabCloseResponse};
+
+    #[test]
+    fn tab_close_presenter_serializes_typed_payload() {
+        let response = present_tab_close(TabCloseResponse {
+            session_id: "session-1".to_string(),
+            tab_id: "tab-2".to_string(),
+            removed: true,
+            removed_state: false,
+            active_tab_id: Some("tab-1".to_string()),
+            remaining_tab_count: 1,
+        })
+        .expect("present tab close");
+
+        assert_eq!(
+            response,
+            json!({
+                "sessionId": "session-1",
+                "tabId": "tab-2",
+                "removed": true,
+                "removedState": false,
+                "activeTabId": "tab-1",
+                "remainingTabCount": 1
+            })
+        );
+    }
 }

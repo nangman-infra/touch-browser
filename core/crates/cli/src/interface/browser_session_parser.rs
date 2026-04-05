@@ -1,6 +1,11 @@
 use std::path::PathBuf;
 
-use crate::*;
+use crate::{
+    CliError, ClickOptions, ExpandOptions, FollowOptions, PaginateOptions, PaginationDirection,
+    SubmitOptions, TypeOptions,
+};
+
+use super::command_parser::parse_ack_risk;
 
 pub(crate) fn parse_follow_options(args: &[String]) -> Result<FollowOptions, CliError> {
     let mut session_file = None;

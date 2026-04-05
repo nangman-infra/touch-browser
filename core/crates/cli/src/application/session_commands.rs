@@ -1,5 +1,23 @@
-use super::context::CliAppContext;
-use crate::*;
+use super::{context::CliAppContext, ports::BrowserSnapshotCaptureRequest};
+use crate::{
+    approved_risk_labels, checkpoint_approval_panel, checkpoint_candidates, checkpoint_playbook,
+    checkpoint_provider_hints, current_policy_with_allowlist, is_fixture_target,
+    is_search_results_target, policy_profile_label, promoted_policy_profile_for_risks,
+    recommend_requested_tokens, recommended_policy_profile, render_session_synthesis_markdown,
+    required_ack_risks, resolve_latest_search_session_file, slot_timestamp, succeed_action,
+    telemetry_store, verify_action_result_if_requested, ActionName, ApproveOptions,
+    BrowserReplayCommandOutput, ClaimInput, CliError, ClickOptions, CompactSnapshotOutput,
+    ExpandOptions, FollowOptions, OutputFormat, PaginateOptions, PaginationDirection,
+    PersistedBrowserState, ReadViewOutput, RuntimeError, SessionApprovalCommandOutput,
+    SessionApprovalValue, SessionCheckpointCommandOutput, SessionCheckpointReport,
+    SessionCloseCommandOutput, SessionCloseResultValue, SessionCommandOutput,
+    SessionExtractCommandOutput, SessionExtractOptions, SessionFileOptions,
+    SessionPolicyCommandOutput, SessionProfileCommandOutput, SessionProfileSetOptions,
+    SessionProfileValue, SessionReadOptions, SessionRefreshOptions, SessionSynthesisCommandOutput,
+    SessionSynthesizeOptions, SourceRisk, SubmitOptions, TargetOptions,
+    TelemetryRecentCommandOutput, TelemetryRecentOptions, TelemetrySummaryCommandOutput,
+    TypeOptions,
+};
 
 use std::{fs, path::PathBuf};
 use touch_browser_contracts::render_compact_snapshot;
@@ -111,15 +129,17 @@ pub(crate) fn handle_session_refresh(
         .current_snapshot_record()
         .map(|record| is_search_results_target(&record.snapshot.source.source_url))
         .unwrap_or(false);
-    let primary_capture = ports.browser.invoke_snapshot(PlaywrightSnapshotParams {
-        url: None,
-        html: None,
-        context_dir: persisted.browser_context_dir.clone(),
-        profile_dir: persisted.browser_profile_dir.clone(),
-        budget: persisted.requested_budget,
-        headless: !options.headed,
-        search_identity: current_search_identity,
-    })?;
+    let primary_capture = ports
+        .browser
+        .invoke_snapshot(BrowserSnapshotCaptureRequest {
+            url: None,
+            html: None,
+            context_dir: persisted.browser_context_dir.clone(),
+            profile_dir: persisted.browser_profile_dir.clone(),
+            budget: persisted.requested_budget,
+            headless: !options.headed,
+            search_identity: current_search_identity,
+        })?;
     let (capture, effective_budget, snapshot) = match ports.browser.compile_snapshot(
         &primary_capture.final_url,
         &primary_capture.html,
@@ -132,15 +152,18 @@ pub(crate) fn handle_session_refresh(
         }
         Err(_) => {
             let source = ports.browser.current_browser_action_source(&persisted)?;
-            let fallback_capture = ports.browser.invoke_snapshot(PlaywrightSnapshotParams {
-                url: source.url,
-                html: source.html,
-                context_dir: source.context_dir,
-                profile_dir: source.profile_dir,
-                budget: persisted.requested_budget,
-                headless: !options.headed,
-                search_identity: is_search_results_target(&source.source_url),
-            })?;
+            let fallback_capture =
+                ports
+                    .browser
+                    .invoke_snapshot(BrowserSnapshotCaptureRequest {
+                        url: source.url,
+                        html: source.html,
+                        context_dir: source.context_dir,
+                        profile_dir: source.profile_dir,
+                        budget: persisted.requested_budget,
+                        headless: !options.headed,
+                        search_identity: is_search_results_target(&source.source_url),
+                    })?;
             let effective_budget =
                 recommend_requested_tokens(&fallback_capture.html, persisted.requested_budget);
             let snapshot = ports.browser.compile_snapshot(

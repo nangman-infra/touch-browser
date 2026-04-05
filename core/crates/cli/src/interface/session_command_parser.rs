@@ -1,6 +1,13 @@
 use std::path::PathBuf;
 
-use crate::*;
+use crate::{
+    AckRisk, ApproveOptions, CliError, ExtractOptions, OutputFormat, PolicyProfile,
+    SessionExtractOptions, SessionFileOptions, SessionProfileSetOptions, SessionReadOptions,
+    SessionRefreshOptions, SessionSynthesizeOptions, SourceRisk, TargetOptions,
+    TelemetryRecentOptions, DEFAULT_REQUESTED_TOKENS,
+};
+
+use super::search_command_parser::parse_search_engine;
 
 fn parse_claim_value(args: &[String], index: usize) -> Result<String, CliError> {
     let value = args

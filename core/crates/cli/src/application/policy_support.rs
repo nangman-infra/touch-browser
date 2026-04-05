@@ -2,7 +2,13 @@ use std::{collections::BTreeSet, path::Path};
 
 use serde::Serialize;
 
-use crate::*;
+use crate::{
+    current_snapshot_ref_is_sensitive, is_fixture_target, AckRisk, ActionFailureKind, ActionName,
+    ActionResult, ActionStatus, BrowserCliSession, CheckpointAction, CheckpointApprovalPanel,
+    CheckpointCandidate, CheckpointPlaybook, CheckpointSensitiveTarget, CliError, PolicyKernel,
+    PolicyProfile, PolicyReport, ReadOnlySession, SessionCommandOutput, SnapshotBlock,
+    SnapshotDocument, SourceRisk, CONTRACT_VERSION,
+};
 
 pub(crate) fn current_policy_with_allowlist(
     session: &ReadOnlySession,

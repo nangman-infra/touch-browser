@@ -79,5 +79,5 @@ pub(crate) fn serve_tab_close(
 ) -> Result<Value, CliError> {
     let session_id = required_json_string(params, "sessionId")?;
     let tab_id = required_json_string(params, "tabId")?;
-    daemon_state.close_tab(&session_id, &tab_id)
+    presenters::present_tab_close(daemon_state.close_tab(&session_id, &tab_id)?)
 }

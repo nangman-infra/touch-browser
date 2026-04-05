@@ -331,7 +331,7 @@ pub(crate) fn serve_session_close(
     daemon_state: &mut ServeDaemonState,
 ) -> Result<Value, CliError> {
     let session_id = required_json_string(params, "sessionId")?;
-    daemon_state.close_session(&session_id)
+    presenters::present_session_close(daemon_state.close_session(&session_id)?)
 }
 
 pub(crate) fn serve_session_open_internal(

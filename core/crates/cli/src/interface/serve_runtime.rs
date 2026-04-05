@@ -240,3 +240,61 @@ fn serve_dispatch(request: ServeJsonRpcRequest, daemon_state: &mut ServeDaemonSt
         }
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use serde_json::json;
+
+    use super::{serve_dispatch, ServeDaemonState, ServeJsonRpcRequest};
+
+    #[test]
+    fn runtime_status_returns_ready_envelope() {
+        let mut daemon_state = ServeDaemonState::new().expect("daemon state");
+        let response = serve_dispatch(
+            ServeJsonRpcRequest {
+                jsonrpc: "2.0".to_string(),
+                id: json!(1),
+                method: "runtime.status".to_string(),
+                params: json!({}),
+            },
+            &mut daemon_state,
+        );
+
+        assert_eq!(response["jsonrpc"], json!("2.0"));
+        assert_eq!(response["id"], json!(1));
+        assert_eq!(response["result"]["status"], json!("ready"));
+        assert_eq!(response["result"]["transport"], json!("stdio-json-rpc"));
+        assert_eq!(response["result"]["daemon"], json!(true));
+        assert!(response["result"]["methods"]
+            .as_array()
+            .expect("methods array")
+            .iter()
+            .any(|method| method == "runtime.search"));
+
+        daemon_state.cleanup().expect("cleanup");
+    }
+
+    #[test]
+    fn unsupported_method_returns_json_rpc_error() {
+        let mut daemon_state = ServeDaemonState::new().expect("daemon state");
+        let response = serve_dispatch(
+            ServeJsonRpcRequest {
+                jsonrpc: "2.0".to_string(),
+                id: json!("req-1"),
+                method: "runtime.unknown".to_string(),
+                params: json!({}),
+            },
+            &mut daemon_state,
+        );
+
+        assert_eq!(response["jsonrpc"], json!("2.0"));
+        assert_eq!(response["id"], json!("req-1"));
+        assert_eq!(response["error"]["code"], json!(-32602));
+        assert!(response["error"]["message"]
+            .as_str()
+            .expect("error message")
+            .contains("Unsupported serve method"));
+
+        daemon_state.cleanup().expect("cleanup");
+    }
+}

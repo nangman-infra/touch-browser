@@ -1,5 +1,19 @@
-use super::context::CliAppContext;
-use crate::*;
+use super::{
+    context::CliAppContext,
+    ports::{
+        BrowserClickRequest, BrowserExpandRequest, BrowserFollowRequest, BrowserPaginateRequest,
+        BrowserSubmitRequest, BrowserTypeRequest,
+    },
+};
+use crate::{
+    current_policy_with_allowlist, preflight_interactive_action, preflight_ref_action,
+    preflight_session_block, reject_action, succeed_action, ActionFailureKind, ActionName,
+    BrowserActionPayload, BrowserActionTraceEntry, CliError, ClickAdapterOutput, ClickOptions,
+    ExpandAdapterOutput, ExpandOptions, FollowAdapterOutput, FollowOptions,
+    InteractivePreflightOptions, PaginateAdapterOutput, PaginateOptions, PaginationDirection,
+    PersistedBrowserState, SecretPrefill, SessionCommandOutput, SubmitAdapterOutput, SubmitOptions,
+    TypeAdapterOutput, TypeOptions,
+};
 
 pub(crate) fn handle_follow(
     ctx: &CliAppContext<'_>,
@@ -18,30 +32,14 @@ pub(crate) fn handle_follow(
         return Ok(rejected);
     }
     let source = ports.browser.current_browser_action_source(&persisted)?;
-    let target_text = ports
+    let source_risk = source.source_risk.clone();
+    let source_label = source.source_label.clone();
+    let target = ports
         .browser
-        .current_snapshot_ref_text(&persisted.session, &options.target_ref)?;
-    let target_href = ports
-        .browser
-        .current_snapshot_ref_href(&persisted.session, &options.target_ref);
-    let target_tag_name = ports
-        .browser
-        .current_snapshot_ref_tag_name(&persisted.session, &options.target_ref);
-    let target_dom_path_hint = ports
-        .browser
-        .current_snapshot_ref_dom_path_hint(&persisted.session, &options.target_ref);
-    let target_ordinal_hint = ports.browser.stable_ref_ordinal_hint(&options.target_ref);
-    let result = ports.browser.invoke_follow(PlaywrightFollowParams {
-        url: source.url.clone(),
-        html: source.html.clone(),
-        context_dir: source.context_dir.clone(),
-        profile_dir: source.profile_dir.clone(),
-        target_ref: options.target_ref.clone(),
-        target_text,
-        target_href,
-        target_tag_name,
-        target_dom_path_hint,
-        target_ordinal_hint,
+        .snapshot_reference(&persisted.session, &options.target_ref)?;
+    let result = ports.browser.invoke_follow(BrowserFollowRequest {
+        source: source.clone(),
+        target,
         headless: !options.headed,
     })?;
     let source_url = ports
@@ -56,8 +54,8 @@ pub(crate) fn handle_follow(
         &mut persisted.session,
         &source_url,
         snapshot,
-        source.source_risk,
-        source.source_label,
+        source_risk,
+        source_label,
         &timestamp,
     )?;
     persisted.browser_state = Some(PersistedBrowserState {
@@ -129,30 +127,14 @@ pub(crate) fn handle_click(
     }
 
     let source = ports.browser.current_browser_action_source(&persisted)?;
-    let target_text = ports
+    let source_risk = source.source_risk.clone();
+    let source_label = source.source_label.clone();
+    let target = ports
         .browser
-        .current_snapshot_ref_text(&persisted.session, &options.target_ref)?;
-    let target_href = ports
-        .browser
-        .current_snapshot_ref_href(&persisted.session, &options.target_ref);
-    let target_tag_name = ports
-        .browser
-        .current_snapshot_ref_tag_name(&persisted.session, &options.target_ref);
-    let target_dom_path_hint = ports
-        .browser
-        .current_snapshot_ref_dom_path_hint(&persisted.session, &options.target_ref);
-    let target_ordinal_hint = ports.browser.stable_ref_ordinal_hint(&options.target_ref);
-    let result = ports.browser.invoke_click(PlaywrightClickParams {
-        url: source.url.clone(),
-        html: source.html.clone(),
-        context_dir: source.context_dir.clone(),
-        profile_dir: source.profile_dir.clone(),
-        target_ref: options.target_ref.clone(),
-        target_text,
-        target_href,
-        target_tag_name,
-        target_dom_path_hint,
-        target_ordinal_hint,
+        .snapshot_reference(&persisted.session, &options.target_ref)?;
+    let result = ports.browser.invoke_click(BrowserClickRequest {
+        source: source.clone(),
+        target,
         headless: !options.headed,
     })?;
     let source_url = ports
@@ -167,8 +149,8 @@ pub(crate) fn handle_click(
         &mut persisted.session,
         &source_url,
         snapshot,
-        source.source_risk,
-        source.source_label,
+        source_risk,
+        source_label,
         &timestamp,
     )?;
     ports
@@ -242,11 +224,10 @@ pub(crate) fn handle_type(
         return Ok(rejected);
     }
 
-    if ports
+    let mut target = ports
         .browser
-        .current_snapshot_ref_is_sensitive(&persisted.session, &options.target_ref)
-        && !options.sensitive
-    {
+        .snapshot_reference(&persisted.session, &options.target_ref)?;
+    if target.sensitive && !options.sensitive {
         let action_result = reject_action(
             ActionName::Type,
             ActionFailureKind::PolicyBlocked,
@@ -266,38 +247,14 @@ pub(crate) fn handle_type(
     }
 
     let source = ports.browser.current_browser_action_source(&persisted)?;
-    let target_tag_name = ports
-        .browser
-        .current_snapshot_ref_tag_name(&persisted.session, &options.target_ref);
-    let target_text = if target_tag_name.as_deref() == Some("form") {
-        String::new()
-    } else {
-        ports
-            .browser
-            .current_snapshot_ref_text(&persisted.session, &options.target_ref)?
-    };
-    let target_dom_path_hint = ports
-        .browser
-        .current_snapshot_ref_dom_path_hint(&persisted.session, &options.target_ref);
-    let target_ordinal_hint = ports.browser.stable_ref_ordinal_hint(&options.target_ref);
-    let target_name = ports
-        .browser
-        .current_snapshot_ref_name(&persisted.session, &options.target_ref);
-    let target_input_type = ports
-        .browser
-        .current_snapshot_ref_input_type(&persisted.session, &options.target_ref);
-    let result = ports.browser.invoke_type(PlaywrightTypeParams {
-        url: source.url.clone(),
-        html: source.html.clone(),
-        context_dir: source.context_dir.clone(),
-        profile_dir: source.profile_dir.clone(),
-        target_ref: options.target_ref.clone(),
-        target_text,
-        target_tag_name,
-        target_dom_path_hint,
-        target_ordinal_hint,
-        target_name,
-        target_input_type,
+    let source_risk = source.source_risk.clone();
+    let source_label = source.source_label.clone();
+    if target.tag_name.as_deref() == Some("form") {
+        target.text = String::new();
+    }
+    let result = ports.browser.invoke_type(BrowserTypeRequest {
+        source: source.clone(),
+        target,
         value: options.value.clone(),
         headless: !options.headed,
     })?;
@@ -313,8 +270,8 @@ pub(crate) fn handle_type(
         &mut persisted.session,
         &source_url,
         snapshot,
-        source.source_risk,
-        source.source_label,
+        source_risk,
+        source_label,
         &timestamp,
     )?;
     ports
@@ -397,30 +354,17 @@ pub(crate) fn handle_submit(
     }
 
     let source = ports.browser.current_browser_action_source(&persisted)?;
-    let target_tag_name = ports
+    let source_risk = source.source_risk.clone();
+    let source_label = source.source_label.clone();
+    let mut target = ports
         .browser
-        .current_snapshot_ref_tag_name(&persisted.session, &options.target_ref);
-    let target_text = if target_tag_name.as_deref() == Some("form") {
-        String::new()
-    } else {
-        ports
-            .browser
-            .current_snapshot_ref_text(&persisted.session, &options.target_ref)?
-    };
-    let target_dom_path_hint = ports
-        .browser
-        .current_snapshot_ref_dom_path_hint(&persisted.session, &options.target_ref);
-    let target_ordinal_hint = ports.browser.stable_ref_ordinal_hint(&options.target_ref);
-    let result = ports.browser.invoke_submit(PlaywrightSubmitParams {
-        url: source.url.clone(),
-        html: source.html.clone(),
-        context_dir: source.context_dir.clone(),
-        profile_dir: source.profile_dir.clone(),
-        target_ref: options.target_ref.clone(),
-        target_text,
-        target_tag_name,
-        target_dom_path_hint,
-        target_ordinal_hint,
+        .snapshot_reference(&persisted.session, &options.target_ref)?;
+    if target.tag_name.as_deref() == Some("form") {
+        target.text = String::new();
+    }
+    let result = ports.browser.invoke_submit(BrowserSubmitRequest {
+        source: source.clone(),
+        target,
         prefill: ports.browser.collect_submit_prefill(&persisted, &{
             let mut extra_prefill = options.extra_prefill.clone();
             let secret_store_path = ports.session_store.secret_store_path(&options.session_file);
@@ -446,8 +390,8 @@ pub(crate) fn handle_submit(
         &mut persisted.session,
         &source_url,
         snapshot,
-        source.source_risk,
-        source.source_label,
+        source_risk,
+        source_label,
         &timestamp,
     )?;
     ports
@@ -514,12 +458,11 @@ pub(crate) fn handle_paginate(
         return Ok(rejected);
     }
     let source = ports.browser.current_browser_action_source(&persisted)?;
+    let source_risk = source.source_risk.clone();
+    let source_label = source.source_label.clone();
     let current_page = persisted.session.snapshots.len();
-    let result = ports.browser.invoke_paginate(PlaywrightPaginateParams {
-        url: source.url.clone(),
-        html: source.html.clone(),
-        context_dir: source.context_dir.clone(),
-        profile_dir: source.profile_dir.clone(),
+    let result = ports.browser.invoke_paginate(BrowserPaginateRequest {
+        source: source.clone(),
         direction: match options.direction {
             PaginationDirection::Next => "next".to_string(),
             PaginationDirection::Prev => "prev".to_string(),
@@ -539,8 +482,8 @@ pub(crate) fn handle_paginate(
         &mut persisted.session,
         &source_url,
         snapshot,
-        source.source_risk,
-        source.source_label,
+        source_risk,
+        source_label,
         &timestamp,
     )?;
     persisted.browser_state = Some(PersistedBrowserState {
@@ -608,26 +551,14 @@ pub(crate) fn handle_expand(
         return Ok(rejected);
     }
     let source = ports.browser.current_browser_action_source(&persisted)?;
-    let target_text = ports
+    let source_risk = source.source_risk.clone();
+    let source_label = source.source_label.clone();
+    let target = ports
         .browser
-        .current_snapshot_ref_text(&persisted.session, &options.target_ref)?;
-    let target_tag_name = ports
-        .browser
-        .current_snapshot_ref_tag_name(&persisted.session, &options.target_ref);
-    let target_dom_path_hint = ports
-        .browser
-        .current_snapshot_ref_dom_path_hint(&persisted.session, &options.target_ref);
-    let target_ordinal_hint = ports.browser.stable_ref_ordinal_hint(&options.target_ref);
-    let result = ports.browser.invoke_expand(PlaywrightExpandParams {
-        url: source.url.clone(),
-        html: source.html.clone(),
-        context_dir: source.context_dir.clone(),
-        profile_dir: source.profile_dir.clone(),
-        target_ref: options.target_ref.clone(),
-        target_text,
-        target_tag_name,
-        target_dom_path_hint,
-        target_ordinal_hint,
+        .snapshot_reference(&persisted.session, &options.target_ref)?;
+    let result = ports.browser.invoke_expand(BrowserExpandRequest {
+        source: source.clone(),
+        target,
         headless: !options.headed,
     })?;
     let source_url = ports
@@ -642,8 +573,8 @@ pub(crate) fn handle_expand(
         &mut persisted.session,
         &source_url,
         snapshot,
-        source.source_risk,
-        source.source_label,
+        source_risk,
+        source_label,
         &timestamp,
     )?;
     persisted.browser_state = Some(PersistedBrowserState {

@@ -7,13 +7,162 @@ use touch_browser_acquisition::AcquisitionEngine;
 
 use crate::{
     BrowserActionSource, BrowserActionTraceEntry, BrowserCliSession, BrowserOrigin,
-    BrowserSessionContext, CliError, FixtureCatalog, PersistedBrowserState, PlaywrightClickParams,
-    PlaywrightClickResult, PlaywrightExpandParams, PlaywrightExpandResult, PlaywrightFollowParams,
-    PlaywrightFollowResult, PlaywrightPaginateParams, PlaywrightPaginateResult,
-    PlaywrightSnapshotParams, PlaywrightSnapshotResult, PlaywrightSubmitParams,
-    PlaywrightSubmitResult, PlaywrightTypeParams, PlaywrightTypePrefill, PlaywrightTypeResult,
-    ReadOnlySession, SearchReport, SecretPrefill, SnapshotDocument, SourceRisk,
+    BrowserSessionContext, CliError, FixtureCatalog, PersistedBrowserState, ReadOnlySession,
+    SearchReport, SecretPrefill, SnapshotDocument, SourceRisk,
 };
+
+#[derive(Debug, Clone)]
+pub(crate) struct BrowserSnapshotReference {
+    pub(crate) target_ref: String,
+    pub(crate) text: String,
+    pub(crate) href: Option<String>,
+    pub(crate) tag_name: Option<String>,
+    pub(crate) dom_path_hint: Option<String>,
+    pub(crate) ordinal_hint: Option<usize>,
+    pub(crate) name: Option<String>,
+    pub(crate) input_type: Option<String>,
+    pub(crate) sensitive: bool,
+}
+
+#[derive(Debug, Clone)]
+pub(crate) struct BrowserSnapshotCaptureRequest {
+    pub(crate) url: Option<String>,
+    pub(crate) html: Option<String>,
+    pub(crate) context_dir: Option<String>,
+    pub(crate) profile_dir: Option<String>,
+    pub(crate) budget: usize,
+    pub(crate) headless: bool,
+    pub(crate) search_identity: bool,
+}
+
+#[derive(Debug, Clone)]
+pub(crate) struct BrowserSnapshotCaptureResult {
+    pub(crate) final_url: String,
+    pub(crate) html: String,
+}
+
+#[derive(Debug, Clone)]
+pub(crate) struct BrowserSubmitPrefill {
+    pub(crate) target_ref: String,
+    pub(crate) target_text: Option<String>,
+    pub(crate) target_tag_name: Option<String>,
+    pub(crate) target_dom_path_hint: Option<String>,
+    pub(crate) target_ordinal_hint: Option<usize>,
+    pub(crate) target_name: Option<String>,
+    pub(crate) target_input_type: Option<String>,
+    pub(crate) value: String,
+}
+
+#[derive(Debug, Clone)]
+pub(crate) struct BrowserFollowRequest {
+    pub(crate) source: BrowserActionSource,
+    pub(crate) target: BrowserSnapshotReference,
+    pub(crate) headless: bool,
+}
+
+#[derive(Debug, Clone)]
+pub(crate) struct BrowserFollowResult {
+    pub(crate) followed_ref: String,
+    pub(crate) target_text: String,
+    pub(crate) target_href: Option<String>,
+    pub(crate) clicked_text: String,
+    pub(crate) final_url: String,
+    pub(crate) title: String,
+    pub(crate) visible_text: String,
+    pub(crate) html: String,
+}
+
+#[derive(Debug, Clone)]
+pub(crate) struct BrowserClickRequest {
+    pub(crate) source: BrowserActionSource,
+    pub(crate) target: BrowserSnapshotReference,
+    pub(crate) headless: bool,
+}
+
+#[derive(Debug, Clone)]
+pub(crate) struct BrowserClickResult {
+    pub(crate) clicked_ref: String,
+    pub(crate) target_text: String,
+    pub(crate) target_href: Option<String>,
+    pub(crate) clicked_text: String,
+    pub(crate) final_url: String,
+    pub(crate) title: String,
+    pub(crate) visible_text: String,
+    pub(crate) html: String,
+}
+
+#[derive(Debug, Clone)]
+pub(crate) struct BrowserTypeRequest {
+    pub(crate) source: BrowserActionSource,
+    pub(crate) target: BrowserSnapshotReference,
+    pub(crate) value: String,
+    pub(crate) headless: bool,
+}
+
+#[derive(Debug, Clone)]
+pub(crate) struct BrowserTypeResult {
+    pub(crate) typed_ref: String,
+    pub(crate) target_text: String,
+    pub(crate) typed_length: usize,
+    pub(crate) final_url: String,
+    pub(crate) title: String,
+    pub(crate) visible_text: String,
+    pub(crate) html: String,
+}
+
+#[derive(Debug, Clone)]
+pub(crate) struct BrowserSubmitRequest {
+    pub(crate) source: BrowserActionSource,
+    pub(crate) target: BrowserSnapshotReference,
+    pub(crate) prefill: Vec<BrowserSubmitPrefill>,
+    pub(crate) headless: bool,
+}
+
+#[derive(Debug, Clone)]
+pub(crate) struct BrowserSubmitResult {
+    pub(crate) submitted_ref: String,
+    pub(crate) target_text: String,
+    pub(crate) final_url: String,
+    pub(crate) title: String,
+    pub(crate) visible_text: String,
+    pub(crate) html: String,
+}
+
+#[derive(Debug, Clone)]
+pub(crate) struct BrowserPaginateRequest {
+    pub(crate) source: BrowserActionSource,
+    pub(crate) direction: String,
+    pub(crate) current_page: usize,
+    pub(crate) headless: bool,
+}
+
+#[derive(Debug, Clone)]
+pub(crate) struct BrowserPaginateResult {
+    pub(crate) page: usize,
+    pub(crate) clicked_text: String,
+    pub(crate) final_url: String,
+    pub(crate) title: String,
+    pub(crate) visible_text: String,
+    pub(crate) html: String,
+}
+
+#[derive(Debug, Clone)]
+pub(crate) struct BrowserExpandRequest {
+    pub(crate) source: BrowserActionSource,
+    pub(crate) target: BrowserSnapshotReference,
+    pub(crate) headless: bool,
+}
+
+#[derive(Debug, Clone)]
+pub(crate) struct BrowserExpandResult {
+    pub(crate) expanded_ref: String,
+    pub(crate) target_text: String,
+    pub(crate) clicked_text: String,
+    pub(crate) final_url: String,
+    pub(crate) title: String,
+    pub(crate) visible_text: String,
+    pub(crate) html: String,
+}
 
 pub(crate) trait SessionStorePort {
     fn save_session(&self, path: &Path, persisted: &BrowserCliSession) -> Result<(), CliError>;
@@ -44,6 +193,11 @@ pub(crate) trait BrowserAutomationPort {
         &self,
         persisted: &BrowserCliSession,
     ) -> Result<BrowserActionSource, CliError>;
+    fn snapshot_reference(
+        &self,
+        session: &ReadOnlySession,
+        target_ref: &str,
+    ) -> Result<BrowserSnapshotReference, CliError>;
     fn resolved_browser_source_url(&self, source: &BrowserActionSource, final_url: &str) -> String;
     fn compile_snapshot(
         &self,
@@ -53,29 +207,20 @@ pub(crate) trait BrowserAutomationPort {
     ) -> Result<SnapshotDocument, CliError>;
     fn invoke_snapshot(
         &self,
-        params: PlaywrightSnapshotParams,
-    ) -> Result<PlaywrightSnapshotResult, CliError>;
-    fn invoke_follow(
-        &self,
-        params: PlaywrightFollowParams,
-    ) -> Result<PlaywrightFollowResult, CliError>;
-    fn invoke_click(
-        &self,
-        params: PlaywrightClickParams,
-    ) -> Result<PlaywrightClickResult, CliError>;
-    fn invoke_type(&self, params: PlaywrightTypeParams) -> Result<PlaywrightTypeResult, CliError>;
-    fn invoke_submit(
-        &self,
-        params: PlaywrightSubmitParams,
-    ) -> Result<PlaywrightSubmitResult, CliError>;
+        request: BrowserSnapshotCaptureRequest,
+    ) -> Result<BrowserSnapshotCaptureResult, CliError>;
+    fn invoke_follow(&self, request: BrowserFollowRequest)
+        -> Result<BrowserFollowResult, CliError>;
+    fn invoke_click(&self, request: BrowserClickRequest) -> Result<BrowserClickResult, CliError>;
+    fn invoke_type(&self, request: BrowserTypeRequest) -> Result<BrowserTypeResult, CliError>;
+    fn invoke_submit(&self, request: BrowserSubmitRequest)
+        -> Result<BrowserSubmitResult, CliError>;
     fn invoke_paginate(
         &self,
-        params: PlaywrightPaginateParams,
-    ) -> Result<PlaywrightPaginateResult, CliError>;
-    fn invoke_expand(
-        &self,
-        params: PlaywrightExpandParams,
-    ) -> Result<PlaywrightExpandResult, CliError>;
+        request: BrowserPaginateRequest,
+    ) -> Result<BrowserPaginateResult, CliError>;
+    fn invoke_expand(&self, request: BrowserExpandRequest)
+        -> Result<BrowserExpandResult, CliError>;
     fn build_browser_cli_session(
         &self,
         session: &ReadOnlySession,
@@ -90,47 +235,11 @@ pub(crate) trait BrowserAutomationPort {
         latest_search: Option<SearchReport>,
     ) -> BrowserCliSession;
     fn next_session_timestamp(&self, session: &ReadOnlySession) -> String;
-    fn stable_ref_ordinal_hint(&self, target_ref: &str) -> Option<usize>;
-    fn current_snapshot_ref_text(
-        &self,
-        session: &ReadOnlySession,
-        target_ref: &str,
-    ) -> Result<String, CliError>;
-    fn current_snapshot_ref_href(
-        &self,
-        session: &ReadOnlySession,
-        target_ref: &str,
-    ) -> Option<String>;
-    fn current_snapshot_ref_tag_name(
-        &self,
-        session: &ReadOnlySession,
-        target_ref: &str,
-    ) -> Option<String>;
-    fn current_snapshot_ref_dom_path_hint(
-        &self,
-        session: &ReadOnlySession,
-        target_ref: &str,
-    ) -> Option<String>;
-    fn current_snapshot_ref_name(
-        &self,
-        session: &ReadOnlySession,
-        target_ref: &str,
-    ) -> Option<String>;
-    fn current_snapshot_ref_input_type(
-        &self,
-        session: &ReadOnlySession,
-        target_ref: &str,
-    ) -> Option<String>;
-    fn current_snapshot_ref_is_sensitive(
-        &self,
-        session: &ReadOnlySession,
-        target_ref: &str,
-    ) -> bool;
     fn collect_submit_prefill(
         &self,
         persisted: &BrowserCliSession,
         extra_prefill: &[SecretPrefill],
-    ) -> Vec<PlaywrightTypePrefill>;
+    ) -> Vec<BrowserSubmitPrefill>;
     fn mark_browser_session_interactive(&self, persisted: &mut BrowserCliSession);
 }
 

@@ -1,5 +1,5 @@
 use std::{
-    env, fs,
+    env,
     path::{Path, PathBuf},
 };
 
@@ -40,9 +40,8 @@ pub(crate) use application::policy_support::{
     reject_action, required_ack_risks, succeed_action, InteractivePreflightOptions,
 };
 pub(crate) use application::search_support::{
-    build_search_report, build_search_url, derived_search_result_session_file,
-    is_search_results_target, resolve_latest_search_session_file, resolve_search_session_file,
-    search_engine_source_label,
+    build_search_report, derived_search_result_session_file, is_search_results_target,
+    resolve_latest_search_session_file,
 };
 pub(crate) use application::session_reporting::{
     render_session_synthesis_markdown, verify_action_result_if_requested,

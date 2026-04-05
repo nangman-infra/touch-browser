@@ -1,5 +1,24 @@
-use super::{context::CliAppContext, search_support::default_search_session_file};
-use crate::*;
+use std::fs;
+
+use super::{
+    context::CliAppContext,
+    search_support::{
+        build_search_report, build_search_url, default_search_session_file,
+        derived_search_result_session_file, resolve_search_session_file,
+        search_engine_source_label,
+    },
+};
+use crate::{
+    current_policy_with_allowlist, fail_action, is_fixture_target, plan_memory_turn, repo_root,
+    slot_timestamp, succeed_action, summarize_turns, verify_action_result_if_requested,
+    ActionCommand, ActionFailureKind, ActionName, ActionResult, ActionStatus, BrowserOrigin,
+    ClaimInput, CliError, CompactSnapshotOutput, ExtractCommandOutput, ExtractOptions,
+    MemorySummaryOutput, PolicyCommandOutput, ReadViewOutput, ReplayCommandOutput,
+    ReplayTranscript, RiskClass, SearchCommandOutput, SearchEngine, SearchNextCommands,
+    SearchOpenResultCommandOutput, SearchOpenResultOptions, SearchOpenTopCommandOutput,
+    SearchOpenTopItem, SearchOpenTopOptions, SearchOptions, SearchReport, SearchReportStatus,
+    SearchResultItem, SourceRisk, TargetOptions, CONTRACT_VERSION, DEFAULT_OPENED_AT,
+};
 
 use serde_json::json;
 

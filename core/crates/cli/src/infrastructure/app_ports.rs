@@ -81,6 +81,24 @@ impl BrowserAutomationPort for DefaultBrowserAutomation {
         current_browser_action_source(persisted)
     }
 
+    fn snapshot_reference(
+        &self,
+        session: &ReadOnlySession,
+        target_ref: &str,
+    ) -> Result<BrowserSnapshotReference, CliError> {
+        Ok(BrowserSnapshotReference {
+            target_ref: target_ref.to_string(),
+            text: current_snapshot_ref_text(session, target_ref)?,
+            href: current_snapshot_ref_href(session, target_ref),
+            tag_name: current_snapshot_ref_tag_name(session, target_ref),
+            dom_path_hint: current_snapshot_ref_dom_path_hint(session, target_ref),
+            ordinal_hint: stable_ref_ordinal_hint(target_ref),
+            name: current_snapshot_ref_name(session, target_ref),
+            input_type: current_snapshot_ref_input_type(session, target_ref),
+            sensitive: current_snapshot_ref_is_sensitive(session, target_ref),
+        })
+    }
+
     fn resolved_browser_source_url(&self, source: &BrowserActionSource, final_url: &str) -> String {
         resolved_browser_source_url(source, final_url)
     }
@@ -96,48 +114,193 @@ impl BrowserAutomationPort for DefaultBrowserAutomation {
 
     fn invoke_snapshot(
         &self,
-        params: PlaywrightSnapshotParams,
-    ) -> Result<PlaywrightSnapshotResult, CliError> {
-        invoke_playwright_snapshot(params)
+        request: BrowserSnapshotCaptureRequest,
+    ) -> Result<BrowserSnapshotCaptureResult, CliError> {
+        let result = invoke_playwright_snapshot(PlaywrightSnapshotParams {
+            url: request.url,
+            html: request.html,
+            context_dir: request.context_dir,
+            profile_dir: request.profile_dir,
+            budget: request.budget,
+            headless: request.headless,
+            search_identity: request.search_identity,
+        })?;
+        Ok(BrowserSnapshotCaptureResult {
+            final_url: result.final_url,
+            html: result.html,
+        })
     }
 
     fn invoke_follow(
         &self,
-        params: PlaywrightFollowParams,
-    ) -> Result<PlaywrightFollowResult, CliError> {
-        invoke_playwright_follow(params)
+        request: BrowserFollowRequest,
+    ) -> Result<BrowserFollowResult, CliError> {
+        let result = invoke_playwright_follow(PlaywrightFollowParams {
+            url: request.source.url,
+            html: request.source.html,
+            context_dir: request.source.context_dir,
+            profile_dir: request.source.profile_dir,
+            target_ref: request.target.target_ref,
+            target_text: request.target.text,
+            target_href: request.target.href,
+            target_tag_name: request.target.tag_name,
+            target_dom_path_hint: request.target.dom_path_hint,
+            target_ordinal_hint: request.target.ordinal_hint,
+            headless: request.headless,
+        })?;
+        Ok(BrowserFollowResult {
+            followed_ref: result.followed_ref,
+            target_text: result.target_text,
+            target_href: result.target_href,
+            clicked_text: result.clicked_text,
+            final_url: result.final_url,
+            title: result.title,
+            visible_text: result.visible_text,
+            html: result.html,
+        })
     }
 
-    fn invoke_click(
-        &self,
-        params: PlaywrightClickParams,
-    ) -> Result<PlaywrightClickResult, CliError> {
-        invoke_playwright_click(params)
+    fn invoke_click(&self, request: BrowserClickRequest) -> Result<BrowserClickResult, CliError> {
+        let result = invoke_playwright_click(PlaywrightClickParams {
+            url: request.source.url,
+            html: request.source.html,
+            context_dir: request.source.context_dir,
+            profile_dir: request.source.profile_dir,
+            target_ref: request.target.target_ref,
+            target_text: request.target.text,
+            target_href: request.target.href,
+            target_tag_name: request.target.tag_name,
+            target_dom_path_hint: request.target.dom_path_hint,
+            target_ordinal_hint: request.target.ordinal_hint,
+            headless: request.headless,
+        })?;
+        Ok(BrowserClickResult {
+            clicked_ref: result.clicked_ref,
+            target_text: result.target_text,
+            target_href: result.target_href,
+            clicked_text: result.clicked_text,
+            final_url: result.final_url,
+            title: result.title,
+            visible_text: result.visible_text,
+            html: result.html,
+        })
     }
 
-    fn invoke_type(&self, params: PlaywrightTypeParams) -> Result<PlaywrightTypeResult, CliError> {
-        invoke_playwright_type(params)
+    fn invoke_type(&self, request: BrowserTypeRequest) -> Result<BrowserTypeResult, CliError> {
+        let result = invoke_playwright_type(PlaywrightTypeParams {
+            url: request.source.url,
+            html: request.source.html,
+            context_dir: request.source.context_dir,
+            profile_dir: request.source.profile_dir,
+            target_ref: request.target.target_ref,
+            target_text: request.target.text,
+            target_tag_name: request.target.tag_name,
+            target_dom_path_hint: request.target.dom_path_hint,
+            target_ordinal_hint: request.target.ordinal_hint,
+            target_name: request.target.name,
+            target_input_type: request.target.input_type,
+            value: request.value,
+            headless: request.headless,
+        })?;
+        Ok(BrowserTypeResult {
+            typed_ref: result.typed_ref,
+            target_text: result.target_text,
+            typed_length: result.typed_length,
+            final_url: result.final_url,
+            title: result.title,
+            visible_text: result.visible_text,
+            html: result.html,
+        })
     }
 
     fn invoke_submit(
         &self,
-        params: PlaywrightSubmitParams,
-    ) -> Result<PlaywrightSubmitResult, CliError> {
-        invoke_playwright_submit(params)
+        request: BrowserSubmitRequest,
+    ) -> Result<BrowserSubmitResult, CliError> {
+        let result = invoke_playwright_submit(PlaywrightSubmitParams {
+            url: request.source.url,
+            html: request.source.html,
+            context_dir: request.source.context_dir,
+            profile_dir: request.source.profile_dir,
+            target_ref: request.target.target_ref,
+            target_text: request.target.text,
+            target_tag_name: request.target.tag_name,
+            target_dom_path_hint: request.target.dom_path_hint,
+            target_ordinal_hint: request.target.ordinal_hint,
+            prefill: request
+                .prefill
+                .into_iter()
+                .map(|prefill| PlaywrightTypePrefill {
+                    target_ref: prefill.target_ref,
+                    target_text: prefill.target_text,
+                    target_tag_name: prefill.target_tag_name,
+                    target_dom_path_hint: prefill.target_dom_path_hint,
+                    target_ordinal_hint: prefill.target_ordinal_hint,
+                    target_name: prefill.target_name,
+                    target_input_type: prefill.target_input_type,
+                    value: prefill.value,
+                })
+                .collect(),
+            headless: request.headless,
+        })?;
+        Ok(BrowserSubmitResult {
+            submitted_ref: result.submitted_ref,
+            target_text: result.target_text,
+            final_url: result.final_url,
+            title: result.title,
+            visible_text: result.visible_text,
+            html: result.html,
+        })
     }
 
     fn invoke_paginate(
         &self,
-        params: PlaywrightPaginateParams,
-    ) -> Result<PlaywrightPaginateResult, CliError> {
-        invoke_playwright_paginate(params)
+        request: BrowserPaginateRequest,
+    ) -> Result<BrowserPaginateResult, CliError> {
+        let result = invoke_playwright_paginate(PlaywrightPaginateParams {
+            url: request.source.url,
+            html: request.source.html,
+            context_dir: request.source.context_dir,
+            profile_dir: request.source.profile_dir,
+            direction: request.direction,
+            current_page: request.current_page,
+            headless: request.headless,
+        })?;
+        Ok(BrowserPaginateResult {
+            page: result.page,
+            clicked_text: result.clicked_text,
+            final_url: result.final_url,
+            title: result.title,
+            visible_text: result.visible_text,
+            html: result.html,
+        })
     }
 
     fn invoke_expand(
         &self,
-        params: PlaywrightExpandParams,
-    ) -> Result<PlaywrightExpandResult, CliError> {
-        invoke_playwright_expand(params)
+        request: BrowserExpandRequest,
+    ) -> Result<BrowserExpandResult, CliError> {
+        let result = invoke_playwright_expand(PlaywrightExpandParams {
+            url: request.source.url,
+            html: request.source.html,
+            context_dir: request.source.context_dir,
+            profile_dir: request.source.profile_dir,
+            target_ref: request.target.target_ref,
+            target_text: request.target.text,
+            target_tag_name: request.target.tag_name,
+            target_dom_path_hint: request.target.dom_path_hint,
+            target_ordinal_hint: request.target.ordinal_hint,
+            headless: request.headless,
+        })?;
+        Ok(BrowserExpandResult {
+            expanded_ref: result.expanded_ref,
+            target_text: result.target_text,
+            clicked_text: result.clicked_text,
+            final_url: result.final_url,
+            title: result.title,
+            visible_text: result.visible_text,
+            html: result.html,
+        })
     }
 
     fn build_browser_cli_session(
@@ -171,72 +334,24 @@ impl BrowserAutomationPort for DefaultBrowserAutomation {
         next_session_timestamp(session)
     }
 
-    fn stable_ref_ordinal_hint(&self, target_ref: &str) -> Option<usize> {
-        stable_ref_ordinal_hint(target_ref)
-    }
-
-    fn current_snapshot_ref_text(
-        &self,
-        session: &ReadOnlySession,
-        target_ref: &str,
-    ) -> Result<String, CliError> {
-        current_snapshot_ref_text(session, target_ref)
-    }
-
-    fn current_snapshot_ref_href(
-        &self,
-        session: &ReadOnlySession,
-        target_ref: &str,
-    ) -> Option<String> {
-        current_snapshot_ref_href(session, target_ref)
-    }
-
-    fn current_snapshot_ref_tag_name(
-        &self,
-        session: &ReadOnlySession,
-        target_ref: &str,
-    ) -> Option<String> {
-        current_snapshot_ref_tag_name(session, target_ref)
-    }
-
-    fn current_snapshot_ref_dom_path_hint(
-        &self,
-        session: &ReadOnlySession,
-        target_ref: &str,
-    ) -> Option<String> {
-        current_snapshot_ref_dom_path_hint(session, target_ref)
-    }
-
-    fn current_snapshot_ref_name(
-        &self,
-        session: &ReadOnlySession,
-        target_ref: &str,
-    ) -> Option<String> {
-        current_snapshot_ref_name(session, target_ref)
-    }
-
-    fn current_snapshot_ref_input_type(
-        &self,
-        session: &ReadOnlySession,
-        target_ref: &str,
-    ) -> Option<String> {
-        current_snapshot_ref_input_type(session, target_ref)
-    }
-
-    fn current_snapshot_ref_is_sensitive(
-        &self,
-        session: &ReadOnlySession,
-        target_ref: &str,
-    ) -> bool {
-        current_snapshot_ref_is_sensitive(session, target_ref)
-    }
-
     fn collect_submit_prefill(
         &self,
         persisted: &BrowserCliSession,
         extra_prefill: &[SecretPrefill],
-    ) -> Vec<PlaywrightTypePrefill> {
+    ) -> Vec<BrowserSubmitPrefill> {
         collect_submit_prefill(persisted, extra_prefill)
+            .into_iter()
+            .map(|prefill| BrowserSubmitPrefill {
+                target_ref: prefill.target_ref,
+                target_text: prefill.target_text,
+                target_tag_name: prefill.target_tag_name,
+                target_dom_path_hint: prefill.target_dom_path_hint,
+                target_ordinal_hint: prefill.target_ordinal_hint,
+                target_name: prefill.target_name,
+                target_input_type: prefill.target_input_type,
+                value: prefill.value,
+            })
+            .collect()
     }
 
     fn mark_browser_session_interactive(&self, persisted: &mut BrowserCliSession) {
