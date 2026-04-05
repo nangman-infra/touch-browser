@@ -19,6 +19,8 @@ async function main() {
     observation,
     opsPackage,
     realUserResearch,
+    docLinkIntegrity,
+    toolComparison,
   ] = await Promise.all([
     readRepoJson("fixtures/scenarios/customer-fit-economics/report.json"),
     readRepoJson("fixtures/scenarios/customer-proxy-tasks/report.json"),
@@ -31,6 +33,8 @@ async function main() {
     readRepoJson("fixtures/scenarios/observation-metrics/report.json"),
     readRepoJson("fixtures/scenarios/ops-package-readiness/report.json"),
     readRepoJson("fixtures/scenarios/real-user-research-benchmark/report.json"),
+    readRepoJson("fixtures/scenarios/doc-link-integrity/report.json"),
+    readRepoJson("fixtures/scenarios/tool-comparison-benchmark/report.json"),
   ]);
 
   const requiredDocs = [
@@ -40,6 +44,8 @@ async function main() {
     "doc/OPERATIONS_SECURITY_PACKAGE_SPEC.md",
     "doc/PILOT_PACKAGE_SPEC.md",
     "doc/REAL_USER_RESEARCH_BENCHMARK_SPEC.md",
+    "doc/DOC_LINK_INTEGRITY_SPEC.md",
+    "doc/TOOL_COMPARISON_BENCHMARK_SPEC.md",
     "doc/RELEASE_READINESS_SPEC.md",
     "doc/STAGED_REFERENCE_WORKFLOW_SPEC.md",
     "doc/PUBLIC_REFERENCE_WORKFLOW_SPEC.md",
@@ -54,6 +60,7 @@ async function main() {
   ];
 
   const docsReady = await allRepoPathsExist(requiredDocs);
+  const docLinksReady = docLinkIntegrity.status === "ok";
   const scriptsReady = await allRepoPathsExist(requiredScripts);
   const daemonReady = true;
   const observationReady =
@@ -83,6 +90,15 @@ async function main() {
     (realUserResearch?.averageSupportedClaimRate ?? 0) >= 1 &&
     (realUserResearch?.passedScenarioCount ?? 0) >= 3 &&
     (realUserResearch?.uniqueDomainCount ?? 0) >= 4;
+  const comparisonBenchmarkReady =
+    toolComparison?.successfulSampleCount === toolComparison?.sampleCount &&
+    (toolComparison?.surfaces?.touchBrowserExtract?.positiveClaimSupportRate ??
+      0) >= 0.75 &&
+    (toolComparison?.surfaces?.touchBrowserExtract
+      ?.structuredCitationCoverageRate ?? 0) >= 1 &&
+    (toolComparison?.surfaces?.touchBrowserCompact?.averageTokens ??
+      Number.POSITIVE_INFINITY) <
+      (toolComparison?.surfaces?.markdownBaseline?.averageTokens ?? 0);
 
   const readinessScore = roundTo(
     [
@@ -92,12 +108,13 @@ async function main() {
       observationReady ? 1 : 0,
       operationsPackageReady ? 1 : 0,
       latencyCost.compactTokenCostRatio < 0.7 ? 1 : 0,
-      docsReady ? 1 : 0,
+      docsReady && docLinksReady ? 1 : 0,
       scriptsReady ? 1 : 0,
       daemonReady ? 1 : 0,
       publicProofReady ? 1 : 0,
       realUserEnvironmentReady ? 1 : 0,
-    ].reduce((sum, value) => sum + value, 0) / 11,
+      comparisonBenchmarkReady ? 1 : 0,
+    ].reduce((sum, value) => sum + value, 0) / 12,
     2,
   );
 
@@ -116,10 +133,12 @@ async function main() {
       observationReady,
       operationsPackageReady,
       daemonReady,
-      docsReady,
+      docsReady: docsReady && docLinksReady,
+      docLinksReady,
       scriptsReady,
       publicProofReady,
       realUserEnvironmentReady,
+      comparisonBenchmarkReady,
       compactTokenCostRatio: latencyCost.compactTokenCostRatio,
     },
     requiredDocs,

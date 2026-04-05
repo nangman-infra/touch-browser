@@ -30,6 +30,35 @@ Repository proof points from the current generated artifacts:
 
 - public web benchmark: `5/5` live public-doc samples succeeded, `11.58x` average cleaned DOM token reduction. See [doc/PUBLIC_WEB_BENCHMARK_SPEC.md](doc/PUBLIC_WEB_BENCHMARK_SPEC.md).
 - real-user research benchmark: `3/3` MCP-driven public research scenarios passed, `8/8` extracted claims were evidence-backed, `4` public domains covered. See [doc/REAL_USER_RESEARCH_BENCHMARK_SPEC.md](doc/REAL_USER_RESEARCH_BENCHMARK_SPEC.md).
+- tool comparison benchmark: compare `touch-browser` against a reproducible markdown-only baseline on the same official public pages. See [doc/TOOL_COMPARISON_BENCHMARK_SPEC.md](doc/TOOL_COMPARISON_BENCHMARK_SPEC.md).
+- documentation trust gate: tracked Markdown links are checked against real files, anchors, and live external docs. See [doc/DOC_LINK_INTEGRITY_SPEC.md](doc/DOC_LINK_INTEGRITY_SPEC.md).
+
+Current comparison benchmark on official AWS, IANA, MDN, and Node.js docs:
+
+- markdown baseline: `1908.75` average tokens, `1.00` positive-claim support rate, `0.33` plausible-negative false-positive rate
+- `touch-browser read-view`: `1852.75` average tokens, `1.00` positive-claim support rate, `0.33` plausible-negative false-positive rate
+- `touch-browser compact-view`: `606.5` average tokens
+- `touch-browser extract`: `1.00` positive-claim support rate, `0.00` plausible-negative false-positive rate, `1.00` citation coverage, `1.00` stable-ref coverage
+
+These numbers make more sense in the context of the wider tool landscape. See [doc/EXTERNAL_BASELINE_AND_POSITIONING.md](doc/EXTERNAL_BASELINE_AND_POSITIONING.md) for the external baseline behind the benchmark claims.
+
+## Why Not Just Use Markdown Fetch?
+
+Official docs from adjacent products already show that AI-friendly page reduction is table stakes:
+
+- Exa now returns clean Markdown by default for webpage contents: [Exa changelog](https://docs.exa.ai/changelog/markdown-contents-as-default)
+- Firecrawl exposes Markdown output plus `onlyMainContent`: [Firecrawl scrape docs](https://docs.firecrawl.dev/features/scrape)
+- Browserbase Agent Browser exposes accessibility-tree snapshots with element refs: [Browserbase docs](https://docs.browserbase.com/integrations/agent-browser/introduction)
+
+`touch-browser` exists for the next layer:
+
+- `read-view` for readable review
+- `compact-view` for lower-token agent loops
+- `extract` for block-level evidence and citations
+- `session-synthesize`, policy, replay, and MCP for multi-page research workflows
+
+That comparison boundary is documented in [doc/EXTERNAL_BASELINE_AND_POSITIONING.md](doc/EXTERNAL_BASELINE_AND_POSITIONING.md).
+The reproducible comparison numbers live in [doc/TOOL_COMPARISON_BENCHMARK_SPEC.md](doc/TOOL_COMPARISON_BENCHMARK_SPEC.md).
 
 ## What The Output Looks Like
 
@@ -217,6 +246,9 @@ This project is not a consumer browser, not a stealth automation stack, and not 
 - operations and security package: [doc/OPERATIONS_SECURITY_PACKAGE_SPEC.md](doc/OPERATIONS_SECURITY_PACKAGE_SPEC.md)
 - public workflow examples: [doc/PUBLIC_REFERENCE_WORKFLOW_SPEC.md](doc/PUBLIC_REFERENCE_WORKFLOW_SPEC.md)
 - real-user benchmark: [doc/REAL_USER_RESEARCH_BENCHMARK_SPEC.md](doc/REAL_USER_RESEARCH_BENCHMARK_SPEC.md)
+- external baseline and positioning: [doc/EXTERNAL_BASELINE_AND_POSITIONING.md](doc/EXTERNAL_BASELINE_AND_POSITIONING.md)
+- documentation link integrity: [doc/DOC_LINK_INTEGRITY_SPEC.md](doc/DOC_LINK_INTEGRITY_SPEC.md)
+- tool comparison benchmark: [doc/TOOL_COMPARISON_BENCHMARK_SPEC.md](doc/TOOL_COMPARISON_BENCHMARK_SPEC.md)
 - doc index: [doc/README.md](doc/README.md)
 
 ## License
