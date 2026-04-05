@@ -49,6 +49,8 @@ and example.org are maintained for documentation purposes.
 - [RFC 6761](https://www.rfc-editor.org/rfc/rfc6761.html)
 ```
 
+Use `--main-only` when you want the Markdown view to stay tightly scoped to the main content region on navigation-heavy pages.
+
 Compact the same page for an agent loop:
 
 ```bash
@@ -115,6 +117,11 @@ cargo run -q -p touch-browser-cli -- compact-view https://www.iana.org/help/exam
 # Extract source-linked evidence from the same page
 cargo run -q -p touch-browser-cli -- extract https://www.iana.org/help/example-domains \
   --claim "As described in RFC 2606 and RFC 6761, a number of domains such as example.com and example.org are maintained for documentation purposes."
+
+# Attach the conservative example verifier as a second pass
+cargo run -q -p touch-browser-cli -- extract https://www.iana.org/help/example-domains \
+  --claim "As described in RFC 2606 and RFC 6761, a number of domains such as example.com and example.org are maintained for documentation purposes." \
+  --verifier-command 'node scripts/example-verifier.mjs'
 ```
 
 If you already built the binary, replace `cargo run -q -p touch-browser-cli --` with `touch-browser`.
@@ -171,6 +178,8 @@ Experimental supervised surface:
 
 The full command table lives in [doc/CLI_SURFACE_SPEC.md](doc/CLI_SURFACE_SPEC.md).
 
+The example second-pass verifier lives at [scripts/example-verifier.mjs](scripts/example-verifier.mjs).
+
 ## MCP Example
 
 Minimal MCP bridge setup from the repository root:
@@ -187,6 +196,7 @@ Minimal MCP bridge setup from the repository root:
 ```
 
 The bridge starts `touch-browser serve` underneath and exposes tools like `tb_open`, `tb_read_view`, `tb_extract`, `tb_tab_open`, and `tb_session_synthesize`.
+`tb_read_view` accepts `mainOnly`, and `tb_extract` accepts `verifierCommand`.
 
 ## Design Principles
 

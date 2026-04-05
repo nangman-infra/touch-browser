@@ -14,7 +14,10 @@ if ! command -v pnpm >/dev/null 2>&1; then
 fi
 
 rustup component add rustfmt clippy
+mkdir -p contracts/generated/ts contracts/generated/rust
 pnpm install
+pnpm run contracts:check
+pnpm run contracts:manifest
 pnpm exec playwright install chromium
 cargo build -q --workspace
 pnpm typecheck

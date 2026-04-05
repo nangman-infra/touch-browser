@@ -47,6 +47,7 @@ const toolCatalog = [
         headed: { type: "boolean" },
         sourceRisk: { type: "string" },
         sourceLabel: { type: "string" },
+        verifierCommand: { type: "string" },
         allowDomains: {
           type: "array",
           items: { type: "string" },
@@ -72,6 +73,7 @@ const toolCatalog = [
         },
         browser: { type: "boolean" },
         headed: { type: "boolean" },
+        mainOnly: { type: "boolean" },
         sourceRisk: { type: "string" },
         sourceLabel: { type: "string" },
         allowDomains: {

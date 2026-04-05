@@ -155,6 +155,8 @@ struct ScoredCandidate<'a> {
 fn analyze_claim<'a>(claim: &ClaimRequest, blocks: &'a [SnapshotBlock]) -> ClaimAnalysis<'a> {
     let claim_tokens = tokenize_significant(&claim.statement);
     let claim_numeric_tokens = numeric_tokens(&claim.statement);
+    let claim_anchor_tokens = anchor_tokens(&claim_tokens);
+    let claim_qualifier_tokens = qualifier_tokens(&claim.statement);
     let normalized_claim = normalize_text(&claim.statement);
 
     let mut scored = blocks
@@ -217,6 +219,24 @@ fn analyze_claim<'a>(claim: &ClaimRequest, blocks: &'a [SnapshotBlock]) -> Claim
         .collect::<Vec<_>>();
 
     if top_support.is_empty() {
+        let reason = if contradictory_exists {
+            UnsupportedClaimReason::ContradictoryEvidence
+        } else {
+            UnsupportedClaimReason::InsufficientConfidence
+        };
+
+        return ClaimAnalysis::Unsupported {
+            reason,
+            checked_refs,
+        };
+    }
+
+    if !supports_claim_with_required_coverage(
+        &top_support,
+        blocks,
+        &claim_anchor_tokens,
+        &claim_qualifier_tokens,
+    ) {
         let reason = if contradictory_exists {
             UnsupportedClaimReason::ContradictoryEvidence
         } else {
@@ -453,6 +473,16 @@ fn numeric_tokens(text: &str) -> Vec<String> {
         .collect()
 }
 
+fn tokenize_all(text: &str) -> Vec<String> {
+    normalize_text(text)
+        .split_whitespace()
+        .map(stem_token)
+        .filter(|token| !token.is_empty())
+        .collect::<BTreeSet<_>>()
+        .into_iter()
+        .collect()
+}
+
 fn normalize_text(text: &str) -> String {
     let mut normalized = String::with_capacity(text.len());
 
@@ -494,10 +524,120 @@ fn tokens_match(left: &str, right: &str) -> bool {
         || (right.len() >= 4 && left.starts_with(right))
 }
 
+fn anchor_tokens(claim_tokens: &[String]) -> Vec<String> {
+    claim_tokens
+        .iter()
+        .filter(|token| token.len() >= 5)
+        .filter(|token| !ANCHOR_STOP_WORDS.contains(&token.as_str()))
+        .filter(|token| !QUALIFIER_TOKENS.contains(&token.as_str()))
+        .cloned()
+        .collect::<BTreeSet<_>>()
+        .into_iter()
+        .collect()
+}
+
+fn qualifier_tokens(text: &str) -> Vec<String> {
+    tokenize_all(text)
+        .into_iter()
+        .filter(|token| QUALIFIER_TOKENS.contains(&token.as_str()))
+        .collect::<BTreeSet<_>>()
+        .into_iter()
+        .collect()
+}
+
+fn supports_claim_with_required_coverage(
+    top_support: &[ScoredCandidate<'_>],
+    blocks: &[SnapshotBlock],
+    claim_anchor_tokens: &[String],
+    claim_qualifier_tokens: &[String],
+) -> bool {
+    let aggregated_text = aggregate_support_text(top_support, blocks);
+    let aggregated_tokens = tokenize_significant(&aggregated_text);
+    let aggregated_all_tokens = tokenize_all(&aggregated_text);
+    let anchor_coverage = if claim_anchor_tokens.is_empty() {
+        1.0
+    } else {
+        token_overlap_ratio(claim_anchor_tokens, &aggregated_tokens)
+    };
+    let qualifier_coverage = if claim_qualifier_tokens.is_empty() {
+        1.0
+    } else {
+        token_overlap_ratio(claim_qualifier_tokens, &aggregated_all_tokens)
+    };
+
+    anchor_coverage >= required_anchor_coverage(claim_anchor_tokens.len())
+        && qualifier_coverage >= 1.0
+}
+
+fn aggregate_support_text(top_support: &[ScoredCandidate<'_>], blocks: &[SnapshotBlock]) -> String {
+    let mut seen_blocks = BTreeSet::new();
+    let mut parts = Vec::new();
+
+    for candidate in top_support {
+        if seen_blocks.insert(candidate.block.id.clone()) {
+            parts.push(block_search_text(candidate.block));
+        }
+
+        if let Some(heading) = nearest_heading_context(blocks, candidate.block) {
+            if seen_blocks.insert(heading.id.clone()) {
+                parts.push(block_search_text(heading));
+            }
+        }
+    }
+
+    parts.join(" ")
+}
+
+fn nearest_heading_context<'a>(
+    blocks: &'a [SnapshotBlock],
+    block: &SnapshotBlock,
+) -> Option<&'a SnapshotBlock> {
+    let block_index = blocks
+        .iter()
+        .position(|candidate| std::ptr::eq(candidate, block))?;
+
+    blocks[..block_index]
+        .iter()
+        .rev()
+        .find(|candidate| matches!(candidate.kind, SnapshotBlockKind::Heading))
+}
+
+fn required_anchor_coverage(anchor_count: usize) -> f64 {
+    match anchor_count {
+        0 => 0.0,
+        1 | 2 => 1.0,
+        3 => 0.67,
+        _ => 0.6,
+    }
+}
+
 const STOP_WORDS: &[&str] = &[
     "the", "and", "for", "with", "that", "this", "from", "into", "your", "must", "now", "are",
     "all", "per", "there", "page", "include", "includes", "includ", "contain", "contains", "list",
     "built", "flow", "runtime", "plan", "touch", "browser",
+];
+
+const ANCHOR_STOP_WORDS: &[&str] = &[
+    "support",
+    "avail",
+    "available",
+    "provid",
+    "service",
+    "system",
+    "platform",
+];
+
+const QUALIFIER_TOKENS: &[&str] = &[
+    "all",
+    "every",
+    "fully",
+    "native",
+    "global",
+    "worldwide",
+    "only",
+    "always",
+    "never",
+    "entire",
 ];
 
 struct ContradictionPattern {
@@ -740,6 +880,97 @@ mod tests {
 
         assert_eq!(report.supported_claims.len(), 1);
         assert!(report.unsupported_claims.is_empty());
+    }
+
+    #[test]
+    fn rejects_plausible_claims_when_anchor_or_qualifier_coverage_is_missing() {
+        let snapshot = SnapshotDocument {
+            version: "1.0.0".to_string(),
+            stable_ref_version: "1".to_string(),
+            source: touch_browser_contracts::SnapshotSource {
+                source_url: "https://docs.aws.example/ecs".to_string(),
+                source_type: touch_browser_contracts::SourceType::Http,
+                title: Some("Example ECS Overview".to_string()),
+            },
+            budget: touch_browser_contracts::SnapshotBudget {
+                requested_tokens: 512,
+                estimated_tokens: 64,
+                emitted_tokens: 64,
+                truncated: false,
+            },
+            blocks: vec![
+                touch_browser_contracts::SnapshotBlock {
+                    version: "1.0.0".to_string(),
+                    id: "b1".to_string(),
+                    kind: touch_browser_contracts::SnapshotBlockKind::Text,
+                    stable_ref: "rmain:text:overview".to_string(),
+                    role: touch_browser_contracts::SnapshotBlockRole::Content,
+                    text: "Amazon ECS is a fully managed container orchestration service."
+                        .to_string(),
+                    attributes: Default::default(),
+                    evidence: touch_browser_contracts::SnapshotEvidence {
+                        source_url: "https://docs.aws.example/ecs".to_string(),
+                        source_type: touch_browser_contracts::SourceType::Http,
+                        dom_path_hint: Some("html > body > main > p:nth-of-type(1)".to_string()),
+                        byte_range_start: None,
+                        byte_range_end: None,
+                    },
+                },
+                touch_browser_contracts::SnapshotBlock {
+                    version: "1.0.0".to_string(),
+                    id: "b2".to_string(),
+                    kind: touch_browser_contracts::SnapshotBlockKind::Text,
+                    stable_ref: "rmain:text:managed-instances".to_string(),
+                    role: touch_browser_contracts::SnapshotBlockRole::Content,
+                    text: "Managed instances support GPU acceleration for selected workloads."
+                        .to_string(),
+                    attributes: Default::default(),
+                    evidence: touch_browser_contracts::SnapshotEvidence {
+                        source_url: "https://docs.aws.example/ecs".to_string(),
+                        source_type: touch_browser_contracts::SourceType::Http,
+                        dom_path_hint: Some("html > body > main > p:nth-of-type(2)".to_string()),
+                        byte_range_start: None,
+                        byte_range_end: None,
+                    },
+                },
+                touch_browser_contracts::SnapshotBlock {
+                    version: "1.0.0".to_string(),
+                    id: "b3".to_string(),
+                    kind: touch_browser_contracts::SnapshotBlockKind::Text,
+                    stable_ref: "rmain:text:regional".to_string(),
+                    role: touch_browser_contracts::SnapshotBlockRole::Content,
+                    text: "Availability varies by Region and capacity option.".to_string(),
+                    attributes: Default::default(),
+                    evidence: touch_browser_contracts::SnapshotEvidence {
+                        source_url: "https://docs.aws.example/ecs".to_string(),
+                        source_type: touch_browser_contracts::SourceType::Http,
+                        dom_path_hint: Some("html > body > main > p:nth-of-type(3)".to_string()),
+                        byte_range_start: None,
+                        byte_range_end: None,
+                    },
+                },
+            ],
+        };
+
+        let report = EvidenceExtractor
+            .extract(&EvidenceInput::new(
+                snapshot,
+                vec![
+                    ClaimRequest::new("c1", "ECS supports GPU instances natively."),
+                    ClaimRequest::new("c2", "ECS is available in all AWS regions."),
+                ],
+                "2026-04-05T00:00:00+09:00",
+                SourceRisk::Low,
+                Some("Example ECS Overview".to_string()),
+            ))
+            .expect("evidence extraction should succeed");
+
+        assert!(report.supported_claims.is_empty());
+        assert_eq!(report.unsupported_claims.len(), 2);
+        assert!(report
+            .unsupported_claims
+            .iter()
+            .all(|claim| claim.reason == UnsupportedClaimReason::InsufficientConfidence));
     }
 
     fn parse_risk(value: &str) -> SourceRisk {

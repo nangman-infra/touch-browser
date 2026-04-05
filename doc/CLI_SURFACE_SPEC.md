@@ -27,12 +27,12 @@ Evidence extraction is intentionally phrased as support retrieval, not final tru
 | --- | --- |
 | `touch-browser open <target> [--browser] [--headed] [--budget <tokens>] [--session-file <path>] [--allow-domain <host> ...]` | Open a target and compile a structured snapshot. |
 | `touch-browser snapshot <target> [--browser] [--headed] [--budget <tokens>] [--session-file <path>] [--allow-domain <host> ...]` | Return the full snapshot payload for the target. |
-| `touch-browser read-view <target> [--browser] [--headed] [--budget <tokens>] [--session-file <path>] [--allow-domain <host> ...]` | Return a readable Markdown rendering of the target. |
+| `touch-browser read-view <target> [--browser] [--headed] [--main-only] [--budget <tokens>] [--session-file <path>] [--allow-domain <host> ...]` | Return a readable Markdown rendering of the target. By default the renderer prefers main-content blocks when available; `--main-only` makes that filter explicit. |
 | `touch-browser compact-view <target> [--browser] [--headed] [--budget <tokens>] [--session-file <path>] [--allow-domain <host> ...]` | Return compact semantic text plus `refIndex`. |
 | `touch-browser extract <target> --claim <statement> ... [--verifier-command <shell-command>] [--browser] [--headed] [--budget <tokens>] [--session-file <path>] [--allow-domain <host> ...]` | Return evidence-supported and insufficient-evidence claims with citations and optional verifier output. |
 | `touch-browser policy <target> [--browser] [--headed] [--budget <tokens>] [--allow-domain <host> ...]` | Return the allow, review, or block policy report. |
 | `touch-browser session-snapshot --session-file <path>` | Read the latest snapshot from a persisted browser session. |
-| `touch-browser session-read --session-file <path>` | Return a readable Markdown rendering of the latest persisted browser snapshot. |
+| `touch-browser session-read --session-file <path> [--main-only]` | Return a readable Markdown rendering of the latest persisted browser snapshot. |
 | `touch-browser session-compact --session-file <path>` | Return the compact semantic view for a persisted browser session. |
 | `touch-browser session-extract --session-file <path> --claim <statement> ... [--verifier-command <shell-command>]` | Run evidence extraction against a persisted browser session. |
 | `touch-browser session-synthesize --session-file <path> [--note-limit <count>] [--format json|markdown]` | Combine a multi-page session into structured notes, claims, and citations, or emit a Markdown report. |
@@ -68,6 +68,7 @@ Evidence extraction is intentionally phrased as support retrieval, not final tru
 - browser targets run through `Playwright stdio adapter -> ObservationCompiler -> ReadOnlyRuntime.open_snapshot -> Policy/Evidence`
 - persisted browser sessions run through `session-file JSON -> ReadOnlySession + persisted browser state + browser context dir + browser trace + requested budget restore -> stable-ref hints -> Playwright action -> runtime append -> session-file save`
 - verifier hooks run only when `--verifier-command` is set and execute after evidence retrieval
+- `read-view` and `session-read` prefer main-content blocks by default and can be forced into explicit main-zone filtering with `--main-only`
 - supervised browser actions require allowlists, policy preflight, and explicit risk acknowledgement when challenge, MFA, auth, or high-risk-write signals appear
 
 ## 5. Serve Methods
@@ -179,10 +180,12 @@ Eval and smoke validation covers:
 - serve and MCP interface compatibility
 - session synthesis artifacts
 - reference workflow artifacts
+- example verifier hook at [scripts/example-verifier.mjs](../scripts/example-verifier.mjs)
 
 ## 8. Notes
 
 - `read-view` is for readable inspection; `compact-view` is for low-token agent loops
+- use `--main-only` when the page shell is noisy and you want the Markdown output scoped to the primary content region
 - verifier hooks do not replace the base extractor; they attach a second-pass judgment to the report
 - browser-backed `follow` is supported on persisted sessions, not as a general live multi-step replay
 - `--budget` controls the observation budget for live and browser open paths and is reused during follow, paginate, and expand recompilation

@@ -24,6 +24,9 @@ Manual setup:
 ```bash
 rustup component add rustfmt clippy
 pnpm install
+mkdir -p contracts/generated/ts contracts/generated/rust
+pnpm run contracts:check
+pnpm run contracts:manifest
 pnpm exec playwright install chromium
 cargo build -q --workspace
 pnpm typecheck
@@ -38,6 +41,8 @@ Read a real page:
 cargo run -q -p touch-browser-cli -- read-view https://www.iana.org/help/example-domains
 ```
 
+For navigation-heavy pages, add `--main-only` to keep the Markdown output centered on the primary content region.
+
 Generate the low-token agent view:
 
 ```bash
@@ -49,7 +54,7 @@ Extract evidence with an optional verifier hook:
 ```bash
 cargo run -q -p touch-browser-cli -- extract https://www.iana.org/help/example-domains \
   --claim "As described in RFC 2606 and RFC 6761, a number of domains such as example.com and example.org are maintained for documentation purposes." \
-  --verifier-command '<your verifier shell command>'
+  --verifier-command 'node scripts/example-verifier.mjs'
 ```
 
 Render a multi-page session as Markdown:
@@ -108,6 +113,7 @@ pnpm run pilot:real-user-research
   - verify `cargo run -q -p touch-browser-cli -- serve` works on its own
 - verifier hook failure:
   - run the verifier command directly and confirm it returns JSON with an `outcomes` array
+  - start with `node scripts/example-verifier.mjs` and replace it only after your own verifier returns the same shape
 - supervised interactive action rejected:
   - confirm the allowlisted host
   - use `--headed` for live non-fixture targets
@@ -119,6 +125,7 @@ pnpm run pilot:real-user-research
 ## 6. Notes
 
 - `read-view` and `session-read` emit raw Markdown in direct CLI mode
+- `read-view` prefers main-content blocks by default; `--main-only` makes the filter explicit for especially noisy page chrome
 - `session-synthesize --format markdown` emits raw Markdown in direct CLI mode
 - `serve` and MCP keep returning structured JSON
 - non-sensitive typed values are replayed in the same browser pass right before submit

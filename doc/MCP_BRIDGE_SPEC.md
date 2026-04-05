@@ -76,6 +76,11 @@ Current tool set:
 - `tb_session_synthesize` combines multi-page session traces into a single report
 - supervised tools remain available for allowlisted, review-gated browser sessions
 
+Relevant tool inputs:
+
+- `tb_read_view`: `target`, `mainOnly`, `browser`, `headed`, `budget`, `sessionFile`, `allowDomains`
+- `tb_extract`: `target`, `claims`, `verifierCommand`, `browser`, `headed`, `budget`, `sessionFile`, `allowDomains`
+
 ## 4. Validation
 
 - [mcp-bridge-smoke.test.ts](../evals/src/runtime/mcp-bridge-smoke.test.ts)
@@ -90,3 +95,4 @@ Current tool set:
 - the tool set is intentionally smaller than the full serve method surface
 - interactive tools only make sense inside allowlisted daemon sessions and still require risk acknowledgement when challenge, MFA, auth, or high-risk-write signals appear
 - the bridge starts `touch-browser serve` as an internal child process and injects `TOUCH_BROWSER_TELEMETRY_SURFACE=mcp`
+- use `verifierCommand` to attach a second-pass judge without replacing the base evidence collector

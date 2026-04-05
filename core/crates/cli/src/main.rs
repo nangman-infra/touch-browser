@@ -14,7 +14,7 @@ use touch_browser_acquisition::{AcquisitionConfig, AcquisitionEngine, Acquisitio
 use touch_browser_action_vm::ReadOnlyActionVm;
 use touch_browser_contracts::{
     compact_ref_index, navigation_ref_index, render_compact_snapshot,
-    render_navigation_compact_snapshot, render_read_view_markdown,
+    render_main_read_view_markdown, render_navigation_compact_snapshot, render_read_view_markdown,
     render_reading_compact_snapshot, ActionCommand, ActionFailureKind, ActionName, ActionResult,
     ActionStatus, CompactRefIndexEntry, EvidenceCitation, EvidenceReport,
     EvidenceVerificationOutcome, EvidenceVerificationReport, EvidenceVerificationVerdict,
@@ -385,6 +385,7 @@ fn handle_read_view(options: TargetOptions) -> Result<Value, CliError> {
             &context.snapshot,
             Some(context.session.state),
             options.session_file.map(|path| path.display().to_string()),
+            options.main_only,
         )));
     }
 
@@ -397,6 +398,7 @@ fn handle_read_view(options: TargetOptions) -> Result<Value, CliError> {
             &snapshot,
             Some(session.state),
             None,
+            options.main_only,
         )));
     }
 
@@ -417,6 +419,7 @@ fn handle_read_view(options: TargetOptions) -> Result<Value, CliError> {
         &snapshot,
         Some(session.state),
         None,
+        options.main_only,
     )))
 }
 
@@ -463,10 +466,9 @@ fn handle_extract(options: ExtractOptions) -> Result<Value, CliError> {
         );
         let mut session = context.session;
         let extract_timestamp = slot_timestamp(1, 30);
-        let report =
-            context
-                .runtime
-                .extract(&mut session, claims.clone(), &extract_timestamp)?;
+        let report = context
+            .runtime
+            .extract(&mut session, claims.clone(), &extract_timestamp)?;
         let extract_result = succeed_action(
             ActionName::Extract,
             "evidence-report",
@@ -835,7 +837,7 @@ fn handle_session_compact(options: SessionFileOptions) -> Result<Value, CliError
     )))
 }
 
-fn handle_session_read(options: SessionFileOptions) -> Result<Value, CliError> {
+fn handle_session_read(options: SessionReadOptions) -> Result<Value, CliError> {
     let persisted = load_browser_cli_session(&options.session_file)?;
     let snapshot = persisted
         .session
@@ -848,6 +850,7 @@ fn handle_session_read(options: SessionFileOptions) -> Result<Value, CliError> {
         &snapshot,
         Some(persisted.session.state),
         Some(options.session_file.display().to_string()),
+        options.main_only,
     )))
 }
 
@@ -1128,7 +1131,9 @@ fn verify_action_result_if_requested(
     };
 
     let output = action_result.output.take().ok_or_else(|| {
-        CliError::Verifier("Verifier requested but extract action had no output payload.".to_string())
+        CliError::Verifier(
+            "Verifier requested but extract action had no output payload.".to_string(),
+        )
     })?;
     let report: EvidenceReport = serde_json::from_value(output)?;
     let snapshot = session
@@ -1180,9 +1185,10 @@ fn run_verifier_hook(
         .spawn()?;
 
     {
-        let stdin = child.stdin.as_mut().ok_or_else(|| {
-            CliError::Verifier("Failed to open verifier stdin.".to_string())
-        })?;
+        let stdin = child
+            .stdin
+            .as_mut()
+            .ok_or_else(|| CliError::Verifier("Failed to open verifier stdin.".to_string()))?;
         stdin.write_all(&request_body)?;
     }
     let _ = child.stdin.take();
@@ -1259,7 +1265,10 @@ fn render_session_synthesis_markdown(report: &SessionSynthesisReport) -> String 
     ];
 
     if !report.visited_urls.is_empty() {
-        sections.push(format!("- Visited URLs: {}", report.visited_urls.join(", ")));
+        sections.push(format!(
+            "- Visited URLs: {}",
+            report.visited_urls.join(", ")
+        ));
     }
 
     if !report.synthesized_notes.is_empty() {
@@ -1971,6 +1980,7 @@ fn handle_browser_replay(options: SessionFileOptions) -> Result<Value, CliError>
         allowlisted_domains: persisted.allowlisted_domains.clone(),
         browser: true,
         headed: !persisted.headless,
+        main_only: false,
         session_file: Some(replay_session_file.clone()),
     }))?;
 
@@ -2311,6 +2321,7 @@ fn json_target_options(params: &Value) -> Result<TargetOptions, CliError> {
         allowlisted_domains: json_string_array(params, "allowDomains")?,
         browser: json_bool(params, "browser").unwrap_or(false),
         headed: json_bool(params, "headed").unwrap_or(false),
+        main_only: json_bool(params, "mainOnly").unwrap_or(false),
         session_file: optional_json_string(params, "sessionFile").map(PathBuf::from),
     })
 }
@@ -2496,10 +2507,12 @@ fn serve_session_read_view(
 ) -> Result<Value, CliError> {
     let session_id = required_json_string(params, "sessionId")?;
     let tab_id = optional_json_string(params, "tabId");
+    let main_only = json_bool(params, "mainOnly").unwrap_or(false);
     let (resolved_tab_id, session_file) =
         daemon_state.opened_tab_file(&session_id, tab_id.as_deref())?;
-    let result = dispatch(CliCommand::SessionRead(SessionFileOptions {
+    let result = dispatch(CliCommand::SessionRead(SessionReadOptions {
         session_file,
+        main_only,
     }))?;
     Ok(json!({
         "sessionId": session_id,
@@ -3144,6 +3157,7 @@ fn serve_session_open_internal(
         allowlisted_domains,
         browser: true,
         headed: headed.unwrap_or(!headless),
+        main_only: false,
         session_file: Some(session_file),
     }))?;
 
@@ -4114,9 +4128,8 @@ fn parse_command(args: &[String]) -> Result<CliCommand, CliError> {
         "session-extract" => Ok(CliCommand::SessionExtract(parse_session_extract_options(
             &args[1..],
         )?)),
-        "session-read" => Ok(CliCommand::SessionRead(parse_session_file_options(
+        "session-read" => Ok(CliCommand::SessionRead(parse_session_read_options(
             &args[1..],
-            "session-read",
         )?)),
         "checkpoint" => Ok(CliCommand::SessionCheckpoint(parse_session_file_options(
             &args[1..],
@@ -4187,6 +4200,7 @@ fn parse_target_options(args: &[String]) -> Result<TargetOptions, CliError> {
         allowlisted_domains: Vec::new(),
         browser: false,
         headed: false,
+        main_only: false,
         session_file: None,
     };
     let mut index = 1;
@@ -4199,6 +4213,10 @@ fn parse_target_options(args: &[String]) -> Result<TargetOptions, CliError> {
             }
             "--headed" => {
                 options.headed = true;
+                index += 1;
+            }
+            "--main-only" => {
+                options.main_only = true;
                 index += 1;
             }
             "--session-file" => {
@@ -4378,6 +4396,40 @@ fn parse_session_file_options(
     Err(CliError::Usage(format!(
         "{command_name} requires `--session-file <path>`."
     )))
+}
+
+fn parse_session_read_options(args: &[String]) -> Result<SessionReadOptions, CliError> {
+    let mut session_file = None;
+    let mut main_only = false;
+    let mut index = 0;
+
+    while index < args.len() {
+        match args[index].as_str() {
+            "--session-file" => {
+                let value = args.get(index + 1).ok_or_else(|| {
+                    CliError::Usage("--session-file requires a path.".to_string())
+                })?;
+                session_file = Some(PathBuf::from(value));
+                index += 2;
+            }
+            "--main-only" => {
+                main_only = true;
+                index += 1;
+            }
+            other => {
+                return Err(CliError::Usage(format!(
+                    "Unknown option `{other}` for session-read command."
+                )));
+            }
+        }
+    }
+
+    Ok(SessionReadOptions {
+        session_file: session_file.ok_or_else(|| {
+            CliError::Usage("session-read requires `--session-file <path>`.".to_string())
+        })?,
+        main_only,
+    })
 }
 
 fn parse_session_refresh_options(args: &[String]) -> Result<SessionRefreshOptions, CliError> {
@@ -5950,13 +6002,13 @@ fn usage() -> String {
         "  touch-browser open <target> [--browser] [--headed] [--budget <tokens>] [--session-file <path>] [--source-risk low|medium|hostile] [--source-label <label>] [--allow-domain <host> ...]",
         "  touch-browser snapshot <target> [--browser] [--headed] [--budget <tokens>] [--session-file <path>] [--source-risk low|medium|hostile] [--source-label <label>] [--allow-domain <host> ...]",
         "  touch-browser compact-view <target> [--browser] [--headed] [--budget <tokens>] [--session-file <path>] [--source-risk low|medium|hostile] [--source-label <label>] [--allow-domain <host> ...]",
-        "  touch-browser read-view <target> [--browser] [--headed] [--budget <tokens>] [--session-file <path>] [--source-risk low|medium|hostile] [--source-label <label>] [--allow-domain <host> ...]",
+        "  touch-browser read-view <target> [--browser] [--headed] [--main-only] [--budget <tokens>] [--session-file <path>] [--source-risk low|medium|hostile] [--source-label <label>] [--allow-domain <host> ...]",
         "  touch-browser extract <target> --claim <statement> [--claim <statement> ...] [--verifier-command <shell-command>] [--browser] [--headed] [--budget <tokens>] [--session-file <path>] [--source-risk low|medium|hostile] [--source-label <label>] [--allow-domain <host> ...]",
         "  touch-browser policy <target> [--browser] [--headed] [--budget <tokens>] [--source-risk low|medium|hostile] [--source-label <label>] [--allow-domain <host> ...]",
         "  touch-browser session-snapshot --session-file <path>",
         "  touch-browser session-compact --session-file <path>",
         "  touch-browser session-extract --session-file <path> --claim <statement> [--claim <statement> ...] [--verifier-command <shell-command>]",
-        "  touch-browser session-read --session-file <path>",
+        "  touch-browser session-read --session-file <path> [--main-only]",
         "  touch-browser session-synthesize --session-file <path> [--note-limit <count>] [--format json|markdown]",
         "  touch-browser follow --session-file <path> --ref <stable-ref> [--headed]",
         "  touch-browser paginate --session-file <path> --direction next|prev [--headed]",
@@ -5992,7 +6044,7 @@ enum CliCommand {
     Policy(TargetOptions),
     SessionSnapshot(SessionFileOptions),
     SessionCompact(SessionFileOptions),
-    SessionRead(SessionFileOptions),
+    SessionRead(SessionReadOptions),
     SessionRefresh(SessionRefreshOptions),
     SessionExtract(SessionExtractOptions),
     SessionCheckpoint(SessionFileOptions),
@@ -6025,6 +6077,7 @@ struct TargetOptions {
     allowlisted_domains: Vec<String>,
     browser: bool,
     headed: bool,
+    main_only: bool,
     session_file: Option<PathBuf>,
 }
 
@@ -6045,6 +6098,12 @@ struct ExtractOptions {
 #[derive(Debug, Clone, PartialEq, Eq)]
 struct SessionFileOptions {
     session_file: PathBuf,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+struct SessionReadOptions {
+    session_file: PathBuf,
+    main_only: bool,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -6737,6 +6796,7 @@ struct ReadViewOutput {
     #[serde(skip_serializing_if = "Option::is_none")]
     source_title: Option<String>,
     markdown_text: String,
+    main_only: bool,
     line_count: usize,
     char_count: usize,
     approx_tokens: usize,
@@ -6752,8 +6812,18 @@ impl ReadViewOutput {
         snapshot: &SnapshotDocument,
         session_state: Option<SessionState>,
         session_file: Option<String>,
+        main_only: bool,
     ) -> Self {
-        let markdown_text = render_read_view_markdown(snapshot);
+        let markdown_text = if main_only {
+            render_main_read_view_markdown(snapshot)
+        } else {
+            let preferred_markdown = render_main_read_view_markdown(snapshot);
+            if preferred_markdown.is_empty() {
+                render_read_view_markdown(snapshot)
+            } else {
+                preferred_markdown
+            }
+        };
         let line_count = markdown_text.lines().count();
         let char_count = markdown_text.chars().count();
         let approx_tokens = char_count.div_ceil(4).max(1);
@@ -6763,6 +6833,7 @@ impl ReadViewOutput {
             source_url: snapshot.source.source_url.clone(),
             source_title: snapshot.source.title.clone(),
             markdown_text,
+            main_only,
             line_count,
             char_count,
             approx_tokens,
@@ -6824,9 +6895,9 @@ mod tests {
 
     use super::{
         browser_context_dir_for_session_file, dispatch, parse_command, AckRisk, ApproveOptions,
-        CliCommand, ClickOptions, ExpandOptions, ExtractOptions, FollowOptions, PaginateOptions,
-        OutputFormat, PaginationDirection, PolicyProfile, SessionExtractOptions,
-        SessionFileOptions, SessionProfileSetOptions, SessionRefreshOptions,
+        CliCommand, ClickOptions, ExpandOptions, ExtractOptions, FollowOptions, OutputFormat,
+        PaginateOptions, PaginationDirection, PolicyProfile, SessionExtractOptions,
+        SessionFileOptions, SessionProfileSetOptions, SessionReadOptions, SessionRefreshOptions,
         SessionSynthesizeOptions, SubmitOptions, TargetOptions, TelemetryRecentOptions,
         TypeOptions, DEFAULT_REQUESTED_TOKENS,
     };
@@ -6931,6 +7002,7 @@ mod tests {
             allowlisted_domains: Vec::new(),
             browser: false,
             headed: false,
+            main_only: false,
             session_file: None,
         }))
         .expect("read-view should succeed");
@@ -6953,6 +7025,7 @@ mod tests {
             allowlisted_domains: Vec::new(),
             browser: false,
             headed: false,
+            main_only: false,
             session_file: None,
         }))
         .expect("open should succeed");
@@ -6972,6 +7045,7 @@ mod tests {
             allowlisted_domains: Vec::new(),
             browser: false,
             headed: false,
+            main_only: false,
             session_file: None,
         }))
         .expect("policy command should succeed");
@@ -7026,6 +7100,7 @@ mod tests {
                 allowlisted_domains: Vec::new(),
                 browser: true,
                 headed: true,
+                main_only: false,
                 session_file: None,
             })
         );
@@ -7051,7 +7126,52 @@ mod tests {
                 allowlisted_domains: Vec::new(),
                 browser: false,
                 headed: false,
+                main_only: false,
                 session_file: None,
+            })
+        );
+    }
+
+    #[test]
+    fn parses_read_view_command_with_main_only() {
+        let command = parse_command(&[
+            "read-view".to_string(),
+            "https://www.iana.org/help/example-domains".to_string(),
+            "--main-only".to_string(),
+        ])
+        .expect("read-view command should parse");
+
+        assert_eq!(
+            command,
+            CliCommand::ReadView(TargetOptions {
+                target: "https://www.iana.org/help/example-domains".to_string(),
+                budget: DEFAULT_REQUESTED_TOKENS,
+                source_risk: None,
+                source_label: None,
+                allowlisted_domains: Vec::new(),
+                browser: false,
+                headed: false,
+                main_only: true,
+                session_file: None,
+            })
+        );
+    }
+
+    #[test]
+    fn parses_session_read_command_with_main_only() {
+        let command = parse_command(&[
+            "session-read".to_string(),
+            "--session-file".to_string(),
+            "/tmp/test-session.json".to_string(),
+            "--main-only".to_string(),
+        ])
+        .expect("session-read command should parse");
+
+        assert_eq!(
+            command,
+            CliCommand::SessionRead(SessionReadOptions {
+                session_file: PathBuf::from("/tmp/test-session.json"),
+                main_only: true,
             })
         );
     }
@@ -7257,6 +7377,7 @@ mod tests {
             allowlisted_domains: Vec::new(),
             browser: true,
             headed: false,
+            main_only: false,
             session_file: None,
         }))
         .expect("browser-backed open should succeed");
@@ -7332,6 +7453,7 @@ mod tests {
             allowlisted_domains: Vec::new(),
             browser: true,
             headed: false,
+            main_only: false,
             session_file: None,
         }))
         .expect("browser-backed policy should succeed");
@@ -7351,6 +7473,7 @@ mod tests {
             allowlisted_domains: Vec::new(),
             browser: true,
             headed: false,
+            main_only: false,
             session_file: Some(session_file.clone()),
         }))
         .expect("browser-backed open should persist session");
@@ -7383,6 +7506,7 @@ mod tests {
             allowlisted_domains: Vec::new(),
             browser: true,
             headed: false,
+            main_only: false,
             session_file: Some(session_file.clone()),
         }))
         .expect("browser-backed open should persist session");
@@ -7410,6 +7534,7 @@ mod tests {
             allowlisted_domains: Vec::new(),
             browser: true,
             headed: false,
+            main_only: false,
             session_file: Some(session_file.clone()),
         }))
         .expect("browser-backed open should persist session");
@@ -7443,6 +7568,7 @@ mod tests {
             allowlisted_domains: Vec::new(),
             browser: true,
             headed: false,
+            main_only: false,
             session_file: Some(session_file.clone()),
         }))
         .expect("browser-backed open should persist session");
@@ -7482,6 +7608,7 @@ mod tests {
             allowlisted_domains: Vec::new(),
             browser: true,
             headed: false,
+            main_only: false,
             session_file: Some(session_file.clone()),
         }))
         .expect("browser-backed open should persist session");
@@ -7541,6 +7668,7 @@ mod tests {
             allowlisted_domains: Vec::new(),
             browser: true,
             headed: false,
+            main_only: false,
             session_file: Some(session_file.clone()),
         }))
         .expect("browser-backed open should persist session");
@@ -7582,6 +7710,7 @@ mod tests {
             allowlisted_domains: Vec::new(),
             browser: true,
             headed: false,
+            main_only: false,
             session_file: Some(session_file.clone()),
         }))
         .expect("browser-backed open should persist session");
@@ -7631,6 +7760,7 @@ mod tests {
             allowlisted_domains: Vec::new(),
             browser: true,
             headed: false,
+            main_only: false,
             session_file: Some(session_file.clone()),
         }))
         .expect("browser-backed open should persist session");
@@ -7689,6 +7819,7 @@ mod tests {
             allowlisted_domains: vec!["research".to_string()],
             browser: true,
             headed: false,
+            main_only: false,
             session_file: Some(session_file.clone()),
         }))
         .expect("browser-backed open should persist session");
@@ -7750,6 +7881,7 @@ mod tests {
             allowlisted_domains: vec!["research".to_string()],
             browser: true,
             headed: false,
+            main_only: false,
             session_file: Some(session_file.clone()),
         }))
         .expect("browser-backed open should persist session");
@@ -7798,6 +7930,7 @@ mod tests {
             allowlisted_domains: vec!["research".to_string()],
             browser: true,
             headed: false,
+            main_only: false,
             session_file: Some(session_file.clone()),
         }))
         .expect("browser-backed open should persist session");
@@ -7866,6 +7999,7 @@ mod tests {
             allowlisted_domains: vec!["research".to_string()],
             browser: true,
             headed: false,
+            main_only: false,
             session_file: Some(session_file.clone()),
         }))
         .expect("browser-backed open should persist session");
@@ -7935,6 +8069,7 @@ mod tests {
             allowlisted_domains: vec!["research".to_string()],
             browser: true,
             headed: false,
+            main_only: false,
             session_file: Some(session_file.clone()),
         }))
         .expect("browser-backed open should persist session");
@@ -8006,6 +8141,7 @@ mod tests {
             allowlisted_domains: vec!["research".to_string()],
             browser: true,
             headed: false,
+            main_only: false,
             session_file: Some(session_file.clone()),
         }))
         .expect("browser-backed open should persist session");
@@ -8098,6 +8234,7 @@ mod tests {
             allowlisted_domains: vec!["research".to_string()],
             browser: true,
             headed: false,
+            main_only: false,
             session_file: Some(session_file.clone()),
         }))
         .expect("browser-backed open should persist session");
@@ -8150,6 +8287,7 @@ mod tests {
             allowlisted_domains: Vec::new(),
             browser: false,
             headed: false,
+            main_only: false,
             session_file: None,
         }))
         .expect("compact view should succeed");
@@ -8171,8 +8309,7 @@ mod tests {
             .expect("navigation compact text should exist")
             .contains("Docs"));
         assert_ne!(
-            output["compactText"],
-            output["navigationCompactText"],
+            output["compactText"], output["navigationCompactText"],
             "compact and navigation outputs should remain distinct surfaces",
         );
         assert!(
@@ -8194,6 +8331,7 @@ mod tests {
             allowlisted_domains: Vec::new(),
             browser: true,
             headed: false,
+            main_only: false,
             session_file: Some(session_file.clone()),
         }))
         .expect("browser-backed open should persist session");
@@ -8239,6 +8377,7 @@ mod tests {
             allowlisted_domains: Vec::new(),
             browser: true,
             headed: false,
+            main_only: false,
             session_file: Some(session_file.clone()),
         }))
         .expect("browser-backed open should persist session");
@@ -8290,6 +8429,7 @@ mod tests {
             allowlisted_domains: Vec::new(),
             browser: true,
             headed: false,
+            main_only: false,
             session_file: Some(session_file.clone()),
         }))
         .expect("browser-backed open should persist session");

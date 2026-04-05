@@ -57,6 +57,26 @@ pub fn render_read_view_markdown(snapshot: &SnapshotDocument) -> String {
         .join("\n\n")
 }
 
+pub fn render_main_read_view_markdown(snapshot: &SnapshotDocument) -> String {
+    let has_heading = snapshot
+        .blocks
+        .iter()
+        .any(|block| matches!(block.kind, SnapshotBlockKind::Heading));
+    let has_main_zone = snapshot
+        .blocks
+        .iter()
+        .any(|block| block_zone(block) == Some("main"));
+
+    snapshot
+        .blocks
+        .iter()
+        .filter(|block| keep_main_read_view_block(block, has_heading, has_main_zone))
+        .map(render_markdown_block)
+        .filter(|block| !block.is_empty())
+        .collect::<Vec<_>>()
+        .join("\n\n")
+}
+
 pub fn render_navigation_compact_snapshot(snapshot: &SnapshotDocument) -> String {
     snapshot
         .blocks
@@ -104,8 +124,10 @@ fn keep_compact_block(block: &SnapshotBlock, has_heading: bool) -> bool {
             ) || is_salient_text_block(&block.text)
         }
         SnapshotBlockKind::Link => {
-            matches!(block.role, SnapshotBlockRole::Content | SnapshotBlockRole::Cta)
-                && is_salient_text_block(&block.text)
+            matches!(
+                block.role,
+                SnapshotBlockRole::Content | SnapshotBlockRole::Cta
+            ) && is_salient_text_block(&block.text)
         }
         SnapshotBlockKind::Button => {
             matches!(block.role, SnapshotBlockRole::Cta) && is_salient_text_block(&block.text)
@@ -176,6 +198,27 @@ fn keep_read_view_block(block: &SnapshotBlock, has_heading: bool) -> bool {
     }
 }
 
+fn keep_main_read_view_block(
+    block: &SnapshotBlock,
+    has_heading: bool,
+    has_main_zone: bool,
+) -> bool {
+    if !keep_read_view_block(block, has_heading) {
+        return false;
+    }
+
+    let zone = block_zone(block);
+    if has_main_zone {
+        return matches!(zone, Some("main"));
+    }
+
+    !matches!(zone, Some("nav" | "aside" | "header" | "footer"))
+}
+
+fn block_zone(block: &SnapshotBlock) -> Option<&str> {
+    block.attributes.get("zone").and_then(Value::as_str)
+}
+
 fn is_salient_text_block(text: &str) -> bool {
     let word_count = text.split_whitespace().count();
     let lowered = text.to_ascii_lowercase();
@@ -243,12 +286,12 @@ fn normalize_markdown_text(text: &str) -> String {
 fn render_markdown_list(text: &str) -> String {
     let items = text
         .lines()
-        .map(str::trim)
+        .map(normalize_list_item)
         .filter(|line| !line.is_empty())
         .collect::<Vec<_>>();
 
     if items.len() <= 1 {
-        return format!("- {text}");
+        return format!("- {}", normalize_list_item(text));
     }
 
     items
@@ -256,6 +299,36 @@ fn render_markdown_list(text: &str) -> String {
         .map(|item| format!("- {item}"))
         .collect::<Vec<_>>()
         .join("\n")
+}
+
+fn normalize_list_item(text: &str) -> String {
+    let trimmed = text.trim();
+
+    if let Some(stripped) = trimmed.strip_prefix("- ") {
+        return stripped.trim().to_string();
+    }
+    if let Some(stripped) = trimmed.strip_prefix("* ") {
+        return stripped.trim().to_string();
+    }
+
+    let mut chars = trimmed.chars().peekable();
+    let mut digit_count = 0usize;
+    while matches!(chars.peek(), Some(ch) if ch.is_ascii_digit()) {
+        chars.next();
+        digit_count += 1;
+    }
+    if digit_count > 0 && matches!(chars.peek(), Some('.' | ')')) {
+        chars.next();
+        if matches!(chars.peek(), Some(' ')) {
+            chars.next();
+            let rest = chars.collect::<String>().trim().to_string();
+            if !rest.is_empty() {
+                return rest;
+            }
+        }
+    }
+
+    trimmed.to_string()
 }
 
 fn render_markdown_table(block: &SnapshotBlock, text: &str) -> String {
@@ -624,7 +697,10 @@ pub struct EvidenceBlock {
 #[serde(rename_all = "kebab-case")]
 pub enum UnsupportedClaimReason {
     NoSupportingBlock,
-    #[serde(rename = "insufficient-support-score", alias = "insufficient-confidence")]
+    #[serde(
+        rename = "insufficient-support-score",
+        alias = "insufficient-confidence"
+    )]
     InsufficientConfidence,
     ContradictoryEvidence,
 }
@@ -782,9 +858,10 @@ pub struct ActionCommand {
 #[cfg(test)]
 mod tests {
     use super::{
-        compact_ref_index, render_compact_snapshot, render_read_view_markdown, SnapshotBlock,
-        SnapshotBlockKind, SnapshotBlockRole, SnapshotBudget, SnapshotDocument, SnapshotEvidence,
-        SnapshotSource, SourceType, CONTRACT_VERSION, STABLE_REF_VERSION,
+        compact_ref_index, render_compact_snapshot, render_main_read_view_markdown,
+        render_read_view_markdown, SnapshotBlock, SnapshotBlockKind, SnapshotBlockRole,
+        SnapshotBudget, SnapshotDocument, SnapshotEvidence, SnapshotSource, SourceType,
+        CONTRACT_VERSION, STABLE_REF_VERSION,
     };
     use serde_json::json;
     use std::collections::BTreeMap;
@@ -931,6 +1008,145 @@ mod tests {
         assert_eq!(
             render_read_view_markdown(&snapshot),
             "# Browser Follow\n\nThis page explains how the browser-backed runtime keeps evidence links intact across steps.\n\n- [Open docs](https://example.com/docs)"
+        );
+    }
+
+    #[test]
+    fn renders_main_read_view_without_navigation_noise() {
+        let snapshot = SnapshotDocument {
+            version: CONTRACT_VERSION.to_string(),
+            stable_ref_version: STABLE_REF_VERSION.to_string(),
+            source: SnapshotSource {
+                source_url: "https://www.iana.org/help/example-domains".to_string(),
+                source_type: SourceType::Http,
+                title: Some("Example Domains".to_string()),
+            },
+            budget: SnapshotBudget {
+                requested_tokens: 512,
+                estimated_tokens: 64,
+                emitted_tokens: 64,
+                truncated: false,
+            },
+            blocks: vec![
+                SnapshotBlock {
+                    version: CONTRACT_VERSION.to_string(),
+                    id: "b1".to_string(),
+                    kind: SnapshotBlockKind::Link,
+                    stable_ref: "rnav:link:domains".to_string(),
+                    role: SnapshotBlockRole::PrimaryNav,
+                    text: "Domains".to_string(),
+                    attributes: BTreeMap::from([
+                        ("href".to_string(), json!("/domains")),
+                        ("zone".to_string(), json!("nav")),
+                    ]),
+                    evidence: SnapshotEvidence {
+                        source_url: "https://www.iana.org/help/example-domains".to_string(),
+                        source_type: SourceType::Http,
+                        dom_path_hint: Some("html > body > header > nav > a".to_string()),
+                        byte_range_start: None,
+                        byte_range_end: None,
+                    },
+                },
+                SnapshotBlock {
+                    version: CONTRACT_VERSION.to_string(),
+                    id: "b2".to_string(),
+                    kind: SnapshotBlockKind::Heading,
+                    stable_ref: "rmain:heading:example-domains".to_string(),
+                    role: SnapshotBlockRole::Content,
+                    text: "Example Domains".to_string(),
+                    attributes: BTreeMap::from([
+                        ("level".to_string(), json!(1)),
+                        ("zone".to_string(), json!("main")),
+                    ]),
+                    evidence: SnapshotEvidence {
+                        source_url: "https://www.iana.org/help/example-domains".to_string(),
+                        source_type: SourceType::Http,
+                        dom_path_hint: Some("html > body > main > h1".to_string()),
+                        byte_range_start: None,
+                        byte_range_end: None,
+                    },
+                },
+                SnapshotBlock {
+                    version: CONTRACT_VERSION.to_string(),
+                    id: "b3".to_string(),
+                    kind: SnapshotBlockKind::Text,
+                    stable_ref: "rmain:text:summary".to_string(),
+                    role: SnapshotBlockRole::Content,
+                    text: "As described in RFC 2606 and RFC 6761, example domains are reserved for documentation.".to_string(),
+                    attributes: BTreeMap::from([("zone".to_string(), json!("main"))]),
+                    evidence: SnapshotEvidence {
+                        source_url: "https://www.iana.org/help/example-domains".to_string(),
+                        source_type: SourceType::Http,
+                        dom_path_hint: Some("html > body > main > p".to_string()),
+                        byte_range_start: None,
+                        byte_range_end: None,
+                    },
+                },
+                SnapshotBlock {
+                    version: CONTRACT_VERSION.to_string(),
+                    id: "b4".to_string(),
+                    kind: SnapshotBlockKind::Link,
+                    stable_ref: "rfooter:link:privacy".to_string(),
+                    role: SnapshotBlockRole::Content,
+                    text: "Privacy Policy".to_string(),
+                    attributes: BTreeMap::from([
+                        ("href".to_string(), json!("/privacy")),
+                        ("zone".to_string(), json!("footer")),
+                    ]),
+                    evidence: SnapshotEvidence {
+                        source_url: "https://www.iana.org/help/example-domains".to_string(),
+                        source_type: SourceType::Http,
+                        dom_path_hint: Some("html > body > footer > a".to_string()),
+                        byte_range_start: None,
+                        byte_range_end: None,
+                    },
+                },
+            ],
+        };
+
+        assert_eq!(
+            render_main_read_view_markdown(&snapshot),
+            "# Example Domains\n\nAs described in RFC 2606 and RFC 6761, example domains are reserved for documentation."
+        );
+    }
+
+    #[test]
+    fn normalizes_prefixed_list_items_in_read_view() {
+        let snapshot = SnapshotDocument {
+            version: CONTRACT_VERSION.to_string(),
+            stable_ref_version: STABLE_REF_VERSION.to_string(),
+            source: SnapshotSource {
+                source_url: "fixture://research/static-docs/list-cleanup".to_string(),
+                source_type: SourceType::Fixture,
+                title: Some("List Cleanup".to_string()),
+            },
+            budget: SnapshotBudget {
+                requested_tokens: 256,
+                estimated_tokens: 24,
+                emitted_tokens: 24,
+                truncated: false,
+            },
+            blocks: vec![SnapshotBlock {
+                version: CONTRACT_VERSION.to_string(),
+                id: "b1".to_string(),
+                kind: SnapshotBlockKind::List,
+                stable_ref: "rmain:list:cleanup".to_string(),
+                role: SnapshotBlockRole::Content,
+                text: "- Already prefixed item\n2. Numbered entry".to_string(),
+                attributes: BTreeMap::new(),
+                evidence: SnapshotEvidence {
+                    source_url: "fixture://research/static-docs/list-cleanup".to_string(),
+                    source_type: SourceType::Fixture,
+                    dom_path_hint: Some("html > body > main > ul".to_string()),
+                    byte_range_start: None,
+                    byte_range_end: None,
+                },
+            }],
+        };
+
+        assert_eq!(
+            render_read_view_markdown(&snapshot),
+            "- Already prefixed item\n- Numbered entry"
         );
     }
 }

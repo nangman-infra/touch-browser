@@ -36,6 +36,7 @@
     "adapter:playwright": "pnpm exec tsx adapters/playwright/src/index.ts",
     "evals:smoke": "pnpm exec tsx evals/src/index.ts",
     "mcp:bridge": "node scripts/touch-browser-mcp-bridge.mjs",
+    "verifier:example": "node scripts/example-verifier.mjs",
     "bootstrap:local": "bash scripts/bootstrap-local.sh",
     "pilot:healthcheck": "node scripts/pilot-healthcheck.mjs",
     "pilot:reference-workflow": "node scripts/run-reference-research-workflow.mjs",
