@@ -29,7 +29,7 @@ Evidence extraction is intentionally phrased as support retrieval, not final tru
 
 | Command | Description |
 | --- | --- |
-| `touch-browser search <query> [--engine google\|brave] [--headed] [--budget <tokens>] [--session-file <path>]` | Open a Google or Brave search results page inside the browser runtime with a persistent embedded browser-backed search profile and return `ready`, `challenge`, or `no-results` status plus structured result items and next-action hints. If `--session-file` is omitted, touch-browser stores the search session under `output/browser-search/<engine>.search-session.json`. |
+| `touch-browser search <query> [--engine google\|brave] [--headed] [--profile-dir <path>] [--budget <tokens>] [--session-file <path>]` | Open a Google or Brave search results page inside the browser runtime with a persistent embedded browser-backed search profile and return `ready`, `challenge`, or `no-results` status plus structured result items and next-action hints. If `--session-file` is omitted, touch-browser stores the search session under `output/browser-search/<engine>.search-session.json`. `--profile-dir` lets the embedded browser reuse a dedicated external persistent profile and carries that profile into `search-open-result` and `search-open-top` child sessions. |
 | `touch-browser search-open-result --rank <number> [--engine google\|brave] [--session-file <path>] [--headed]` | Open one saved search result from the current engine search session or an explicit persisted browser search session when the latest saved search is `ready`. |
 | `touch-browser search-open-top [--limit <count>] [--engine google\|brave] [--session-file <path>] [--headed]` | Open the top recommended ranked results into separate persisted browser sessions derived from the saved search session. |
 | `touch-browser open <target> [--browser] [--headed] [--budget <tokens>] [--session-file <path>] [--allow-domain <host> ...]` | Open a target and compile a structured snapshot. |
@@ -47,7 +47,7 @@ Evidence extraction is intentionally phrased as support retrieval, not final tru
 | `touch-browser paginate --session-file <path> --direction next|prev [--headed]` | Paginate inside a persisted browser session. |
 | `touch-browser expand --session-file <path> --ref <stable-ref> [--headed]` | Expand a target block inside a persisted browser session. |
 | `touch-browser browser-replay --session-file <path>` | Reconstruct the persisted browser session from the replay perspective. |
-| `touch-browser session-close --session-file <path>` | Close a persisted browser session and clean up its browser context. |
+| `touch-browser session-close --session-file <path>` | Close a persisted browser session and clean up any touch-browser-managed browser context. External profile directories passed through `search --profile-dir` are preserved. |
 | `touch-browser telemetry-summary` | Return the aggregate pilot telemetry summary. |
 | `touch-browser telemetry-recent [--limit <count>]` | Return recent telemetry events. |
 | `touch-browser replay <scenario-name>` | Replay a recorded scenario transcript. |
@@ -75,7 +75,7 @@ Evidence extraction is intentionally phrased as support retrieval, not final tru
 - browser targets run through `Playwright stdio adapter -> ObservationCompiler -> ReadOnlyRuntime.open_snapshot -> Policy/Evidence`
 - the observation compiler now also summarizes JSON-LD and common hydration blobs so JS-heavy pages expose more than just visible DOM text
 - search targets run through `query -> engine URL builder -> persistent embedded real-browser search profile -> semantic SERP structuring -> ranked result items + next-action hints`
-- persisted browser sessions run through `session-file JSON -> ReadOnlySession + persisted browser state + browser context dir + browser trace + requested budget restore -> stable-ref hints -> Playwright action -> runtime append -> session-file save`
+- persisted browser sessions run through `session-file JSON -> ReadOnlySession + persisted browser state + managed context dir or external profile dir + browser trace + requested budget restore -> stable-ref hints -> Playwright action -> runtime append -> session-file save`
 - search result opening now preserves the saved search report in the originating search session so repeated ranked opens do not erase the search state
 - verifier hooks run only when `--verifier-command` is set and execute after evidence retrieval, with the ability to adjudicate the final claim verdict
 - `read-view` and `session-read` prefer main-content blocks by default and can be forced into explicit main-zone filtering with `--main-only`

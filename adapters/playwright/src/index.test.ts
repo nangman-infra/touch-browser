@@ -108,6 +108,7 @@ describe("playwright adapter", () => {
                   result.textContent = [
                     String(navigator.webdriver),
                     typeof window.chrome,
+                    navigator.userAgent.includes("HeadlessChrome"),
                   ].join("|");
                 </script>
               </main>
@@ -131,7 +132,7 @@ describe("playwright adapter", () => {
       const visibleText = String(
         (response.result as { visibleText?: unknown }).visibleText ?? "",
       );
-      expect(visibleText.endsWith("|object")).toBe(true);
+      expect(visibleText.endsWith("|object|false")).toBe(true);
       expect(visibleText.startsWith("true|")).toBe(false);
     }
   });
@@ -227,6 +228,43 @@ describe("playwright adapter", () => {
       result: {
         status: "ok",
         visibleText: expect.stringContaining("Nested Context"),
+      },
+    });
+  });
+
+  it("supports profileDir for embedded persistent browser sessions", async () => {
+    const baseDir = await mkdtemp(
+      path.join(os.tmpdir(), "touch-browser-playwright-profile-"),
+    );
+    const profileDir = path.join(baseDir, "profiles", "shared-search");
+
+    const response = await handleRequest({
+      jsonrpc: "2.0",
+      id: "req-profile-dir",
+      method: "browser.snapshot",
+      params: {
+        html: `
+          <!doctype html>
+          <html>
+            <body>
+              <main>
+                <h1>Shared Profile</h1>
+              </main>
+            </body>
+          </html>
+        `,
+        profileDir,
+        budget: 600,
+        headless: true,
+      },
+    });
+
+    expect(response).toMatchObject({
+      jsonrpc: "2.0",
+      id: "req-profile-dir",
+      result: {
+        status: "ok",
+        visibleText: expect.stringContaining("Shared Profile"),
       },
     });
   });
@@ -827,7 +865,7 @@ describe("playwright adapter", () => {
       error: {
         code: -32602,
         message:
-          "browser.snapshot requires `params.url`, `params.html`, or `params.contextDir`.",
+          "browser.snapshot requires `params.url`, `params.html`, `params.contextDir`, or `params.profileDir`.",
       },
     });
   });

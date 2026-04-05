@@ -148,6 +148,10 @@ bash scripts/bootstrap-local.sh
 # saves the session under output/browser-search/<engine>.search-session.json.
 cargo run -q -p touch-browser-cli -- search "lambda timeout" --engine google
 
+# Reuse a dedicated external browser profile without switching to headed mode.
+cargo run -q -p touch-browser-cli -- search "lambda timeout" --engine google \
+  --profile-dir ~/Library/Application\\ Support/touch-browser/google-search-profile
+
 # Open one ranked result from the default Google search session
 cargo run -q -p touch-browser-cli -- search-open-result --rank 1
 
@@ -172,7 +176,7 @@ cargo run -q -p touch-browser-cli -- extract https://www.iana.org/help/example-d
 
 If you already built the binary, replace `cargo run -q -p touch-browser-cli --` with `touch-browser`.
 
-`search` now reports an explicit provider state and defaults to a persistent embedded browser profile:
+`search` now reports an explicit provider state and defaults to a persistent embedded browser profile. Use `--profile-dir <path>` when you want search and follow-up result sessions to reuse a dedicated external browser profile in API/MCP environments:
 
 - `ready`: ranked results are available for `search-open-result` or `search-open-top`
 - `challenge`: the provider returned CAPTCHA / bot-check UI; rerun with `--headed`, clear it in that same browser profile, and then repeat the search

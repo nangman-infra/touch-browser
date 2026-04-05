@@ -12,6 +12,11 @@ This example shows the intended browser-first workflow:
 # stores the search session under output/browser-search/google.search-session.json.
 cargo run -q -p touch-browser-cli -- search "lambda timeout" --engine google
 
+# For API or MCP workflows, keep the same search identity in a dedicated
+# external profile while staying embedded/headless by default.
+cargo run -q -p touch-browser-cli -- search "lambda timeout" --engine google \
+  --profile-dir ~/Library/Application\\ Support/touch-browser/google-search-profile
+
 # If the result reports `status: "challenge"`, rerun with --headed,
 # clear the provider checkpoint in that same browser profile,
 # then repeat the search.

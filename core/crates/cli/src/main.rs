@@ -174,8 +174,19 @@ fn dispatch(command: CliCommand) -> Result<Value, CliError> {
 fn handle_search(options: SearchOptions) -> Result<Value, CliError> {
     let search_url = build_search_url(options.engine, &options.query)?;
     let session_file = resolve_search_session_file(options.session_file.as_ref(), options.engine);
-    let browser_context_dir = Some(browser_context_dir_for_session_file(&session_file))
+    let browser_profile_dir = options
+        .profile_dir
+        .as_ref()
         .map(|path| path.display().to_string());
+    let browser_context_dir = if browser_profile_dir.is_some() {
+        None
+    } else {
+        Some(
+            browser_context_dir_for_session_file(&session_file)
+                .display()
+                .to_string(),
+        )
+    };
     let context = open_browser_session(
         &search_url,
         options.budget,
@@ -183,6 +194,7 @@ fn handle_search(options: SearchOptions) -> Result<Value, CliError> {
         Some(search_engine_source_label(options.engine).to_string()),
         options.headed,
         browser_context_dir.clone(),
+        browser_profile_dir.clone(),
         "sclisearch001",
         DEFAULT_OPENED_AT,
     )?;
@@ -204,6 +216,7 @@ fn handle_search(options: SearchOptions) -> Result<Value, CliError> {
             !options.headed,
             Some(context.browser_state.clone()),
             context.browser_context_dir.clone(),
+            context.browser_profile_dir.clone(),
             Some(BrowserOrigin {
                 target: search_url.clone(),
                 source_risk: Some(SourceRisk::Low),
@@ -222,6 +235,8 @@ fn handle_search(options: SearchOptions) -> Result<Value, CliError> {
         "resultCount": report.result_count,
         "search": report.clone(),
         "result": report,
+        "browserContextDir": browser_context_dir,
+        "browserProfileDir": browser_profile_dir,
         "sessionState": context.session.state,
         "sessionFile": session_file.display().to_string(),
     }))
@@ -255,21 +270,47 @@ fn handle_search_open_result(options: SearchOpenResultOptions) -> Result<Value, 
             ))
         })?;
 
-    let opened = handle_browser_open(TargetOptions {
-        target: selected.url.clone(),
-        budget: persisted.requested_budget,
-        source_risk: Some(SourceRisk::Low),
-        source_label: None,
-        allowlisted_domains: persisted.allowlisted_domains.clone(),
-        browser: true,
-        headed: options.headed,
-        main_only: false,
-        session_file: Some(session_file.clone()),
-    })?;
-
-    let mut refreshed = load_browser_cli_session(&session_file)?;
-    refreshed.latest_search = Some(latest_search.clone());
-    save_browser_cli_session(&session_file, &refreshed)?;
+    let context = open_browser_session(
+        &selected.url,
+        persisted.requested_budget,
+        Some(SourceRisk::Low),
+        None,
+        options.headed,
+        persisted.browser_context_dir.clone(),
+        persisted.browser_profile_dir.clone(),
+        "scliopen001",
+        DEFAULT_OPENED_AT,
+    )?;
+    save_browser_cli_session(
+        &session_file,
+        &build_browser_cli_session(
+            &context.session,
+            context.snapshot.budget.requested_tokens,
+            !options.headed,
+            Some(context.browser_state.clone()),
+            context.browser_context_dir.clone(),
+            context.browser_profile_dir.clone(),
+            Some(BrowserOrigin {
+                target: selected.url.clone(),
+                source_risk: Some(SourceRisk::Low),
+                source_label: None,
+            }),
+            persisted.allowlisted_domains.clone(),
+            Vec::new(),
+            Some(latest_search.clone()),
+        ),
+    )?;
+    let opened = json!(succeed_action(
+        ActionName::Open,
+        "snapshot-document",
+        json!(context.snapshot),
+        "Opened browser-backed document.",
+        current_policy_with_allowlist(
+            &context.session,
+            &PolicyKernel,
+            &persisted.allowlisted_domains
+        ),
+    ));
 
     Ok(json!({
         "selectedResult": selected,
@@ -324,17 +365,47 @@ fn handle_search_open_top(options: SearchOpenTopOptions) -> Result<Value, CliErr
         .map(|selected| {
             let result_session_file =
                 derived_search_result_session_file(&search_session_file, selected.rank);
-            let opened = handle_browser_open(TargetOptions {
-                target: selected.url.clone(),
-                budget: persisted.requested_budget,
-                source_risk: Some(SourceRisk::Low),
-                source_label: None,
-                allowlisted_domains: persisted.allowlisted_domains.clone(),
-                browser: true,
-                headed: options.headed,
-                main_only: false,
-                session_file: Some(result_session_file.clone()),
-            })?;
+            let context = open_browser_session(
+                &selected.url,
+                persisted.requested_budget,
+                Some(SourceRisk::Low),
+                None,
+                options.headed,
+                persisted.browser_context_dir.clone(),
+                persisted.browser_profile_dir.clone(),
+                "scliopen001",
+                DEFAULT_OPENED_AT,
+            )?;
+            save_browser_cli_session(
+                &result_session_file,
+                &build_browser_cli_session(
+                    &context.session,
+                    context.snapshot.budget.requested_tokens,
+                    !options.headed,
+                    Some(context.browser_state.clone()),
+                    context.browser_context_dir.clone(),
+                    context.browser_profile_dir.clone(),
+                    Some(BrowserOrigin {
+                        target: selected.url.clone(),
+                        source_risk: Some(SourceRisk::Low),
+                        source_label: None,
+                    }),
+                    persisted.allowlisted_domains.clone(),
+                    Vec::new(),
+                    None,
+                ),
+            )?;
+            let opened = json!(succeed_action(
+                ActionName::Open,
+                "snapshot-document",
+                json!(context.snapshot),
+                "Opened browser-backed document.",
+                current_policy_with_allowlist(
+                    &context.session,
+                    &PolicyKernel,
+                    &persisted.allowlisted_domains,
+                ),
+            ));
 
             Ok::<Value, CliError>(json!({
                 "rank": selected.rank,
@@ -371,9 +442,10 @@ fn search_engine_slug(engine: SearchEngine) -> &'static str {
 }
 
 fn default_search_session_file(engine: SearchEngine) -> PathBuf {
-    repo_root()
-        .join("output/browser-search")
-        .join(format!("{}.search-session.json", search_engine_slug(engine)))
+    repo_root().join("output/browser-search").join(format!(
+        "{}.search-session.json",
+        search_engine_slug(engine)
+    ))
 }
 
 fn resolve_search_session_file(session_file: Option<&PathBuf>, engine: SearchEngine) -> PathBuf {
@@ -1078,6 +1150,7 @@ fn handle_browser_open(options: TargetOptions) -> Result<Value, CliError> {
         options.source_label.clone(),
         options.headed,
         browser_context_dir.clone(),
+        None,
         "scliopen001",
         DEFAULT_OPENED_AT,
     )?;
@@ -1090,6 +1163,7 @@ fn handle_browser_open(options: TargetOptions) -> Result<Value, CliError> {
                 !options.headed,
                 Some(context.browser_state.clone()),
                 context.browser_context_dir.clone(),
+                context.browser_profile_dir.clone(),
                 Some(BrowserOrigin {
                     target: options.target.clone(),
                     source_risk: options.source_risk,
@@ -1125,6 +1199,7 @@ fn handle_compact_view(options: TargetOptions) -> Result<Value, CliError> {
             options.source_label.clone(),
             options.headed,
             browser_context_dir.clone(),
+            None,
             "sclicompact001",
             DEFAULT_OPENED_AT,
         )?;
@@ -1138,6 +1213,7 @@ fn handle_compact_view(options: TargetOptions) -> Result<Value, CliError> {
                     !options.headed,
                     Some(context.browser_state.clone()),
                     context.browser_context_dir.clone(),
+                    context.browser_profile_dir.clone(),
                     Some(BrowserOrigin {
                         target: options.target.clone(),
                         source_risk: options.source_risk,
@@ -1203,6 +1279,7 @@ fn handle_read_view(options: TargetOptions) -> Result<Value, CliError> {
             options.source_label.clone(),
             options.headed,
             browser_context_dir.clone(),
+            None,
             "scliread001",
             DEFAULT_OPENED_AT,
         )?;
@@ -1216,6 +1293,7 @@ fn handle_read_view(options: TargetOptions) -> Result<Value, CliError> {
                     !options.headed,
                     Some(context.browser_state.clone()),
                     context.browser_context_dir.clone(),
+                    context.browser_profile_dir.clone(),
                     Some(BrowserOrigin {
                         target: options.target.clone(),
                         source_risk: options.source_risk,
@@ -1301,6 +1379,7 @@ fn handle_extract(options: ExtractOptions) -> Result<Value, CliError> {
             options.source_label.clone(),
             options.headed,
             browser_context_dir.clone(),
+            None,
             "scliextract001",
             DEFAULT_OPENED_AT,
         )?;
@@ -1339,6 +1418,7 @@ fn handle_extract(options: ExtractOptions) -> Result<Value, CliError> {
                     !options.headed,
                     Some(context.browser_state.clone()),
                     context.browser_context_dir.clone(),
+                    context.browser_profile_dir.clone(),
                     Some(BrowserOrigin {
                         target: options.target.clone(),
                         source_risk: options.source_risk,
@@ -1489,6 +1569,7 @@ fn handle_policy(options: TargetOptions) -> Result<Value, CliError> {
             options.source_label.clone(),
             options.headed,
             browser_context_dir,
+            None,
             "sclipolicy001",
             DEFAULT_OPENED_AT,
         )?;
@@ -1715,6 +1796,7 @@ fn handle_session_refresh(options: SessionRefreshOptions) -> Result<Value, CliEr
         url: None,
         html: None,
         context_dir: persisted.browser_context_dir.clone(),
+        profile_dir: persisted.browser_profile_dir.clone(),
         budget: persisted.requested_budget,
         headless: !options.headed,
         search_identity: current_search_identity,
@@ -1735,6 +1817,7 @@ fn handle_session_refresh(options: SessionRefreshOptions) -> Result<Value, CliEr
                 url: source.url,
                 html: source.html,
                 context_dir: source.context_dir,
+                profile_dir: source.profile_dir,
                 budget: persisted.requested_budget,
                 headless: !options.headed,
                 search_identity: is_search_results_target(&source.source_url),
@@ -2399,6 +2482,7 @@ fn handle_follow(options: FollowOptions) -> Result<Value, CliError> {
         url: source.url.clone(),
         html: source.html.clone(),
         context_dir: source.context_dir.clone(),
+        profile_dir: source.profile_dir.clone(),
         target_ref: options.target_ref.clone(),
         target_text,
         target_href,
@@ -2489,6 +2573,7 @@ fn handle_click(options: ClickOptions) -> Result<Value, CliError> {
         url: source.url.clone(),
         html: source.html.clone(),
         context_dir: source.context_dir.clone(),
+        profile_dir: source.profile_dir.clone(),
         target_ref: options.target_ref.clone(),
         target_text,
         target_href,
@@ -2607,6 +2692,7 @@ fn handle_type(options: TypeOptions) -> Result<Value, CliError> {
         url: source.url.clone(),
         html: source.html.clone(),
         context_dir: source.context_dir.clone(),
+        profile_dir: source.profile_dir.clone(),
         target_ref: options.target_ref.clone(),
         target_text,
         target_tag_name,
@@ -2709,6 +2795,7 @@ fn handle_submit(options: SubmitOptions) -> Result<Value, CliError> {
         url: source.url.clone(),
         html: source.html.clone(),
         context_dir: source.context_dir.clone(),
+        profile_dir: source.profile_dir.clone(),
         target_ref: options.target_ref.clone(),
         target_text,
         target_tag_name,
@@ -2797,6 +2884,7 @@ fn handle_paginate(options: PaginateOptions) -> Result<Value, CliError> {
         url: source.url.clone(),
         html: source.html.clone(),
         context_dir: source.context_dir.clone(),
+        profile_dir: source.profile_dir.clone(),
         direction: match options.direction {
             PaginationDirection::Next => "next".to_string(),
             PaginationDirection::Prev => "prev".to_string(),
@@ -2881,6 +2969,7 @@ fn handle_expand(options: ExpandOptions) -> Result<Value, CliError> {
         url: source.url.clone(),
         html: source.html.clone(),
         context_dir: source.context_dir.clone(),
+        profile_dir: source.profile_dir.clone(),
         target_ref: options.target_ref.clone(),
         target_text,
         target_tag_name,
@@ -2957,10 +3046,12 @@ fn handle_session_close(options: SessionFileOptions) -> Result<Value, CliError> 
     }
 
     if let Some(persisted) = persisted {
-        if let Some(context_dir) = persisted.browser_context_dir {
-            let context_path = PathBuf::from(context_dir);
-            if context_path.exists() {
-                fs::remove_dir_all(context_path)?;
+        if persisted.browser_profile_dir.is_none() {
+            if let Some(context_dir) = persisted.browser_context_dir {
+                let context_path = PathBuf::from(context_dir);
+                if context_path.exists() {
+                    fs::remove_dir_all(context_path)?;
+                }
             }
         }
     }
@@ -3469,6 +3560,7 @@ fn serve_search(params: &Value, daemon_state: &mut ServeDaemonState) -> Result<V
         engine,
         budget,
         headed,
+        profile_dir: None,
         session_file: Some(session_file),
     }))?;
     Ok(json!({
@@ -4797,6 +4889,7 @@ fn open_browser_session(
     source_label: Option<String>,
     headed: bool,
     browser_context_dir: Option<String>,
+    browser_profile_dir: Option<String>,
     session_id: &str,
     timestamp: &str,
 ) -> Result<BrowserSessionContext, CliError> {
@@ -4809,6 +4902,7 @@ fn open_browser_session(
         source_label,
         headed,
         browser_context_dir.clone(),
+        browser_profile_dir.clone(),
     )?;
     let snapshot = runtime.open_snapshot(
         &mut session,
@@ -4825,6 +4919,7 @@ fn open_browser_session(
         snapshot,
         browser_state: observed.browser_state,
         browser_context_dir: observed.browser_context_dir,
+        browser_profile_dir: observed.browser_profile_dir,
     })
 }
 
@@ -4835,6 +4930,7 @@ fn browser_document(
     source_label: Option<String>,
     headed: bool,
     browser_context_dir: Option<String>,
+    browser_profile_dir: Option<String>,
 ) -> Result<ObservedBrowserDocument, CliError> {
     if is_fixture_target(target) {
         let catalog = load_fixture_catalog()?;
@@ -4846,6 +4942,7 @@ fn browser_document(
             url: None,
             html: Some(document.html.clone()),
             context_dir: browser_context_dir.clone(),
+            profile_dir: browser_profile_dir.clone(),
             budget: effective_budget,
             headless: !headed,
             search_identity: false,
@@ -4861,6 +4958,7 @@ fn browser_document(
                 current_html: capture.html,
             },
             browser_context_dir,
+            browser_profile_dir,
         });
     }
 
@@ -4868,6 +4966,7 @@ fn browser_document(
         url: Some(target.to_string()),
         html: None,
         context_dir: browser_context_dir.clone(),
+        profile_dir: browser_profile_dir.clone(),
         budget: requested_budget,
         headless: !headed,
         search_identity: is_search_results_target(target),
@@ -4884,6 +4983,7 @@ fn browser_document(
             current_html: capture.html,
         },
         browser_context_dir,
+        browser_profile_dir,
     })
 }
 
@@ -4894,6 +4994,7 @@ fn build_browser_cli_session(
     headless: bool,
     browser_state: Option<PersistedBrowserState>,
     browser_context_dir: Option<String>,
+    browser_profile_dir: Option<String>,
     browser_origin: Option<BrowserOrigin>,
     allowlisted_domains: Vec<String>,
     browser_trace: Vec<BrowserActionTraceEntry>,
@@ -4906,6 +5007,7 @@ fn build_browser_cli_session(
         session: session.clone(),
         browser_state,
         browser_context_dir,
+        browser_profile_dir,
         browser_origin,
         allowlisted_domains,
         browser_trace,
@@ -4994,7 +5096,8 @@ fn current_browser_action_source(
         .ok_or(RuntimeError::MissingCurrentUrl)?;
 
     if let Some(browser_state) = persisted.browser_state.as_ref() {
-        let use_live_url = persisted.browser_context_dir.is_some()
+        let use_live_url = (persisted.browser_context_dir.is_some()
+            || persisted.browser_profile_dir.is_some())
             && !is_fixture_target(&source_url)
             && !browser_state.current_url.starts_with("about:blank");
         return Ok(BrowserActionSource {
@@ -5006,6 +5109,7 @@ fn current_browser_action_source(
                 Some(browser_state.current_html.clone())
             },
             context_dir: persisted.browser_context_dir.clone(),
+            profile_dir: persisted.browser_profile_dir.clone(),
             source_risk: current_record.source_risk.clone(),
             source_label: current_record.source_label.clone(),
         });
@@ -5021,6 +5125,7 @@ fn current_browser_action_source(
             url: None,
             html: Some(document.html.clone()),
             context_dir: persisted.browser_context_dir.clone(),
+            profile_dir: persisted.browser_profile_dir.clone(),
             source_risk: current_record.source_risk.clone(),
             source_label: current_record.source_label.clone(),
         });
@@ -5031,6 +5136,7 @@ fn current_browser_action_source(
         url: Some(source_url),
         html: None,
         context_dir: persisted.browser_context_dir.clone(),
+        profile_dir: persisted.browser_profile_dir.clone(),
         source_risk: current_record.source_risk.clone(),
         source_label: current_record.source_label.clone(),
     })
@@ -5351,9 +5457,9 @@ fn parse_command(args: &[String]) -> Result<CliCommand, CliError> {
         "search-open-result" => Ok(CliCommand::SearchOpenResult(
             parse_search_open_result_options(&args[1..])?,
         )),
-        "search-open-top" => Ok(CliCommand::SearchOpenTop(
-            parse_search_open_top_options(&args[1..])?,
-        )),
+        "search-open-top" => Ok(CliCommand::SearchOpenTop(parse_search_open_top_options(
+            &args[1..],
+        )?)),
         "open" => Ok(CliCommand::Open(parse_target_options(&args[1..])?)),
         "snapshot" => Ok(CliCommand::Snapshot(parse_target_options(&args[1..])?)),
         "compact-view" => Ok(CliCommand::CompactView(parse_target_options(&args[1..])?)),
@@ -5443,6 +5549,7 @@ fn parse_search_options(args: &[String]) -> Result<SearchOptions, CliError> {
         engine: SearchEngine::Google,
         budget: DEFAULT_SEARCH_TOKENS,
         headed: false,
+        profile_dir: None,
         session_file: None,
     };
     let mut index = 1;
@@ -5483,6 +5590,13 @@ fn parse_search_options(args: &[String]) -> Result<SearchOptions, CliError> {
                     CliError::Usage("--session-file requires a path.".to_string())
                 })?;
                 options.session_file = Some(PathBuf::from(value));
+                index += 2;
+            }
+            "--profile-dir" => {
+                let value = args
+                    .get(index + 1)
+                    .ok_or_else(|| CliError::Usage("--profile-dir requires a path.".to_string()))?;
+                options.profile_dir = Some(PathBuf::from(value));
                 index += 2;
             }
             other => {
@@ -7444,7 +7558,7 @@ fn usage() -> String {
     [
         "Usage:",
         "  Stable research commands:",
-        "  touch-browser search <query> [--engine google|brave] [--headed] [--budget <tokens>] [--session-file <path>]",
+        "  touch-browser search <query> [--engine google|brave] [--headed] [--profile-dir <path>] [--budget <tokens>] [--session-file <path>]",
         "  touch-browser search-open-result --rank <number> [--engine google|brave] [--session-file <path>] [--headed]",
         "  touch-browser search-open-top [--limit <count>] [--engine google|brave] [--session-file <path>] [--headed]",
         "  touch-browser open <target> [--browser] [--headed] [--budget <tokens>] [--session-file <path>] [--source-risk low|medium|hostile] [--source-label <label>] [--allow-domain <host> ...]",
@@ -7538,6 +7652,7 @@ struct SearchOptions {
     engine: SearchEngine,
     budget: usize,
     headed: bool,
+    profile_dir: Option<PathBuf>,
     session_file: Option<PathBuf>,
 }
 
@@ -7702,6 +7817,7 @@ struct BrowserSessionContext {
     snapshot: SnapshotDocument,
     browser_state: PersistedBrowserState,
     browser_context_dir: Option<String>,
+    browser_profile_dir: Option<String>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -7716,6 +7832,8 @@ struct BrowserCliSession {
     browser_state: Option<PersistedBrowserState>,
     #[serde(default)]
     browser_context_dir: Option<String>,
+    #[serde(default)]
+    browser_profile_dir: Option<String>,
     #[serde(default)]
     browser_origin: Option<BrowserOrigin>,
     #[serde(default)]
@@ -7803,6 +7921,7 @@ struct ObservedBrowserDocument {
     source_label: Option<String>,
     browser_state: PersistedBrowserState,
     browser_context_dir: Option<String>,
+    browser_profile_dir: Option<String>,
 }
 
 #[derive(Debug, Clone)]
@@ -7811,6 +7930,7 @@ struct BrowserActionSource {
     url: Option<String>,
     html: Option<String>,
     context_dir: Option<String>,
+    profile_dir: Option<String>,
     source_risk: SourceRisk,
     source_label: Option<String>,
 }
@@ -7848,6 +7968,8 @@ struct PlaywrightSnapshotParams {
     html: Option<String>,
     #[serde(skip_serializing_if = "Option::is_none")]
     context_dir: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    profile_dir: Option<String>,
     budget: usize,
     headless: bool,
     #[serde(skip_serializing_if = "std::ops::Not::not")]
@@ -7888,6 +8010,8 @@ struct PlaywrightFollowParams {
     html: Option<String>,
     #[serde(skip_serializing_if = "Option::is_none")]
     context_dir: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    profile_dir: Option<String>,
     target_ref: String,
     target_text: String,
     #[serde(skip_serializing_if = "Option::is_none")]
@@ -7929,6 +8053,8 @@ struct PlaywrightClickParams {
     html: Option<String>,
     #[serde(skip_serializing_if = "Option::is_none")]
     context_dir: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    profile_dir: Option<String>,
     target_ref: String,
     target_text: String,
     #[serde(skip_serializing_if = "Option::is_none")]
@@ -7970,6 +8096,8 @@ struct PlaywrightTypeParams {
     html: Option<String>,
     #[serde(skip_serializing_if = "Option::is_none")]
     context_dir: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    profile_dir: Option<String>,
     target_ref: String,
     target_text: String,
     #[serde(skip_serializing_if = "Option::is_none")]
@@ -8013,6 +8141,8 @@ struct PlaywrightSubmitParams {
     html: Option<String>,
     #[serde(skip_serializing_if = "Option::is_none")]
     context_dir: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    profile_dir: Option<String>,
     target_ref: String,
     target_text: String,
     #[serde(skip_serializing_if = "Option::is_none")]
@@ -8071,6 +8201,8 @@ struct PlaywrightPaginateParams {
     html: Option<String>,
     #[serde(skip_serializing_if = "Option::is_none")]
     context_dir: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    profile_dir: Option<String>,
     direction: String,
     current_page: usize,
     headless: bool,
@@ -8102,6 +8234,8 @@ struct PlaywrightExpandParams {
     html: Option<String>,
     #[serde(skip_serializing_if = "Option::is_none")]
     context_dir: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    profile_dir: Option<String>,
     target_ref: String,
     target_text: String,
     #[serde(skip_serializing_if = "Option::is_none")]
@@ -8375,19 +8509,18 @@ mod tests {
 
     use serde_json::json;
     use touch_browser_contracts::{
-        SearchReport, SearchResultItem,
-        SnapshotBlock, SnapshotBlockKind, SnapshotBlockRole, SnapshotBudget, SnapshotDocument,
-        SnapshotEvidence, SnapshotSource, SourceType,
+        SearchReport, SearchResultItem, SnapshotBlock, SnapshotBlockKind, SnapshotBlockRole,
+        SnapshotBudget, SnapshotDocument, SnapshotEvidence, SnapshotSource, SourceType,
     };
 
     use super::{
-        browser_context_dir_for_session_file, build_search_report, dispatch,
-        load_browser_cli_session, parse_command, save_browser_cli_session, AckRisk,
-        ApproveOptions, CliCommand, ClickOptions, ExpandOptions, ExtractOptions,
-        FollowOptions, OutputFormat, PaginateOptions, PaginationDirection, PolicyProfile,
-        SearchActionActor, SearchEngine, SearchOpenResultOptions, SearchOpenTopOptions,
-        SearchOptions, SearchReportStatus, SessionExtractOptions, SessionFileOptions,
-        SessionProfileSetOptions, SessionReadOptions, SessionRefreshOptions,
+        browser_context_dir_for_session_file, build_search_report,
+        derived_search_result_session_file, dispatch, load_browser_cli_session, parse_command,
+        save_browser_cli_session, AckRisk, ApproveOptions, CliCommand, ClickOptions, ExpandOptions,
+        ExtractOptions, FollowOptions, OutputFormat, PaginateOptions, PaginationDirection,
+        PolicyProfile, SearchActionActor, SearchEngine, SearchOpenResultOptions,
+        SearchOpenTopOptions, SearchOptions, SearchReportStatus, SessionExtractOptions,
+        SessionFileOptions, SessionProfileSetOptions, SessionReadOptions, SessionRefreshOptions,
         SessionSynthesizeOptions, SubmitOptions, TargetOptions, TelemetryRecentOptions,
         TypeOptions, DEFAULT_OPENED_AT, DEFAULT_REQUESTED_TOKENS, DEFAULT_SEARCH_TOKENS,
     };
@@ -8452,7 +8585,31 @@ mod tests {
                 engine: SearchEngine::Brave,
                 budget: DEFAULT_SEARCH_TOKENS,
                 headed: true,
+                profile_dir: None,
                 session_file: Some(PathBuf::from("/tmp/search-session.json")),
+            })
+        );
+    }
+
+    #[test]
+    fn parses_search_command_with_profile_dir() {
+        let command = parse_command(&[
+            "search".to_string(),
+            "lambda timeout".to_string(),
+            "--profile-dir".to_string(),
+            "/tmp/dedicated-search-profile".to_string(),
+        ])
+        .expect("search command with profile dir should parse");
+
+        assert_eq!(
+            command,
+            CliCommand::Search(SearchOptions {
+                query: "lambda timeout".to_string(),
+                engine: SearchEngine::Google,
+                budget: DEFAULT_SEARCH_TOKENS,
+                headed: false,
+                profile_dir: Some(PathBuf::from("/tmp/dedicated-search-profile")),
+                session_file: None,
             })
         );
     }
@@ -8845,6 +9002,96 @@ mod tests {
             session_file: session_file.clone(),
         }))
         .expect("session close should clean search session");
+    }
+
+    #[test]
+    fn search_open_top_inherits_external_profile_directory() {
+        let session_file = temp_session_path("search-open-top-profile");
+        let profile_dir = std::env::temp_dir().join(format!(
+            "touch-browser-external-profile-{}",
+            SystemTime::now()
+                .duration_since(UNIX_EPOCH)
+                .expect("time should be monotonic")
+                .as_nanos()
+        ));
+        fs::create_dir_all(&profile_dir).expect("external profile dir should exist");
+
+        dispatch(CliCommand::Open(TargetOptions {
+            target: "fixture://research/navigation/browser-pagination".to_string(),
+            budget: DEFAULT_REQUESTED_TOKENS,
+            source_risk: None,
+            source_label: None,
+            allowlisted_domains: Vec::new(),
+            browser: true,
+            headed: false,
+            main_only: false,
+            session_file: Some(session_file.clone()),
+        }))
+        .expect("browser-backed open should persist session");
+
+        let mut persisted =
+            load_browser_cli_session(&session_file).expect("session should load after open");
+        if let Some(context_dir) = persisted.browser_context_dir.as_ref() {
+            let context_path = PathBuf::from(context_dir);
+            if context_path.exists() {
+                fs::remove_dir_all(context_path).expect("managed context dir should clean up");
+            }
+        }
+        persisted.browser_context_dir = None;
+        persisted.browser_profile_dir = Some(profile_dir.display().to_string());
+        persisted.latest_search = Some(SearchReport {
+            version: "1.0.0".to_string(),
+            generated_at: DEFAULT_OPENED_AT.to_string(),
+            engine: SearchEngine::Google,
+            query: "browser pagination".to_string(),
+            search_url: "https://www.google.com/search?q=browser+pagination".to_string(),
+            final_url: "https://www.google.com/search?q=browser+pagination".to_string(),
+            status: SearchReportStatus::Ready,
+            status_detail: None,
+            result_count: 1,
+            results: vec![SearchResultItem {
+                rank: 1,
+                title: "Browser Pagination".to_string(),
+                url: "fixture://research/navigation/browser-pagination".to_string(),
+                domain: "fixture.local".to_string(),
+                snippet: Some("Fixture search result".to_string()),
+                stable_ref: None,
+                official_likely: true,
+                selection_score: Some(1.0),
+                recommended_surface: Some("read-view".to_string()),
+            }],
+            recommended_result_ranks: vec![1],
+            next_action_hints: Vec::new(),
+        });
+        save_browser_cli_session(&session_file, &persisted)
+            .expect("session should save with external profile");
+
+        dispatch(CliCommand::SearchOpenTop(SearchOpenTopOptions {
+            engine: SearchEngine::Google,
+            session_file: Some(session_file.clone()),
+            limit: 1,
+            headed: false,
+        }))
+        .expect("search-open-top should succeed");
+
+        let result_session_file = derived_search_result_session_file(&session_file, 1);
+        let result_session = load_browser_cli_session(&result_session_file)
+            .expect("child session should load after open-top");
+        assert_eq!(
+            result_session.browser_profile_dir.as_deref(),
+            Some(profile_dir.to_string_lossy().as_ref())
+        );
+        assert_eq!(result_session.browser_context_dir, None);
+
+        dispatch(CliCommand::SessionClose(SessionFileOptions {
+            session_file: result_session_file.clone(),
+        }))
+        .expect("child session close should succeed");
+        dispatch(CliCommand::SessionClose(SessionFileOptions {
+            session_file: session_file.clone(),
+        }))
+        .expect("search session close should succeed");
+        fs::remove_dir_all(&profile_dir).expect("external profile dir cleanup should succeed");
     }
 
     #[test]
@@ -10318,5 +10565,56 @@ mod tests {
             !context_dir.exists(),
             "browser context dir should be removed on close"
         );
+    }
+
+    #[test]
+    fn session_close_preserves_external_profile_directory() {
+        let session_file = temp_session_path("browser-profile-preserve");
+        let profile_dir = std::env::temp_dir().join(format!(
+            "touch-browser-preserved-profile-{}",
+            SystemTime::now()
+                .duration_since(UNIX_EPOCH)
+                .expect("time should be monotonic")
+                .as_nanos()
+        ));
+        fs::create_dir_all(&profile_dir).expect("external profile dir should exist");
+
+        dispatch(CliCommand::Open(TargetOptions {
+            target: "fixture://research/navigation/browser-follow".to_string(),
+            budget: DEFAULT_REQUESTED_TOKENS,
+            source_risk: None,
+            source_label: None,
+            allowlisted_domains: Vec::new(),
+            browser: true,
+            headed: false,
+            main_only: false,
+            session_file: Some(session_file.clone()),
+        }))
+        .expect("browser-backed open should persist session");
+
+        let mut persisted =
+            load_browser_cli_session(&session_file).expect("session should load after open");
+        if let Some(context_dir) = persisted.browser_context_dir.as_ref() {
+            let context_path = PathBuf::from(context_dir);
+            if context_path.exists() {
+                fs::remove_dir_all(context_path).expect("managed context dir should clean up");
+            }
+        }
+        persisted.browser_context_dir = None;
+        persisted.browser_profile_dir = Some(profile_dir.display().to_string());
+        save_browser_cli_session(&session_file, &persisted)
+            .expect("session should save external profile state");
+
+        dispatch(CliCommand::SessionClose(SessionFileOptions {
+            session_file: session_file.clone(),
+        }))
+        .expect("session close should succeed");
+
+        assert!(
+            profile_dir.exists(),
+            "external profile dir should not be removed on close"
+        );
+
+        fs::remove_dir_all(&profile_dir).expect("external profile dir cleanup should succeed");
     }
 }

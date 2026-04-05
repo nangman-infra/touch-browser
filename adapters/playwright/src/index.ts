@@ -1,3 +1,4 @@
+import { execFile } from "node:child_process";
 import {
   mkdir,
   mkdtemp,
@@ -8,6 +9,7 @@ import {
 } from "node:fs/promises";
 import os from "node:os";
 import path from "node:path";
+import { promisify } from "node:util";
 
 import {
   type BrowserContext,
@@ -72,6 +74,7 @@ type BrowserSource = {
   readonly url: string | undefined;
   readonly html: string | undefined;
   readonly contextDir: string | undefined;
+  readonly profileDir: string | undefined;
   readonly headless: boolean;
   readonly searchIdentity: boolean;
 };
@@ -128,6 +131,11 @@ const CONTEXT_LOCK_TIMEOUT_MS = 30_000;
 const CONTEXT_LOCK_RETRY_MS = 150;
 const CONTEXT_LOCK_STALE_MS = 120_000;
 const SEARCH_PROFILE_MARKER = ".touch-browser-search-profile.json";
+const execFileAsync = promisify(execFile);
+const SEARCH_USER_AGENT_FALLBACK =
+  "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/146.0.0.0 Safari/537.36";
+let cachedSearchExecutablePath: Promise<string | undefined> | undefined;
+let cachedSearchBrowserVersion: Promise<string | undefined> | undefined;
 
 export function adapterStatus(): AdapterStatus {
   return {
@@ -186,19 +194,27 @@ async function handleSnapshot(
   const budget = asNumber(request.params?.budget) ?? 1200;
   const headless = asBoolean(request.params?.headless) ?? true;
   const contextDir = asString(request.params?.contextDir);
+  const profileDir = asString(request.params?.profileDir);
   const searchIdentity = asBoolean(request.params?.searchIdentity) ?? false;
 
-  if (!url && !html && !contextDir) {
+  if (!url && !html && !contextDir && !profileDir) {
     return failure(
       request.id,
       -32602,
-      "browser.snapshot requires `params.url`, `params.html`, or `params.contextDir`.",
+      "browser.snapshot requires `params.url`, `params.html`, `params.contextDir`, or `params.profileDir`.",
     );
   }
 
   try {
     const pageState = await withPage<BrowserPageState>(
-      browserSource(url, html, headless, contextDir, searchIdentity),
+      browserSource(
+        url,
+        html,
+        headless,
+        contextDir,
+        profileDir,
+        searchIdentity,
+      ),
       capturePageState,
     );
     return success(request.id, {
@@ -232,6 +248,7 @@ async function handleFollow(request: JsonRpcRequest): Promise<JsonRpcResponse> {
   const html = asString(request.params?.html);
   const headless = asBoolean(request.params?.headless) ?? true;
   const contextDir = asString(request.params?.contextDir);
+  const profileDir = asString(request.params?.profileDir);
 
   if (!targetRef && !targetText && !targetHref) {
     return failure(
@@ -252,7 +269,7 @@ async function handleFollow(request: JsonRpcRequest): Promise<JsonRpcResponse> {
   try {
     const resolvedTarget = targetText ?? targetHref ?? targetRef ?? "";
     const result = await withPage(
-      browserSource(url, html, headless, contextDir, false),
+      browserSource(url, html, headless, contextDir, profileDir, false),
       async (page) => {
         const target = {
           text: targetText,
@@ -318,6 +335,7 @@ async function handleClick(request: JsonRpcRequest): Promise<JsonRpcResponse> {
   const html = asString(request.params?.html);
   const headless = asBoolean(request.params?.headless) ?? true;
   const contextDir = asString(request.params?.contextDir);
+  const profileDir = asString(request.params?.profileDir);
 
   if (!targetRef && !targetText && !targetHref) {
     return failure(
@@ -338,7 +356,7 @@ async function handleClick(request: JsonRpcRequest): Promise<JsonRpcResponse> {
   try {
     const resolvedTarget = targetText ?? targetHref ?? targetRef ?? "";
     const result = await withPage(
-      browserSource(url, html, headless, contextDir, false),
+      browserSource(url, html, headless, contextDir, profileDir, false),
       async (page) => {
         const target = {
           text: targetText,
@@ -406,6 +424,7 @@ async function handleType(request: JsonRpcRequest): Promise<JsonRpcResponse> {
   const html = asString(request.params?.html);
   const headless = asBoolean(request.params?.headless) ?? true;
   const contextDir = asString(request.params?.contextDir);
+  const profileDir = asString(request.params?.profileDir);
 
   if (!targetRef && !targetText) {
     return failure(
@@ -429,7 +448,7 @@ async function handleType(request: JsonRpcRequest): Promise<JsonRpcResponse> {
 
   try {
     const result = await withPage(
-      browserSource(url, html, headless, contextDir, false),
+      browserSource(url, html, headless, contextDir, profileDir, false),
       async (page) => {
         const target = {
           text: targetText,
@@ -481,6 +500,7 @@ async function handleSubmit(request: JsonRpcRequest): Promise<JsonRpcResponse> {
   const html = asString(request.params?.html);
   const headless = asBoolean(request.params?.headless) ?? true;
   const contextDir = asString(request.params?.contextDir);
+  const profileDir = asString(request.params?.profileDir);
   const prefill = asSubmitPrefillDescriptors(request.params?.prefill);
 
   if (!targetRef && !targetText) {
@@ -502,7 +522,7 @@ async function handleSubmit(request: JsonRpcRequest): Promise<JsonRpcResponse> {
   try {
     const resolvedTarget = targetText ?? targetRef ?? "";
     const result = await withPage(
-      browserSource(url, html, headless, contextDir, false),
+      browserSource(url, html, headless, contextDir, profileDir, false),
       async (page) => {
         for (const action of prefill) {
           const fillTarget = {
@@ -568,6 +588,7 @@ async function handlePaginate(
   const html = asString(request.params?.html);
   const headless = asBoolean(request.params?.headless) ?? true;
   const contextDir = asString(request.params?.contextDir);
+  const profileDir = asString(request.params?.profileDir);
 
   if (direction !== "next" && direction !== "prev") {
     return failure(
@@ -587,7 +608,7 @@ async function handlePaginate(
 
   try {
     const result = await withPage(
-      browserSource(url, html, headless, contextDir, false),
+      browserSource(url, html, headless, contextDir, profileDir, false),
       async (page) => {
         const locator = await findFirstLocator(
           page,
@@ -640,6 +661,7 @@ async function handleExpand(request: JsonRpcRequest): Promise<JsonRpcResponse> {
   const html = asString(request.params?.html);
   const headless = asBoolean(request.params?.headless) ?? true;
   const contextDir = asString(request.params?.contextDir);
+  const profileDir = asString(request.params?.profileDir);
 
   if (!targetRef && !targetText) {
     return failure(
@@ -660,7 +682,7 @@ async function handleExpand(request: JsonRpcRequest): Promise<JsonRpcResponse> {
   try {
     const resolvedTarget = targetText ?? targetRef ?? "";
     const result = await withPage(
-      browserSource(url, html, headless, contextDir, false),
+      browserSource(url, html, headless, contextDir, profileDir, false),
       async (page) => {
         const locator = await findExpandLocator(page, {
           text: targetText ?? targetRef,
@@ -728,17 +750,21 @@ async function withPage<T>(
   source: BrowserSource,
   run: (page: Page) => Promise<T>,
 ): Promise<T> {
-  if (source.contextDir) {
-    const { contextDir } = source;
-    return withContextDirLock(contextDir, async () => {
+  const persistentDir = source.contextDir ?? source.profileDir;
+
+  if (persistentDir) {
+    return withContextDirLock(persistentDir, async () => {
       const effectiveSource = {
         ...source,
         searchIdentity:
-          source.searchIdentity || (await hasSearchIdentityMarker(contextDir)),
+          source.searchIdentity ||
+          (source.contextDir
+            ? await hasSearchIdentityMarker(source.contextDir)
+            : false),
       } satisfies BrowserSource;
       const context = await launchPersistentBrowserContext(
         effectiveSource,
-        contextDir,
+        persistentDir,
       );
 
       try {
@@ -821,7 +847,9 @@ async function launchPersistentBrowserContext(
   );
 
   if (source.searchIdentity) {
-    await writeSearchIdentityMarker(contextDir);
+    if (source.contextDir) {
+      await writeSearchIdentityMarker(contextDir);
+    }
     await installSearchIdentity(context);
   }
   return context;
@@ -840,7 +868,10 @@ async function searchIdentityPersistentOptions(source: BrowserSource) {
     return {};
   }
 
-  const executablePath = await resolveSearchBrowserExecutablePath();
+  const [executablePath, userAgent] = await Promise.all([
+    resolveSearchBrowserExecutablePath(),
+    resolveSearchUserAgent(),
+  ]);
   return {
     ...(executablePath ? { executablePath } : {}),
     ignoreDefaultArgs: ["--enable-automation"],
@@ -852,6 +883,7 @@ async function searchIdentityPersistentOptions(source: BrowserSource) {
     ],
     locale: resolveSearchLocale(),
     timezoneId: resolveSearchTimezoneId(),
+    userAgent,
   };
 }
 
@@ -860,7 +892,10 @@ async function searchIdentityBrowserOptions(source: BrowserSource) {
     return {};
   }
 
-  const executablePath = await resolveSearchBrowserExecutablePath();
+  const [executablePath, userAgent] = await Promise.all([
+    resolveSearchBrowserExecutablePath(),
+    resolveSearchUserAgent(),
+  ]);
   return {
     ...(executablePath ? { executablePath } : {}),
     ignoreDefaultArgs: ["--enable-automation"],
@@ -870,6 +905,7 @@ async function searchIdentityBrowserOptions(source: BrowserSource) {
       "--no-default-browser-check",
       "--disable-dev-shm-usage",
     ],
+    userAgent,
   };
 }
 
@@ -1065,41 +1101,45 @@ function browserSource(
   html: string | undefined,
   headless: boolean,
   contextDir: string | undefined,
+  profileDir: string | undefined,
   searchIdentity: boolean,
 ): BrowserSource {
   return {
     url,
     html,
     contextDir,
+    profileDir,
     headless,
     searchIdentity,
   };
 }
 
-async function resolveSearchBrowserExecutablePath(): Promise<
-  string | undefined
-> {
-  const candidates = [
-    process.env.TOUCH_BROWSER_SEARCH_CHROME_EXECUTABLE,
-    "/Applications/Google Chrome.app/Contents/MacOS/Google Chrome",
-    "/Applications/Brave Browser.app/Contents/MacOS/Brave Browser",
-    "/Applications/Microsoft Edge.app/Contents/MacOS/Microsoft Edge",
-    "/usr/bin/google-chrome",
-    "/usr/bin/google-chrome-stable",
-    "/usr/bin/chromium",
-    "/usr/bin/chromium-browser",
-  ].filter((candidate): candidate is string => Boolean(candidate));
+async function resolveSearchBrowserExecutablePath(): Promise<string | undefined> {
+  cachedSearchExecutablePath ??= (async () => {
+    const candidates = [
+      process.env.TOUCH_BROWSER_SEARCH_CHROME_EXECUTABLE,
+      "/Applications/Google Chrome.app/Contents/MacOS/Google Chrome",
+      "/Applications/Brave Browser.app/Contents/MacOS/Brave Browser",
+      "/Applications/Microsoft Edge.app/Contents/MacOS/Microsoft Edge",
+      "/usr/bin/google-chrome",
+      "/usr/bin/google-chrome-stable",
+      "/usr/bin/chromium",
+      "/usr/bin/chromium-browser",
+    ].filter((candidate): candidate is string => Boolean(candidate));
 
-  for (const candidate of candidates) {
-    try {
-      await stat(candidate);
-      return candidate;
-    } catch {
-      // Try the next candidate.
+    for (const candidate of candidates) {
+      try {
+        await stat(candidate);
+        return candidate;
+      } catch {
+        // Try the next candidate.
+      }
     }
-  }
 
-  return undefined;
+    return undefined;
+  })();
+
+  return cachedSearchExecutablePath;
 }
 
 function searchIdentityMarkerPath(contextDir: string): string {
@@ -1139,23 +1179,110 @@ function resolveSearchTimezoneId(): string {
   );
 }
 
+function resolveSearchLanguages(): string[] {
+  const locale = resolveSearchLocale();
+  const languages = new Set<string>([locale]);
+  const primary = locale.split("-")[0];
+  if (primary && primary !== locale) {
+    languages.add(primary);
+  }
+  languages.add("en-US");
+  languages.add("en");
+  return Array.from(languages);
+}
+
+async function resolveSearchBrowserVersion(): Promise<string | undefined> {
+  cachedSearchBrowserVersion ??= (async () => {
+    const explicitVersion = process.env.TOUCH_BROWSER_SEARCH_CHROME_VERSION;
+    if (explicitVersion) {
+      return explicitVersion;
+    }
+
+    const executablePath = await resolveSearchBrowserExecutablePath();
+    if (!executablePath) {
+      return undefined;
+    }
+
+    try {
+      const { stdout, stderr } = await execFileAsync(executablePath, [
+        "--version",
+      ]);
+      const combined = `${stdout ?? ""} ${stderr ?? ""}`;
+      const match = combined.match(/(\d+\.\d+\.\d+\.\d+)/);
+      return match?.[1];
+    } catch {
+      return undefined;
+    }
+  })();
+
+  return cachedSearchBrowserVersion;
+}
+
+async function resolveSearchUserAgent(): Promise<string> {
+  const explicitUserAgent = process.env.TOUCH_BROWSER_SEARCH_USER_AGENT;
+  if (explicitUserAgent) {
+    return explicitUserAgent;
+  }
+
+  const fallbackVersion =
+    SEARCH_USER_AGENT_FALLBACK.match(/Chrome\/([0-9.]+)/)?.[1] ?? "146.0.0.0";
+  const version = (await resolveSearchBrowserVersion()) ?? fallbackVersion;
+  return `Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/${version} Safari/537.36`;
+}
+
+function buildSearchUserAgentBrands(version: string): Array<{
+  brand: string;
+  version: string;
+}> {
+  const majorVersion = version.split(".")[0] ?? "146";
+  return [
+    { brand: "Not=A?Brand", version: "99" },
+    { brand: "Chromium", version: majorVersion },
+    { brand: "Google Chrome", version: majorVersion },
+  ];
+}
+
 async function installSearchIdentity(context: BrowserContext): Promise<void> {
-  await context.addInitScript(() => {
+  const languages = resolveSearchLanguages();
+  const userAgent = await resolveSearchUserAgent();
+  const browserVersion =
+    (await resolveSearchBrowserVersion()) ??
+    userAgent.match(/Chrome\/([0-9.]+)/)?.[1] ??
+    "146.0.0.0";
+  const userAgentDataBrands = buildSearchUserAgentBrands(browserVersion);
+
+  await context.addInitScript(
+    ({ languages, userAgent, browserVersion, userAgentDataBrands }) => {
     const patch = (target: object, key: PropertyKey, value: unknown) => {
-      try {
-        Object.defineProperty(target, key, {
+      const define = (receiver: object) => {
+        Object.defineProperty(receiver, key, {
           configurable: true,
           get: () => value,
         });
+      };
+      try {
+        define(target);
       } catch {
-        // Ignore immutable browser fields.
+        try {
+          const prototype = Object.getPrototypeOf(target);
+          if (prototype) {
+            define(prototype);
+          }
+        } catch {
+          // Ignore immutable browser fields.
+        }
       }
     };
 
     patch(window.navigator, "webdriver", undefined);
+    patch(window.navigator, "userAgent", userAgent);
+    patch(window.navigator, "vendor", "Google Inc.");
     patch(window.navigator, "platform", "MacIntel");
     patch(window.navigator, "hardwareConcurrency", 8);
-    patch(window.navigator, "languages", ["ko-KR", "ko", "en-US", "en"]);
+    patch(window.navigator, "deviceMemory", 8);
+    patch(window.navigator, "maxTouchPoints", 0);
+    patch(window.navigator, "language", languages[0] ?? "en-US");
+    patch(window.navigator, "languages", languages);
     patch(window.navigator, "plugins", [
       { name: "Chrome PDF Plugin", filename: "internal-pdf-viewer" },
       {
@@ -1164,17 +1291,75 @@ async function installSearchIdentity(context: BrowserContext): Promise<void> {
       },
       { name: "Native Client", filename: "internal-nacl-plugin" },
     ]);
+    patch(window.navigator, "mimeTypes", [
+      { type: "application/pdf", suffixes: "pdf" },
+      { type: "text/pdf", suffixes: "pdf" },
+    ]);
+    patch(window.navigator, "userAgentData", {
+      brands: userAgentDataBrands,
+      mobile: false,
+      platform: "macOS",
+      getHighEntropyValues: async (hints: readonly string[]) => {
+        const values: Record<string, unknown> = {
+          architecture: "x86",
+          bitness: "64",
+          mobile: false,
+          model: "",
+          platform: "macOS",
+          platformVersion: "14.0.0",
+          uaFullVersion: browserVersion,
+          fullVersionList: userAgentDataBrands,
+          wow64: false,
+        };
+        return hints.reduce<Record<string, unknown>>((result, hint) => {
+          if (hint in values) {
+            result[hint] = values[hint];
+          }
+          return result;
+        }, {});
+      },
+      toJSON: () => ({
+        brands: userAgentDataBrands,
+        mobile: false,
+        platform: "macOS",
+      }),
+    });
 
     if (!("chrome" in window)) {
       Object.defineProperty(window, "chrome", {
         configurable: true,
         value: {
           runtime: {},
+          app: {},
           loadTimes: () => undefined,
           csi: () => undefined,
         },
       });
     }
+
+    const patchWebGl = (
+      prototype:
+        | WebGLRenderingContext
+        | WebGL2RenderingContext
+        | undefined,
+    ) => {
+      if (!prototype || typeof prototype.getParameter !== "function") {
+        return;
+      }
+      const originalGetParameter = prototype.getParameter;
+      prototype.getParameter = function (parameter: number) {
+        if (parameter === 37445) {
+          return "Intel Inc.";
+        }
+        if (parameter === 37446) {
+          return "Intel Iris OpenGL Engine";
+        }
+        return originalGetParameter.call(this, parameter);
+      };
+    };
+
+    patchWebGl(window.WebGLRenderingContext?.prototype);
+    patchWebGl(window.WebGL2RenderingContext?.prototype);
 
     const permissions = window.navigator.permissions;
     if (permissions && typeof permissions.query === "function") {
@@ -1195,7 +1380,9 @@ async function installSearchIdentity(context: BrowserContext): Promise<void> {
         return originalQuery(parameters);
       }) as typeof permissions.query;
     }
-  });
+    },
+    { languages, userAgent, browserVersion, userAgentDataBrands },
+  );
 }
 
 function sameResolvedUrl(left: string, right: string): boolean {
