@@ -32,8 +32,10 @@ export function createMcpClient({
       try {
         payload = JSON.parse(line);
       } catch (error) {
+        const parseMessage =
+          error instanceof Error ? error.message : String(error);
         const parseError = new Error(
-          `Invalid MCP bridge JSON response: ${line.trim()}`,
+          `Invalid MCP bridge JSON response: ${line.trim()} (${parseMessage})`,
         );
         failPending(parseError);
         if (child.exitCode === null) {

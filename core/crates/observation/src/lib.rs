@@ -287,47 +287,13 @@ fn apply_budget(budget: usize, candidates: &mut [CandidateBlock]) -> Vec<Candida
 
     let mut selected_indices = BTreeSet::new();
     let mut emitted_tokens = 0usize;
-    let nav_budget = if budget < 32 {
-        0
-    } else {
-        budget.div_ceil(4).max(24).min(budget / 2)
-    };
-
-    if nav_budget > 0 {
-        for (index, candidate) in &ranked {
-            if !is_navigation_candidate(candidate) {
-                continue;
-            }
-
-            if emitted_tokens + candidate.token_cost > nav_budget && !selected_indices.is_empty() {
-                continue;
-            }
-
-            emitted_tokens += candidate.token_cost;
-            selected_indices.insert(*index);
-
-            if emitted_tokens >= nav_budget {
-                break;
-            }
-        }
-    }
-
-    for (index, candidate) in ranked {
-        if selected_indices.contains(&index) {
-            continue;
-        }
-
-        if emitted_tokens + candidate.token_cost > budget && !selected_indices.is_empty() {
-            continue;
-        }
-
-        emitted_tokens += candidate.token_cost;
-        selected_indices.insert(index);
-
-        if emitted_tokens >= budget {
-            break;
-        }
-    }
+    select_navigation_candidates(
+        &ranked,
+        navigation_budget(budget),
+        &mut selected_indices,
+        &mut emitted_tokens,
+    );
+    select_ranked_candidates(&ranked, budget, &mut selected_indices, &mut emitted_tokens);
 
     candidates
         .iter()
@@ -335,6 +301,81 @@ fn apply_budget(budget: usize, candidates: &mut [CandidateBlock]) -> Vec<Candida
         .filter(|(index, _)| selected_indices.contains(index))
         .map(|(_, candidate)| candidate.clone())
         .collect()
+}
+
+fn navigation_budget(budget: usize) -> usize {
+    if budget < 32 {
+        0
+    } else {
+        budget.div_ceil(4).max(24).min(budget / 2)
+    }
+}
+
+fn select_navigation_candidates(
+    ranked: &[(usize, &CandidateBlock)],
+    nav_budget: usize,
+    selected_indices: &mut BTreeSet<usize>,
+    emitted_tokens: &mut usize,
+) {
+    if nav_budget == 0 {
+        return;
+    }
+
+    for (index, candidate) in ranked {
+        if !is_navigation_candidate(candidate)
+            || exceeds_budget(
+                *emitted_tokens,
+                candidate.token_cost,
+                nav_budget,
+                selected_indices,
+            )
+        {
+            continue;
+        }
+
+        *emitted_tokens += candidate.token_cost;
+        selected_indices.insert(*index);
+
+        if *emitted_tokens >= nav_budget {
+            break;
+        }
+    }
+}
+
+fn select_ranked_candidates(
+    ranked: &[(usize, &CandidateBlock)],
+    budget: usize,
+    selected_indices: &mut BTreeSet<usize>,
+    emitted_tokens: &mut usize,
+) {
+    for (index, candidate) in ranked {
+        if selected_indices.contains(index)
+            || exceeds_budget(
+                *emitted_tokens,
+                candidate.token_cost,
+                budget,
+                selected_indices,
+            )
+        {
+            continue;
+        }
+
+        *emitted_tokens += candidate.token_cost;
+        selected_indices.insert(*index);
+
+        if *emitted_tokens >= budget {
+            break;
+        }
+    }
+}
+
+fn exceeds_budget(
+    emitted_tokens: usize,
+    token_cost: usize,
+    budget: usize,
+    selected_indices: &BTreeSet<usize>,
+) -> bool {
+    emitted_tokens + token_cost > budget && !selected_indices.is_empty()
 }
 
 fn is_navigation_candidate(candidate: &CandidateBlock) -> bool {
@@ -717,79 +758,14 @@ fn semantic_attributes(
     let mut attributes = BTreeMap::new();
 
     match tag {
-        "title" => {
-            attributes.insert("source".to_string(), json!("title"));
-        }
-        "script" => {
-            if let Some(element) = node.as_element() {
-                let attrs = element.attributes.borrow();
-                if let Some(script_type) = attrs.get("type") {
-                    attributes.insert("scriptType".to_string(), json!(script_type));
-                }
-                if let Some(script_id) = attrs.get("id") {
-                    attributes.insert("scriptId".to_string(), json!(script_id));
-                }
-            }
-            attributes.insert("source".to_string(), json!("script"));
-        }
-        "h1" | "h2" | "h3" | "h4" | "h5" | "h6" => {
-            let level = tag.trim_start_matches('h').parse::<usize>().unwrap_or(1);
-            attributes.insert("level".to_string(), json!(level));
-        }
-        "a" => {
-            if let Some(element) = node.as_element() {
-                let attrs = element.attributes.borrow();
-                if let Some(href) = attrs.get("href") {
-                    attributes.insert("href".to_string(), json!(href));
-                    attributes.insert("external".to_string(), json!(is_external_href(href)));
-                }
-            }
-        }
-        "ul" | "ol" => {
-            let items = node
-                .select("li")
-                .map_err(|_| ObservationError::InvalidSelection("li".to_string()))?
-                .count();
-            attributes.insert("ordered".to_string(), json!(tag == "ol"));
-            attributes.insert("items".to_string(), json!(items));
-        }
-        "table" => {
-            let row_cell_counts = node
-                .select("tr")
-                .map_err(|_| ObservationError::InvalidSelection("tr".to_string()))?
-                .map(|row| {
-                    row.as_node()
-                        .select("th, td")
-                        .map(|cells| cells.count())
-                        .unwrap_or(0)
-                })
-                .collect::<Vec<_>>();
-            let columns = row_cell_counts.iter().copied().max().unwrap_or(0);
-            attributes.insert("rows".to_string(), json!(row_cell_counts.len()));
-            attributes.insert("columns".to_string(), json!(columns));
-        }
-        "form" => {
-            let controls = node
-                .select("input, select, textarea, button")
-                .map_err(|_| {
-                    ObservationError::InvalidSelection(
-                        "input, select, textarea, button".to_string(),
-                    )
-                })?
-                .count();
-            attributes.insert("controls".to_string(), json!(controls));
-        }
-        "input" => {
-            if let Some(element) = node.as_element() {
-                let attrs = element.attributes.borrow();
-                if let Some(input_type) = attrs.get("type") {
-                    attributes.insert("inputType".to_string(), json!(input_type));
-                }
-                if let Some(name) = attrs.get("name") {
-                    attributes.insert("name".to_string(), json!(name));
-                }
-            }
-        }
+        "title" => insert_source_attribute(&mut attributes, "title"),
+        "script" => insert_script_attributes(node, &mut attributes),
+        "h1" | "h2" | "h3" | "h4" | "h5" | "h6" => insert_heading_attributes(tag, &mut attributes),
+        "a" => insert_link_attributes(node, &mut attributes),
+        "ul" | "ol" => insert_list_attributes(node, tag, &mut attributes)?,
+        "table" => insert_table_attributes(node, &mut attributes)?,
+        "form" => insert_form_attributes(node, &mut attributes)?,
+        "input" => insert_input_attributes(node, &mut attributes),
         _ => {}
     }
 
@@ -797,29 +773,131 @@ fn semantic_attributes(
     Ok(attributes)
 }
 
-fn candidate_slug(node: &NodeRef, tag: &str, text: &str) -> String {
+fn insert_source_attribute(attributes: &mut BTreeMap<String, Value>, source: &str) {
+    attributes.insert("source".to_string(), json!(source));
+}
+
+fn insert_script_attributes(node: &NodeRef, attributes: &mut BTreeMap<String, Value>) {
     if let Some(element) = node.as_element() {
         let attrs = element.attributes.borrow();
-
-        if let Some(id) = attrs.get("id") {
-            let slug = slugify(id);
-            if !slug.is_empty() {
-                return slug;
-            }
+        if let Some(script_type) = attrs.get("type") {
+            attributes.insert("scriptType".to_string(), json!(script_type));
         }
-
-        if tag == "a" {
-            if let Some(href) = attrs.get("href") {
-                let slug = slugify(href);
-                if !slug.is_empty() {
-                    return slug;
-                }
-            }
+        if let Some(script_id) = attrs.get("id") {
+            attributes.insert("scriptId".to_string(), json!(script_id));
         }
     }
+    insert_source_attribute(attributes, "script");
+}
 
+fn insert_heading_attributes(tag: &str, attributes: &mut BTreeMap<String, Value>) {
+    let level = tag.trim_start_matches('h').parse::<usize>().unwrap_or(1);
+    attributes.insert("level".to_string(), json!(level));
+}
+
+fn insert_link_attributes(node: &NodeRef, attributes: &mut BTreeMap<String, Value>) {
+    if let Some(element) = node.as_element() {
+        let attrs = element.attributes.borrow();
+        if let Some(href) = attrs.get("href") {
+            attributes.insert("href".to_string(), json!(href));
+            attributes.insert("external".to_string(), json!(is_external_href(href)));
+        }
+    }
+}
+
+fn insert_list_attributes(
+    node: &NodeRef,
+    tag: &str,
+    attributes: &mut BTreeMap<String, Value>,
+) -> Result<(), ObservationError> {
+    let items = node
+        .select("li")
+        .map_err(|_| ObservationError::InvalidSelection("li".to_string()))?
+        .count();
+    attributes.insert("ordered".to_string(), json!(tag == "ol"));
+    attributes.insert("items".to_string(), json!(items));
+    Ok(())
+}
+
+fn insert_table_attributes(
+    node: &NodeRef,
+    attributes: &mut BTreeMap<String, Value>,
+) -> Result<(), ObservationError> {
+    let row_cell_counts = node
+        .select("tr")
+        .map_err(|_| ObservationError::InvalidSelection("tr".to_string()))?
+        .map(|row| {
+            row.as_node()
+                .select("th, td")
+                .map(|cells| cells.count())
+                .unwrap_or(0)
+        })
+        .collect::<Vec<_>>();
+    let columns = row_cell_counts.iter().copied().max().unwrap_or(0);
+    attributes.insert("rows".to_string(), json!(row_cell_counts.len()));
+    attributes.insert("columns".to_string(), json!(columns));
+    Ok(())
+}
+
+fn insert_form_attributes(
+    node: &NodeRef,
+    attributes: &mut BTreeMap<String, Value>,
+) -> Result<(), ObservationError> {
+    let controls = node
+        .select("input, select, textarea, button")
+        .map_err(|_| {
+            ObservationError::InvalidSelection("input, select, textarea, button".to_string())
+        })?
+        .count();
+    attributes.insert("controls".to_string(), json!(controls));
+    Ok(())
+}
+
+fn insert_input_attributes(node: &NodeRef, attributes: &mut BTreeMap<String, Value>) {
+    if let Some(element) = node.as_element() {
+        let attrs = element.attributes.borrow();
+        if let Some(input_type) = attrs.get("type") {
+            attributes.insert("inputType".to_string(), json!(input_type));
+        }
+        if let Some(name) = attrs.get("name") {
+            attributes.insert("name".to_string(), json!(name));
+        }
+    }
+}
+
+fn candidate_slug(node: &NodeRef, tag: &str, text: &str) -> String {
+    if let Some(slug) = element_slug(node, tag) {
+        return slug;
+    }
+
+    fallback_slug(tag, text)
+}
+
+fn element_slug(node: &NodeRef, tag: &str) -> Option<String> {
+    let element = node.as_element()?;
+    let attrs = element.attributes.borrow();
+
+    slug_from_value(attrs.get("id")).or_else(|| {
+        if tag == "a" {
+            slug_from_value(attrs.get("href"))
+        } else {
+            None
+        }
+    })
+}
+
+fn slug_from_value(value: Option<&str>) -> Option<String> {
+    let slug = slugify(value?);
+    if slug == "block" {
+        None
+    } else {
+        Some(slug)
+    }
+}
+
+fn fallback_slug(tag: &str, text: &str) -> String {
     let slug = slugify(text);
-    if slug.is_empty() {
+    if slug == "block" {
         tag.to_string()
     } else {
         slug
@@ -1011,39 +1089,47 @@ fn is_hidden(node: &NodeRef, hidden_rules: &HiddenRules) -> bool {
         let Some(element) = ancestor.as_element() else {
             return false;
         };
-
-        let tag = element.name.local.as_ref();
-        if matches!(tag, "style" | "noscript" | "template") {
-            return true;
-        }
-
-        let attrs = element.attributes.borrow();
-
-        if attrs.contains("hidden") || attrs.get("aria-hidden") == Some("true") {
-            return true;
-        }
-
-        if let Some(style) = attrs.get("style") {
-            let normalized = style.to_ascii_lowercase();
-            if normalized.contains("display:none")
-                || normalized.contains("display: none")
-                || normalized.contains("visibility:hidden")
-                || normalized.contains("visibility: hidden")
-            {
-                return true;
-            }
-        }
-
-        if let Some(class_attr) = attrs.get("class") {
-            for class_name in class_attr.split_whitespace() {
-                if hidden_rules.hidden_classes.contains(class_name) {
-                    return true;
-                }
-            }
-        }
-
-        false
+        element_hides_node(element, hidden_rules)
     })
+}
+
+fn element_hides_node(element: &ElementData, hidden_rules: &HiddenRules) -> bool {
+    hidden_tag(element.name.local.as_ref())
+        || hidden_by_attributes(element)
+        || hidden_by_style(element)
+        || hidden_by_class(element, hidden_rules)
+}
+
+fn hidden_tag(tag: &str) -> bool {
+    matches!(tag, "style" | "noscript" | "template")
+}
+
+fn hidden_by_attributes(element: &ElementData) -> bool {
+    let attrs = element.attributes.borrow();
+    attrs.contains("hidden") || attrs.get("aria-hidden") == Some("true")
+}
+
+fn hidden_by_style(element: &ElementData) -> bool {
+    let attrs = element.attributes.borrow();
+    let Some(style) = attrs.get("style") else {
+        return false;
+    };
+    let normalized = style.to_ascii_lowercase();
+    normalized.contains("display:none")
+        || normalized.contains("display: none")
+        || normalized.contains("visibility:hidden")
+        || normalized.contains("visibility: hidden")
+}
+
+fn hidden_by_class(element: &ElementData, hidden_rules: &HiddenRules) -> bool {
+    let attrs = element.attributes.borrow();
+    let Some(class_attr) = attrs.get("class") else {
+        return false;
+    };
+
+    class_attr
+        .split_whitespace()
+        .any(|class_name| hidden_rules.hidden_classes.contains(class_name))
 }
 
 fn link_is_external(node: &NodeRef) -> bool {

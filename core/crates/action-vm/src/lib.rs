@@ -28,217 +28,255 @@ impl ReadOnlyActionVm {
         timestamp: &str,
     ) -> ActionResult {
         match command.action {
-            ActionName::Open => match command.target_url.as_deref() {
-                Some(target_url) => self
-                    .runtime
-                    .open(session, catalog, target_url, timestamp)
-                    .map(|snapshot| {
-                        let policy = session
-                            .current_snapshot_record()
-                            .map(|record| self.evaluate_record(record));
-                        succeed(
-                            ActionName::Open,
-                            "snapshot-document",
-                            json!(snapshot),
-                            "Opened document.",
-                            policy,
-                        )
-                    })
-                    .unwrap_or_else(|error| {
-                        fail(
-                            ActionName::Open,
-                            classify_runtime_error(&error),
-                            error.to_string(),
-                            current_policy_report(session, &self.policy),
-                        )
-                    }),
-                None => fail(
-                    ActionName::Open,
-                    ActionFailureKind::MissingTarget,
-                    "Open action requires targetUrl.".to_string(),
-                    current_policy_report(session, &self.policy),
-                ),
-            },
-            ActionName::Read => self
-                .runtime
-                .read(session, timestamp)
-                .map(|snapshot| {
-                    let policy = session
-                        .current_snapshot_record()
-                        .map(|record| self.evaluate_record(record));
-                    succeed(
-                        ActionName::Read,
-                        "snapshot-document",
-                        json!(snapshot),
-                        "Read current snapshot.",
-                        policy,
-                    )
-                })
-                .unwrap_or_else(|error| {
-                    fail(
-                        ActionName::Read,
-                        classify_runtime_error(&error),
-                        error.to_string(),
-                        current_policy_report(session, &self.policy),
-                    )
-                }),
-            ActionName::Follow => match command.target_ref.as_deref() {
-                Some(target_ref) => {
-                    if let Some(policy) = current_policy_report(session, &self.policy) {
-                        if policy
-                            .blocked_refs
-                            .iter()
-                            .any(|blocked| blocked == target_ref)
-                        {
-                            return reject(
-                                ActionName::Follow,
-                                ActionFailureKind::PolicyBlocked,
-                                format!("Follow target `{target_ref}` is blocked by policy."),
-                                Some(policy),
-                            );
-                        }
-                    }
-                    self.runtime
-                        .follow(session, catalog, target_ref, timestamp)
-                        .map(|snapshot| {
-                            let policy = session
-                                .current_snapshot_record()
-                                .map(|record| self.evaluate_record(record));
-                            succeed(
-                                ActionName::Follow,
-                                "snapshot-document",
-                                json!(snapshot),
-                                "Followed link target.",
-                                policy,
-                            )
-                        })
-                        .unwrap_or_else(|error| {
-                            fail(
-                                ActionName::Follow,
-                                classify_runtime_error(&error),
-                                error.to_string(),
-                                current_policy_report(session, &self.policy),
-                            )
-                        })
-                }
-                None => fail(
-                    ActionName::Follow,
-                    ActionFailureKind::MissingTarget,
-                    "Follow action requires targetRef.".to_string(),
-                    current_policy_report(session, &self.policy),
-                ),
-            },
-            ActionName::Extract => match parse_claims(command.input.as_ref()) {
-                Ok(claims) if !claims.is_empty() => self
-                    .runtime
-                    .extract(session, claims, timestamp)
-                    .map(|report| {
-                        let policy = session
-                            .current_snapshot_record()
-                            .map(|record| self.evaluate_record(record));
-                        succeed(
-                            ActionName::Extract,
-                            "evidence-report",
-                            json!(report),
-                            "Extracted evidence report.",
-                            policy,
-                        )
-                    })
-                    .unwrap_or_else(|error| {
-                        fail(
-                            ActionName::Extract,
-                            classify_runtime_error(&error),
-                            error.to_string(),
-                            current_policy_report(session, &self.policy),
-                        )
-                    }),
-                Ok(_) => fail(
-                    ActionName::Extract,
-                    ActionFailureKind::InvalidInput,
-                    "Extract action requires at least one claim.".to_string(),
-                    current_policy_report(session, &self.policy),
-                ),
-                Err(error) => fail(
-                    ActionName::Extract,
-                    ActionFailureKind::InvalidInput,
-                    error,
-                    current_policy_report(session, &self.policy),
-                ),
-            },
-            ActionName::Diff => match parse_diff(command.input.as_ref()) {
-                Ok(input) => self
-                    .runtime
-                    .diff(session, input, timestamp)
-                    .map(|diff| {
-                        let policy = session
-                            .current_snapshot_record()
-                            .map(|record| self.evaluate_record(record));
-                        succeed(
-                            ActionName::Diff,
-                            "snapshot-diff",
-                            json!(diff),
-                            "Computed snapshot diff.",
-                            policy,
-                        )
-                    })
-                    .unwrap_or_else(|error| {
-                        fail(
-                            ActionName::Diff,
-                            classify_runtime_error(&error),
-                            error.to_string(),
-                            current_policy_report(session, &self.policy),
-                        )
-                    }),
-                Err(error) => fail(
-                    ActionName::Diff,
-                    ActionFailureKind::InvalidInput,
-                    error,
-                    current_policy_report(session, &self.policy),
-                ),
-            },
-            ActionName::Compact => match parse_compact(command.input.as_ref()) {
-                Ok(input) => self
-                    .runtime
-                    .compact(session, input, timestamp)
-                    .map(|compaction| {
-                        let policy = session
-                            .current_snapshot_record()
-                            .map(|record| self.evaluate_record(record));
-                        succeed(
-                            ActionName::Compact,
-                            "compaction-result",
-                            json!(compaction),
-                            "Compacted working set.",
-                            policy,
-                        )
-                    })
-                    .unwrap_or_else(|error| {
-                        fail(
-                            ActionName::Compact,
-                            classify_runtime_error(&error),
-                            error.to_string(),
-                            current_policy_report(session, &self.policy),
-                        )
-                    }),
-                Err(error) => fail(
-                    ActionName::Compact,
-                    ActionFailureKind::InvalidInput,
-                    error,
-                    current_policy_report(session, &self.policy),
-                ),
-            },
-            blocked_action => reject(
-                blocked_action,
-                ActionFailureKind::PolicyBlocked,
-                "Read-only action VM blocks interactive actions.".to_string(),
-                current_policy_report(session, &self.policy),
-            ),
+            ActionName::Open => {
+                self.execute_open(session, catalog, command.target_url.as_deref(), timestamp)
+            }
+            ActionName::Read => self.execute_read(session, timestamp),
+            ActionName::Follow => {
+                self.execute_follow(session, catalog, command.target_ref.as_deref(), timestamp)
+            }
+            ActionName::Extract => self.execute_extract(session, command.input.as_ref(), timestamp),
+            ActionName::Diff => self.execute_diff(session, command.input.as_ref(), timestamp),
+            ActionName::Compact => self.execute_compact(session, command.input.as_ref(), timestamp),
+            blocked_action => self.reject_interactive_action(session, blocked_action),
         }
     }
 
     fn evaluate_record(&self, record: &SessionSnapshotRecord) -> PolicyReport {
         self.policy
             .evaluate_snapshot(&record.snapshot, record.source_risk.clone())
+    }
+
+    fn execute_open(
+        &self,
+        session: &mut ReadOnlySession,
+        catalog: &FixtureCatalog,
+        target_url: Option<&str>,
+        timestamp: &str,
+    ) -> ActionResult {
+        let Some(target_url) = target_url else {
+            return self.missing_target(
+                session,
+                ActionName::Open,
+                "Open action requires targetUrl.",
+            );
+        };
+        let result = self.runtime.open(session, catalog, target_url, timestamp);
+
+        self.runtime_action(
+            session,
+            ActionName::Open,
+            "snapshot-document",
+            "Opened document.",
+            result,
+        )
+    }
+
+    fn execute_read(&self, session: &mut ReadOnlySession, timestamp: &str) -> ActionResult {
+        let result = self.runtime.read(session, timestamp);
+        self.runtime_action(
+            session,
+            ActionName::Read,
+            "snapshot-document",
+            "Read current snapshot.",
+            result,
+        )
+    }
+
+    fn execute_follow(
+        &self,
+        session: &mut ReadOnlySession,
+        catalog: &FixtureCatalog,
+        target_ref: Option<&str>,
+        timestamp: &str,
+    ) -> ActionResult {
+        let Some(target_ref) = target_ref else {
+            return self.missing_target(
+                session,
+                ActionName::Follow,
+                "Follow action requires targetRef.",
+            );
+        };
+
+        if let Some(rejection) = self.follow_policy_rejection(session, target_ref) {
+            return rejection;
+        }
+        let result = self.runtime.follow(session, catalog, target_ref, timestamp);
+
+        self.runtime_action(
+            session,
+            ActionName::Follow,
+            "snapshot-document",
+            "Followed link target.",
+            result,
+        )
+    }
+
+    fn execute_extract(
+        &self,
+        session: &mut ReadOnlySession,
+        input: Option<&serde_json::Value>,
+        timestamp: &str,
+    ) -> ActionResult {
+        let claims = match parse_claims(input) {
+            Ok(claims) if !claims.is_empty() => claims,
+            Ok(_) => {
+                return self.invalid_input(
+                    session,
+                    ActionName::Extract,
+                    "Extract action requires at least one claim.".to_string(),
+                );
+            }
+            Err(error) => return self.invalid_input(session, ActionName::Extract, error),
+        };
+        let result = self.runtime.extract(session, claims, timestamp);
+
+        self.runtime_action(
+            session,
+            ActionName::Extract,
+            "evidence-report",
+            "Extracted evidence report.",
+            result,
+        )
+    }
+
+    fn execute_diff(
+        &self,
+        session: &mut ReadOnlySession,
+        input: Option<&serde_json::Value>,
+        timestamp: &str,
+    ) -> ActionResult {
+        let input = match parse_diff(input) {
+            Ok(input) => input,
+            Err(error) => return self.invalid_input(session, ActionName::Diff, error),
+        };
+        let result = self.runtime.diff(session, input, timestamp);
+
+        self.runtime_action(
+            session,
+            ActionName::Diff,
+            "snapshot-diff",
+            "Computed snapshot diff.",
+            result,
+        )
+    }
+
+    fn execute_compact(
+        &self,
+        session: &mut ReadOnlySession,
+        input: Option<&serde_json::Value>,
+        timestamp: &str,
+    ) -> ActionResult {
+        let input = match parse_compact(input) {
+            Ok(input) => input,
+            Err(error) => return self.invalid_input(session, ActionName::Compact, error),
+        };
+        let result = self.runtime.compact(session, input, timestamp);
+
+        self.runtime_action(
+            session,
+            ActionName::Compact,
+            "compaction-result",
+            "Compacted working set.",
+            result,
+        )
+    }
+
+    fn runtime_action<T: serde::Serialize>(
+        &self,
+        session: &mut ReadOnlySession,
+        action: ActionName,
+        payload_type: &str,
+        message: &str,
+        result: Result<T, RuntimeError>,
+    ) -> ActionResult {
+        result
+            .map(|output| {
+                succeed(
+                    action.clone(),
+                    payload_type,
+                    json!(output),
+                    message,
+                    self.current_action_policy(session),
+                )
+            })
+            .unwrap_or_else(|error| {
+                fail(
+                    action.clone(),
+                    classify_runtime_error(&error),
+                    error.to_string(),
+                    current_policy_report(session, &self.policy),
+                )
+            })
+    }
+
+    fn current_action_policy(&self, session: &ReadOnlySession) -> Option<PolicyReport> {
+        session
+            .current_snapshot_record()
+            .map(|record| self.evaluate_record(record))
+    }
+
+    fn follow_policy_rejection(
+        &self,
+        session: &ReadOnlySession,
+        target_ref: &str,
+    ) -> Option<ActionResult> {
+        let policy = current_policy_report(session, &self.policy)?;
+        if policy
+            .blocked_refs
+            .iter()
+            .all(|blocked| blocked != target_ref)
+        {
+            return None;
+        }
+
+        Some(reject(
+            ActionName::Follow,
+            ActionFailureKind::PolicyBlocked,
+            format!("Follow target `{target_ref}` is blocked by policy."),
+            Some(policy),
+        ))
+    }
+
+    fn reject_interactive_action(
+        &self,
+        session: &ReadOnlySession,
+        action: ActionName,
+    ) -> ActionResult {
+        reject(
+            action,
+            ActionFailureKind::PolicyBlocked,
+            "Read-only action VM blocks interactive actions.".to_string(),
+            current_policy_report(session, &self.policy),
+        )
+    }
+
+    fn missing_target(
+        &self,
+        session: &ReadOnlySession,
+        action: ActionName,
+        message: &str,
+    ) -> ActionResult {
+        fail(
+            action,
+            ActionFailureKind::MissingTarget,
+            message.to_string(),
+            current_policy_report(session, &self.policy),
+        )
+    }
+
+    fn invalid_input(
+        &self,
+        session: &ReadOnlySession,
+        action: ActionName,
+        message: String,
+    ) -> ActionResult {
+        fail(
+            action,
+            ActionFailureKind::InvalidInput,
+            message,
+            current_policy_report(session, &self.policy),
+        )
     }
 }
 

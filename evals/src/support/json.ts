@@ -26,5 +26,5 @@ export async function listFilesRecursive(
     }
   }
 
-  return files.sort();
+  return files.sort((left, right) => left.localeCompare(right));
 }

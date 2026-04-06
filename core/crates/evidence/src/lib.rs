@@ -147,21 +147,85 @@ struct ScoredCandidate<'a> {
     contradictory: bool,
 }
 
-fn analyze_claim<'a>(claim: &ClaimRequest, blocks: &'a [SnapshotBlock]) -> ClaimResolution<'a> {
-    let claim_tokens = tokenize_significant(&claim.statement);
-    let claim_numeric_tokens = numeric_tokens(&claim.statement);
-    let claim_anchor_tokens = anchor_tokens(&claim_tokens);
-    let claim_qualifier_tokens = qualifier_tokens(&claim.statement);
-    let normalized_claim = normalize_text(&claim.statement);
+struct ClaimAnalysisInput {
+    claim_tokens: Vec<String>,
+    claim_numeric_tokens: Vec<String>,
+    claim_anchor_tokens: Vec<String>,
+    claim_qualifier_tokens: Vec<String>,
+    normalized_claim: String,
+}
 
+fn analyze_claim<'a>(claim: &ClaimRequest, blocks: &'a [SnapshotBlock]) -> ClaimResolution<'a> {
+    let analysis = build_claim_analysis_input(claim);
+    let scored = score_candidates(blocks, &analysis);
+    let checked_refs = checked_refs(&scored);
+    let contradictory_support = contradictory_support(&scored);
+
+    if let Some(resolution) =
+        contradiction_resolution(claim, &contradictory_support, blocks, &analysis)
+    {
+        return resolution;
+    }
+
+    let contradictory_exists = scored.iter().any(|candidate| candidate.contradictory);
+    let non_contradictory = non_contradictory_candidates(scored);
+
+    let Some(best_candidate) = non_contradictory.first() else {
+        return no_candidate_resolution(contradictory_exists, checked_refs);
+    };
+    let best_score = best_candidate.score;
+    let top_support = top_support_candidates(non_contradictory);
+
+    if top_support.is_empty() {
+        return no_top_support_resolution(contradictory_exists, checked_refs);
+    }
+
+    let assessment = assess_support_guards(
+        claim,
+        &top_support,
+        blocks,
+        &analysis.claim_anchor_tokens,
+        &analysis.claim_qualifier_tokens,
+    );
+    let effective_score =
+        effective_support_score(claim, &analysis, &top_support, blocks, best_score);
+
+    if let Some(resolution) = guarded_resolution(
+        claim,
+        &top_support,
+        &checked_refs,
+        &assessment,
+        effective_score,
+    ) {
+        return resolution;
+    }
+
+    supported_resolution(best_score, top_support, checked_refs)
+}
+
+fn build_claim_analysis_input(claim: &ClaimRequest) -> ClaimAnalysisInput {
+    let claim_tokens = tokenize_significant(&claim.statement);
+    ClaimAnalysisInput {
+        claim_numeric_tokens: numeric_tokens(&claim.statement),
+        claim_anchor_tokens: anchor_tokens(&claim_tokens),
+        claim_qualifier_tokens: qualifier_tokens(&claim.statement),
+        normalized_claim: normalize_text(&claim.statement),
+        claim_tokens,
+    }
+}
+
+fn score_candidates<'a>(
+    blocks: &'a [SnapshotBlock],
+    analysis: &ClaimAnalysisInput,
+) -> Vec<ScoredCandidate<'a>> {
     let mut scored = blocks
         .iter()
         .filter_map(|block| {
             score_block(
                 block,
-                &normalized_claim,
-                &claim_tokens,
-                &claim_numeric_tokens,
+                &analysis.normalized_claim,
+                &analysis.claim_tokens,
+                &analysis.claim_numeric_tokens,
             )
         })
         .collect::<Vec<_>>();
@@ -172,69 +236,86 @@ fn analyze_claim<'a>(claim: &ClaimRequest, blocks: &'a [SnapshotBlock]) -> Claim
             .partial_cmp(&left.score)
             .unwrap_or(std::cmp::Ordering::Equal)
     });
+    scored
+}
 
-    let checked_refs = scored
+fn checked_refs(scored: &[ScoredCandidate<'_>]) -> Vec<String> {
+    scored
         .iter()
         .take(3)
         .map(|candidate| candidate.block.stable_ref.clone())
-        .collect::<Vec<_>>();
+        .collect()
+}
 
-    let contradictory_support = scored
+fn contradictory_support<'a>(scored: &[ScoredCandidate<'a>]) -> Vec<ScoredCandidate<'a>> {
+    scored
         .iter()
         .filter(|candidate| candidate.contradictory && candidate.score >= 0.05)
         .take(3)
         .cloned()
-        .collect::<Vec<_>>();
+        .collect()
+}
 
-    if !contradictory_support.is_empty() {
-        let contradiction_checked_refs = contradictory_support
-            .iter()
-            .map(|candidate| candidate.block.stable_ref.clone())
-            .collect::<Vec<_>>();
-        let assessment = assess_support_guards(
-            claim,
-            &contradictory_support,
-            blocks,
-            &claim_anchor_tokens,
-            &claim_qualifier_tokens,
-        );
-
-        if let Some(reason) = assessment.contradiction_reason.clone() {
-            return ClaimResolution {
-                verdict: EvidenceClaimVerdict::Contradicted,
-                support: contradictory_support,
-                confidence: None,
-                reason: Some(reason),
-                checked_refs: contradiction_checked_refs,
-                guard_failures: assessment.guard_failures,
-                next_action_hint: None,
-            };
-        }
+fn contradiction_resolution<'a>(
+    claim: &ClaimRequest,
+    contradictory_support: &[ScoredCandidate<'a>],
+    blocks: &'a [SnapshotBlock],
+    analysis: &ClaimAnalysisInput,
+) -> Option<ClaimResolution<'a>> {
+    if contradictory_support.is_empty() {
+        return None;
     }
 
-    let contradictory_exists = scored.iter().any(|candidate| candidate.contradictory);
+    let contradiction_checked_refs = contradictory_support
+        .iter()
+        .map(|candidate| candidate.block.stable_ref.clone())
+        .collect::<Vec<_>>();
+    let assessment = assess_support_guards(
+        claim,
+        contradictory_support,
+        blocks,
+        &analysis.claim_anchor_tokens,
+        &analysis.claim_qualifier_tokens,
+    );
+    let reason = assessment.contradiction_reason.clone()?;
 
-    let non_contradictory = scored
+    Some(ClaimResolution {
+        verdict: EvidenceClaimVerdict::Contradicted,
+        support: contradictory_support.to_vec(),
+        confidence: None,
+        reason: Some(reason),
+        checked_refs: contradiction_checked_refs,
+        guard_failures: assessment.guard_failures,
+        next_action_hint: None,
+    })
+}
+
+fn non_contradictory_candidates<'a>(scored: Vec<ScoredCandidate<'a>>) -> Vec<ScoredCandidate<'a>> {
+    scored
         .into_iter()
         .filter(|candidate| !candidate.contradictory)
-        .collect::<Vec<_>>();
+        .collect()
+}
 
-    let Some(best_candidate) = non_contradictory.first() else {
-        if contradictory_exists {
-            return ClaimResolution {
-                verdict: EvidenceClaimVerdict::Contradicted,
-                support: Vec::new(),
-                confidence: None,
-                reason: Some(UnsupportedClaimReason::ContradictoryEvidence),
-                checked_refs,
-                guard_failures: vec![EvidenceGuardFailure {
-                    kind: EvidenceGuardKind::Negation,
-                    detail: "Observed support blocks contradict the claim polarity.".to_string(),
-                }],
-                next_action_hint: None,
-            };
+fn no_candidate_resolution<'a>(
+    contradictory_exists: bool,
+    checked_refs: Vec<String>,
+) -> ClaimResolution<'a> {
+    if contradictory_exists {
+        ClaimResolution {
+            verdict: EvidenceClaimVerdict::Contradicted,
+            support: Vec::new(),
+            confidence: None,
+            reason: Some(UnsupportedClaimReason::ContradictoryEvidence),
+            checked_refs,
+            guard_failures: vec![EvidenceGuardFailure {
+                kind: EvidenceGuardKind::Negation,
+                detail: "Observed support blocks contradict the claim polarity.".to_string(),
+            }],
+            next_action_hint: None,
         }
-        return ClaimResolution {
+    } else {
+        ClaimResolution {
             verdict: EvidenceClaimVerdict::InsufficientEvidence,
             support: Vec::new(),
             confidence: None,
@@ -242,89 +323,112 @@ fn analyze_claim<'a>(claim: &ClaimRequest, blocks: &'a [SnapshotBlock]) -> Claim
             checked_refs,
             guard_failures: Vec::new(),
             next_action_hint: None,
-        };
-    };
-    let best_score = best_candidate.score;
+        }
+    }
+}
 
-    let top_support = non_contradictory
+fn top_support_candidates<'a>(
+    non_contradictory: Vec<ScoredCandidate<'a>>,
+) -> Vec<ScoredCandidate<'a>> {
+    non_contradictory
         .into_iter()
         .filter(|candidate| candidate.score >= 0.25)
         .take(3)
-        .collect::<Vec<_>>();
+        .collect()
+}
 
-    if top_support.is_empty() {
-        let reason = if contradictory_exists {
-            UnsupportedClaimReason::ContradictoryEvidence
-        } else {
-            UnsupportedClaimReason::InsufficientConfidence
-        };
+fn no_top_support_resolution<'a>(
+    contradictory_exists: bool,
+    checked_refs: Vec<String>,
+) -> ClaimResolution<'a> {
+    let reason = if contradictory_exists {
+        UnsupportedClaimReason::ContradictoryEvidence
+    } else {
+        UnsupportedClaimReason::InsufficientConfidence
+    };
 
-        return ClaimResolution {
-            verdict: if contradictory_exists {
-                EvidenceClaimVerdict::Contradicted
-            } else {
-                EvidenceClaimVerdict::InsufficientEvidence
-            },
-            support: Vec::new(),
-            confidence: None,
-            reason: Some(reason),
-            checked_refs,
-            guard_failures: Vec::new(),
-            next_action_hint: None,
-        };
-    }
-
-    let assessment = assess_support_guards(
-        claim,
-        &top_support,
-        blocks,
-        &claim_anchor_tokens,
-        &claim_qualifier_tokens,
-    );
-    let aggregated_score = aggregate_support_score(
-        claim,
-        &normalized_claim,
-        &claim_tokens,
-        &claim_numeric_tokens,
-        &top_support,
-        blocks,
-    );
-    let effective_score = best_score.max(aggregated_score);
-
-    if let Some(reason) = assessment.contradiction_reason.clone() {
-        return ClaimResolution {
-            verdict: EvidenceClaimVerdict::Contradicted,
-            support: top_support,
-            confidence: None,
-            reason: Some(reason),
-            checked_refs,
-            guard_failures: assessment.guard_failures,
-            next_action_hint: None,
-        };
-    }
-
-    if effective_score < 0.52 || !assessment.guard_failures.is_empty() {
-        let verdict = if should_keep_browsing(effective_score, &assessment, claim) {
-            EvidenceClaimVerdict::NeedsMoreBrowsing
+    ClaimResolution {
+        verdict: if contradictory_exists {
+            EvidenceClaimVerdict::Contradicted
         } else {
             EvidenceClaimVerdict::InsufficientEvidence
-        };
+        },
+        support: Vec::new(),
+        confidence: None,
+        reason: Some(reason),
+        checked_refs,
+        guard_failures: Vec::new(),
+        next_action_hint: None,
+    }
+}
 
-        return ClaimResolution {
-            verdict: verdict.clone(),
-            support: top_support,
+fn effective_support_score(
+    claim: &ClaimRequest,
+    analysis: &ClaimAnalysisInput,
+    top_support: &[ScoredCandidate<'_>],
+    blocks: &[SnapshotBlock],
+    best_score: f64,
+) -> f64 {
+    let aggregated_score = aggregate_support_score(
+        claim,
+        &analysis.normalized_claim,
+        &analysis.claim_tokens,
+        &analysis.claim_numeric_tokens,
+        top_support,
+        blocks,
+    );
+    best_score.max(aggregated_score)
+}
+
+fn guarded_resolution<'a>(
+    claim: &ClaimRequest,
+    top_support: &[ScoredCandidate<'a>],
+    checked_refs: &[String],
+    assessment: &GuardAssessment,
+    effective_score: f64,
+) -> Option<ClaimResolution<'a>> {
+    if let Some(reason) = assessment.contradiction_reason.clone() {
+        return Some(ClaimResolution {
+            verdict: EvidenceClaimVerdict::Contradicted,
+            support: top_support.to_vec(),
             confidence: None,
-            reason: Some(if verdict == EvidenceClaimVerdict::NeedsMoreBrowsing {
-                UnsupportedClaimReason::NeedsMoreBrowsing
-            } else {
-                UnsupportedClaimReason::InsufficientConfidence
-            }),
-            checked_refs,
-            guard_failures: assessment.guard_failures,
-            next_action_hint: assessment.next_action_hint,
-        };
+            reason: Some(reason),
+            checked_refs: checked_refs.to_vec(),
+            guard_failures: assessment.guard_failures.clone(),
+            next_action_hint: None,
+        });
     }
 
+    if effective_score >= 0.52 && assessment.guard_failures.is_empty() {
+        return None;
+    }
+
+    let verdict = if should_keep_browsing(effective_score, &assessment, claim) {
+        EvidenceClaimVerdict::NeedsMoreBrowsing
+    } else {
+        EvidenceClaimVerdict::InsufficientEvidence
+    };
+
+    Some(ClaimResolution {
+        verdict: verdict.clone(),
+        support: top_support.to_vec(),
+        confidence: None,
+        reason: Some(if verdict == EvidenceClaimVerdict::NeedsMoreBrowsing {
+            UnsupportedClaimReason::NeedsMoreBrowsing
+        } else {
+            UnsupportedClaimReason::InsufficientConfidence
+        }),
+        checked_refs: checked_refs.to_vec(),
+        guard_failures: assessment.guard_failures.clone(),
+        next_action_hint: assessment.next_action_hint.clone(),
+    })
+}
+
+fn supported_resolution<'a>(
+    best_score: f64,
+    top_support: Vec<ScoredCandidate<'a>>,
+    checked_refs: Vec<String>,
+) -> ClaimResolution<'a> {
     let confidence = round_confidence(
         best_score.max(
             top_support
@@ -350,6 +454,11 @@ struct GuardAssessment {
     contradiction_reason: Option<UnsupportedClaimReason>,
     guard_failures: Vec<EvidenceGuardFailure>,
     next_action_hint: Option<String>,
+}
+
+struct GuardCheck {
+    contradiction_reason: Option<UnsupportedClaimReason>,
+    failure: Option<EvidenceGuardFailure>,
 }
 
 fn score_block<'a>(
@@ -712,114 +821,36 @@ fn assess_support_guards(
     let normalized_support = normalize_text(&aggregated_text);
     let mut guard_failures = Vec::new();
     let mut contradiction_reason = None;
-
-    let anchor_coverage = if claim_anchor_tokens.is_empty() {
-        1.0
-    } else {
-        token_overlap_ratio(claim_anchor_tokens, &aggregated_tokens)
-    };
-    let required_anchor_coverage = required_anchor_coverage(claim_anchor_tokens.len());
-    if anchor_coverage + 0.001 < required_anchor_coverage {
-        guard_failures.push(EvidenceGuardFailure {
-            kind: EvidenceGuardKind::AnchorCoverage,
-            detail: format!(
-                "anchor coverage {:.2} is below required {:.2}",
-                anchor_coverage, required_anchor_coverage
-            ),
-        });
-    }
-
-    let qualifier_coverage = if claim_qualifier_tokens.is_empty() {
-        1.0
-    } else {
-        token_overlap_ratio(claim_qualifier_tokens, &aggregated_all_tokens)
-    };
-    if qualifier_coverage < 1.0 {
-        guard_failures.push(EvidenceGuardFailure {
-            kind: EvidenceGuardKind::QualifierCoverage,
-            detail: format!(
-                "qualifier coverage {:.2} is below required 1.00",
-                qualifier_coverage
-            ),
-        });
-    }
-
-    let claim_numeric = numeric_expressions(&claim.statement);
-    let support_numeric = numeric_expressions(&aggregated_text);
-    if !claim_numeric.is_empty() {
-        if support_numeric.is_empty() {
-            guard_failures.push(EvidenceGuardFailure {
-                kind: EvidenceGuardKind::NumericValue,
-                detail: "No exact numeric detail was found in the retrieved support.".to_string(),
-            });
-        } else if !numeric_expressions_match(&claim_numeric, &support_numeric) {
-            contradiction_reason = Some(UnsupportedClaimReason::NumericMismatch);
-            guard_failures.push(EvidenceGuardFailure {
-                kind: EvidenceGuardKind::NumericValue,
-                detail: format!(
-                    "Claim numeric values {:?} do not match support values {:?}.",
-                    claim_numeric
-                        .iter()
-                        .map(NumericExpression::render)
-                        .collect::<Vec<_>>(),
-                    support_numeric
-                        .iter()
-                        .map(NumericExpression::render)
-                        .collect::<Vec<_>>()
-                ),
-            });
-        }
-    }
-
-    let claim_scope = detect_scope_profile(&tokenize_all(&claim.statement));
-    let support_scope = detect_scope_profile(&aggregated_all_tokens);
-    if scope_profiles_contradict(claim_scope, support_scope) {
-        contradiction_reason = Some(UnsupportedClaimReason::ScopeMismatch);
-        guard_failures.push(EvidenceGuardFailure {
-            kind: EvidenceGuardKind::Scope,
-            detail: format!(
-                "Claim scope `{}` conflicts with support scope `{}`.",
-                claim_scope.label(),
-                support_scope.label()
-            ),
-        });
-    } else if claim_scope.requires_explicit_support() && support_scope == ScopeProfile::Unknown {
-        guard_failures.push(EvidenceGuardFailure {
-            kind: EvidenceGuardKind::Scope,
-            detail:
-                "The claim requires explicit scope confirmation, but the support is scope-ambiguous."
-                    .to_string(),
-        });
-    }
-
-    let claim_status = detect_status_profile(&tokenize_all(&claim.statement));
-    let support_status = detect_status_profile(&aggregated_all_tokens);
-    if status_profiles_contradict(claim_status, support_status) {
-        contradiction_reason = Some(UnsupportedClaimReason::StatusMismatch);
-        guard_failures.push(EvidenceGuardFailure {
-            kind: EvidenceGuardKind::Status,
-            detail: format!(
-                "Claim status `{}` conflicts with support status `{}`.",
-                claim_status.label(),
-                support_status.label()
-            ),
-        });
-    } else if claim_status.requires_explicit_support() && support_status == StatusProfile::Unknown {
-        guard_failures.push(EvidenceGuardFailure {
-            kind: EvidenceGuardKind::Status,
-            detail: "The claim requires explicit release-status support, but the support is status-ambiguous.".to_string(),
-        });
-    }
-
-    if contradiction_detected(&normalized_claim, &normalized_support) {
-        contradiction_reason.get_or_insert(UnsupportedClaimReason::NegationMismatch);
-        guard_failures.push(EvidenceGuardFailure {
-            kind: EvidenceGuardKind::Negation,
-            detail:
-                "The retrieved support contains polarity language that conflicts with the claim."
-                    .to_string(),
-        });
-    }
+    apply_guard_check(
+        &mut contradiction_reason,
+        &mut guard_failures,
+        anchor_guard_check(claim_anchor_tokens, &aggregated_tokens),
+    );
+    apply_guard_check(
+        &mut contradiction_reason,
+        &mut guard_failures,
+        qualifier_guard_check(claim_qualifier_tokens, &aggregated_all_tokens),
+    );
+    apply_guard_check(
+        &mut contradiction_reason,
+        &mut guard_failures,
+        numeric_guard_check(&claim.statement, &aggregated_text),
+    );
+    apply_guard_check(
+        &mut contradiction_reason,
+        &mut guard_failures,
+        scope_guard_check(&claim.statement, &aggregated_all_tokens),
+    );
+    apply_guard_check(
+        &mut contradiction_reason,
+        &mut guard_failures,
+        status_guard_check(&claim.statement, &aggregated_all_tokens),
+    );
+    apply_guard_check(
+        &mut contradiction_reason,
+        &mut guard_failures,
+        negation_guard_check(&normalized_claim, &normalized_support),
+    );
 
     GuardAssessment {
         contradiction_reason: contradiction_reason.clone(),
@@ -829,6 +860,209 @@ fn assess_support_guards(
             None
         },
         guard_failures,
+    }
+}
+
+fn apply_guard_check(
+    contradiction_reason: &mut Option<UnsupportedClaimReason>,
+    guard_failures: &mut Vec<EvidenceGuardFailure>,
+    check: GuardCheck,
+) {
+    if let Some(reason) = check.contradiction_reason {
+        contradiction_reason.get_or_insert(reason);
+    }
+    if let Some(failure) = check.failure {
+        guard_failures.push(failure);
+    }
+}
+
+fn anchor_guard_check(claim_anchor_tokens: &[String], aggregated_tokens: &[String]) -> GuardCheck {
+    let anchor_coverage = if claim_anchor_tokens.is_empty() {
+        1.0
+    } else {
+        token_overlap_ratio(claim_anchor_tokens, aggregated_tokens)
+    };
+    let required = required_anchor_coverage(claim_anchor_tokens.len());
+
+    if anchor_coverage + 0.001 >= required {
+        return GuardCheck {
+            contradiction_reason: None,
+            failure: None,
+        };
+    }
+
+    GuardCheck {
+        contradiction_reason: None,
+        failure: Some(EvidenceGuardFailure {
+            kind: EvidenceGuardKind::AnchorCoverage,
+            detail: format!(
+                "anchor coverage {:.2} is below required {:.2}",
+                anchor_coverage, required
+            ),
+        }),
+    }
+}
+
+fn qualifier_guard_check(
+    claim_qualifier_tokens: &[String],
+    aggregated_all_tokens: &[String],
+) -> GuardCheck {
+    let qualifier_coverage = if claim_qualifier_tokens.is_empty() {
+        1.0
+    } else {
+        token_overlap_ratio(claim_qualifier_tokens, aggregated_all_tokens)
+    };
+
+    if qualifier_coverage >= 1.0 {
+        return GuardCheck {
+            contradiction_reason: None,
+            failure: None,
+        };
+    }
+
+    GuardCheck {
+        contradiction_reason: None,
+        failure: Some(EvidenceGuardFailure {
+            kind: EvidenceGuardKind::QualifierCoverage,
+            detail: format!(
+                "qualifier coverage {:.2} is below required 1.00",
+                qualifier_coverage
+            ),
+        }),
+    }
+}
+
+fn numeric_guard_check(claim_text: &str, aggregated_text: &str) -> GuardCheck {
+    let claim_numeric = numeric_expressions(claim_text);
+    let support_numeric = numeric_expressions(aggregated_text);
+
+    if claim_numeric.is_empty() {
+        return GuardCheck {
+            contradiction_reason: None,
+            failure: None,
+        };
+    }
+
+    if support_numeric.is_empty() {
+        return GuardCheck {
+            contradiction_reason: None,
+            failure: Some(EvidenceGuardFailure {
+                kind: EvidenceGuardKind::NumericValue,
+                detail: "No exact numeric detail was found in the retrieved support.".to_string(),
+            }),
+        };
+    }
+
+    if numeric_expressions_match(&claim_numeric, &support_numeric) {
+        return GuardCheck {
+            contradiction_reason: None,
+            failure: None,
+        };
+    }
+
+    GuardCheck {
+        contradiction_reason: Some(UnsupportedClaimReason::NumericMismatch),
+        failure: Some(EvidenceGuardFailure {
+            kind: EvidenceGuardKind::NumericValue,
+            detail: format!(
+                "Claim numeric values {:?} do not match support values {:?}.",
+                claim_numeric
+                    .iter()
+                    .map(NumericExpression::render)
+                    .collect::<Vec<_>>(),
+                support_numeric
+                    .iter()
+                    .map(NumericExpression::render)
+                    .collect::<Vec<_>>()
+            ),
+        }),
+    }
+}
+
+fn scope_guard_check(claim_text: &str, aggregated_all_tokens: &[String]) -> GuardCheck {
+    let claim_scope = detect_scope_profile(&tokenize_all(claim_text));
+    let support_scope = detect_scope_profile(aggregated_all_tokens);
+
+    if scope_profiles_contradict(claim_scope, support_scope) {
+        return GuardCheck {
+            contradiction_reason: Some(UnsupportedClaimReason::ScopeMismatch),
+            failure: Some(EvidenceGuardFailure {
+                kind: EvidenceGuardKind::Scope,
+                detail: format!(
+                    "Claim scope `{}` conflicts with support scope `{}`.",
+                    claim_scope.label(),
+                    support_scope.label()
+                ),
+            }),
+        };
+    }
+
+    if claim_scope.requires_explicit_support() && support_scope == ScopeProfile::Unknown {
+        return GuardCheck {
+            contradiction_reason: None,
+            failure: Some(EvidenceGuardFailure {
+                kind: EvidenceGuardKind::Scope,
+                detail: "The claim requires explicit scope confirmation, but the support is scope-ambiguous.".to_string(),
+            }),
+        };
+    }
+
+    GuardCheck {
+        contradiction_reason: None,
+        failure: None,
+    }
+}
+
+fn status_guard_check(claim_text: &str, aggregated_all_tokens: &[String]) -> GuardCheck {
+    let claim_status = detect_status_profile(&tokenize_all(claim_text));
+    let support_status = detect_status_profile(aggregated_all_tokens);
+
+    if status_profiles_contradict(claim_status, support_status) {
+        return GuardCheck {
+            contradiction_reason: Some(UnsupportedClaimReason::StatusMismatch),
+            failure: Some(EvidenceGuardFailure {
+                kind: EvidenceGuardKind::Status,
+                detail: format!(
+                    "Claim status `{}` conflicts with support status `{}`.",
+                    claim_status.label(),
+                    support_status.label()
+                ),
+            }),
+        };
+    }
+
+    if claim_status.requires_explicit_support() && support_status == StatusProfile::Unknown {
+        return GuardCheck {
+            contradiction_reason: None,
+            failure: Some(EvidenceGuardFailure {
+                kind: EvidenceGuardKind::Status,
+                detail: "The claim requires explicit release-status support, but the support is status-ambiguous.".to_string(),
+            }),
+        };
+    }
+
+    GuardCheck {
+        contradiction_reason: None,
+        failure: None,
+    }
+}
+
+fn negation_guard_check(normalized_claim: &str, normalized_support: &str) -> GuardCheck {
+    if !contradiction_detected(normalized_claim, normalized_support) {
+        return GuardCheck {
+            contradiction_reason: None,
+            failure: None,
+        };
+    }
+
+    GuardCheck {
+        contradiction_reason: Some(UnsupportedClaimReason::NegationMismatch),
+        failure: Some(EvidenceGuardFailure {
+            kind: EvidenceGuardKind::Negation,
+            detail:
+                "The retrieved support contains polarity language that conflicts with the claim."
+                    .to_string(),
+        }),
     }
 }
 

@@ -32,97 +32,14 @@ async function main() {
     "fixtures/scenarios/real-user-research-benchmark/report.json",
   );
 
-  const coreTasks = [
-    {
-      id: "fixture-reference-workflow",
-      ...summarizeExtractBackedTask(
-        referenceWorkflow?.synthesis?.report?.synthesizedNotes ?? [],
-        [referenceWorkflow?.pricingExtract, referenceWorkflow?.docsExtract],
-      ),
-    },
-    {
-      id: "local-live-session-synthesis",
-      ...summarizeExtractBackedTask(
-        liveSynthesis?.synthesis?.report?.synthesizedNotes ?? [],
-        [liveSynthesis?.docsExtract, liveSynthesis?.pricingExtract],
-      ),
-    },
-    {
-      id: "staged-reference-workflow",
-      status:
-        (stagedReference?.taskProof?.supportedClaimRate ?? 0) >= 1 &&
-        (stagedReference?.taskProof?.mixedSourceStageCount ?? 0) >= 2 &&
-        (stagedReference?.taskProof?.listedTabCount ?? 0) >= 2
-          ? "passed"
-          : "failed",
-      supportedClaimRate: stagedReference?.taskProof?.supportedClaimRate ?? 0,
-      extractedClaimCount: stagedReference?.taskProof?.extractedClaimCount ?? 0,
-      noteCount: stagedReference?.taskProof?.synthesizedNoteCount ?? 0,
-    },
-    {
-      id: "customer-fit-baseline",
-      status: customerFit?.status === "validated-alpha" ? "passed" : "failed",
-      supportedClaimRate: customerFit?.qualityScore ?? 0,
-      extractedClaimCount: customerFit?.evidence?.publicWebTaskClaimCount ?? 0,
-      noteCount: customerFit?.evidence?.sessionVisitedUrls ?? 0,
-    },
-    realUserResearch
-      ? {
-          id: "real-user-research-benchmark",
-          status:
-            realUserResearch?.status === "real-user-validated" &&
-            (realUserResearch?.averageSupportedClaimRate ?? 0) >= 1 &&
-            (realUserResearch?.passedScenarioCount ?? 0) >= 3
-              ? "passed"
-              : "failed",
-          supportedClaimRate: realUserResearch?.averageSupportedClaimRate ?? 0,
-          extractedClaimCount: realUserResearch?.totalExtractedClaimCount ?? 0,
-          noteCount:
-            realUserResearch?.scenarios?.reduce(
-              (sum, scenario) =>
-                sum + (scenario?.taskProof?.synthesizedNoteCount ?? 0),
-              0,
-            ) ?? 0,
-        }
-      : {
-          id: "real-user-research-benchmark",
-          status: "failed",
-          supportedClaimRate: 0,
-          extractedClaimCount: 0,
-          noteCount: 0,
-        },
-  ];
-
-  const optionalTasks = [
-    publicReference
-      ? {
-          id: "public-reference-workflow",
-          status:
-            (publicReference?.taskProof?.supportedClaimRate ?? 0) >= 1 &&
-            (publicReference?.taskProof?.extractedClaimCount ?? 0) >= 2
-              ? "passed"
-              : "failed",
-          supportedClaimRate:
-            publicReference?.taskProof?.supportedClaimRate ?? 0,
-          extractedClaimCount:
-            publicReference?.taskProof?.extractedClaimCount ?? 0,
-          noteCount: publicReference?.taskProof?.synthesizedNoteCount ?? 0,
-        }
-      : null,
-    publicWeb
-      ? {
-          id: "public-web-benchmark",
-          status:
-            publicWeb?.status === "public-alpha" &&
-            (publicWeb?.taskProof?.supportedClaimRate ?? 0) >= 1
-              ? "passed"
-              : "failed",
-          supportedClaimRate: publicWeb?.taskProof?.supportedClaimRate ?? 0,
-          extractedClaimCount: publicWeb?.taskProof?.extractedClaimCount ?? 0,
-          noteCount: publicWeb?.taskProof?.synthesizedNoteCount ?? 0,
-        }
-      : null,
-  ].filter(Boolean);
+  const coreTasks = buildCoreTasks({
+    referenceWorkflow,
+    liveSynthesis,
+    stagedReference,
+    customerFit,
+    realUserResearch,
+  });
+  const optionalTasks = buildOptionalTasks({ publicReference, publicWeb });
 
   const corePassed = coreTasks.filter(
     (task) => task.status === "passed",
@@ -147,12 +64,7 @@ async function main() {
     optionalTaskCount: optionalTasks.length,
     coreProxySuccessRate,
     extendedProxySuccessRate,
-    status:
-      coreProxySuccessRate >= 1 && extendedProxySuccessRate >= 0.8
-        ? "proxy-validated"
-        : coreProxySuccessRate >= 1
-          ? "core-proxy-validated"
-          : "conditional",
+    status: proxyStatus(coreProxySuccessRate, extendedProxySuccessRate),
     assumptions: {
       realCustomer:
         "External production telemetry is not available in-repo, so proxy tasks use fixture, local live, public-web, and MCP-backed workflows as a substitute gate.",
@@ -164,6 +76,142 @@ async function main() {
     "fixtures/scenarios/customer-proxy-tasks/report.json",
     report,
   );
+}
+
+function buildCoreTasks({
+  referenceWorkflow,
+  liveSynthesis,
+  stagedReference,
+  customerFit,
+  realUserResearch,
+}) {
+  return [
+    {
+      id: "fixture-reference-workflow",
+      ...summarizeExtractBackedTask(
+        referenceWorkflow?.synthesis?.report?.synthesizedNotes ?? [],
+        [referenceWorkflow?.pricingExtract, referenceWorkflow?.docsExtract],
+      ),
+    },
+    {
+      id: "local-live-session-synthesis",
+      ...summarizeExtractBackedTask(
+        liveSynthesis?.synthesis?.report?.synthesizedNotes ?? [],
+        [liveSynthesis?.docsExtract, liveSynthesis?.pricingExtract],
+      ),
+    },
+    stagedReferenceTask(stagedReference),
+    customerFitTask(customerFit),
+    realUserResearchTask(realUserResearch),
+  ];
+}
+
+function buildOptionalTasks({ publicReference, publicWeb }) {
+  return [
+    publicReferenceTask(publicReference),
+    publicWebTask(publicWeb),
+  ].filter(Boolean);
+}
+
+function stagedReferenceTask(stagedReference) {
+  const passed =
+    (stagedReference?.taskProof?.supportedClaimRate ?? 0) >= 1 &&
+    (stagedReference?.taskProof?.mixedSourceStageCount ?? 0) >= 2 &&
+    (stagedReference?.taskProof?.listedTabCount ?? 0) >= 2;
+
+  return {
+    id: "staged-reference-workflow",
+    status: passed ? "passed" : "failed",
+    supportedClaimRate: stagedReference?.taskProof?.supportedClaimRate ?? 0,
+    extractedClaimCount: stagedReference?.taskProof?.extractedClaimCount ?? 0,
+    noteCount: stagedReference?.taskProof?.synthesizedNoteCount ?? 0,
+  };
+}
+
+function customerFitTask(customerFit) {
+  return {
+    id: "customer-fit-baseline",
+    status: customerFit?.status === "validated-alpha" ? "passed" : "failed",
+    supportedClaimRate: customerFit?.qualityScore ?? 0,
+    extractedClaimCount: customerFit?.evidence?.publicWebTaskClaimCount ?? 0,
+    noteCount: customerFit?.evidence?.sessionVisitedUrls ?? 0,
+  };
+}
+
+function realUserResearchTask(realUserResearch) {
+  if (!realUserResearch) {
+    return {
+      id: "real-user-research-benchmark",
+      status: "failed",
+      supportedClaimRate: 0,
+      extractedClaimCount: 0,
+      noteCount: 0,
+    };
+  }
+
+  const passed =
+    realUserResearch.status === "real-user-validated" &&
+    (realUserResearch.averageSupportedClaimRate ?? 0) >= 1 &&
+    (realUserResearch.passedScenarioCount ?? 0) >= 3;
+
+  return {
+    id: "real-user-research-benchmark",
+    status: passed ? "passed" : "failed",
+    supportedClaimRate: realUserResearch.averageSupportedClaimRate ?? 0,
+    extractedClaimCount: realUserResearch.totalExtractedClaimCount ?? 0,
+    noteCount:
+      realUserResearch.scenarios?.reduce(
+        (sum, scenario) =>
+          sum + (scenario?.taskProof?.synthesizedNoteCount ?? 0),
+        0,
+      ) ?? 0,
+  };
+}
+
+function publicReferenceTask(publicReference) {
+  if (!publicReference) {
+    return null;
+  }
+
+  const passed =
+    (publicReference.taskProof?.supportedClaimRate ?? 0) >= 1 &&
+    (publicReference.taskProof?.extractedClaimCount ?? 0) >= 2;
+
+  return {
+    id: "public-reference-workflow",
+    status: passed ? "passed" : "failed",
+    supportedClaimRate: publicReference.taskProof?.supportedClaimRate ?? 0,
+    extractedClaimCount: publicReference.taskProof?.extractedClaimCount ?? 0,
+    noteCount: publicReference.taskProof?.synthesizedNoteCount ?? 0,
+  };
+}
+
+function publicWebTask(publicWeb) {
+  if (!publicWeb) {
+    return null;
+  }
+
+  const passed =
+    publicWeb.status === "public-alpha" &&
+    (publicWeb.taskProof?.supportedClaimRate ?? 0) >= 1;
+
+  return {
+    id: "public-web-benchmark",
+    status: passed ? "passed" : "failed",
+    supportedClaimRate: publicWeb.taskProof?.supportedClaimRate ?? 0,
+    extractedClaimCount: publicWeb.taskProof?.extractedClaimCount ?? 0,
+    noteCount: publicWeb.taskProof?.synthesizedNoteCount ?? 0,
+  };
+}
+
+function proxyStatus(coreProxySuccessRate, extendedProxySuccessRate) {
+  if (coreProxySuccessRate >= 1 && extendedProxySuccessRate >= 0.8) {
+    return "proxy-validated";
+  }
+  if (coreProxySuccessRate >= 1) {
+    return "core-proxy-validated";
+  }
+  return "conditional";
 }
 
 function summarizeExtractBackedTask(synthesizedNotes, extractRecords) {

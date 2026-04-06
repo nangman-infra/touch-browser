@@ -55,7 +55,9 @@ async function main() {
   );
 }
 
-main().catch((error) => {
+try {
+  await main();
+} catch (error) {
   console.error(
     JSON.stringify(
       {
@@ -67,4 +69,4 @@ main().catch((error) => {
     ),
   );
   process.exitCode = 1;
-});
+}

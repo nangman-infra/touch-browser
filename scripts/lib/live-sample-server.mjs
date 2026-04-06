@@ -14,6 +14,7 @@ import { spawnShell } from "./shell-command.mjs";
 
 export const currentDir = path.dirname(fileURLToPath(import.meta.url));
 export const repoRoot = path.resolve(currentDir, "../..");
+const SHELL_SINGLE_QUOTE_ESCAPE = String.raw`'\''`;
 
 export const liveSamples = [
   {
@@ -159,7 +160,7 @@ export async function runShell(command) {
 }
 
 export function shellEscape(value) {
-  return `'${String(value).replace(/'/g, `'\\''`)}'`;
+  return `'${String(value).replaceAll("'", SHELL_SINGLE_QUOTE_ESCAPE)}'`;
 }
 
 export function stripHtml(html) {

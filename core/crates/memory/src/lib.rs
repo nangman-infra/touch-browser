@@ -78,39 +78,9 @@ pub fn compact_working_set(
     current_refs: &[String],
     limit: usize,
 ) -> CompactionResult {
-    let mut ordered_refs = Vec::new();
-
-    if let Some(report) = evidence {
-        for claim in &report.supported_claims {
-            for block_id in &claim.support {
-                if let Some(block) = snapshot.blocks.iter().find(|block| &block.id == block_id) {
-                    ordered_refs.push(block.stable_ref.clone());
-                }
-            }
-        }
-    }
-
-    for block in &snapshot.blocks {
-        if matches!(
-            block.kind,
-            SnapshotBlockKind::Heading
-                | SnapshotBlockKind::Table
-                | SnapshotBlockKind::List
-                | SnapshotBlockKind::Metadata
-        ) {
-            ordered_refs.push(block.stable_ref.clone());
-        }
-    }
-
-    for stable_ref in current_refs {
-        if snapshot
-            .blocks
-            .iter()
-            .any(|block| &block.stable_ref == stable_ref)
-        {
-            ordered_refs.push(stable_ref.clone());
-        }
-    }
+    let mut ordered_refs = supported_claim_refs(snapshot, evidence);
+    ordered_refs.extend(salient_snapshot_refs(snapshot));
+    ordered_refs.extend(existing_current_refs(snapshot, current_refs));
 
     let mut seen = BTreeSet::new();
     let kept_refs = ordered_refs
@@ -130,6 +100,55 @@ pub fn compact_working_set(
         kept_refs,
         dropped_refs,
     }
+}
+
+fn supported_claim_refs(
+    snapshot: &SnapshotDocument,
+    evidence: Option<&EvidenceReport>,
+) -> Vec<String> {
+    let mut refs = Vec::new();
+
+    if let Some(report) = evidence {
+        for claim in &report.supported_claims {
+            for block_id in &claim.support {
+                if let Some(block) = snapshot.blocks.iter().find(|block| &block.id == block_id) {
+                    refs.push(block.stable_ref.clone());
+                }
+            }
+        }
+    }
+
+    refs
+}
+
+fn salient_snapshot_refs(snapshot: &SnapshotDocument) -> Vec<String> {
+    snapshot
+        .blocks
+        .iter()
+        .filter(|block| {
+            matches!(
+                block.kind,
+                SnapshotBlockKind::Heading
+                    | SnapshotBlockKind::Table
+                    | SnapshotBlockKind::List
+                    | SnapshotBlockKind::Metadata
+            )
+        })
+        .map(|block| block.stable_ref.clone())
+        .collect()
+}
+
+fn existing_current_refs(snapshot: &SnapshotDocument, current_refs: &[String]) -> Vec<String> {
+    current_refs
+        .iter()
+        .filter(|stable_ref| {
+            snapshot
+                .blocks
+                .iter()
+                .any(|block| &block.stable_ref == *stable_ref)
+        })
+        .cloned()
+        .collect()
 }
 
 pub fn plan_memory_turn(

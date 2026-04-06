@@ -1,110 +1,110 @@
 #!/usr/bin/env node
 
-main().catch((error) => {
-  process.stderr.write(`${String(error?.stack ?? error)}\n`);
-  process.exitCode = 1;
-});
-
 async function main() {
   const request = JSON.parse(await readStdin());
   const claims = Array.isArray(request.claims) ? request.claims : [];
   const snapshotBlocks = Array.isArray(request.snapshot?.blocks)
     ? request.snapshot.blocks
     : [];
-  const supportedClaims = new Map(
-    (request.evidenceReport?.evidenceSupportedClaims ?? []).map((claim) => [
-      claim.claimId,
-      claim,
-    ]),
-  );
-  const contradictedClaims = new Map(
-    (request.evidenceReport?.contradictedClaims ?? []).map((claim) => [
-      claim.claimId,
-      claim,
-    ]),
-  );
-  const unsupportedClaims = new Map(
-    (request.evidenceReport?.insufficientEvidenceClaims ?? []).map((claim) => [
-      claim.claimId,
-      claim,
-    ]),
-  );
-  const needsMoreBrowsingClaims = new Map(
-    (request.evidenceReport?.needsMoreBrowsingClaims ?? []).map((claim) => [
-      claim.claimId,
-      claim,
-    ]),
-  );
+  const evidenceIndex = indexEvidenceClaims(request.evidenceReport);
   const blocksById = new Map(snapshotBlocks.map((block) => [block.id, block]));
   const outcomes = claims.map((claim) =>
-    verifyClaim(
-      claim,
-      supportedClaims,
-      contradictedClaims,
-      unsupportedClaims,
-      needsMoreBrowsingClaims,
-      blocksById,
-    ),
+    verifyClaim(claim, evidenceIndex, blocksById),
   );
 
   process.stdout.write(`${JSON.stringify({ outcomes }, null, 2)}\n`);
 }
 
-function verifyClaim(
-  claim,
-  supportedClaims,
-  contradictedClaims,
-  unsupportedClaims,
-  needsMoreBrowsingClaims,
-  blocksById,
-) {
-  const supported = supportedClaims.get(claim.id);
-  const contradicted = contradictedClaims.get(claim.id);
-  const unsupported = unsupportedClaims.get(claim.id);
-  const needsMoreBrowsing = needsMoreBrowsingClaims.get(claim.id);
+function indexEvidenceClaims(evidenceReport) {
+  return {
+    supportedClaims: claimsById(evidenceReport?.evidenceSupportedClaims ?? []),
+    contradictedClaims: claimsById(evidenceReport?.contradictedClaims ?? []),
+    unsupportedClaims: claimsById(
+      evidenceReport?.insufficientEvidenceClaims ?? [],
+    ),
+    needsMoreBrowsingClaims: claimsById(
+      evidenceReport?.needsMoreBrowsingClaims ?? [],
+    ),
+  };
+}
 
+function claimsById(claims) {
+  return new Map(claims.map((claim) => [claim.claimId, claim]));
+}
+
+function verifyClaim(claim, evidenceIndex, blocksById) {
+  const directOutcome = directOutcomeForClaim(claim, evidenceIndex);
+  if (directOutcome) {
+    return directOutcome;
+  }
+
+  const supported = evidenceIndex.supportedClaims.get(claim.id);
+  const analysis = analyzeSupportedClaim(claim, supported, blocksById);
+
+  return {
+    claimId: claim.id,
+    statement: claim.statement,
+    verdict: analysis.verdict,
+    verifierScore: verifierScoreForAnalysis(analysis, supported),
+    notes: notesForAnalysis(analysis, supported),
+  };
+}
+
+function directOutcomeForClaim(claim, evidenceIndex) {
+  const contradicted = evidenceIndex.contradictedClaims.get(claim.id);
   if (contradicted) {
-    return {
-      claimId: claim.id,
-      statement: claim.statement,
-      verdict: "contradicted",
-      verifierScore: 0.1,
-      notes: `Base extractor returned ${contradicted.reason}.`,
-    };
+    return buildOutcome(
+      claim,
+      "contradicted",
+      0.1,
+      `Base extractor returned ${contradicted.reason}.`,
+    );
   }
 
+  const needsMoreBrowsing = evidenceIndex.needsMoreBrowsingClaims.get(claim.id);
   if (needsMoreBrowsing) {
-    return {
-      claimId: claim.id,
-      statement: claim.statement,
-      verdict: "needs-more-browsing",
-      verifierScore: 0.28,
-      notes:
-        needsMoreBrowsing.nextActionHint ??
+    return buildOutcome(
+      claim,
+      "needs-more-browsing",
+      0.28,
+      needsMoreBrowsing.nextActionHint ??
         `Base extractor returned ${needsMoreBrowsing.reason}.`,
-    };
+    );
   }
 
+  const unsupported = evidenceIndex.unsupportedClaims.get(claim.id);
   if (unsupported) {
-    return {
-      claimId: claim.id,
-      statement: claim.statement,
-      verdict: "insufficient-evidence",
-      verifierScore: 0.18,
-      notes: `Base extractor returned ${unsupported.reason}.`,
-    };
+    return buildOutcome(
+      claim,
+      "insufficient-evidence",
+      0.18,
+      `Base extractor returned ${unsupported.reason}.`,
+    );
   }
 
-  if (!supported) {
-    return {
-      claimId: claim.id,
-      statement: claim.statement,
-      verdict: "unresolved",
-      verifierScore: 0.15,
-      notes: "No evidence-supported claim was returned by the base extractor.",
-    };
+  if (!evidenceIndex.supportedClaims.has(claim.id)) {
+    return buildOutcome(
+      claim,
+      "unresolved",
+      0.15,
+      "No evidence-supported claim was returned by the base extractor.",
+    );
   }
 
+  return null;
+}
+
+function buildOutcome(claim, verdict, verifierScore, notes) {
+  return {
+    claimId: claim.id,
+    statement: claim.statement,
+    verdict,
+    verifierScore,
+    notes,
+  };
+}
+
+function analyzeSupportedClaim(claim, supported, blocksById) {
   const supportTexts = (supported.support ?? [])
     .map((id) => blocksById.get(id)?.text ?? "")
     .filter(Boolean);
@@ -129,52 +129,84 @@ function verifyClaim(
     qualifierCoverage >= 1 &&
     numericCheck.kind === "match" &&
     Number(supported.supportScore ?? 0) >= 0.6;
-  const verdict =
-    numericCheck.kind === "mismatch"
-      ? "contradicted"
-      : verified
-        ? "verified"
-        : numericCheck.kind === "missing-support-number" ||
-            qualifierCoverage < 1 ||
-            anchorCoverage < minimumAnchorCoverage
-          ? "needs-more-browsing"
-          : "insufficient-evidence";
 
   return {
-    claimId: claim.id,
-    statement: claim.statement,
-    verdict,
-    verifierScore: Number(
-      Math.max(
-        0,
-        Math.min(
-          1,
-          verdict === "contradicted"
-            ? 0.08
-            : verified
-              ? 0.55 +
-                Number(supported.supportScore ?? 0) * 0.25 +
-                anchorCoverage * 0.2
-              : verdict === "needs-more-browsing"
-                ? 0.24 + anchorCoverage * 0.2 + qualifierCoverage * 0.1
-                : 0.16 + anchorCoverage * 0.2 + qualifierCoverage * 0.1,
-        ),
-      ).toFixed(2),
-    ),
-    notes: [
-      `anchorCoverage=${anchorCoverage.toFixed(2)}`,
-      `qualifierCoverage=${qualifierCoverage.toFixed(2)}`,
-      `numericCheck=${numericCheck.kind}`,
-      `supportScore=${Number(supported.supportScore ?? 0).toFixed(2)}`,
-      verified
-        ? "Conservative verifier accepted the evidence set."
-        : verdict === "contradicted"
-          ? "Conservative verifier found a conflicting numeric or qualifier detail."
-          : verdict === "needs-more-browsing"
-            ? "Conservative verifier requires a more specific source page."
-            : "Conservative verifier left the claim insufficiently grounded.",
-    ].join("; "),
+    anchorCoverage,
+    qualifierCoverage,
+    numericCheck,
+    minimumAnchorCoverage,
+    verified,
+    verdict: supportedVerdict({
+      anchorCoverage,
+      qualifierCoverage,
+      numericCheck,
+      minimumAnchorCoverage,
+      verified,
+    }),
   };
+}
+
+function supportedVerdict({
+  anchorCoverage,
+  qualifierCoverage,
+  numericCheck,
+  minimumAnchorCoverage,
+  verified,
+}) {
+  if (numericCheck.kind === "mismatch") {
+    return "contradicted";
+  }
+  if (verified) {
+    return "verified";
+  }
+  if (
+    numericCheck.kind === "missing-support-number" ||
+    qualifierCoverage < 1 ||
+    anchorCoverage < minimumAnchorCoverage
+  ) {
+    return "needs-more-browsing";
+  }
+  return "insufficient-evidence";
+}
+
+function verifierScoreForAnalysis(analysis, supported) {
+  const supportScore = Number(supported.supportScore ?? 0);
+  let rawScore =
+    0.16 + analysis.anchorCoverage * 0.2 + analysis.qualifierCoverage * 0.1;
+
+  if (analysis.verdict === "contradicted") {
+    rawScore = 0.08;
+  } else if (analysis.verified) {
+    rawScore = 0.55 + supportScore * 0.25 + analysis.anchorCoverage * 0.2;
+  } else if (analysis.verdict === "needs-more-browsing") {
+    rawScore =
+      0.24 + analysis.anchorCoverage * 0.2 + analysis.qualifierCoverage * 0.1;
+  }
+
+  return Number(Math.max(0, Math.min(1, rawScore)).toFixed(2));
+}
+
+function notesForAnalysis(analysis, supported) {
+  return [
+    `anchorCoverage=${analysis.anchorCoverage.toFixed(2)}`,
+    `qualifierCoverage=${analysis.qualifierCoverage.toFixed(2)}`,
+    `numericCheck=${analysis.numericCheck.kind}`,
+    `supportScore=${Number(supported.supportScore ?? 0).toFixed(2)}`,
+    verificationNote(analysis),
+  ].join("; ");
+}
+
+function verificationNote(analysis) {
+  if (analysis.verified) {
+    return "Conservative verifier accepted the evidence set.";
+  }
+  if (analysis.verdict === "contradicted") {
+    return "Conservative verifier found a conflicting numeric or qualifier detail.";
+  }
+  if (analysis.verdict === "needs-more-browsing") {
+    return "Conservative verifier requires a more specific source page.";
+  }
+  return "Conservative verifier left the claim insufficiently grounded.";
 }
 
 function readStdin() {
@@ -191,9 +223,9 @@ function readStdin() {
 function normalizeText(text) {
   return String(text)
     .toLowerCase()
-    .replace(/[^a-z0-9]+/g, " ")
+    .replaceAll(/[^a-z0-9]+/g, " ")
     .trim()
-    .replace(/\s+/g, " ");
+    .replaceAll(/\s+/g, " ");
 }
 
 function stemToken(token) {
@@ -379,3 +411,10 @@ const QUALIFIER_TOKENS = new Set([
   "never",
   "entire",
 ]);
+
+try {
+  await main();
+} catch (error) {
+  process.stderr.write(`${String(error?.stack ?? error)}\n`);
+  process.exitCode = 1;
+}

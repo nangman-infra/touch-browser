@@ -27,161 +27,21 @@ impl PolicyKernel {
         allowlisted_domains: &[String],
     ) -> PolicyReport {
         let mut blocked_refs = Vec::new();
-        let mut signals = Vec::new();
         let normalized_allowlist = normalize_allowlist(allowlisted_domains);
-
-        if source_risk == SourceRisk::Hostile {
-            signals.push(PolicySignal {
-                kind: PolicySignalKind::HostileSource,
-                stable_ref: None,
-                detail: "Source risk is marked hostile.".to_string(),
-            });
-        }
-
-        if !normalized_allowlist.is_empty() {
-            if let Some(source_host) = extract_host(&snapshot.source.source_url) {
-                if !host_is_allowlisted(&source_host, &normalized_allowlist) {
-                    signals.push(PolicySignal {
-                        kind: PolicySignalKind::DomainNotAllowlisted,
-                        stable_ref: None,
-                        detail: format!(
-                            "Source host `{source_host}` is outside the configured allowlist."
-                        ),
-                    });
-                }
-            }
-        }
+        let mut signals = base_policy_signals(snapshot, source_risk.clone(), &normalized_allowlist);
 
         for block in &snapshot.blocks {
-            let hostile_hint = block
-                .attributes
-                .get("hostileHint")
-                .and_then(|value| value.as_str());
-            let is_external = block
-                .attributes
-                .get("external")
-                .and_then(|value| value.as_bool())
-                .unwrap_or(false);
-            let block_href = block
-                .attributes
-                .get("href")
-                .and_then(|value| value.as_str())
-                .map(ToString::to_string);
-
-            match hostile_hint {
-                Some("untrusted-system-language") => {
-                    signals.push(PolicySignal {
-                        kind: PolicySignalKind::UntrustedSystemLanguage,
-                        stable_ref: Some(block.stable_ref.clone()),
-                        detail: "Snapshot contains untrusted system-style language.".to_string(),
-                    });
-                }
-                Some("suspicious-cta") => {
-                    signals.push(PolicySignal {
-                        kind: PolicySignalKind::SuspiciousCta,
-                        stable_ref: Some(block.stable_ref.clone()),
-                        detail: "Snapshot contains a suspicious CTA.".to_string(),
-                    });
-                }
-                _ => {}
-            }
-
-            if block_matches_bot_challenge(block, snapshot) {
-                signals.push(PolicySignal {
-                    kind: PolicySignalKind::BotChallenge,
-                    stable_ref: Some(block.stable_ref.clone()),
-                    detail: "Snapshot contains a likely bot or CAPTCHA challenge.".to_string(),
-                });
-            }
-
-            if block_matches_mfa_challenge(block, snapshot) {
-                signals.push(PolicySignal {
-                    kind: PolicySignalKind::MfaChallenge,
-                    stable_ref: Some(block.stable_ref.clone()),
-                    detail: "Snapshot contains a likely MFA or verification checkpoint."
-                        .to_string(),
-                });
-            }
-
-            if block_matches_sensitive_auth_flow(block, snapshot) {
-                signals.push(PolicySignal {
-                    kind: PolicySignalKind::SensitiveAuthFlow,
-                    stable_ref: Some(block.stable_ref.clone()),
-                    detail:
-                        "Snapshot contains a credential-bearing sign-in or authentication flow."
-                            .to_string(),
-                });
-            }
-
-            if block_matches_high_risk_write(block) {
-                signals.push(PolicySignal {
-                    kind: PolicySignalKind::HighRiskWrite,
-                    stable_ref: Some(block.stable_ref.clone()),
-                    detail:
-                        "Snapshot contains a high-risk write action such as payment, transfer, or destructive confirmation."
-                            .to_string(),
-                });
-            }
-
-            if is_external && source_risk == SourceRisk::Hostile {
-                blocked_refs.push(block.stable_ref.clone());
-                signals.push(PolicySignal {
-                    kind: PolicySignalKind::ExternalActionable,
-                    stable_ref: Some(block.stable_ref.clone()),
-                    detail: "External actionable element is blocked on hostile sources."
-                        .to_string(),
-                });
-            }
-
-            if let Some(href) = block_href.as_deref() {
-                if !normalized_allowlist.is_empty() {
-                    if let Some(target_host) =
-                        resolve_target_host(&snapshot.source.source_url, href)
-                    {
-                        if !host_is_allowlisted(&target_host, &normalized_allowlist) {
-                            blocked_refs.push(block.stable_ref.clone());
-                            signals.push(PolicySignal {
-                                kind: PolicySignalKind::DomainNotAllowlisted,
-                                stable_ref: Some(block.stable_ref.clone()),
-                                detail: format!(
-                                    "Target host `{target_host}` is outside the configured allowlist."
-                                ),
-                            });
-                        }
-                    }
-                }
-            }
-
-            if source_risk == SourceRisk::Hostile
-                && matches!(
-                    block.kind,
-                    SnapshotBlockKind::Form | SnapshotBlockKind::Button | SnapshotBlockKind::Input
-                )
-            {
-                blocked_refs.push(block.stable_ref.clone());
-                signals.push(PolicySignal {
-                    kind: PolicySignalKind::HostileFormControl,
-                    stable_ref: Some(block.stable_ref.clone()),
-                    detail: "Interactive controls are blocked on hostile sources.".to_string(),
-                });
-            }
+            let outcome =
+                evaluate_block_policy(snapshot, block, source_risk.clone(), &normalized_allowlist);
+            blocked_refs.extend(outcome.blocked_refs);
+            signals.extend(outcome.signals);
         }
 
         blocked_refs.sort();
         blocked_refs.dedup();
 
-        let decision = if !blocked_refs.is_empty() {
-            PolicyDecision::Block
-        } else if !signals.is_empty() || source_risk == SourceRisk::Hostile {
-            PolicyDecision::Review
-        } else {
-            PolicyDecision::Allow
-        };
-        let risk_class = match decision {
-            PolicyDecision::Allow => RiskClass::Low,
-            PolicyDecision::Review => RiskClass::High,
-            PolicyDecision::Block => RiskClass::Blocked,
-        };
+        let decision = policy_decision(&blocked_refs, &signals, source_risk.clone());
+        let risk_class = risk_class_for(&decision);
 
         PolicyReport {
             decision,
@@ -191,6 +51,220 @@ impl PolicyKernel {
             signals,
             allowlisted_domains: normalized_allowlist,
         }
+    }
+}
+
+struct BlockPolicyOutcome {
+    blocked_refs: Vec<String>,
+    signals: Vec<PolicySignal>,
+}
+
+fn base_policy_signals(
+    snapshot: &SnapshotDocument,
+    source_risk: SourceRisk,
+    normalized_allowlist: &[String],
+) -> Vec<PolicySignal> {
+    let mut signals = Vec::new();
+
+    if source_risk == SourceRisk::Hostile {
+        signals.push(PolicySignal {
+            kind: PolicySignalKind::HostileSource,
+            stable_ref: None,
+            detail: "Source risk is marked hostile.".to_string(),
+        });
+    }
+
+    if let Some(signal) = allowlist_source_signal(snapshot, normalized_allowlist) {
+        signals.push(signal);
+    }
+
+    signals
+}
+
+fn allowlist_source_signal(
+    snapshot: &SnapshotDocument,
+    normalized_allowlist: &[String],
+) -> Option<PolicySignal> {
+    if normalized_allowlist.is_empty() {
+        return None;
+    }
+
+    let source_host = extract_host(&snapshot.source.source_url)?;
+    if host_is_allowlisted(&source_host, normalized_allowlist) {
+        return None;
+    }
+
+    Some(PolicySignal {
+        kind: PolicySignalKind::DomainNotAllowlisted,
+        stable_ref: None,
+        detail: format!("Source host `{source_host}` is outside the configured allowlist."),
+    })
+}
+
+fn evaluate_block_policy(
+    snapshot: &SnapshotDocument,
+    block: &SnapshotBlock,
+    source_risk: SourceRisk,
+    normalized_allowlist: &[String],
+) -> BlockPolicyOutcome {
+    let mut outcome = BlockPolicyOutcome {
+        blocked_refs: Vec::new(),
+        signals: block_hint_signals(block),
+    };
+
+    if block_matches_bot_challenge(block, snapshot) {
+        outcome.signals.push(PolicySignal {
+            kind: PolicySignalKind::BotChallenge,
+            stable_ref: Some(block.stable_ref.clone()),
+            detail: "Snapshot contains a likely bot or CAPTCHA challenge.".to_string(),
+        });
+    }
+
+    if block_matches_mfa_challenge(block, snapshot) {
+        outcome.signals.push(PolicySignal {
+            kind: PolicySignalKind::MfaChallenge,
+            stable_ref: Some(block.stable_ref.clone()),
+            detail: "Snapshot contains a likely MFA or verification checkpoint.".to_string(),
+        });
+    }
+
+    if block_matches_sensitive_auth_flow(block, snapshot) {
+        outcome.signals.push(PolicySignal {
+            kind: PolicySignalKind::SensitiveAuthFlow,
+            stable_ref: Some(block.stable_ref.clone()),
+            detail: "Snapshot contains a credential-bearing sign-in or authentication flow."
+                .to_string(),
+        });
+    }
+
+    if block_matches_high_risk_write(block) {
+        outcome.signals.push(PolicySignal {
+            kind: PolicySignalKind::HighRiskWrite,
+            stable_ref: Some(block.stable_ref.clone()),
+            detail: "Snapshot contains a high-risk write action such as payment, transfer, or destructive confirmation.".to_string(),
+        });
+    }
+
+    if let Some(signal) = hostile_external_signal(block, source_risk.clone()) {
+        outcome.blocked_refs.push(block.stable_ref.clone());
+        outcome.signals.push(signal);
+    }
+
+    if let Some(signal) = allowlist_target_signal(snapshot, block, normalized_allowlist) {
+        outcome.blocked_refs.push(block.stable_ref.clone());
+        outcome.signals.push(signal);
+    }
+
+    if let Some(signal) = hostile_form_control_signal(block, source_risk) {
+        outcome.blocked_refs.push(block.stable_ref.clone());
+        outcome.signals.push(signal);
+    }
+
+    outcome
+}
+
+fn block_hint_signals(block: &SnapshotBlock) -> Vec<PolicySignal> {
+    match block
+        .attributes
+        .get("hostileHint")
+        .and_then(|value| value.as_str())
+    {
+        Some("untrusted-system-language") => vec![PolicySignal {
+            kind: PolicySignalKind::UntrustedSystemLanguage,
+            stable_ref: Some(block.stable_ref.clone()),
+            detail: "Snapshot contains untrusted system-style language.".to_string(),
+        }],
+        Some("suspicious-cta") => vec![PolicySignal {
+            kind: PolicySignalKind::SuspiciousCta,
+            stable_ref: Some(block.stable_ref.clone()),
+            detail: "Snapshot contains a suspicious CTA.".to_string(),
+        }],
+        _ => Vec::new(),
+    }
+}
+
+fn hostile_external_signal(block: &SnapshotBlock, source_risk: SourceRisk) -> Option<PolicySignal> {
+    let is_external = block
+        .attributes
+        .get("external")
+        .and_then(|value| value.as_bool())
+        .unwrap_or(false);
+
+    if !is_external || source_risk != SourceRisk::Hostile {
+        return None;
+    }
+
+    Some(PolicySignal {
+        kind: PolicySignalKind::ExternalActionable,
+        stable_ref: Some(block.stable_ref.clone()),
+        detail: "External actionable element is blocked on hostile sources.".to_string(),
+    })
+}
+
+fn allowlist_target_signal(
+    snapshot: &SnapshotDocument,
+    block: &SnapshotBlock,
+    normalized_allowlist: &[String],
+) -> Option<PolicySignal> {
+    if normalized_allowlist.is_empty() {
+        return None;
+    }
+
+    let href = block
+        .attributes
+        .get("href")
+        .and_then(|value| value.as_str())?;
+    let target_host = resolve_target_host(&snapshot.source.source_url, href)?;
+    if host_is_allowlisted(&target_host, normalized_allowlist) {
+        return None;
+    }
+
+    Some(PolicySignal {
+        kind: PolicySignalKind::DomainNotAllowlisted,
+        stable_ref: Some(block.stable_ref.clone()),
+        detail: format!("Target host `{target_host}` is outside the configured allowlist."),
+    })
+}
+
+fn hostile_form_control_signal(
+    block: &SnapshotBlock,
+    source_risk: SourceRisk,
+) -> Option<PolicySignal> {
+    if source_risk != SourceRisk::Hostile
+        || !matches!(
+            block.kind,
+            SnapshotBlockKind::Form | SnapshotBlockKind::Button | SnapshotBlockKind::Input
+        )
+    {
+        return None;
+    }
+
+    Some(PolicySignal {
+        kind: PolicySignalKind::HostileFormControl,
+        stable_ref: Some(block.stable_ref.clone()),
+        detail: "Interactive controls are blocked on hostile sources.".to_string(),
+    })
+}
+
+fn policy_decision(
+    blocked_refs: &[String],
+    signals: &[PolicySignal],
+    source_risk: SourceRisk,
+) -> PolicyDecision {
+    if !blocked_refs.is_empty() {
+        PolicyDecision::Block
+    } else if !signals.is_empty() || source_risk == SourceRisk::Hostile {
+        PolicyDecision::Review
+    } else {
+        PolicyDecision::Allow
+    }
+}
+
+fn risk_class_for(decision: &PolicyDecision) -> RiskClass {
+    match decision {
+        PolicyDecision::Allow => RiskClass::Low,
+        PolicyDecision::Review => RiskClass::High,
+        PolicyDecision::Block => RiskClass::Blocked,
     }
 }
 

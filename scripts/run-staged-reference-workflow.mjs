@@ -1,6 +1,6 @@
 import { renderCompactSnapshot } from "./lib/compact-snapshot.mjs";
 import { claimOutcomes as getClaimOutcomes } from "./lib/evidence-report.mjs";
-import { repoRoot, withLiveSampleServer } from "./lib/live-sample-server.mjs";
+import { withLiveSampleServer } from "./lib/live-sample-server.mjs";
 import {
   closeSessionQuietly,
   createWorkflowClient,

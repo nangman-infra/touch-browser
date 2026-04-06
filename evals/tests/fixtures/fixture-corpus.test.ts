@@ -64,31 +64,40 @@ describe("fixture corpus", () => {
   it("resolves each fixture html path", async () => {
     const fixtures = await loadFixtures();
 
-    await Promise.all(
+    const resolved = await Promise.all(
       fixtures.map(async (fixture) => {
         await access(resolveFixtureHtmlPath(fixture));
+        return fixture.id;
       }),
     );
+
+    expect(resolved).toHaveLength(fixtures.length);
   });
 
   it("declares an expected snapshot file for each fixture", async () => {
     const fixtures = await loadFixtures();
 
-    await Promise.all(
+    const resolved = await Promise.all(
       fixtures.map(async (fixture) => {
         await access(resolveFixtureSnapshotPath(fixture));
+        return fixture.id;
       }),
     );
+
+    expect(resolved).toHaveLength(fixtures.length);
   });
 
   it("declares an expected evidence file for each fixture", async () => {
     const fixtures = await loadFixtures();
 
-    await Promise.all(
+    const resolved = await Promise.all(
       fixtures.map(async (fixture) => {
         await access(resolveFixtureEvidencePath(fixture));
+        return fixture.id;
       }),
     );
+
+    expect(resolved).toHaveLength(fixtures.length);
   });
 
   it("requires hostile fixtures to carry hostile signals", async () => {

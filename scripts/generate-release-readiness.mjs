@@ -65,88 +65,60 @@ async function main() {
   const docsReady = await allRepoPathsExist(requiredDocs);
   const docLinksReady = docLinkIntegrity.status === "ok";
   const scriptsReady = await allRepoPathsExist(requiredScripts);
-  const daemonReady = true;
-  const observationReady =
-    observation.averageCleanedDomTokenizerReductionRatio >= 8 &&
-    observation.averageMustContainRecall >= 0.95;
-  const operationsPackageReady =
-    opsPackage.status === "ops-package-ready" &&
-    Object.values(opsPackage.checks).every(Boolean);
-  const coreReady =
-    customerFit.status === "validated-alpha" &&
-    customerProxy.coreProxySuccessRate >= 1 &&
-    safety.status === "validated-alpha";
-  const longSessionReady =
-    memory100.requestedActions >= 100 &&
-    memory100.memorySummary.turnCount >= 100 &&
-    memory100.memorySummary.finalWorkingSetSize <= 6;
-  const mixedSourceReady =
-    stagedReference?.status === "ok" &&
-    (stagedReference?.taskProof?.supportedClaimRate ?? 0) >= 1 &&
-    (stagedReference?.taskProof?.mixedSourceStageCount ?? 0) >= 2;
-  const publicProofReady =
-    (publicWeb?.status === "public-alpha" ? 1 : 0) +
-      (publicReference?.status === "ok" ? 1 : 0) >=
-    1;
-  const realUserEnvironmentReady =
-    realUserResearch?.status === "real-user-validated" &&
-    (realUserResearch?.averageSupportedClaimRate ?? 0) >= 1 &&
-    (realUserResearch?.passedScenarioCount ?? 0) >= 3 &&
-    (realUserResearch?.uniqueDomainCount ?? 0) >= 4;
-  const comparisonBenchmarkReady =
-    toolComparison?.successfulSampleCount === toolComparison?.sampleCount &&
-    (toolComparison?.surfaces?.touchBrowserExtract?.positiveClaimSupportRate ??
-      0) >= 0.75 &&
-    (toolComparison?.surfaces?.touchBrowserExtract
-      ?.structuredCitationCoverageRate ?? 0) >= 1 &&
-    (toolComparison?.surfaces?.touchBrowserCompact?.averageTokens ??
-      Number.POSITIVE_INFINITY) <
-      (toolComparison?.surfaces?.markdownBaseline?.averageTokens ?? 0);
-  const adversarialBenchmarkReady =
-    adversarial?.successfulSampleCount === adversarial?.sampleCount &&
-    (adversarial?.verifiedExactVerdictAccuracy ?? 0) >= 1;
+  const checks = buildReleaseReadinessChecks({
+    customerFit,
+    customerProxy,
+    safety,
+    memory100,
+    stagedReference,
+    publicWeb,
+    publicReference,
+    observation,
+    opsPackage,
+    realUserResearch,
+    toolComparison,
+    adversarial,
+    docsReady,
+    docLinksReady,
+    scriptsReady,
+  });
 
   const readinessScore = roundTo(
     [
-      coreReady ? 1 : 0,
-      longSessionReady ? 1 : 0,
-      mixedSourceReady ? 1 : 0,
-      observationReady ? 1 : 0,
-      operationsPackageReady ? 1 : 0,
+      checks.coreReady ? 1 : 0,
+      checks.longSessionReady ? 1 : 0,
+      checks.mixedSourceReady ? 1 : 0,
+      checks.observationReady ? 1 : 0,
+      checks.operationsPackageReady ? 1 : 0,
       latencyCost.compactTokenCostRatio < 0.7 ? 1 : 0,
-      docsReady && docLinksReady ? 1 : 0,
-      scriptsReady ? 1 : 0,
-      daemonReady ? 1 : 0,
-      publicProofReady ? 1 : 0,
-      realUserEnvironmentReady ? 1 : 0,
-      comparisonBenchmarkReady ? 1 : 0,
-      adversarialBenchmarkReady ? 1 : 0,
+      checks.docsReady ? 1 : 0,
+      checks.scriptsReady ? 1 : 0,
+      checks.daemonReady ? 1 : 0,
+      checks.publicProofReady ? 1 : 0,
+      checks.realUserEnvironmentReady ? 1 : 0,
+      checks.comparisonBenchmarkReady ? 1 : 0,
+      checks.adversarialBenchmarkReady ? 1 : 0,
     ].reduce((sum, value) => sum + value, 0) / 13,
     2,
   );
 
   const report = {
     readinessScore,
-    status:
-      readinessScore >= 0.85
-        ? "pilot-ready"
-        : readinessScore >= 0.7
-          ? "alpha-ready"
-          : "incomplete",
+    status: readinessStatus(readinessScore),
     checks: {
-      coreReady,
-      longSessionReady,
-      mixedSourceReady,
-      observationReady,
-      operationsPackageReady,
-      daemonReady,
-      docsReady: docsReady && docLinksReady,
-      docLinksReady,
-      scriptsReady,
-      publicProofReady,
-      realUserEnvironmentReady,
-      comparisonBenchmarkReady,
-      adversarialBenchmarkReady,
+      coreReady: checks.coreReady,
+      longSessionReady: checks.longSessionReady,
+      mixedSourceReady: checks.mixedSourceReady,
+      observationReady: checks.observationReady,
+      operationsPackageReady: checks.operationsPackageReady,
+      daemonReady: checks.daemonReady,
+      docsReady: checks.docsReady,
+      docLinksReady: checks.docLinksReady,
+      scriptsReady: checks.scriptsReady,
+      publicProofReady: checks.publicProofReady,
+      realUserEnvironmentReady: checks.realUserEnvironmentReady,
+      comparisonBenchmarkReady: checks.comparisonBenchmarkReady,
+      adversarialBenchmarkReady: checks.adversarialBenchmarkReady,
       compactTokenCostRatio: latencyCost.compactTokenCostRatio,
     },
     requiredDocs,
@@ -161,6 +133,118 @@ async function main() {
     "fixtures/scenarios/release-readiness/report.json",
     report,
   );
+}
+
+function buildReleaseReadinessChecks(inputs) {
+  return {
+    daemonReady: true,
+    observationReady: isObservationReady(inputs.observation),
+    operationsPackageReady: isOperationsPackageReady(inputs.opsPackage),
+    coreReady: isCoreReady(
+      inputs.customerFit,
+      inputs.customerProxy,
+      inputs.safety,
+    ),
+    longSessionReady: isLongSessionReady(inputs.memory100),
+    mixedSourceReady: isMixedSourceReady(inputs.stagedReference),
+    docsReady: inputs.docsReady && inputs.docLinksReady,
+    docLinksReady: inputs.docLinksReady,
+    scriptsReady: inputs.scriptsReady,
+    publicProofReady: isPublicProofReady(
+      inputs.publicWeb,
+      inputs.publicReference,
+    ),
+    realUserEnvironmentReady: isRealUserEnvironmentReady(
+      inputs.realUserResearch,
+    ),
+    comparisonBenchmarkReady: isComparisonBenchmarkReady(inputs.toolComparison),
+    adversarialBenchmarkReady: isAdversarialBenchmarkReady(inputs.adversarial),
+  };
+}
+
+function isObservationReady(observation) {
+  return (
+    observation.averageCleanedDomTokenizerReductionRatio >= 8 &&
+    observation.averageMustContainRecall >= 0.95
+  );
+}
+
+function isOperationsPackageReady(opsPackage) {
+  return (
+    opsPackage.status === "ops-package-ready" &&
+    Object.values(opsPackage.checks).every(Boolean)
+  );
+}
+
+function isCoreReady(customerFit, customerProxy, safety) {
+  return (
+    customerFit.status === "validated-alpha" &&
+    customerProxy.coreProxySuccessRate >= 1 &&
+    safety.status === "validated-alpha"
+  );
+}
+
+function isLongSessionReady(memory100) {
+  return (
+    memory100.requestedActions >= 100 &&
+    memory100.memorySummary.turnCount >= 100 &&
+    memory100.memorySummary.finalWorkingSetSize <= 6
+  );
+}
+
+function isMixedSourceReady(stagedReference) {
+  return (
+    stagedReference?.status === "ok" &&
+    (stagedReference?.taskProof?.supportedClaimRate ?? 0) >= 1 &&
+    (stagedReference?.taskProof?.mixedSourceStageCount ?? 0) >= 2
+  );
+}
+
+function isPublicProofReady(publicWeb, publicReference) {
+  return (
+    (publicWeb?.status === "public-alpha" ? 1 : 0) +
+      (publicReference?.status === "ok" ? 1 : 0) >=
+    1
+  );
+}
+
+function isRealUserEnvironmentReady(realUserResearch) {
+  return (
+    realUserResearch?.status === "real-user-validated" &&
+    (realUserResearch?.averageSupportedClaimRate ?? 0) >= 1 &&
+    (realUserResearch?.passedScenarioCount ?? 0) >= 3 &&
+    (realUserResearch?.uniqueDomainCount ?? 0) >= 4
+  );
+}
+
+function isComparisonBenchmarkReady(toolComparison) {
+  return (
+    toolComparison?.successfulSampleCount === toolComparison?.sampleCount &&
+    (toolComparison?.surfaces?.touchBrowserExtract?.positiveClaimSupportRate ??
+      0) >= 0.75 &&
+    (toolComparison?.surfaces?.touchBrowserExtract
+      ?.structuredCitationCoverageRate ?? 0) >= 1 &&
+    (toolComparison?.surfaces?.touchBrowserCompact?.averageTokens ??
+      Number.POSITIVE_INFINITY) <
+      (toolComparison?.surfaces?.markdownBaseline?.averageTokens ?? 0)
+  );
+}
+
+function isAdversarialBenchmarkReady(adversarial) {
+  return (
+    adversarial?.successfulSampleCount === adversarial?.sampleCount &&
+    (adversarial?.verifiedExactVerdictAccuracy ?? 0) >= 1
+  );
+}
+
+function readinessStatus(readinessScore) {
+  if (readinessScore >= 0.85) {
+    return "pilot-ready";
+  }
+  if (readinessScore >= 0.7) {
+    return "alpha-ready";
+  }
+  return "incomplete";
 }
 
 await main();

@@ -97,15 +97,13 @@ export function evalHarnessStatus(): EvalHarnessStatus {
   ].filter(Boolean).length;
 
   return {
-    status:
-      runtimeReady &&
-      mixedSourceReady &&
-      publicProofReady &&
-      realUserResearchReady
-        ? "active"
-        : artifactCount > 0
-          ? "partial"
-          : "missing-artifacts",
+    status: evalHarnessPackageStatus({
+      runtimeReady,
+      mixedSourceReady,
+      publicProofReady,
+      realUserResearchReady,
+      artifactCount,
+    }),
     package: "evals",
     readiness: {
       status: release?.status ?? null,
@@ -129,6 +127,33 @@ export function evalHarnessStatus(): EvalHarnessStatus {
       realUserResearchReady,
     },
   };
+}
+
+function evalHarnessPackageStatus({
+  runtimeReady,
+  mixedSourceReady,
+  publicProofReady,
+  realUserResearchReady,
+  artifactCount,
+}: {
+  readonly runtimeReady: boolean;
+  readonly mixedSourceReady: boolean;
+  readonly publicProofReady: boolean;
+  readonly realUserResearchReady: boolean;
+  readonly artifactCount: number;
+}): EvalHarnessStatus["status"] {
+  if (
+    runtimeReady &&
+    mixedSourceReady &&
+    publicProofReady &&
+    realUserResearchReady
+  ) {
+    return "active";
+  }
+  if (artifactCount > 0) {
+    return "partial";
+  }
+  return "missing-artifacts";
 }
 
 function tryReadJson<T>(relativePath: string): T | null {

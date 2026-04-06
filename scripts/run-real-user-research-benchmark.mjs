@@ -312,23 +312,13 @@ function summarizeTaskProof({
       id: entry.id,
       target: entry.target,
       tabId: entry.tabId,
-      status: matchedSupportedClaim
-        ? "supported"
-        : matchedOutcome
-          ? matchedOutcome.verdict
-          : matchedUnsupportedClaim
-            ? "insufficient-evidence"
-            : "unknown",
-      citationCount: matchedSupportedClaim?.citations
-        ? matchedSupportedClaim.citations.length
-        : matchedSupportedClaim?.citation
-          ? 1
-          : 0,
-      supportRefCount: Array.isArray(matchedSupportedClaim?.supportRefs)
-        ? matchedSupportedClaim.supportRefs.length
-        : Array.isArray(matchedSupportedClaim?.support)
-          ? matchedSupportedClaim.support.length
-          : 0,
+      status: researchClaimStatus(
+        matchedSupportedClaim,
+        matchedOutcome,
+        matchedUnsupportedClaim,
+      ),
+      citationCount: citationCountForClaim(matchedSupportedClaim),
+      supportRefCount: supportRefCountForClaim(matchedSupportedClaim),
     };
   });
 
@@ -359,6 +349,40 @@ function summarizeTaskProof({
     closed: closed?.removed === true,
     extractedSamples: normalized,
   };
+}
+
+function researchClaimStatus(
+  matchedSupportedClaim,
+  matchedOutcome,
+  matchedUnsupportedClaim,
+) {
+  if (matchedSupportedClaim) {
+    return "supported";
+  }
+  if (matchedOutcome) {
+    return matchedOutcome.verdict;
+  }
+  if (matchedUnsupportedClaim) {
+    return "insufficient-evidence";
+  }
+  return "unknown";
+}
+
+function citationCountForClaim(matchedSupportedClaim) {
+  if (matchedSupportedClaim?.citations) {
+    return matchedSupportedClaim.citations.length;
+  }
+  return matchedSupportedClaim?.citation ? 1 : 0;
+}
+
+function supportRefCountForClaim(matchedSupportedClaim) {
+  if (Array.isArray(matchedSupportedClaim?.supportRefs)) {
+    return matchedSupportedClaim.supportRefs.length;
+  }
+  if (Array.isArray(matchedSupportedClaim?.support)) {
+    return matchedSupportedClaim.support.length;
+  }
+  return 0;
 }
 
 function summarizeOpenResult(openResult) {

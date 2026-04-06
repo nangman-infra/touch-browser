@@ -35,12 +35,13 @@ export type FixtureCase = {
 export async function loadFixtureValidator(): Promise<
   ValidateFunction<FixtureCase>
 > {
+  type SchemaCompiler = <T>(schema: object) => ValidateFunction<T>;
   const Ajv2020 = Ajv2020Module as unknown as {
     new (options: {
       allErrors: boolean;
       strict: boolean;
       allowUnionTypes: boolean;
-    }): { compile: <T>(schema: object) => ValidateFunction<T> };
+    }): { compile: SchemaCompiler };
   };
   const ajv = new Ajv2020({
     allErrors: true,

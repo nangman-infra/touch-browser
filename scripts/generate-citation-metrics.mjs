@@ -74,12 +74,6 @@ function analyzeFixture(fixture, evidence, snapshot) {
     ...(evidence.insufficientEvidenceClaims ?? []),
     ...(evidence.needsMoreBrowsingClaims ?? []),
   ];
-  const actualSupportedIds = new Set(
-    actualSupported.map((claim) => claim.claimId),
-  );
-  const actualUnsupportedIds = new Set(
-    actualUnsupported.map((claim) => claim.claimId),
-  );
   const snapshotBlockIds = new Set(snapshot.blocks.map((block) => block.id));
 
   const correctSupportedCount = actualSupported.filter((claim) =>

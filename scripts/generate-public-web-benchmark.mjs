@@ -9,7 +9,6 @@ import {
   ensureCliBuilt,
   normalizeCleanedDom,
   normalizeText,
-  repoRoot,
   roundTo,
   runShell,
   shellEscape,
@@ -320,22 +319,37 @@ function summarizeTaskExtract(sample, tabId, extractResult) {
     sampleId: sample.id,
     tabId,
     claim: sample.claim,
-    status: supported
-      ? "supported"
-      : unsupported
-        ? (matchedOutcome?.verdict ?? "unsupported")
-        : "unknown",
-    citationCount: matchedSupportedClaim?.citations
-      ? matchedSupportedClaim.citations.length
-      : matchedSupportedClaim?.citation
-        ? 1
-        : 0,
-    supportRefCount: Array.isArray(matchedSupportedClaim?.supportRefs)
-      ? matchedSupportedClaim.supportRefs.length
-      : Array.isArray(matchedSupportedClaim?.support)
-        ? matchedSupportedClaim.support.length
-        : 0,
+    status: summarizeClaimStatus(supported, unsupported, matchedOutcome),
+    citationCount: citationCountForClaim(matchedSupportedClaim),
+    supportRefCount: supportRefCountForClaim(matchedSupportedClaim),
   };
+}
+
+function summarizeClaimStatus(supported, unsupported, matchedOutcome) {
+  if (supported) {
+    return "supported";
+  }
+  if (unsupported) {
+    return matchedOutcome?.verdict ?? "unsupported";
+  }
+  return "unknown";
+}
+
+function citationCountForClaim(matchedSupportedClaim) {
+  if (matchedSupportedClaim?.citations) {
+    return matchedSupportedClaim.citations.length;
+  }
+  return matchedSupportedClaim?.citation ? 1 : 0;
+}
+
+function supportRefCountForClaim(matchedSupportedClaim) {
+  if (Array.isArray(matchedSupportedClaim?.supportRefs)) {
+    return matchedSupportedClaim.supportRefs.length;
+  }
+  if (Array.isArray(matchedSupportedClaim?.support)) {
+    return matchedSupportedClaim.support.length;
+  }
+  return 0;
 }
 
 function summarizeTaskProof(extracts, synthesis) {

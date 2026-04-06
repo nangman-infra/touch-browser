@@ -7,6 +7,7 @@ import { spawnShell } from "./lib/shell-command.mjs";
 const currentDir = path.dirname(fileURLToPath(import.meta.url));
 const repoRoot = path.resolve(currentDir, "..");
 const fixturesRoot = path.join(repoRoot, "fixtures", "research");
+const SHELL_SINGLE_QUOTE_ESCAPE = String.raw`'\''`;
 
 async function main() {
   const fixtureMetadataPaths = await listFixtureMetadataPaths(fixturesRoot);
@@ -78,7 +79,7 @@ async function renderSnapshot(htmlPath, sourceUri) {
 }
 
 function shellEscape(value) {
-  return `'${String(value).replaceAll("'", "'\\''")}'`;
+  return `'${String(value).replaceAll("'", SHELL_SINGLE_QUOTE_ESCAPE)}'`;
 }
 
 await main();
