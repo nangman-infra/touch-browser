@@ -80,6 +80,9 @@ jobs:
       - name: Generate Clippy report for SonarQube
         run: pnpm run quality:sonar-reports
 
+      - name: Generate coverage report for SonarQube
+        run: pnpm run quality:sonar-coverage
+
       - name: Run SonarQube scan
         uses: SonarSource/sonarqube-scan-action@v7
         with:

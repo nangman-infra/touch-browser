@@ -39,6 +39,7 @@
     "test": "pnpm run contracts:check && pnpm run contracts:manifest && pnpm run architecture:check && pnpm run fixtures:evidence && pnpm run fixtures:session && pnpm run fixtures:memory && pnpm run fixtures:policy && pnpm run fixtures:safety && pnpm run fixtures:metrics && pnpm run fixtures:browser-metrics && pnpm run fixtures:live-metrics && pnpm run fixtures:citation-metrics && pnpm run fixtures:session-synthesis && pnpm run fixtures:action-surface && pnpm run fixtures:latency-cost && pnpm run fixtures:public-web && pnpm run fixtures:doc-links && pnpm run fixtures:tool-comparison && pnpm run fixtures:adversarial && pnpm run fixtures:reference-workflow && pnpm run fixtures:staged-reference-workflow && pnpm run fixtures:public-reference-workflow && pnpm run fixtures:real-user-research && pnpm run fixtures:customer-fit && pnpm run fixtures:customer-proxy && pnpm run fixtures:ops-package && pnpm run fixtures:release-readiness && pnpm run test:rust && pnpm exec vitest run --config adapters/playwright/vitest.config.ts && pnpm exec vitest run --config evals/vitest.config.ts",
     "quality:ci": "pnpm run lint && cargo fmt --all --check && pnpm run architecture:check && pnpm run typecheck && cargo clippy --workspace --all-targets -- -D warnings && pnpm run test",
     "quality:sonar-reports": "mkdir -p sonar-reports && cargo clippy --workspace --all-targets --message-format=json --quiet > sonar-reports/clippy.json",
+    "quality:sonar-coverage": "pnpm exec vitest run --config adapters/playwright/vitest.config.ts --coverage.enabled true",
     "adapter:playwright": "pnpm exec tsx adapters/playwright/src/index.ts",
     "evals:smoke": "pnpm exec tsx evals/src/index.ts",
     "mcp:bridge": "node scripts/touch-browser-mcp-bridge.mjs",
@@ -60,6 +61,7 @@
     "playwright": "^1.54.0",
     "tsx": "^4.20.0",
     "typescript": "^5.9.0",
-    "vitest": "^3.2.4"
+    "vitest": "^3.2.4",
+    "@vitest/coverage-v8": "^3.2.4"
   }
 }
