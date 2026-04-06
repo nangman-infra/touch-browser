@@ -1504,6 +1504,13 @@ mod tests {
 
         let mut persisted =
             load_browser_cli_session(&session_file).expect("session should load after open");
+        if let Some(context_dir) = persisted.browser_context_dir.as_ref() {
+            let context_path = PathBuf::from(context_dir);
+            if context_path.exists() {
+                fs::remove_dir_all(context_path).expect("managed context dir should clean up");
+            }
+        }
+        persisted.browser_context_dir = None;
         persisted.latest_search = Some(SearchReport {
             version: "1.0.0".to_string(),
             generated_at: DEFAULT_OPENED_AT.to_string(),
@@ -1577,6 +1584,13 @@ mod tests {
 
         let mut persisted =
             load_browser_cli_session(&session_file).expect("session should load after open");
+        if let Some(context_dir) = persisted.browser_context_dir.as_ref() {
+            let context_path = PathBuf::from(context_dir);
+            if context_path.exists() {
+                fs::remove_dir_all(context_path).expect("managed context dir should clean up");
+            }
+        }
+        persisted.browser_context_dir = None;
         persisted.latest_search = Some(SearchReport {
             version: "1.0.0".to_string(),
             generated_at: DEFAULT_OPENED_AT.to_string(),
