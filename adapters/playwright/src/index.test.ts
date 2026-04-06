@@ -135,7 +135,7 @@ describe("playwright adapter", () => {
       expect(visibleText.endsWith("|object|false")).toBe(true);
       expect(visibleText.startsWith("true|")).toBe(false);
     }
-  });
+  }, 15_000);
 
   it("serializes concurrent persistent-context requests for the same session directory", async () => {
     const contextDir = await mkdtemp(

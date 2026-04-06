@@ -137,6 +137,12 @@ const SEARCH_USER_AGENT_FALLBACK =
 let cachedSearchExecutablePath: Promise<string | undefined> | undefined;
 let cachedSearchBrowserVersion: Promise<string | undefined> | undefined;
 
+type SearchIdentityProfile = {
+  readonly executablePath: string | undefined;
+  readonly userAgent: string;
+  readonly browserVersion: string;
+};
+
 export function adapterStatus(): AdapterStatus {
   return {
     status: "ready",
@@ -850,7 +856,7 @@ async function launchPersistentBrowserContext(
     if (source.contextDir) {
       await writeSearchIdentityMarker(contextDir);
     }
-    await installSearchIdentity(context);
+    await installSearchIdentity(context, source);
   }
   return context;
 }
@@ -868,10 +874,8 @@ async function searchIdentityPersistentOptions(source: BrowserSource) {
     return {};
   }
 
-  const [executablePath, userAgent] = await Promise.all([
-    resolveSearchBrowserExecutablePath(),
-    resolveSearchUserAgent(),
-  ]);
+  const { executablePath, userAgent } =
+    await resolveSearchIdentityProfile(source);
   return {
     ...(executablePath ? { executablePath } : {}),
     ignoreDefaultArgs: ["--enable-automation"],
@@ -892,10 +896,8 @@ async function searchIdentityBrowserOptions(source: BrowserSource) {
     return {};
   }
 
-  const [executablePath, userAgent] = await Promise.all([
-    resolveSearchBrowserExecutablePath(),
-    resolveSearchUserAgent(),
-  ]);
+  const { executablePath, userAgent } =
+    await resolveSearchIdentityProfile(source);
   return {
     ...(executablePath ? { executablePath } : {}),
     ignoreDefaultArgs: ["--enable-automation"],
@@ -1030,7 +1032,12 @@ async function loadPageSource(
   source: BrowserSource,
 ): Promise<void> {
   if (source.html) {
-    await page.setContent(source.html, { waitUntil: "domcontentloaded" });
+    if (source.searchIdentity) {
+      const dataUrl = `data:text/html;charset=utf-8,${encodeURIComponent(source.html)}`;
+      await page.goto(dataUrl, { waitUntil: "domcontentloaded" });
+    } else {
+      await page.setContent(source.html, { waitUntil: "domcontentloaded" });
+    }
   } else if (source.url) {
     await page.goto(source.url, { waitUntil: "domcontentloaded" });
     if (source.searchIdentity) {
@@ -1226,10 +1233,46 @@ async function resolveSearchUserAgent(): Promise<string> {
     return explicitUserAgent;
   }
 
-  const fallbackVersion =
-    SEARCH_USER_AGENT_FALLBACK.match(/Chrome\/([0-9.]+)/)?.[1] ?? "146.0.0.0";
-  const version = (await resolveSearchBrowserVersion()) ?? fallbackVersion;
+  const version =
+    (await resolveSearchBrowserVersion()) ?? fallbackSearchBrowserVersion();
   return `Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/${version} Safari/537.36`;
+}
+
+function fallbackSearchBrowserVersion(): string {
+  return SEARCH_USER_AGENT_FALLBACK.match(/Chrome\/([0-9.]+)/)?.[1] ?? "146.0.0.0";
+}
+
+function shouldUseDedicatedSearchBrowser(source: BrowserSource): boolean {
+  return typeof source.url === "string" && source.url.length > 0;
+}
+
+async function resolveSearchIdentityProfile(
+  source: BrowserSource,
+): Promise<SearchIdentityProfile> {
+  const fallbackVersion = fallbackSearchBrowserVersion();
+  const explicitUserAgent = process.env.TOUCH_BROWSER_SEARCH_USER_AGENT;
+
+  if (!shouldUseDedicatedSearchBrowser(source)) {
+    const browserVersion =
+      explicitUserAgent?.match(/Chrome\/([0-9.]+)/)?.[1] ?? fallbackVersion;
+    return {
+      executablePath: undefined,
+      userAgent: explicitUserAgent ?? SEARCH_USER_AGENT_FALLBACK,
+      browserVersion,
+    };
+  }
+
+  const [executablePath, browserVersion, userAgent] = await Promise.all([
+    resolveSearchBrowserExecutablePath(),
+    resolveSearchBrowserVersion(),
+    resolveSearchUserAgent(),
+  ]);
+
+  return {
+    executablePath,
+    userAgent,
+    browserVersion: browserVersion ?? fallbackVersion,
+  };
 }
 
 function buildSearchUserAgentBrands(version: string): Array<{
@@ -1244,13 +1287,13 @@ function buildSearchUserAgentBrands(version: string): Array<{
   ];
 }
 
-async function installSearchIdentity(context: BrowserContext): Promise<void> {
+async function installSearchIdentity(
+  context: BrowserContext,
+  source: BrowserSource,
+): Promise<void> {
   const languages = resolveSearchLanguages();
-  const userAgent = await resolveSearchUserAgent();
-  const browserVersion =
-    (await resolveSearchBrowserVersion()) ??
-    userAgent.match(/Chrome\/([0-9.]+)/)?.[1] ??
-    "146.0.0.0";
+  const { userAgent, browserVersion } =
+    await resolveSearchIdentityProfile(source);
   const userAgentDataBrands = buildSearchUserAgentBrands(browserVersion);
 
   await context.addInitScript(
@@ -1327,16 +1370,23 @@ async function installSearchIdentity(context: BrowserContext): Promise<void> {
         }),
       });
 
-      if (!("chrome" in window)) {
-        Object.defineProperty(window, "chrome", {
+      const chromeValue = {
+        runtime: {},
+        app: {},
+        loadTimes: () => undefined,
+        csi: () => undefined,
+      };
+      try {
+        Object.defineProperty(globalThis, "chrome", {
           configurable: true,
-          value: {
-            runtime: {},
-            app: {},
-            loadTimes: () => undefined,
-            csi: () => undefined,
-          },
+          value: chromeValue,
         });
+      } catch {
+        try {
+          (globalThis as { chrome?: unknown }).chrome = chromeValue;
+        } catch {
+          // Ignore immutable browser fields.
+        }
       }
 
       const patchWebGl = (
