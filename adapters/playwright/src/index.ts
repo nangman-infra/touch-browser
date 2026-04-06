@@ -1365,7 +1365,7 @@ function resolveSearchLocale(): string {
   if (!locale) {
     return "en-US";
   }
-  return locale.replace(/\.UTF-8$/i, "").replace(/_/g, "-");
+  return locale.replace(/\.UTF-8$/i, "").replaceAll("_", "-");
 }
 
 function resolveSearchTimezoneId(): string {
