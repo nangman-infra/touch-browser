@@ -4,7 +4,17 @@ import type {
   JsonRpcSuccess,
 } from "../../src/index.js";
 
-export { adapterStatus, handleRequest } from "../../src/index.js";
+export {
+  adapterStatus,
+  applySearchIdentityToGlobal,
+  handleRequest,
+  hasSearchIdentityMarkerForTests,
+  resetSearchIdentityCachesForTests,
+  resolveSearchBrowserVersionForTests,
+  resolveSearchLocaleForTests,
+  resolveSearchUserAgentForTests,
+  writeSearchIdentityMarkerForTests,
+} from "../../src/index.js";
 
 function describeFailure(response: JsonRpcFailure): string {
   return `${response.error.code}: ${response.error.message}`;

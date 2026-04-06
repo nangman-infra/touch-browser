@@ -143,6 +143,40 @@ type SearchIdentityProfile = {
   readonly browserVersion: string;
 };
 
+type SearchIdentityBrand = {
+  readonly brand: string;
+  readonly version: string;
+};
+
+type SearchIdentityInitPayload = {
+  readonly languages: readonly string[];
+  readonly userAgent: string;
+  readonly browserVersion: string;
+  readonly userAgentDataBrands: readonly SearchIdentityBrand[];
+};
+
+type SearchIdentityWebGlPrototype = {
+  getParameter(parameter: number): unknown;
+};
+
+type SearchIdentityGlobalScope = {
+  readonly navigator: Record<string, unknown> & {
+    permissions?: {
+      query?: (parameters: PermissionDescriptor) => Promise<unknown>;
+    };
+  };
+  readonly Notification: {
+    readonly permission: NotificationPermission;
+  };
+  readonly WebGLRenderingContext?: {
+    prototype?: SearchIdentityWebGlPrototype;
+  };
+  readonly WebGL2RenderingContext?: {
+    prototype?: SearchIdentityWebGlPrototype;
+  };
+  chrome?: unknown;
+};
+
 export function adapterStatus(): AdapterStatus {
   return {
     status: "ready",
@@ -161,6 +195,183 @@ export function adapterStatus(): AdapterStatus {
       "browser.expand",
     ],
   };
+}
+
+export function resetSearchIdentityCachesForTests(): void {
+  cachedSearchExecutablePath = undefined;
+  cachedSearchBrowserVersion = undefined;
+}
+
+export async function hasSearchIdentityMarkerForTests(
+  contextDir: string,
+): Promise<boolean> {
+  return hasSearchIdentityMarker(contextDir);
+}
+
+export async function writeSearchIdentityMarkerForTests(
+  contextDir: string,
+): Promise<void> {
+  await writeSearchIdentityMarker(contextDir);
+}
+
+export function resolveSearchLocaleForTests(): string {
+  return resolveSearchLocale();
+}
+
+export async function resolveSearchBrowserVersionForTests(): Promise<
+  string | undefined
+> {
+  return resolveSearchBrowserVersion();
+}
+
+export async function resolveSearchUserAgentForTests(): Promise<string> {
+  return resolveSearchUserAgent();
+}
+
+export function applySearchIdentityToGlobal(
+  globalScope: SearchIdentityGlobalScope,
+  {
+    languages,
+    userAgent,
+    browserVersion,
+    userAgentDataBrands,
+  }: SearchIdentityInitPayload,
+): void {
+  const patch = (target: object, key: PropertyKey, value: unknown) => {
+    const define = (receiver: object) => {
+      Object.defineProperty(receiver, key, {
+        configurable: true,
+        get: () => value,
+      });
+    };
+    try {
+      define(target);
+    } catch {
+      try {
+        const prototype = Object.getPrototypeOf(target);
+        if (prototype) {
+          define(prototype);
+        }
+      } catch {
+        // Ignore immutable browser fields.
+      }
+    }
+  };
+
+  patch(globalScope.navigator, "webdriver", undefined);
+  patch(globalScope.navigator, "userAgent", userAgent);
+  patch(globalScope.navigator, "vendor", "Google Inc.");
+  patch(globalScope.navigator, "platform", "MacIntel");
+  patch(globalScope.navigator, "hardwareConcurrency", 8);
+  patch(globalScope.navigator, "deviceMemory", 8);
+  patch(globalScope.navigator, "maxTouchPoints", 0);
+  patch(globalScope.navigator, "language", languages[0] ?? "en-US");
+  patch(globalScope.navigator, "languages", languages);
+  patch(globalScope.navigator, "plugins", [
+    { name: "Chrome PDF Plugin", filename: "internal-pdf-viewer" },
+    {
+      name: "Chrome PDF Viewer",
+      filename: "mhjfbmdgcfjbbpaeojofohoefgiehjai",
+    },
+    { name: "Native Client", filename: "internal-nacl-plugin" },
+  ]);
+  patch(globalScope.navigator, "mimeTypes", [
+    { type: "application/pdf", suffixes: "pdf" },
+    { type: "text/pdf", suffixes: "pdf" },
+  ]);
+  patch(globalScope.navigator, "userAgentData", {
+    brands: userAgentDataBrands,
+    mobile: false,
+    platform: "macOS",
+    getHighEntropyValues: async (hints: readonly string[]) => {
+      const values: Record<string, unknown> = {
+        architecture: "x86",
+        bitness: "64",
+        mobile: false,
+        model: "",
+        platform: "macOS",
+        platformVersion: "14.0.0",
+        uaFullVersion: browserVersion,
+        fullVersionList: userAgentDataBrands,
+        wow64: false,
+      };
+      return hints.reduce<Record<string, unknown>>((result, hint) => {
+        if (hint in values) {
+          result[hint] = values[hint];
+        }
+        return result;
+      }, {});
+    },
+    toJSON: () => ({
+      brands: userAgentDataBrands,
+      mobile: false,
+      platform: "macOS",
+    }),
+  });
+
+  const chromeValue = {
+    runtime: {},
+    app: {},
+    loadTimes: () => undefined,
+    csi: () => undefined,
+  };
+  try {
+    Object.defineProperty(globalScope, "chrome", {
+      configurable: true,
+      value: chromeValue,
+    });
+  } catch {
+    try {
+      globalScope.chrome = chromeValue;
+    } catch {
+      // Ignore immutable browser fields.
+    }
+  }
+
+  const patchWebGl = (prototype: SearchIdentityWebGlPrototype | undefined) => {
+    if (!prototype || typeof prototype.getParameter !== "function") {
+      return;
+    }
+    const originalGetParameter = prototype.getParameter;
+    prototype.getParameter = function (parameter: number) {
+      if (parameter === 37445) {
+        return "Intel Inc.";
+      }
+      if (parameter === 37446) {
+        return "Intel Iris OpenGL Engine";
+      }
+      return originalGetParameter.call(this, parameter);
+    };
+  };
+
+  patchWebGl(globalScope.WebGLRenderingContext?.prototype);
+  patchWebGl(globalScope.WebGL2RenderingContext?.prototype);
+
+  const permissions = globalScope.navigator.permissions;
+  if (permissions && typeof permissions.query === "function") {
+    const originalQuery = permissions.query.bind(permissions);
+    permissions.query = ((parameters: PermissionDescriptor) => {
+      if (parameters.name === "notifications") {
+        return Promise.resolve({
+          name: "notifications",
+          state: globalScope.Notification.permission,
+          onchange: null,
+          addEventListener() {},
+          removeEventListener() {},
+          dispatchEvent() {
+            return false;
+          },
+        } as unknown as PermissionStatus);
+      }
+      return originalQuery(parameters);
+    }) as typeof permissions.query;
+  }
+}
+
+function buildSearchIdentityInitScript(
+  payload: SearchIdentityInitPayload,
+): string {
+  return `(${applySearchIdentityToGlobal.toString()})(globalThis, ${JSON.stringify(payload)});`;
 }
 
 export async function handleRequest(
@@ -862,11 +1073,7 @@ async function launchPersistentBrowserContext(
 }
 
 async function launchBrowser(source: BrowserSource) {
-  const launchOptions = {
-    headless: source.headless,
-    ...(await searchIdentityBrowserOptions(source)),
-  };
-  return chromium.launch(launchOptions);
+  return chromium.launch({ headless: source.headless });
 }
 
 async function searchIdentityPersistentOptions(source: BrowserSource) {
@@ -887,26 +1094,6 @@ async function searchIdentityPersistentOptions(source: BrowserSource) {
     ],
     locale: resolveSearchLocale(),
     timezoneId: resolveSearchTimezoneId(),
-    userAgent,
-  };
-}
-
-async function searchIdentityBrowserOptions(source: BrowserSource) {
-  if (!source.searchIdentity) {
-    return {};
-  }
-
-  const { executablePath, userAgent } =
-    await resolveSearchIdentityProfile(source);
-  return {
-    ...(executablePath ? { executablePath } : {}),
-    ignoreDefaultArgs: ["--enable-automation"],
-    args: [
-      "--disable-blink-features=AutomationControlled",
-      "--no-first-run",
-      "--no-default-browser-check",
-      "--disable-dev-shm-usage",
-    ],
     userAgent,
   };
 }
@@ -1178,7 +1365,7 @@ function resolveSearchLocale(): string {
   if (!locale) {
     return "en-US";
   }
-  return locale.replace(/\\.UTF-8$/i, "").replace(/_/g, "-");
+  return locale.replace(/\.UTF-8$/i, "").replace(/_/g, "-");
 }
 
 function resolveSearchTimezoneId(): string {
@@ -1297,143 +1484,14 @@ async function installSearchIdentity(
   const { userAgent, browserVersion } =
     await resolveSearchIdentityProfile(source);
   const userAgentDataBrands = buildSearchUserAgentBrands(browserVersion);
-
-  await context.addInitScript(
-    ({ languages, userAgent, browserVersion, userAgentDataBrands }) => {
-      const patch = (target: object, key: PropertyKey, value: unknown) => {
-        const define = (receiver: object) => {
-          Object.defineProperty(receiver, key, {
-            configurable: true,
-            get: () => value,
-          });
-        };
-        try {
-          define(target);
-        } catch {
-          try {
-            const prototype = Object.getPrototypeOf(target);
-            if (prototype) {
-              define(prototype);
-            }
-          } catch {
-            // Ignore immutable browser fields.
-          }
-        }
-      };
-
-      patch(window.navigator, "webdriver", undefined);
-      patch(window.navigator, "userAgent", userAgent);
-      patch(window.navigator, "vendor", "Google Inc.");
-      patch(window.navigator, "platform", "MacIntel");
-      patch(window.navigator, "hardwareConcurrency", 8);
-      patch(window.navigator, "deviceMemory", 8);
-      patch(window.navigator, "maxTouchPoints", 0);
-      patch(window.navigator, "language", languages[0] ?? "en-US");
-      patch(window.navigator, "languages", languages);
-      patch(window.navigator, "plugins", [
-        { name: "Chrome PDF Plugin", filename: "internal-pdf-viewer" },
-        {
-          name: "Chrome PDF Viewer",
-          filename: "mhjfbmdgcfjbbpaeojofohoefgiehjai",
-        },
-        { name: "Native Client", filename: "internal-nacl-plugin" },
-      ]);
-      patch(window.navigator, "mimeTypes", [
-        { type: "application/pdf", suffixes: "pdf" },
-        { type: "text/pdf", suffixes: "pdf" },
-      ]);
-      patch(window.navigator, "userAgentData", {
-        brands: userAgentDataBrands,
-        mobile: false,
-        platform: "macOS",
-        getHighEntropyValues: async (hints: readonly string[]) => {
-          const values: Record<string, unknown> = {
-            architecture: "x86",
-            bitness: "64",
-            mobile: false,
-            model: "",
-            platform: "macOS",
-            platformVersion: "14.0.0",
-            uaFullVersion: browserVersion,
-            fullVersionList: userAgentDataBrands,
-            wow64: false,
-          };
-          return hints.reduce<Record<string, unknown>>((result, hint) => {
-            if (hint in values) {
-              result[hint] = values[hint];
-            }
-            return result;
-          }, {});
-        },
-        toJSON: () => ({
-          brands: userAgentDataBrands,
-          mobile: false,
-          platform: "macOS",
-        }),
-      });
-
-      const chromeValue = {
-        runtime: {},
-        app: {},
-        loadTimes: () => undefined,
-        csi: () => undefined,
-      };
-      try {
-        Object.defineProperty(globalThis, "chrome", {
-          configurable: true,
-          value: chromeValue,
-        });
-      } catch {
-        try {
-          (globalThis as { chrome?: unknown }).chrome = chromeValue;
-        } catch {
-          // Ignore immutable browser fields.
-        }
-      }
-
-      const patchWebGl = (
-        prototype: WebGLRenderingContext | WebGL2RenderingContext | undefined,
-      ) => {
-        if (!prototype || typeof prototype.getParameter !== "function") {
-          return;
-        }
-        const originalGetParameter = prototype.getParameter;
-        prototype.getParameter = function (parameter: number) {
-          if (parameter === 37445) {
-            return "Intel Inc.";
-          }
-          if (parameter === 37446) {
-            return "Intel Iris OpenGL Engine";
-          }
-          return originalGetParameter.call(this, parameter);
-        };
-      };
-
-      patchWebGl(window.WebGLRenderingContext?.prototype);
-      patchWebGl(window.WebGL2RenderingContext?.prototype);
-
-      const permissions = window.navigator.permissions;
-      if (permissions && typeof permissions.query === "function") {
-        const originalQuery = permissions.query.bind(permissions);
-        permissions.query = ((parameters: PermissionDescriptor) => {
-          if (parameters.name === "notifications") {
-            return Promise.resolve({
-              name: "notifications",
-              state: Notification.permission,
-              onchange: null,
-              addEventListener() {},
-              removeEventListener() {},
-              dispatchEvent() {
-                return false;
-              },
-            } as unknown as PermissionStatus);
-          }
-          return originalQuery(parameters);
-        }) as typeof permissions.query;
-      }
-    },
-    { languages, userAgent, browserVersion, userAgentDataBrands },
-  );
+  await context.addInitScript({
+    content: buildSearchIdentityInitScript({
+      languages,
+      userAgent,
+      browserVersion,
+      userAgentDataBrands,
+    }),
+  });
 }
 
 function sameResolvedUrl(left: string, right: string): boolean {
