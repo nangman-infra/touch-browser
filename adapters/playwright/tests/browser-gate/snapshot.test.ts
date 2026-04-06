@@ -1,8 +1,8 @@
 import { describe, expect, it } from "vitest";
 
 import {
-  handleRequest,
   expectJsonRpcSuccess,
+  handleRequest,
   readVisibleText,
 } from "../support/adapter-helpers.js";
 

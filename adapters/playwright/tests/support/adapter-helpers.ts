@@ -1,4 +1,8 @@
-import type { JsonRpcFailure, JsonRpcResponse, JsonRpcSuccess } from "../../src/index.js";
+import type {
+  JsonRpcFailure,
+  JsonRpcResponse,
+  JsonRpcSuccess,
+} from "../../src/index.js";
 
 export { adapterStatus, handleRequest } from "../../src/index.js";
 
