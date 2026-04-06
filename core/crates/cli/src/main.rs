@@ -799,6 +799,34 @@ mod tests {
                             </html>"#,
                             200,
                         ),
+                        "/docs-shell" => html_response(
+                            r#"<!doctype html>
+                            <html>
+                              <head><title>Docs Shell</title></head>
+                              <body>
+                                <header>
+                                  <a href="/docs">Docs</a>
+                                  <a href="/guides">Guides</a>
+                                  <button>Search</button>
+                                  <button>Ask AI</button>
+                                </header>
+                                <aside>
+                                  <a href="/guides/start">Getting Started</a>
+                                  <a href="/guides/routing">Routing</a>
+                                  <a href="/guides/data">Data</a>
+                                  <a href="/guides/deploy">Deploying</a>
+                                  <a href="/guides/testing">Testing</a>
+                                  <a href="/guides/security">Security</a>
+                                </aside>
+                                <div id="content-area"></div>
+                                <script>
+                                  document.getElementById('content-area').innerHTML =
+                                    '<main><h1>Rendered Guide</h1><p>The browser runtime can recover shell-heavy docs pages.</p><p>It should auto-select browser capture when HTTP only sees navigation chrome.</p></main>';
+                                </script>
+                              </body>
+                            </html>"#,
+                            200,
+                        ),
                         _ => html_response("<html><body>missing</body></html>", 404),
                     };
 
@@ -2154,6 +2182,50 @@ mod tests {
             .expect("markdown text should be present");
         assert!(markdown.contains("Client Rendered Docs"));
         assert!(markdown.contains("The browser runtime can read JS apps."));
+    }
+
+    #[test]
+    fn open_auto_falls_back_to_browser_for_shell_heavy_docs_pages() {
+        let server = CliTestServer::start();
+        let output = dispatch(CliCommand::Open(TargetOptions {
+            target: server.url("/docs-shell"),
+            budget: DEFAULT_REQUESTED_TOKENS,
+            source_risk: None,
+            source_label: None,
+            allowlisted_domains: Vec::new(),
+            browser: false,
+            headed: false,
+            main_only: false,
+            session_file: None,
+        }))
+        .expect("shell-heavy docs page should fallback to browser");
+
+        assert_eq!(output["output"]["source"]["sourceType"], "playwright");
+        assert_eq!(output["output"]["source"]["title"], "Docs Shell");
+    }
+
+    #[test]
+    fn read_view_auto_falls_back_to_browser_for_shell_heavy_docs_pages() {
+        let server = CliTestServer::start();
+        let output = dispatch(CliCommand::ReadView(TargetOptions {
+            target: server.url("/docs-shell"),
+            budget: DEFAULT_REQUESTED_TOKENS,
+            source_risk: None,
+            source_label: None,
+            allowlisted_domains: Vec::new(),
+            browser: false,
+            headed: false,
+            main_only: true,
+            session_file: None,
+        }))
+        .expect("shell-heavy docs read-view should fallback to browser");
+
+        let markdown = output["markdownText"]
+            .as_str()
+            .expect("markdown text should be present");
+        assert!(markdown.contains("Rendered Guide"));
+        assert!(markdown.contains("recover shell-heavy docs pages"));
+        assert!(!markdown.contains("Getting Started"));
     }
 
     #[test]

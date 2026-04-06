@@ -108,6 +108,7 @@ fn layout_zone_for_dom_segment(segment: &str) -> Option<LayoutZone> {
         return Some(LayoutZone::Nav);
     }
     if segment_matches_zone(&normalized, "main")
+        || segment_matches_zone(&normalized, "article")
         || segment_has_any_marker(
             &marker_tokens,
             &[
@@ -117,8 +118,21 @@ fn layout_zone_for_dom_segment(segment: &str) -> Option<LayoutZone> {
                 "mw-parser-output",
                 "vector-body",
                 "article-body",
+                "content-area",
+                "content-container",
+                "content-body",
+                "page-content",
+                "docs-content",
+                "doc-content",
+                "docs-page",
+                "mdx-content",
+                "markdown",
+                "article-content",
             ],
         )
+        || segment_has_marker_prefix(&marker_tokens, "content-")
+        || segment_has_marker_prefix(&marker_tokens, "docs-")
+        || segment_has_marker_suffix(&marker_tokens, "prose")
     {
         return Some(LayoutZone::Main);
     }
@@ -148,4 +162,8 @@ fn segment_has_any_marker(tokens: &BTreeSet<String>, markers: &[&str]) -> bool {
 
 fn segment_has_marker_prefix(tokens: &BTreeSet<String>, prefix: &str) -> bool {
     tokens.iter().any(|token| token.starts_with(prefix))
+}
+
+fn segment_has_marker_suffix(tokens: &BTreeSet<String>, suffix: &str) -> bool {
+    tokens.iter().any(|token| token.ends_with(suffix))
 }

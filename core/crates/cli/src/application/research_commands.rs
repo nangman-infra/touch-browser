@@ -17,8 +17,8 @@ use crate::{
     ReplayTranscript, RiskClass, SearchCommandOutput, SearchEngine, SearchNextCommands,
     SearchOpenResultCommandOutput, SearchOpenResultOptions, SearchOpenTopCommandOutput,
     SearchOpenTopItem, SearchOpenTopOptions, SearchOptions, SearchReport, SearchReportStatus,
-    SearchResultItem, SnapshotBlock, SnapshotBlockKind, SnapshotDocument, SourceRisk, SourceType,
-    TargetOptions, CONTRACT_VERSION, DEFAULT_OPENED_AT,
+    SearchResultItem, SnapshotBlock, SnapshotBlockKind, SnapshotBlockRole, SnapshotDocument,
+    SourceRisk, SourceType, TargetOptions, CONTRACT_VERSION, DEFAULT_OPENED_AT,
 };
 use serde::Serialize;
 
@@ -101,6 +101,54 @@ fn is_meaningful_snapshot_block(block: &SnapshotBlock) -> bool {
     }
 }
 
+fn is_longform_content_block(block: &SnapshotBlock) -> bool {
+    let char_count = block.text.trim().chars().count();
+    match block.kind {
+        SnapshotBlockKind::Heading => {
+            !matches!(
+                block.role,
+                SnapshotBlockRole::PrimaryNav | SnapshotBlockRole::SecondaryNav
+            ) && char_count >= 8
+        }
+        SnapshotBlockKind::Text => char_count >= 80,
+        SnapshotBlockKind::List | SnapshotBlockKind::Table => char_count >= 64,
+        SnapshotBlockKind::Link => {
+            matches!(
+                block.role,
+                SnapshotBlockRole::Content | SnapshotBlockRole::Supporting
+            ) && char_count >= 72
+        }
+        SnapshotBlockKind::Metadata
+        | SnapshotBlockKind::Button
+        | SnapshotBlockKind::Form
+        | SnapshotBlockKind::Input => false,
+    }
+}
+
+fn is_shell_like_block(block: &SnapshotBlock) -> bool {
+    if matches!(
+        block.role,
+        SnapshotBlockRole::PrimaryNav
+            | SnapshotBlockRole::SecondaryNav
+            | SnapshotBlockRole::Cta
+            | SnapshotBlockRole::FormControl
+    ) {
+        return true;
+    }
+
+    match block.kind {
+        SnapshotBlockKind::Link
+        | SnapshotBlockKind::Button
+        | SnapshotBlockKind::Form
+        | SnapshotBlockKind::Input => true,
+        SnapshotBlockKind::List => block.text.split_whitespace().count() <= 12,
+        SnapshotBlockKind::Metadata
+        | SnapshotBlockKind::Heading
+        | SnapshotBlockKind::Text
+        | SnapshotBlockKind::Table => false,
+    }
+}
+
 fn snapshot_requires_browser_fallback(snapshot: &SnapshotDocument) -> bool {
     if snapshot.source.source_type != SourceType::Http {
         return false;
@@ -138,7 +186,48 @@ fn snapshot_requires_browser_fallback(snapshot: &SnapshotDocument) -> bool {
         .map(|block| block.text.trim().chars().count())
         .sum::<usize>();
 
-    main_blocks == 0 && meaningful_blocks.len() <= 2 && meaningful_chars < 240
+    if main_blocks == 0 && meaningful_blocks.len() <= 2 && meaningful_chars < 240 {
+        return true;
+    }
+
+    let longform_blocks = snapshot
+        .blocks
+        .iter()
+        .filter(|block| is_longform_content_block(block))
+        .count();
+    let shell_blocks = snapshot
+        .blocks
+        .iter()
+        .filter(|block| is_shell_like_block(block))
+        .count();
+    let content_headings = snapshot
+        .blocks
+        .iter()
+        .filter(|block| {
+            matches!(block.kind, SnapshotBlockKind::Heading)
+                && !matches!(
+                    block.role,
+                    SnapshotBlockRole::PrimaryNav | SnapshotBlockRole::SecondaryNav
+                )
+                && block.text.trim().chars().count() >= 4
+        })
+        .count();
+    let text_like_blocks = snapshot
+        .blocks
+        .iter()
+        .filter(|block| {
+            matches!(
+                block.kind,
+                SnapshotBlockKind::Text | SnapshotBlockKind::List | SnapshotBlockKind::Table
+            )
+        })
+        .count();
+
+    (longform_blocks == 0 && text_like_blocks <= 1 && shell_blocks >= 8)
+        || (longform_blocks <= 1
+            && meaningful_chars < 320
+            && shell_blocks >= 10
+            && content_headings <= 1)
 }
 
 pub(crate) fn selected_search_result(

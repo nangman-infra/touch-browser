@@ -7,8 +7,9 @@ use std::collections::BTreeSet;
 
 use self::{
     block_filters::{
-        keep_compact_block, keep_main_read_view_block, keep_navigation_block, keep_read_view_block,
-        keep_reading_block,
+        keep_app_main_read_view_block, keep_app_main_reading_block, keep_compact_block,
+        keep_main_read_view_block, keep_main_reading_block, keep_navigation_block,
+        keep_read_view_block,
     },
     compact_render::render_compact_block,
     layout_zones::{block_layout_zone, LayoutZone},
@@ -37,19 +38,106 @@ pub(crate) fn render_compact_snapshot(snapshot: &SnapshotDocument) -> String {
         .join("\n")
 }
 
+fn is_interactive_app_main_surface(snapshot: &SnapshotDocument) -> bool {
+    let mut heading_count = 0usize;
+    let mut substantial_text_count = 0usize;
+    let mut substantial_list_count = 0usize;
+    let mut interactive_count = 0usize;
+
+    for block in &snapshot.blocks {
+        if block_layout_zone(block) != Some(LayoutZone::Main) {
+            continue;
+        }
+
+        let char_count = block.text.trim().chars().count();
+        match block.kind {
+            SnapshotBlockKind::Heading => {
+                if char_count >= 4 {
+                    heading_count += 1;
+                }
+            }
+            SnapshotBlockKind::Text => {
+                if char_count >= 40 {
+                    substantial_text_count += 1;
+                }
+            }
+            SnapshotBlockKind::List | SnapshotBlockKind::Table => {
+                if char_count >= 80 {
+                    substantial_list_count += 1;
+                }
+            }
+            SnapshotBlockKind::Link
+            | SnapshotBlockKind::Button
+            | SnapshotBlockKind::Input
+            | SnapshotBlockKind::Form => interactive_count += 1,
+            SnapshotBlockKind::Metadata => {}
+        }
+    }
+
+    (interactive_count >= 8
+        && heading_count <= 2
+        && substantial_text_count == 0
+        && substantial_list_count == 0)
+        || (interactive_count >= 4
+            && heading_count <= 1
+            && substantial_text_count == 0
+            && substantial_list_count == 0)
+        || (interactive_count >= 3
+            && heading_count == 0
+            && substantial_text_count == 0
+            && substantial_list_count == 0)
+}
+
+fn app_title_fallback_markdown(snapshot: &SnapshotDocument) -> Option<String> {
+    snapshot
+        .source
+        .title
+        .as_deref()
+        .map(str::trim)
+        .filter(|title| !title.is_empty())
+        .map(|title| format!("# {title}"))
+}
+
+fn app_title_fallback_compact(snapshot: &SnapshotDocument) -> Option<String> {
+    snapshot
+        .source
+        .title
+        .as_deref()
+        .map(str::trim)
+        .filter(|title| !title.is_empty())
+        .map(|title| format!("h1 {title}"))
+}
+
 pub(crate) fn render_reading_compact_snapshot(snapshot: &SnapshotDocument) -> String {
     let has_heading = snapshot
         .blocks
         .iter()
         .any(|block| matches!(block.kind, SnapshotBlockKind::Heading));
-
-    snapshot
+    let has_main_zone = snapshot
         .blocks
         .iter()
-        .filter(|block| keep_reading_block(block, has_heading))
+        .any(|block| block_layout_zone(block) == Some(LayoutZone::Main));
+    let app_like_main_surface = has_main_zone && is_interactive_app_main_surface(snapshot);
+
+    let rendered = snapshot
+        .blocks
+        .iter()
+        .filter(|block| {
+            if app_like_main_surface {
+                keep_app_main_reading_block(block, has_heading, has_main_zone)
+            } else {
+                keep_main_reading_block(block, has_heading, has_main_zone)
+            }
+        })
         .map(render_compact_block)
         .collect::<Vec<_>>()
-        .join("\n")
+        .join("\n");
+
+    if rendered.is_empty() && app_like_main_surface {
+        return app_title_fallback_compact(snapshot).unwrap_or(rendered);
+    }
+
+    rendered
 }
 
 pub(crate) fn render_read_view_markdown(snapshot: &SnapshotDocument) -> String {
@@ -77,15 +165,28 @@ pub(crate) fn render_main_read_view_markdown(snapshot: &SnapshotDocument) -> Str
         .blocks
         .iter()
         .any(|block| block_layout_zone(block) == Some(LayoutZone::Main));
+    let app_like_main_surface = has_main_zone && is_interactive_app_main_surface(snapshot);
 
-    snapshot
+    let rendered = snapshot
         .blocks
         .iter()
-        .filter(|block| keep_main_read_view_block(block, has_heading, has_main_zone))
+        .filter(|block| {
+            if app_like_main_surface {
+                keep_app_main_read_view_block(block, has_heading, has_main_zone)
+            } else {
+                keep_main_read_view_block(block, has_heading, has_main_zone)
+            }
+        })
         .map(render_markdown_block)
         .filter(|block| !block.is_empty())
         .collect::<Vec<_>>()
-        .join("\n\n")
+        .join("\n\n");
+
+    if rendered.is_empty() && app_like_main_surface {
+        return app_title_fallback_markdown(snapshot).unwrap_or(rendered);
+    }
+
+    rendered
 }
 
 pub(crate) fn render_navigation_compact_snapshot(snapshot: &SnapshotDocument) -> String {
@@ -207,8 +308,9 @@ fn render_session_claim_markdown(claim: &SessionSynthesisClaim) -> String {
 mod tests {
     use super::{
         compact_ref_index, render_compact_snapshot, render_main_read_view_markdown,
-        render_read_view_markdown, render_session_synthesis_markdown, SnapshotBlock,
-        SnapshotBlockKind, SnapshotBlockRole, SnapshotDocument,
+        render_read_view_markdown, render_reading_compact_snapshot,
+        render_session_synthesis_markdown, SnapshotBlock, SnapshotBlockKind, SnapshotBlockRole,
+        SnapshotDocument,
     };
     use serde_json::json;
     use std::collections::BTreeMap;
@@ -596,6 +698,450 @@ mod tests {
         assert!(markdown.contains("Jazz originated in African-American communities"));
         assert!(!markdown.contains("Contents"));
         assert!(!markdown.contains("Privacy policy"));
+    }
+
+    #[test]
+    fn infers_docs_content_wrappers_as_main_content() {
+        let snapshot = SnapshotDocument {
+            version: CONTRACT_VERSION.to_string(),
+            stable_ref_version: STABLE_REF_VERSION.to_string(),
+            source: SnapshotSource {
+                source_url: "https://docs.firecrawl.dev/introduction".to_string(),
+                source_type: SourceType::Http,
+                title: Some("Quickstart | Firecrawl".to_string()),
+            },
+            budget: SnapshotBudget {
+                requested_tokens: 512,
+                estimated_tokens: 64,
+                emitted_tokens: 64,
+                truncated: false,
+            },
+            blocks: vec![
+                SnapshotBlock {
+                    version: CONTRACT_VERSION.to_string(),
+                    id: "b1".to_string(),
+                    kind: SnapshotBlockKind::Link,
+                    stable_ref: "rbody:link:docs-home".to_string(),
+                    role: SnapshotBlockRole::Cta,
+                    text: "Firecrawl Docs home page".to_string(),
+                    attributes: BTreeMap::from([(
+                        "href".to_string(),
+                        json!("https://firecrawl.dev"),
+                    )]),
+                    evidence: SnapshotEvidence {
+                        source_url: "https://docs.firecrawl.dev/introduction".to_string(),
+                        source_type: SourceType::Http,
+                        dom_path_hint: Some(
+                            "html > body > div.relative.antialiased > div.max-lg-contents.lg-flex > div.max-lg-contents.lg-flex-1 > div#navbar > div.flex.items-center > a"
+                                .to_string(),
+                        ),
+                        byte_range_start: None,
+                        byte_range_end: None,
+                    },
+                },
+                SnapshotBlock {
+                    version: CONTRACT_VERSION.to_string(),
+                    id: "b2".to_string(),
+                    kind: SnapshotBlockKind::List,
+                    stable_ref: "rbody:list:sidebar-group".to_string(),
+                    role: SnapshotBlockRole::Content,
+                    text: "- Quickstart - Skill + CLI - MCP Server".to_string(),
+                    attributes: BTreeMap::new(),
+                    evidence: SnapshotEvidence {
+                        source_url: "https://docs.firecrawl.dev/introduction".to_string(),
+                        source_type: SourceType::Http,
+                        dom_path_hint: Some(
+                            "html > body > div.relative.antialiased > div.max-lg-contents.lg-flex > div.max-lg-contents.lg-flex-1 > div#body-content > div#sidebar-content.hidden.sticky > div#navigation-items > div.text-sm.relative > div.mt-6"
+                                .to_string(),
+                        ),
+                        byte_range_start: None,
+                        byte_range_end: None,
+                    },
+                },
+                SnapshotBlock {
+                    version: CONTRACT_VERSION.to_string(),
+                    id: "b3".to_string(),
+                    kind: SnapshotBlockKind::List,
+                    stable_ref: "rbody:list:table-of-contents-content".to_string(),
+                    role: SnapshotBlockRole::Content,
+                    text: "- Scrape your first website - More capabilities".to_string(),
+                    attributes: BTreeMap::new(),
+                    evidence: SnapshotEvidence {
+                        source_url: "https://docs.firecrawl.dev/introduction".to_string(),
+                        source_type: SourceType::Http,
+                        dom_path_hint: Some(
+                            "html > body > div.relative.antialiased > div.max-lg-contents.lg-flex > div.max-lg-contents.lg-flex-1 > div#body-content > div.w-full > div#content-container.px-5.lg-pr-10 > div#content-area.grow.w-full > div#content.mdx-content.container-columns-container > nav#toc.table-of-contents"
+                                .to_string(),
+                        ),
+                        byte_range_start: None,
+                        byte_range_end: None,
+                    },
+                },
+                SnapshotBlock {
+                    version: CONTRACT_VERSION.to_string(),
+                    id: "b4".to_string(),
+                    kind: SnapshotBlockKind::Link,
+                    stable_ref: "rbody:link:scrape-your-first-website".to_string(),
+                    role: SnapshotBlockRole::Content,
+                    text: "Scrape your first website".to_string(),
+                    attributes: BTreeMap::from([("href".to_string(), json!("#scrape-your-first-website"))]),
+                    evidence: SnapshotEvidence {
+                        source_url: "https://docs.firecrawl.dev/introduction".to_string(),
+                        source_type: SourceType::Http,
+                        dom_path_hint: Some(
+                            "html > body > div.relative.antialiased > div.max-lg-contents.lg-flex > div.max-lg-contents.lg-flex-1 > div#body-content > div.w-full > div#content-container.px-5.lg-pr-10 > div#content-area.grow.w-full > div#content.mdx-content.container-columns-container > nav#toc.table-of-contents > a"
+                                .to_string(),
+                        ),
+                        byte_range_start: None,
+                        byte_range_end: None,
+                    },
+                },
+                SnapshotBlock {
+                    version: CONTRACT_VERSION.to_string(),
+                    id: "b5".to_string(),
+                    kind: SnapshotBlockKind::Heading,
+                    stable_ref: "rbody:heading:scrape-your-first-website".to_string(),
+                    role: SnapshotBlockRole::Content,
+                    text: "Scrape your first website".to_string(),
+                    attributes: BTreeMap::from([("level".to_string(), json!(1))]),
+                    evidence: SnapshotEvidence {
+                        source_url: "https://docs.firecrawl.dev/introduction".to_string(),
+                        source_type: SourceType::Http,
+                        dom_path_hint: Some(
+                            "html > body > div.relative.antialiased > div.max-lg-contents.lg-flex > div.max-lg-contents.lg-flex-1 > div#body-content > div.w-full > div#content-container.px-5.lg-pr-10 > div#content-area.grow.w-full > div#content.mdx-content.container-columns-container > h1"
+                                .to_string(),
+                        ),
+                        byte_range_start: None,
+                        byte_range_end: None,
+                    },
+                },
+                SnapshotBlock {
+                    version: CONTRACT_VERSION.to_string(),
+                    id: "b6".to_string(),
+                    kind: SnapshotBlockKind::Text,
+                    stable_ref: "rbody:text:intro".to_string(),
+                    role: SnapshotBlockRole::Content,
+                    text: "Use Firecrawl with AI agents to scrape, search, and extract structured content from documentation.".to_string(),
+                    attributes: BTreeMap::new(),
+                    evidence: SnapshotEvidence {
+                        source_url: "https://docs.firecrawl.dev/introduction".to_string(),
+                        source_type: SourceType::Http,
+                        dom_path_hint: Some(
+                            "html > body > div.relative.antialiased > div.max-lg-contents.lg-flex > div.max-lg-contents.lg-flex-1 > div#body-content > div.w-full > div#content-container.px-5.lg-pr-10 > div#content-area.grow.w-full > div#content.mdx-content.container-columns-container > p"
+                                .to_string(),
+                        ),
+                        byte_range_start: None,
+                        byte_range_end: None,
+                    },
+                },
+            ],
+        };
+
+        let markdown = render_main_read_view_markdown(&snapshot);
+        assert!(markdown.contains("# Scrape your first website"));
+        assert!(markdown.contains("Use Firecrawl with AI agents"));
+        assert!(!markdown.contains("Firecrawl Docs home page"));
+        assert!(!markdown.contains("Skill + CLI"));
+        assert!(!markdown.contains("More capabilities"));
+
+        let reading_compact = render_reading_compact_snapshot(&snapshot);
+        assert!(reading_compact.contains("Scrape your first website"));
+        assert!(!reading_compact.contains("Firecrawl Docs home page"));
+        assert!(!reading_compact.contains("Skill + CLI"));
+        assert!(!reading_compact.contains("More capabilities"));
+    }
+
+    #[test]
+    fn infers_markdown_prose_wrappers_as_main_content() {
+        let snapshot = SnapshotDocument {
+            version: CONTRACT_VERSION.to_string(),
+            stable_ref_version: STABLE_REF_VERSION.to_string(),
+            source: SnapshotSource {
+                source_url: "https://reactrouter.com/home".to_string(),
+                source_type: SourceType::Http,
+                title: Some("React Router Home".to_string()),
+            },
+            budget: SnapshotBudget {
+                requested_tokens: 512,
+                estimated_tokens: 64,
+                emitted_tokens: 64,
+                truncated: false,
+            },
+            blocks: vec![
+                SnapshotBlock {
+                    version: CONTRACT_VERSION.to_string(),
+                    id: "b1".to_string(),
+                    kind: SnapshotBlockKind::Link,
+                    stable_ref: "rbody:link:api-reference".to_string(),
+                    role: SnapshotBlockRole::Cta,
+                    text: "API Reference".to_string(),
+                    attributes: BTreeMap::from([(
+                        "href".to_string(),
+                        json!("https://api.reactrouter.com/v7/"),
+                    )]),
+                    evidence: SnapshotEvidence {
+                        source_url: "https://reactrouter.com/home".to_string(),
+                        source_type: SourceType::Http,
+                        dom_path_hint: Some(
+                            "html > body > div.header-height-theme-spacing-16 > div.sticky.top-0 > div.relative.z-20 > div.flex.items-center > a"
+                                .to_string(),
+                        ),
+                        byte_range_start: None,
+                        byte_range_end: None,
+                    },
+                },
+                SnapshotBlock {
+                    version: CONTRACT_VERSION.to_string(),
+                    id: "b2".to_string(),
+                    kind: SnapshotBlockKind::Heading,
+                    stable_ref: "rbody:heading:react-router-home".to_string(),
+                    role: SnapshotBlockRole::Content,
+                    text: "React Router Home".to_string(),
+                    attributes: BTreeMap::from([("level".to_string(), json!(1))]),
+                    evidence: SnapshotEvidence {
+                        source_url: "https://reactrouter.com/home".to_string(),
+                        source_type: SourceType::Http,
+                        dom_path_hint: Some(
+                            "html > body > div.block.lg-flex > div.xl-flex.xl-w-full > div.min-w-0.px-4 > div.markdown.w-full > div.md-prose > h1"
+                                .to_string(),
+                        ),
+                        byte_range_start: None,
+                        byte_range_end: None,
+                    },
+                },
+                SnapshotBlock {
+                    version: CONTRACT_VERSION.to_string(),
+                    id: "b3".to_string(),
+                    kind: SnapshotBlockKind::Text,
+                    stable_ref: "rbody:text:intro".to_string(),
+                    role: SnapshotBlockRole::Content,
+                    text: "React Router is a multi-strategy router for React bridging the gap from React 18 to React 19.".to_string(),
+                    attributes: BTreeMap::new(),
+                    evidence: SnapshotEvidence {
+                        source_url: "https://reactrouter.com/home".to_string(),
+                        source_type: SourceType::Http,
+                        dom_path_hint: Some(
+                            "html > body > div.block.lg-flex > div.xl-flex.xl-w-full > div.min-w-0.px-4 > div.markdown.w-full > div.md-prose > p"
+                                .to_string(),
+                        ),
+                        byte_range_start: None,
+                        byte_range_end: None,
+                    },
+                },
+            ],
+        };
+
+        let markdown = render_main_read_view_markdown(&snapshot);
+        assert!(markdown.contains("# React Router Home"));
+        assert!(markdown.contains("multi-strategy router for React"));
+        assert!(!markdown.contains("API Reference"));
+    }
+
+    #[test]
+    fn app_like_main_surfaces_drop_utility_links_from_main_only_outputs() {
+        let snapshot = SnapshotDocument {
+            version: CONTRACT_VERSION.to_string(),
+            stable_ref_version: STABLE_REF_VERSION.to_string(),
+            source: SnapshotSource {
+                source_url: "https://firecrawl.dev/playground".to_string(),
+                source_type: SourceType::Playwright,
+                title: Some("Firecrawl Playground".to_string()),
+            },
+            budget: SnapshotBudget {
+                requested_tokens: 512,
+                estimated_tokens: 48,
+                emitted_tokens: 48,
+                truncated: false,
+            },
+            blocks: vec![
+                SnapshotBlock {
+                    version: CONTRACT_VERSION.to_string(),
+                    id: "b1".to_string(),
+                    kind: SnapshotBlockKind::Link,
+                    stable_ref: "rmain:link:docs".to_string(),
+                    role: SnapshotBlockRole::Cta,
+                    text: "Docs".to_string(),
+                    attributes: BTreeMap::from([
+                        ("href".to_string(), json!("https://firecrawl.dev/docs")),
+                        ("zone".to_string(), json!("main")),
+                    ]),
+                    evidence: SnapshotEvidence {
+                        source_url: "https://firecrawl.dev/playground".to_string(),
+                        source_type: SourceType::Playwright,
+                        dom_path_hint: Some("html > body > main > div.hero > a".to_string()),
+                        byte_range_start: None,
+                        byte_range_end: None,
+                    },
+                },
+                SnapshotBlock {
+                    version: CONTRACT_VERSION.to_string(),
+                    id: "b2".to_string(),
+                    kind: SnapshotBlockKind::Link,
+                    stable_ref: "rmain:link:pricing".to_string(),
+                    role: SnapshotBlockRole::SecondaryNav,
+                    text: "Pricing".to_string(),
+                    attributes: BTreeMap::from([
+                        ("href".to_string(), json!("https://firecrawl.dev/pricing")),
+                        ("zone".to_string(), json!("main")),
+                    ]),
+                    evidence: SnapshotEvidence {
+                        source_url: "https://firecrawl.dev/playground".to_string(),
+                        source_type: SourceType::Playwright,
+                        dom_path_hint: Some("html > body > main > div.hero > nav > a".to_string()),
+                        byte_range_start: None,
+                        byte_range_end: None,
+                    },
+                },
+                SnapshotBlock {
+                    version: CONTRACT_VERSION.to_string(),
+                    id: "b3".to_string(),
+                    kind: SnapshotBlockKind::Heading,
+                    stable_ref: "rmain:heading:playground".to_string(),
+                    role: SnapshotBlockRole::Content,
+                    text: "Playground".to_string(),
+                    attributes: BTreeMap::from([
+                        ("level".to_string(), json!(1)),
+                        ("zone".to_string(), json!("main")),
+                    ]),
+                    evidence: SnapshotEvidence {
+                        source_url: "https://firecrawl.dev/playground".to_string(),
+                        source_type: SourceType::Playwright,
+                        dom_path_hint: Some("html > body > main > section > h1".to_string()),
+                        byte_range_start: None,
+                        byte_range_end: None,
+                    },
+                },
+                SnapshotBlock {
+                    version: CONTRACT_VERSION.to_string(),
+                    id: "b4".to_string(),
+                    kind: SnapshotBlockKind::Button,
+                    stable_ref: "rmain:button:start-scraping".to_string(),
+                    role: SnapshotBlockRole::FormControl,
+                    text: "Start scraping".to_string(),
+                    attributes: BTreeMap::from([("zone".to_string(), json!("main"))]),
+                    evidence: SnapshotEvidence {
+                        source_url: "https://firecrawl.dev/playground".to_string(),
+                        source_type: SourceType::Playwright,
+                        dom_path_hint: Some("html > body > main > form > button".to_string()),
+                        byte_range_start: None,
+                        byte_range_end: None,
+                    },
+                },
+                SnapshotBlock {
+                    version: CONTRACT_VERSION.to_string(),
+                    id: "b5".to_string(),
+                    kind: SnapshotBlockKind::Link,
+                    stable_ref: "rmain:link:github".to_string(),
+                    role: SnapshotBlockRole::Supporting,
+                    text: "GitHub".to_string(),
+                    attributes: BTreeMap::from([
+                        (
+                            "href".to_string(),
+                            json!("https://github.com/mendableai/firecrawl"),
+                        ),
+                        ("zone".to_string(), json!("main")),
+                    ]),
+                    evidence: SnapshotEvidence {
+                        source_url: "https://firecrawl.dev/playground".to_string(),
+                        source_type: SourceType::Playwright,
+                        dom_path_hint: Some("html > body > main > div.social > a".to_string()),
+                        byte_range_start: None,
+                        byte_range_end: None,
+                    },
+                },
+            ],
+        };
+
+        let markdown = render_main_read_view_markdown(&snapshot);
+        assert!(markdown.contains("# Playground"));
+        assert!(!markdown.contains("Docs"));
+        assert!(!markdown.contains("Pricing"));
+        assert!(!markdown.contains("Start scraping"));
+        assert!(!markdown.contains("GitHub"));
+
+        let reading_compact = render_reading_compact_snapshot(&snapshot);
+        assert_eq!(reading_compact, "h1 Playground");
+    }
+
+    #[test]
+    fn app_like_main_surfaces_fall_back_to_title_when_only_controls_remain() {
+        let snapshot = SnapshotDocument {
+            version: CONTRACT_VERSION.to_string(),
+            stable_ref_version: STABLE_REF_VERSION.to_string(),
+            source: SnapshotSource {
+                source_url: "https://play.tailwindcss.com/".to_string(),
+                source_type: SourceType::Playwright,
+                title: Some("Tailwind Play".to_string()),
+            },
+            budget: SnapshotBudget {
+                requested_tokens: 512,
+                estimated_tokens: 24,
+                emitted_tokens: 24,
+                truncated: false,
+            },
+            blocks: vec![
+                SnapshotBlock {
+                    version: CONTRACT_VERSION.to_string(),
+                    id: "b1".to_string(),
+                    kind: SnapshotBlockKind::Button,
+                    stable_ref: "rmain:button:share".to_string(),
+                    role: SnapshotBlockRole::FormControl,
+                    text: "Share".to_string(),
+                    attributes: BTreeMap::from([("zone".to_string(), json!("main"))]),
+                    evidence: SnapshotEvidence {
+                        source_url: "https://play.tailwindcss.com/".to_string(),
+                        source_type: SourceType::Playwright,
+                        dom_path_hint: Some(
+                            "html > body > main > div.toolbar > button".to_string(),
+                        ),
+                        byte_range_start: None,
+                        byte_range_end: None,
+                    },
+                },
+                SnapshotBlock {
+                    version: CONTRACT_VERSION.to_string(),
+                    id: "b2".to_string(),
+                    kind: SnapshotBlockKind::Button,
+                    stable_ref: "rmain:button:format".to_string(),
+                    role: SnapshotBlockRole::FormControl,
+                    text: "Format".to_string(),
+                    attributes: BTreeMap::from([("zone".to_string(), json!("main"))]),
+                    evidence: SnapshotEvidence {
+                        source_url: "https://play.tailwindcss.com/".to_string(),
+                        source_type: SourceType::Playwright,
+                        dom_path_hint: Some(
+                            "html > body > main > div.toolbar > button:nth-of-type(2)".to_string(),
+                        ),
+                        byte_range_start: None,
+                        byte_range_end: None,
+                    },
+                },
+                SnapshotBlock {
+                    version: CONTRACT_VERSION.to_string(),
+                    id: "b3".to_string(),
+                    kind: SnapshotBlockKind::Button,
+                    stable_ref: "rmain:button:download".to_string(),
+                    role: SnapshotBlockRole::FormControl,
+                    text: "Download".to_string(),
+                    attributes: BTreeMap::from([("zone".to_string(), json!("main"))]),
+                    evidence: SnapshotEvidence {
+                        source_url: "https://play.tailwindcss.com/".to_string(),
+                        source_type: SourceType::Playwright,
+                        dom_path_hint: Some(
+                            "html > body > main > div.toolbar > button:nth-of-type(3)".to_string(),
+                        ),
+                        byte_range_start: None,
+                        byte_range_end: None,
+                    },
+                },
+            ],
+        };
+
+        assert_eq!(render_main_read_view_markdown(&snapshot), "# Tailwind Play");
+        assert_eq!(
+            render_reading_compact_snapshot(&snapshot),
+            "h1 Tailwind Play"
+        );
     }
 
     #[test]
