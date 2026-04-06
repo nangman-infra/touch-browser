@@ -7,6 +7,12 @@ import {
   insufficientEvidenceClaims,
 } from "./lib/evidence-report.mjs";
 import {
+  extractFirstElementInnerHtml,
+  replaceElementBlocks,
+  replaceTags,
+  stripHtmlPreservingMarkdown,
+} from "./lib/html-utils.mjs";
+import {
   ensureCliBuilt,
   normalizeText,
   roundTo,
@@ -398,34 +404,56 @@ async function fetchHtml(url) {
 
 function htmlToMarkdownBaseline(html, sourceUrl) {
   let mainHtml = extractMainContentHtml(html);
-  mainHtml = mainHtml
-    .replace(/<(script|style|noscript|svg)[\s\S]*?<\/\1>/gi, " ")
-    .replace(/<(nav|header|footer|aside)[\s\S]*?<\/\1>/gi, " ")
-    .replace(/<br\s*\/?>/gi, "\n")
-    .replace(
-      /<\/(p|div|section|article|main|ul|ol|li|table|tr|td|th|blockquote)>/gi,
-      "\n",
-    );
+
+  for (const tagName of [
+    "script",
+    "style",
+    "noscript",
+    "svg",
+    "nav",
+    "header",
+    "footer",
+    "aside",
+  ]) {
+    mainHtml = replaceElementBlocks(mainHtml, tagName, () => " ");
+  }
+
+  mainHtml = replaceTags(mainHtml, ["br"], () => "\n");
+  mainHtml = replaceTags(
+    mainHtml,
+    [
+      "p",
+      "div",
+      "section",
+      "article",
+      "main",
+      "ul",
+      "ol",
+      "table",
+      "tr",
+      "td",
+      "th",
+      "blockquote",
+    ],
+    ({ closing }) => (closing ? "\n" : ""),
+  );
 
   for (let level = 6; level >= 1; level -= 1) {
-    const pattern = new RegExp(
-      `<h${level}[^>]*>([\\s\\S]*?)<\\/h${level}>`,
-      "gi",
-    );
-    mainHtml = mainHtml.replace(pattern, (_, inner) => {
+    mainHtml = replaceElementBlocks(mainHtml, `h${level}`, ({ inner }) => {
       const text = normalizeText(stripHtml(inner));
       return text ? `\n${"#".repeat(level)} ${text}\n` : "\n";
     });
   }
 
-  mainHtml = mainHtml.replace(
-    /<a\b[^>]*href=(["'])(.*?)\1[^>]*>([\s\S]*?)<\/a>/gi,
-    (_, __, href, inner) => {
-      const text = normalizeText(stripHtml(inner));
-      return text ? `[${text}](${href})` : "";
-    },
-  );
-  mainHtml = mainHtml.replace(/<li[^>]*>([\s\S]*?)<\/li>/gi, (_, inner) => {
+  mainHtml = replaceElementBlocks(mainHtml, "a", ({ attributes, inner }) => {
+    const href = attributes.find(({ name }) => name === "href")?.value?.trim();
+    const text = normalizeText(stripHtml(inner));
+    if (!text) {
+      return "";
+    }
+    return href ? `[${text}](${href})` : text;
+  });
+  mainHtml = replaceElementBlocks(mainHtml, "li", ({ inner }) => {
     const text = normalizeText(stripHtml(inner));
     return text ? `\n- ${text}\n` : "\n";
   });
@@ -440,22 +468,9 @@ function htmlToMarkdownBaseline(html, sourceUrl) {
 }
 
 function extractMainContentHtml(html) {
-  const mainMatch = html.match(/<main\b[^>]*>([\s\S]*?)<\/main>/i);
-  if (mainMatch?.[1]) {
-    return mainMatch[1];
-  }
-
-  const articleMatch = html.match(/<article\b[^>]*>([\s\S]*?)<\/article>/i);
-  if (articleMatch?.[1]) {
-    return articleMatch[1];
-  }
-
-  const bodyMatch = html.match(/<body\b[^>]*>([\s\S]*?)<\/body>/i);
-  return bodyMatch?.[1] ?? html;
-}
-
-function stripHtmlPreservingMarkdown(input) {
-  return input.replace(/<(?!\/?(?:#|\[|\]))[^>]+>/g, " ");
+  return (
+    extractFirstElementInnerHtml(html, ["main", "article", "body"]) ?? html
+  );
 }
 
 function decodeHtmlEntities(text) {

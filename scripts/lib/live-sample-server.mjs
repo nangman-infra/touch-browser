@@ -6,6 +6,10 @@ export {
   renderCompactSnapshot,
   renderReadingCompactSnapshot,
 } from "./compact-snapshot.mjs";
+import {
+  normalizeCleanedDom as normalizeHtmlDom,
+  stripHtml as stripHtmlTags,
+} from "./html-utils.mjs";
 import { spawnShell } from "./shell-command.mjs";
 
 export const currentDir = path.dirname(fileURLToPath(import.meta.url));
@@ -159,50 +163,11 @@ export function shellEscape(value) {
 }
 
 export function stripHtml(html) {
-  return html
-    .replace(/<style[\s\S]*?<\/style>/gi, " ")
-    .replace(/<script[\s\S]*?<\/script>/gi, " ")
-    .replace(/<!--[\s\S]*?-->/g, " ")
-    .replace(/<[^>]+>/g, " ");
+  return stripHtmlTags(html);
 }
 
 export function normalizeCleanedDom(html) {
-  return html
-    .replace(/<style[\s\S]*?<\/style>/gi, " ")
-    .replace(/<script[\s\S]*?<\/script>/gi, " ")
-    .replace(/<!--[\s\S]*?-->/g, " ")
-    .replace(/<([a-z0-9-]+)([^>]*)>/gi, (_, tagName, rawAttrs) => {
-      const keptAttrs = [];
-      for (const match of rawAttrs.matchAll(
-        /\s+([:@a-zA-Z0-9_-]+)(?:=(["'])(.*?)\2)?/g,
-      )) {
-        const attrName = String(match[1]).toLowerCase();
-        const attrValue = match[3];
-        if (
-          attrName === "href" ||
-          attrName === "src" ||
-          attrName === "role" ||
-          attrName === "type" ||
-          attrName === "name" ||
-          attrName === "title" ||
-          attrName === "hidden" ||
-          attrName.startsWith("aria-")
-        ) {
-          keptAttrs.push(
-            attrValue === undefined
-              ? attrName
-              : `${attrName}="${String(attrValue).trim()}"`,
-          );
-        }
-      }
-
-      return keptAttrs.length > 0
-        ? `<${String(tagName).toLowerCase()} ${keptAttrs.join(" ")}>`
-        : `<${String(tagName).toLowerCase()}>`;
-    })
-    .replace(/\s+/g, " ")
-    .replace(/>\s+</g, "><")
-    .trim();
+  return normalizeHtmlDom(html);
 }
 
 export function normalizeText(input) {
