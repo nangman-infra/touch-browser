@@ -5,7 +5,7 @@ import { evalsRootDir } from "./vitest.shared.js";
 export default defineConfig({
   root: evalsRootDir,
   test: {
-    include: ["tests/**/*.test.ts"],
+    include: ["tests/runtime/proof/**/*.test.ts"],
     passWithNoTests: true,
   },
 });

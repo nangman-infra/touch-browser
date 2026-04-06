@@ -4,7 +4,7 @@ import path from "node:path";
 
 import { afterEach, describe, expect, it } from "vitest";
 
-import { createServeRpcClient } from "../../../scripts/lib/serve-rpc-client.mjs";
+import { createServeRpcClient } from "../../../../scripts/lib/serve-rpc-client.mjs";
 
 describe("serve rpc client stability", () => {
   const clients: Array<ReturnType<typeof createServeRpcClient>> = [];

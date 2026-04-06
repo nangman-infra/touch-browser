@@ -4,7 +4,7 @@ import path from "node:path";
 
 import { afterEach, describe, expect, it } from "vitest";
 
-import { createMcpClient } from "../../../scripts/lib/mcp-client.mjs";
+import { createMcpClient } from "../../../../scripts/lib/mcp-client.mjs";
 
 describe("mcp client stability", () => {
   const clients: Array<ReturnType<typeof createMcpClient>> = [];
