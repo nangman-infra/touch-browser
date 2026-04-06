@@ -341,7 +341,7 @@ async function readTouchBrowserReadView(sample) {
   const stdout = await runShell(
     [
       "target/debug/touch-browser",
-      "runtime.readView".startsWith("runtime.") ? "read-view" : "read-view",
+      "read-view",
       shellEscape(sample.url),
       "--main-only",
       "--allow-domain",
@@ -475,12 +475,12 @@ function extractMainContentHtml(html) {
 
 function decodeHtmlEntities(text) {
   return text
-    .replace(/&nbsp;/gi, " ")
-    .replace(/&amp;/gi, "&")
-    .replace(/&lt;/gi, "<")
-    .replace(/&gt;/gi, ">")
-    .replace(/&quot;/gi, '"')
-    .replace(/&#39;/gi, "'");
+    .replaceAll(/&nbsp;/gi, " ")
+    .replaceAll(/&amp;/gi, "&")
+    .replaceAll(/&lt;/gi, "<")
+    .replaceAll(/&gt;/gi, ">")
+    .replaceAll(/&quot;/gi, '"')
+    .replaceAll(/&#39;/gi, "'");
 }
 
 function evaluateClaimAgainstText(statement, text) {
@@ -509,9 +509,9 @@ function evaluateClaimAgainstText(statement, text) {
 function normalizeClaimText(text) {
   return String(text)
     .toLowerCase()
-    .replace(/[^a-z0-9]+/g, " ")
+    .replaceAll(/[^a-z0-9]+/g, " ")
     .trim()
-    .replace(/\s+/g, " ");
+    .replaceAll(/\s+/g, " ");
 }
 
 function stemToken(token) {
