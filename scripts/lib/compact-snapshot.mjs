@@ -153,15 +153,16 @@ function compactHrefFragment(href) {
     return null;
   }
 
-  const externalPrefix = trimmed.startsWith("https://")
-    ? "https://"
-    : trimmed.startsWith("http://")
-      ? "http://"
-      : null;
+  let externalPrefix = null;
+  if (trimmed.startsWith("https://")) {
+    externalPrefix = "https://";
+  } else if (trimmed.startsWith("http://")) {
+    externalPrefix = "http://";
+  }
 
   if (externalPrefix) {
     const rest = trimmed.slice(externalPrefix.length);
-    const host = rest.split("/")[0]?.replace(/\/+$/, "") ?? rest;
+    const host = trimTrailingSlashes(rest.split("/")[0] ?? rest);
     return host ? `@${host}` : null;
   }
 
@@ -240,9 +241,7 @@ function tokenLimitFor(kind) {
 }
 
 function compactToken(token) {
-  return token
-    .replace(/^[^A-Za-z0-9$%/.:\-_]+|[^A-Za-z0-9$%/.:\-_]+$/g, "")
-    .trim();
+  return trimCompactTokenEdges(token).trim();
 }
 
 function truncateCompactToken(token) {
@@ -251,7 +250,7 @@ function truncateCompactToken(token) {
 
 function isSignalToken(token, lowered) {
   return (
-    /[0-9]/.test(token) ||
+    containsAsciiDigit(token) ||
     token.startsWith("$") ||
     token.includes("%") ||
     token.includes("/") ||
@@ -292,9 +291,70 @@ function isSalientTextBlock(text) {
 
   return (
     wordCount <= 10 ||
-    /[0-9]/.test(text) ||
+    containsAsciiDigit(text) ||
     text.includes("$") ||
     text.includes("%") ||
     lowered.includes("rfc")
   );
+}
+
+function trimTrailingSlashes(value) {
+  let end = value.length;
+  while (end > 0 && value[end - 1] === "/") {
+    end -= 1;
+  }
+  return value.slice(0, end);
+}
+
+function trimCompactTokenEdges(token) {
+  let start = 0;
+  let end = token.length;
+
+  while (start < end && !isCompactTokenChar(token[start])) {
+    start += 1;
+  }
+
+  while (end > start && !isCompactTokenChar(token[end - 1])) {
+    end -= 1;
+  }
+
+  return token.slice(start, end);
+}
+
+function isCompactTokenChar(char) {
+  return (
+    isAsciiAlphaNumeric(char) ||
+    char === "$" ||
+    char === "%" ||
+    char === "/" ||
+    char === "." ||
+    char === ":" ||
+    char === "-" ||
+    char === "_"
+  );
+}
+
+function isAsciiAlphaNumeric(char) {
+  return isAsciiLower(char) || isAsciiUpper(char) || isAsciiDigit(char);
+}
+
+function isAsciiLower(char) {
+  return char >= "a" && char <= "z";
+}
+
+function isAsciiUpper(char) {
+  return char >= "A" && char <= "Z";
+}
+
+function isAsciiDigit(char) {
+  return char >= "0" && char <= "9";
+}
+
+function containsAsciiDigit(text) {
+  for (const char of text) {
+    if (isAsciiDigit(char)) {
+      return true;
+    }
+  }
+  return false;
 }
