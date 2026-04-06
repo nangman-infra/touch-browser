@@ -1287,7 +1287,9 @@ async function capturePageState(page: Page): Promise<BrowserPageState> {
 
   throw lastError instanceof Error
     ? lastError
-    : new Error(String(lastError ?? "Unknown browser page state error"));
+    : new Error(
+        describeUnknownValue(lastError, "Unknown browser page state error"),
+      );
 }
 
 function browserSource(
@@ -1312,8 +1314,18 @@ async function resolveSearchBrowserExecutablePath(): Promise<
   string | undefined
 > {
   cachedSearchExecutablePath ??= (async () => {
+    const explicitExecutable =
+      process.env.TOUCH_BROWSER_SEARCH_CHROME_EXECUTABLE;
+    if (explicitExecutable) {
+      try {
+        await stat(explicitExecutable);
+        return explicitExecutable;
+      } catch {
+        return undefined;
+      }
+    }
+
     const candidates = [
-      process.env.TOUCH_BROWSER_SEARCH_CHROME_EXECUTABLE,
       "/Applications/Google Chrome.app/Contents/MacOS/Google Chrome",
       "/Applications/Brave Browser.app/Contents/MacOS/Brave Browser",
       "/Applications/Microsoft Edge.app/Contents/MacOS/Microsoft Edge",
@@ -1404,8 +1416,7 @@ async function resolveSearchBrowserVersion(): Promise<string | undefined> {
         "--version",
       ]);
       const combined = `${stdout ?? ""} ${stderr ?? ""}`;
-      const match = combined.match(/(\d+\.\d+\.\d+\.\d+)/);
-      return match?.[1];
+      return extractBrowserVersion(combined);
     } catch {
       return undefined;
     }
@@ -1706,62 +1717,21 @@ function scoreCandidate(
 ): number {
   const candidateText = candidate.text.toLowerCase();
   const targetText = normalizeWhitespace(target.text ?? "").toLowerCase();
+  const partialScores = [
+    scoreTextMatch(candidateText, targetText),
+    scoreHrefMatch(candidate.href, target.href),
+    scoreTagNameMatch(candidate.tagName, target.tagName),
+    scoreContainsMatch(candidateText, target.name, 2),
+    scoreContainsMatch(candidateText, target.inputType, 1),
+    scoreDomPathMatch(candidate, target.domPathHint),
+  ];
   let score = 0;
 
-  if (targetText) {
-    if (candidateText === targetText) {
-      score += 5;
-    } else if (
-      candidateText.includes(targetText) ||
-      targetText.includes(candidateText)
-    ) {
-      score += 3;
-    } else {
+  for (const partialScore of partialScores) {
+    if (partialScore === undefined) {
       return 0;
     }
-  }
-
-  if (target.href) {
-    if (candidate.href === target.href) {
-      score += 4;
-    } else if (candidate.href) {
-      return 0;
-    }
-  }
-
-  if (target.tagName) {
-    if (candidate.tagName === target.tagName.toLowerCase()) {
-      score += 2;
-    } else {
-      return 0;
-    }
-  }
-
-  if (target.name) {
-    if (candidate.text.toLowerCase().includes(target.name.toLowerCase())) {
-      score += 2;
-    } else {
-      return 0;
-    }
-  }
-
-  if (target.inputType) {
-    if (candidate.text.toLowerCase().includes(target.inputType.toLowerCase())) {
-      score += 1;
-    } else {
-      return 0;
-    }
-  }
-
-  if (target.domPathHint) {
-    const normalizedHint = target.domPathHint.toLowerCase();
-    if (candidate.parentPath === normalizedHint) {
-      score += 6;
-    } else if (candidate.fullPath === normalizedHint) {
-      score += 5;
-    } else if (candidate.fullPath.startsWith(`${normalizedHint} >`)) {
-      score += 2;
-    }
+    score += partialScore;
   }
 
   return score;
@@ -1952,7 +1922,7 @@ function asSubmitPrefillDescriptors(value: unknown): SubmitPrefillDescriptor[] {
 }
 
 function normalizeWhitespace(value: string): string {
-  return value.trim().replace(/\s+/g, " ");
+  return value.trim().replaceAll(/\s+/g, " ");
 }
 
 async function readStdin() {
@@ -1969,10 +1939,155 @@ if (import.meta.url === `file://${process.argv[1]}`) {
   const explicitRequest = process.argv[2];
   const input = explicitRequest ?? (await readStdin());
 
-  if (!input) {
-    console.log(JSON.stringify(adapterStatus(), null, 2));
-  } else {
+  if (input) {
     const request = JSON.parse(input) as JsonRpcRequest;
     console.log(JSON.stringify(await handleRequest(request), null, 2));
+  } else {
+    console.log(JSON.stringify(adapterStatus(), null, 2));
   }
+}
+
+function describeUnknownValue(value: unknown, fallback: string): string {
+  if (value === null || value === undefined) {
+    return fallback;
+  }
+
+  if (typeof value === "string") {
+    return value;
+  }
+
+  if (typeof value === "number" || typeof value === "boolean") {
+    return String(value);
+  }
+
+  if (value instanceof Error) {
+    return value.message;
+  }
+
+  try {
+    const serialized = JSON.stringify(value);
+    return serialized ?? fallback;
+  } catch {
+    return fallback;
+  }
+}
+
+function extractBrowserVersion(output: string): string | undefined {
+  let token = "";
+
+  for (const char of output) {
+    if (isAsciiDigit(char) || char === ".") {
+      token += char;
+      continue;
+    }
+
+    const version = normalizeVersionToken(token);
+    if (version) {
+      return version;
+    }
+    token = "";
+  }
+
+  return normalizeVersionToken(token);
+}
+
+function normalizeVersionToken(token: string): string | undefined {
+  if (!token.includes(".")) {
+    return undefined;
+  }
+
+  const parts = token.split(".");
+  if (parts.length !== 4) {
+    return undefined;
+  }
+
+  return parts.every(isDigitString) ? token : undefined;
+}
+
+function isDigitString(value: string): boolean {
+  return value.length > 0 && Array.from(value).every(isAsciiDigit);
+}
+
+function isAsciiDigit(char: string): boolean {
+  return char >= "0" && char <= "9";
+}
+
+function scoreTextMatch(
+  candidateText: string,
+  targetText: string,
+): number | undefined {
+  if (!targetText) {
+    return 0;
+  }
+
+  if (candidateText === targetText) {
+    return 5;
+  }
+
+  if (
+    candidateText.includes(targetText) ||
+    targetText.includes(candidateText)
+  ) {
+    return 3;
+  }
+
+  return undefined;
+}
+
+function scoreHrefMatch(
+  candidateHref: string | undefined,
+  targetHref: string | undefined,
+): number | undefined {
+  if (!targetHref) {
+    return 0;
+  }
+
+  if (candidateHref === targetHref) {
+    return 4;
+  }
+
+  return candidateHref ? undefined : 0;
+}
+
+function scoreTagNameMatch(
+  candidateTagName: string,
+  targetTagName: string | undefined,
+): number | undefined {
+  if (!targetTagName) {
+    return 0;
+  }
+
+  return candidateTagName === targetTagName.toLowerCase() ? 2 : undefined;
+}
+
+function scoreContainsMatch(
+  candidateText: string,
+  targetValue: string | undefined,
+  score: number,
+): number | undefined {
+  if (!targetValue) {
+    return 0;
+  }
+
+  return candidateText.includes(targetValue.toLowerCase()) ? score : undefined;
+}
+
+function scoreDomPathMatch(
+  candidate: CandidateDescriptor,
+  domPathHint: string | undefined,
+): number {
+  if (!domPathHint) {
+    return 0;
+  }
+
+  const normalizedHint = domPathHint.toLowerCase();
+  if (candidate.parentPath === normalizedHint) {
+    return 6;
+  }
+
+  if (candidate.fullPath === normalizedHint) {
+    return 5;
+  }
+
+  return candidate.fullPath.startsWith(`${normalizedHint} >`) ? 2 : 0;
 }
