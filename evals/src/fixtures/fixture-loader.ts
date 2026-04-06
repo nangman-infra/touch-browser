@@ -36,13 +36,17 @@ export async function loadFixtureValidator(): Promise<
   ValidateFunction<FixtureCase>
 > {
   type SchemaCompiler = <T>(schema: object) => ValidateFunction<T>;
-  const Ajv2020 = Ajv2020Module as unknown as {
-    new (options: {
-      allErrors: boolean;
-      strict: boolean;
-      allowUnionTypes: boolean;
-    }): { compile: SchemaCompiler };
+  type AjvOptions = {
+    allErrors: boolean;
+    strict: boolean;
+    allowUnionTypes: boolean;
   };
+  type Ajv2020Constructor = new (
+    options: AjvOptions,
+  ) => {
+    compile: SchemaCompiler;
+  };
+  const Ajv2020 = Ajv2020Module as unknown as Ajv2020Constructor;
   const ajv = new Ajv2020({
     allErrors: true,
     strict: true,

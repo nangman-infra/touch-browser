@@ -22,39 +22,7 @@ export function createMcpClient({
     stdoutBuffer += chunk;
     const lines = stdoutBuffer.split("\n");
     stdoutBuffer = lines.pop() ?? "";
-
-    for (const line of lines) {
-      if (!line.trim()) {
-        continue;
-      }
-
-      let payload;
-      try {
-        payload = JSON.parse(line);
-      } catch (error) {
-        const parseMessage =
-          error instanceof Error ? error.message : String(error);
-        const parseError = new Error(
-          `Invalid MCP bridge JSON response: ${line.trim()} (${parseMessage})`,
-        );
-        failPending(parseError);
-        if (child.exitCode === null) {
-          child.kill("SIGTERM");
-        }
-        return;
-      }
-      const handler = pending.get(payload.id);
-      if (!handler) {
-        continue;
-      }
-
-      pending.delete(payload.id);
-      if (payload.error) {
-        handler.reject(new Error(payload.error.message));
-      } else {
-        handler.resolve(payload.result);
-      }
-    }
+    processStdoutLines(lines);
   });
 
   child.stderr.setEncoding("utf8");
@@ -165,6 +133,53 @@ export function createMcpClient({
       handler.reject(fatalError);
     }
     pending.clear();
+  }
+
+  function processStdoutLines(lines) {
+    for (const line of lines) {
+      if (!line.trim()) {
+        continue;
+      }
+
+      const payload = parsePayload(line);
+      if (!payload) {
+        return;
+      }
+
+      settlePendingPayload(payload);
+    }
+  }
+
+  function parsePayload(line) {
+    try {
+      return JSON.parse(line);
+    } catch (error) {
+      const parseMessage =
+        error instanceof Error ? error.message : String(error);
+      const parseError = new Error(
+        `Invalid MCP bridge JSON response: ${line.trim()} (${parseMessage})`,
+      );
+      failPending(parseError);
+      if (child.exitCode === null) {
+        child.kill("SIGTERM");
+      }
+      return null;
+    }
+  }
+
+  function settlePendingPayload(payload) {
+    const handler = pending.get(payload.id);
+    if (!handler) {
+      return;
+    }
+
+    pending.delete(payload.id);
+    if (payload.error) {
+      handler.reject(new Error(payload.error.message));
+      return;
+    }
+
+    handler.resolve(payload.result);
   }
 }
 
