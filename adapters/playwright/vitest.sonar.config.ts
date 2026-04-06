@@ -8,7 +8,10 @@ import {
 export default defineConfig({
   root: playwrightAdapterRootDir,
   test: {
-    include: ["tests/**/*.test.ts"],
+    include: [
+      "tests/contract/**/*.test.ts",
+      "tests/browser-gate/**/*.test.ts",
+    ],
     passWithNoTests: true,
     coverage: playwrightAdapterCoverageConfig,
   },
