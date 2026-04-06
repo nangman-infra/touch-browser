@@ -146,6 +146,35 @@ describe("mcp bridge smoke", () => {
     expect(status.structuredContent.status).toBe("ready");
     expect(status.structuredContent.daemon).toBe(true);
   }, 20_000);
+
+  it("returns MCP protocol errors on stdout without polluting stderr", async () => {
+    const child = spawnShellCommand(
+      "node scripts/touch-browser-mcp-bridge.mjs",
+      {
+        cwd: repoRoot,
+        stdio: ["pipe", "pipe", "pipe"],
+      },
+    ) as ChildProcessWithoutNullStreams;
+    clients.push(child);
+
+    const call = createRpcCaller(child);
+
+    await call("initialize", {
+      protocolVersion: "2025-06-18",
+      capabilities: {},
+      clientInfo: {
+        name: "vitest",
+        version: "0.0.0",
+      },
+    });
+
+    const error = await callError(child, "tools/call", {
+      name: "tb_missing",
+      arguments: {},
+    });
+    expect(error.message).toContain("Unknown tool: tb_missing");
+    expect(error.stderr.trim()).toBe("");
+  }, 20_000);
 });
 
 function createRpcCaller(child: ChildProcessWithoutNullStreams) {
@@ -227,4 +256,80 @@ function createRpcCaller(child: ChildProcessWithoutNullStreams) {
       });
     });
   };
+}
+
+function callError(
+  child: ChildProcessWithoutNullStreams,
+  method: string,
+  params: Record<string, unknown>,
+) {
+  let nextId = 10_000;
+  let stdoutBuffer = "";
+  let stderrBuffer = "";
+
+  child.stdout.setEncoding("utf8");
+  child.stderr.setEncoding("utf8");
+
+  return new Promise<{ message: string; stderr: string }>((resolve, reject) => {
+    const id = ++nextId;
+
+    const onStdout = (chunk: string) => {
+      stdoutBuffer += chunk;
+      const lines = stdoutBuffer.split("\n");
+      stdoutBuffer = lines.pop() ?? "";
+      for (const line of lines) {
+        if (!line.trim()) {
+          continue;
+        }
+        const payload = JSON.parse(line);
+        if (payload.id !== id || !payload.error) {
+          continue;
+        }
+        cleanup();
+        resolve({
+          message: payload.error.message,
+          stderr: stderrBuffer,
+        });
+      }
+    };
+
+    const onStderr = (chunk: string) => {
+      stderrBuffer += chunk;
+    };
+
+    const onError = (error: Error) => {
+      cleanup();
+      reject(error);
+    };
+
+    const onExit = (code: number | null) => {
+      cleanup();
+      reject(
+        new Error(
+          `mcp bridge exited with code ${code ?? -1}: ${stderrBuffer.trim()}`,
+        ),
+      );
+    };
+
+    const cleanup = () => {
+      child.stdout.off("data", onStdout);
+      child.stderr.off("data", onStderr);
+      child.off("error", onError);
+      child.off("exit", onExit);
+    };
+
+    child.stdout.on("data", onStdout);
+    child.stderr.on("data", onStderr);
+    child.on("error", onError);
+    child.on("exit", onExit);
+    child.stdin.write(
+      `${JSON.stringify({
+        jsonrpc: "2.0",
+        id,
+        method,
+        params,
+      })}\n`,
+      "utf8",
+    );
+  });
 }

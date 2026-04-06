@@ -74,4 +74,62 @@ describe("serve mode smoke", () => {
       "fixture://research/static-docs/getting-started",
     );
   }, 20_000);
+
+  it("keeps JSON-RPC error payloads on stdout and reserves stderr for process failures", async () => {
+    const child = spawnShellCommand(
+      "cargo run -q -p touch-browser-cli -- serve",
+      {
+        cwd: repoRoot,
+        stdio: ["pipe", "pipe", "pipe"],
+      },
+    );
+
+    let stdoutBuffer = "";
+    let stderrBuffer = "";
+
+    child.stdout.setEncoding("utf8");
+    child.stdout.on("data", (chunk) => {
+      stdoutBuffer += chunk;
+    });
+
+    child.stderr.setEncoding("utf8");
+    child.stderr.on("data", (chunk) => {
+      stderrBuffer += chunk;
+    });
+
+    child.stdin.write(
+      `${JSON.stringify({
+        jsonrpc: "2.0",
+        id: 99,
+        method: "runtime.unknown",
+        params: {},
+      })}\n`,
+    );
+    child.stdin.end();
+
+    await new Promise<void>((resolve, reject) => {
+      child.on("error", reject);
+      child.on("close", (code) => {
+        if (code !== 0) {
+          reject(new Error(`serve exited with code ${code}`));
+          return;
+        }
+
+        resolve();
+      });
+    });
+
+    const responseLine = stdoutBuffer
+      .split("\n")
+      .map((line) => line.trim())
+      .find((line) => line.length > 0);
+    expect(responseLine).toBeTruthy();
+    if (!responseLine) {
+      throw new Error("serve smoke expected one JSON-RPC error response");
+    }
+
+    const response = JSON.parse(responseLine);
+    expect(response.error.message).toContain("Unsupported serve method");
+    expect(stderrBuffer.trim()).toBe("");
+  }, 20_000);
 });

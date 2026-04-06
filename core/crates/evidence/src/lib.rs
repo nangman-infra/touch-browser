@@ -1,5 +1,6 @@
-use std::collections::BTreeSet;
+use std::{collections::BTreeSet, sync::OnceLock};
 
+use ferrous_opencc::{config::BuiltinConfig, OpenCC};
 use thiserror::Error;
 use touch_browser_contracts::{
     EvidenceCitation, EvidenceClaimOutcome, EvidenceClaimVerdict, EvidenceGuardFailure,
@@ -681,9 +682,13 @@ fn tokenize_all(text: &str) -> Vec<String> {
 }
 
 fn normalize_text(text: &str) -> String {
+    let normalized_source = normalize_chinese_variants(text);
     let mut normalized = String::with_capacity(text.len());
 
-    for character in text.chars().flat_map(|character| character.to_lowercase()) {
+    for character in normalized_source
+        .chars()
+        .flat_map(|character| character.to_lowercase())
+    {
         if character.is_alphanumeric() || is_cjk_character(character) {
             normalized.push(character);
         } else {
@@ -692,6 +697,30 @@ fn normalize_text(text: &str) -> String {
     }
 
     normalized.split_whitespace().collect::<Vec<_>>().join(" ")
+}
+
+fn normalize_chinese_variants(text: &str) -> String {
+    if !should_fold_chinese_variants(text) {
+        return text.to_string();
+    }
+
+    chinese_t2s_converter()
+        .map(|converter| converter.convert(text))
+        .unwrap_or_else(|| text.to_string())
+}
+
+fn chinese_t2s_converter() -> Option<&'static OpenCC> {
+    static CONVERTER: OnceLock<Option<OpenCC>> = OnceLock::new();
+
+    CONVERTER
+        .get_or_init(|| OpenCC::from_config(BuiltinConfig::T2s).ok())
+        .as_ref()
+}
+
+fn should_fold_chinese_variants(text: &str) -> bool {
+    text.chars().any(is_han_character)
+        && !text.chars().any(is_japanese_kana_character)
+        && !text.chars().any(is_hangul_character)
 }
 
 fn stem_token(token: &str) -> String {
@@ -773,6 +802,21 @@ fn is_cjk_character(character: char) -> bool {
             | 0xac00..=0xd7af
             | 0xf900..=0xfaff
     )
+}
+
+fn is_han_character(character: char) -> bool {
+    matches!(
+        character as u32,
+        0x3400..=0x4dbf | 0x4e00..=0x9fff | 0xf900..=0xfaff
+    )
+}
+
+fn is_japanese_kana_character(character: char) -> bool {
+    matches!(character as u32, 0x3040..=0x30ff)
+}
+
+fn is_hangul_character(character: char) -> bool {
+    matches!(character as u32, 0xac00..=0xd7af)
 }
 
 fn cjk_ngrams(token: &str, width: usize) -> Vec<String> {
@@ -2159,6 +2203,56 @@ mod tests {
                 "2026-04-05T00:00:00+09:00",
                 SourceRisk::Low,
                 Some("明治維新".to_string()),
+            ))
+            .expect("evidence extraction should succeed");
+
+        assert_eq!(report.supported_claims.len(), 1);
+        assert!(report.contradicted_claims.is_empty());
+        assert!(report.needs_more_browsing_claims.is_empty());
+        assert!(report.unsupported_claims.is_empty());
+    }
+
+    #[test]
+    fn supports_simplified_chinese_claims_against_traditional_snapshot_text() {
+        let snapshot = SnapshotDocument {
+            version: "1.0.0".to_string(),
+            stable_ref_version: "1".to_string(),
+            source: touch_browser_contracts::SnapshotSource {
+                source_url: "https://zh.wikipedia.example/wiki/%E4%B8%AD%E5%9B%BD".to_string(),
+                source_type: touch_browser_contracts::SourceType::Http,
+                title: Some("中國".to_string()),
+            },
+            budget: touch_browser_contracts::SnapshotBudget {
+                requested_tokens: 512,
+                estimated_tokens: 64,
+                emitted_tokens: 64,
+                truncated: false,
+            },
+            blocks: vec![touch_browser_contracts::SnapshotBlock {
+                version: "1.0.0".to_string(),
+                id: "b1".to_string(),
+                kind: touch_browser_contracts::SnapshotBlockKind::Text,
+                stable_ref: "rmain:text:china-overview".to_string(),
+                role: touch_browser_contracts::SnapshotBlockRole::Content,
+                text: "中國是以漢族為主體民族的國家。".to_string(),
+                attributes: Default::default(),
+                evidence: touch_browser_contracts::SnapshotEvidence {
+                    source_url: "https://zh.wikipedia.example/wiki/%E4%B8%AD%E5%9B%BD".to_string(),
+                    source_type: touch_browser_contracts::SourceType::Http,
+                    dom_path_hint: Some("html > body > main > p:nth-of-type(1)".to_string()),
+                    byte_range_start: None,
+                    byte_range_end: None,
+                },
+            }],
+        };
+
+        let report = EvidenceExtractor
+            .extract(&EvidenceInput::new(
+                snapshot,
+                vec![ClaimRequest::new("c1", "中国是以汉族为主体民族的国家。")],
+                "2026-04-07T00:00:00+09:00",
+                SourceRisk::Low,
+                Some("中國".to_string()),
             ))
             .expect("evidence extraction should succeed");
 
