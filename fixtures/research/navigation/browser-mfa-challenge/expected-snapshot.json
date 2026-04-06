@@ -105,7 +105,7 @@
       "evidence": {
         "sourceUrl": "fixture://research/navigation/browser-mfa-challenge",
         "sourceType": "fixture",
-        "domPathHint": "html > body > main > form > label"
+        "domPathHint": "html > body > main > form#verify-form > label"
       }
     },
     {
@@ -123,7 +123,7 @@
       "evidence": {
         "sourceUrl": "fixture://research/navigation/browser-mfa-challenge",
         "sourceType": "fixture",
-        "domPathHint": "html > body > main > form"
+        "domPathHint": "html > body > main > form#verify-form"
       }
     },
     {

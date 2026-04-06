@@ -403,7 +403,7 @@ fn guarded_resolution<'a>(
         return None;
     }
 
-    let verdict = if should_keep_browsing(effective_score, &assessment, claim) {
+    let verdict = if should_keep_browsing(effective_score, assessment, claim) {
         EvidenceClaimVerdict::NeedsMoreBrowsing
     } else {
         EvidenceClaimVerdict::InsufficientEvidence
