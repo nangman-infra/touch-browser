@@ -10,184 +10,20 @@ const NORMALIZED_ATTR_NAMES = new Set([
 ]);
 
 export function stripHtml(input) {
-  let output = "";
-  let cursor = 0;
-
-  while (cursor < input.length) {
-    const tagStart = input.indexOf("<", cursor);
-    if (tagStart === -1) {
-      output += input.slice(cursor);
-      break;
-    }
-
-    output += input.slice(cursor, tagStart);
-
-    if (input.startsWith("<!--", tagStart)) {
-      const commentEnd = input.indexOf("-->", tagStart + 4);
-      output += " ";
-      cursor = commentEnd === -1 ? input.length : commentEnd + 3;
-      continue;
-    }
-
-    const tagEnd = findTagEnd(input, tagStart);
-    if (tagEnd === -1) {
-      output += input.slice(tagStart);
-      break;
-    }
-
-    const rawTag = input.slice(tagStart, tagEnd + 1);
-    const descriptor = parseTag(rawTag);
-    if (!descriptor.name) {
-      output += rawTag;
-      cursor = tagEnd + 1;
-      continue;
-    }
-
-    output += " ";
-    if (!descriptor.closing && RAW_TEXT_TAGS.has(descriptor.name)) {
-      const closing = findMatchingElementClose(
-        input,
-        descriptor.name,
-        tagEnd + 1,
-      );
-      cursor = closing ? closing.end + 1 : input.length;
-      continue;
-    }
-
-    cursor = tagEnd + 1;
-  }
-
-  return output;
+  return transformHtml(input, (token) => stripHtmlToken(input, token));
 }
 
 export function normalizeCleanedDom(input) {
-  let output = "";
-  let cursor = 0;
-
-  while (cursor < input.length) {
-    const tagStart = input.indexOf("<", cursor);
-    if (tagStart === -1) {
-      output += input.slice(cursor);
-      break;
-    }
-
-    output += input.slice(cursor, tagStart);
-
-    if (input.startsWith("<!--", tagStart)) {
-      const commentEnd = input.indexOf("-->", tagStart + 4);
-      cursor = commentEnd === -1 ? input.length : commentEnd + 3;
-      continue;
-    }
-
-    const tagEnd = findTagEnd(input, tagStart);
-    if (tagEnd === -1) {
-      output += input.slice(tagStart);
-      break;
-    }
-
-    const rawTag = input.slice(tagStart, tagEnd + 1);
-    const descriptor = parseTag(rawTag);
-    if (!descriptor.name) {
-      output += rawTag;
-      cursor = tagEnd + 1;
-      continue;
-    }
-
-    if (!descriptor.closing && RAW_TEXT_TAGS.has(descriptor.name)) {
-      const closing = findMatchingElementClose(
-        input,
-        descriptor.name,
-        tagEnd + 1,
-      );
-      cursor = closing ? closing.end + 1 : input.length;
-      continue;
-    }
-
-    if (descriptor.closing) {
-      output += `</${descriptor.name}>`;
-      cursor = tagEnd + 1;
-      continue;
-    }
-
-    const keptAttrs = parseAttributes(rawTag)
-      .filter(
-        ({ name }) =>
-          NORMALIZED_ATTR_NAMES.has(name) || name.startsWith("aria-"),
-      )
-      .map(({ name, value }) =>
-        value === undefined ? name : `${name}="${String(value).trim()}"`,
-      );
-    output +=
-      keptAttrs.length > 0
-        ? `<${descriptor.name} ${keptAttrs.join(" ")}>`
-        : `<${descriptor.name}>`;
-    cursor = tagEnd + 1;
-  }
-
-  return output.replace(/\s+/g, " ").replace(/>\s+</g, "><").trim();
+  const output = transformHtml(input, (token) =>
+    normalizeCleanedDomToken(input, token),
+  );
+  return collapseMarkupWhitespace(output);
 }
 
 export function stripHtmlPreservingMarkdown(input) {
-  let output = "";
-  let cursor = 0;
-
-  while (cursor < input.length) {
-    const tagStart = input.indexOf("<", cursor);
-    if (tagStart === -1) {
-      output += input.slice(cursor);
-      break;
-    }
-
-    output += input.slice(cursor, tagStart);
-
-    if (input.startsWith("<!--", tagStart)) {
-      const commentEnd = input.indexOf("-->", tagStart + 4);
-      output += " ";
-      cursor = commentEnd === -1 ? input.length : commentEnd + 3;
-      continue;
-    }
-
-    const tagEnd = findTagEnd(input, tagStart);
-    if (tagEnd === -1) {
-      output += input.slice(tagStart);
-      break;
-    }
-
-    const rawTag = input.slice(tagStart, tagEnd + 1);
-    const preserveMarkerIndex = rawTag[1] === "/" ? 2 : 1;
-    const preserveMarker = rawTag[preserveMarkerIndex];
-    if (
-      preserveMarker === "#" ||
-      preserveMarker === "[" ||
-      preserveMarker === "]"
-    ) {
-      output += rawTag;
-      cursor = tagEnd + 1;
-      continue;
-    }
-
-    const descriptor = parseTag(rawTag);
-    if (!descriptor.name) {
-      output += " ";
-      cursor = tagEnd + 1;
-      continue;
-    }
-
-    output += " ";
-    if (!descriptor.closing && RAW_TEXT_TAGS.has(descriptor.name)) {
-      const closing = findMatchingElementClose(
-        input,
-        descriptor.name,
-        tagEnd + 1,
-      );
-      cursor = closing ? closing.end + 1 : input.length;
-      continue;
-    }
-
-    cursor = tagEnd + 1;
-  }
-
-  return output;
+  return transformHtml(input, (token) =>
+    stripHtmlPreservingMarkdownToken(input, token),
+  );
 }
 
 export function extractFirstElementInnerHtml(input, tagNames) {
@@ -197,17 +33,21 @@ export function extractFirstElementInnerHtml(input, tagNames) {
       continue;
     }
 
-    const startEnd = findTagEnd(input, start);
-    if (startEnd === -1) {
+    const startToken = readTagToken(input, start);
+    if (!startToken) {
       continue;
     }
 
-    const closing = findMatchingElementClose(input, tagName, startEnd + 1);
+    const closing = findMatchingElementClose(
+      input,
+      tagName,
+      startToken.nextCursor,
+    );
     if (!closing) {
       continue;
     }
 
-    return input.slice(startEnd + 1, closing.start);
+    return input.slice(startToken.nextCursor, closing.start);
   }
 
   return undefined;
@@ -225,31 +65,33 @@ export function replaceElementBlocks(input, tagName, replacer) {
       break;
     }
 
-    const startEnd = findTagEnd(input, start);
-    if (startEnd === -1) {
+    const startToken = readTagToken(input, start);
+    if (!startToken) {
       output += input.slice(cursor);
       break;
     }
 
-    const rawStartTag = input.slice(start, startEnd + 1);
-    const descriptor = parseTag(rawStartTag);
-    if (!descriptor.name || descriptor.closing) {
-      searchFrom = startEnd + 1;
+    if (!startToken.descriptor.name || startToken.descriptor.closing) {
+      searchFrom = startToken.nextCursor;
       continue;
     }
 
-    const closing = findMatchingElementClose(input, tagName, startEnd + 1);
+    const closing = findMatchingElementClose(
+      input,
+      tagName,
+      startToken.nextCursor,
+    );
     if (!closing) {
-      output += input.slice(cursor, startEnd + 1);
-      cursor = startEnd + 1;
+      output += input.slice(cursor, startToken.nextCursor);
+      cursor = startToken.nextCursor;
       searchFrom = cursor;
       continue;
     }
 
     output += input.slice(cursor, start);
     output += replacer({
-      inner: input.slice(startEnd + 1, closing.start),
-      attributes: parseAttributes(rawStartTag),
+      inner: input.slice(startToken.nextCursor, closing.start),
+      attributes: parseAttributes(startToken.rawTag),
     });
     cursor = closing.end + 1;
     searchFrom = cursor;
@@ -266,48 +108,233 @@ export function replaceTags(input, tagNames, replacer) {
   let cursor = 0;
 
   while (cursor < input.length) {
-    const tagStart = input.indexOf("<", cursor);
-    if (tagStart === -1) {
-      output += input.slice(cursor);
+    const token = readNextHtmlToken(input, cursor);
+    output += token.leadingText;
+
+    if (token.kind === "trailing") {
       break;
     }
 
-    output += input.slice(cursor, tagStart);
-
-    if (input.startsWith("<!--", tagStart)) {
-      const commentEnd = input.indexOf("-->", tagStart + 4);
-      if (commentEnd === -1) {
-        output += input.slice(tagStart);
-        break;
-      }
-      output += input.slice(tagStart, commentEnd + 3);
-      cursor = commentEnd + 3;
+    if (token.kind === "comment") {
+      output += token.rawTag;
+      cursor = token.nextCursor;
       continue;
     }
 
-    const tagEnd = findTagEnd(input, tagStart);
-    if (tagEnd === -1) {
-      output += input.slice(tagStart);
+    if (token.kind === "unterminated") {
+      output += token.rawTag;
       break;
     }
 
-    const rawTag = input.slice(tagStart, tagEnd + 1);
-    const descriptor = parseTag(rawTag);
-    if (!descriptor.name || !normalizedTagNames.has(descriptor.name)) {
-      output += rawTag;
-      cursor = tagEnd + 1;
+    if (
+      !token.descriptor.name ||
+      !normalizedTagNames.has(token.descriptor.name)
+    ) {
+      output += token.rawTag;
+      cursor = token.nextCursor;
       continue;
     }
 
     output += replacer({
-      ...descriptor,
-      attributes: parseAttributes(rawTag),
-      rawTag,
+      ...token.descriptor,
+      attributes: parseAttributes(token.rawTag),
+      rawTag: token.rawTag,
     });
-    cursor = tagEnd + 1;
+    cursor = token.nextCursor;
   }
 
   return output;
+}
+
+function transformHtml(input, transformToken) {
+  let output = "";
+  let cursor = 0;
+
+  while (cursor < input.length) {
+    const token = readNextHtmlToken(input, cursor);
+    output += token.leadingText;
+
+    if (token.kind === "trailing") {
+      break;
+    }
+
+    const result = transformToken(token);
+    output += result.append;
+    cursor = result.nextCursor;
+  }
+
+  return output;
+}
+
+function stripHtmlToken(input, token) {
+  if (token.kind === "comment") {
+    return createTransformStep(" ", token.nextCursor);
+  }
+
+  if (token.kind === "unterminated") {
+    return createTransformStep(token.rawTag, token.nextCursor);
+  }
+
+  if (!token.descriptor.name) {
+    return createTransformStep(token.rawTag, token.nextCursor);
+  }
+
+  return createSpaceStep(input, token);
+}
+
+function normalizeCleanedDomToken(input, token) {
+  if (token.kind === "comment") {
+    return createTransformStep("", token.nextCursor);
+  }
+
+  if (token.kind === "unterminated") {
+    return createTransformStep(token.rawTag, token.nextCursor);
+  }
+
+  if (!token.descriptor.name) {
+    return createTransformStep(token.rawTag, token.nextCursor);
+  }
+
+  if (shouldSkipRawText(token.descriptor)) {
+    return createTransformStep("", skipRawTextBlock(input, token));
+  }
+
+  if (token.descriptor.closing) {
+    return createTransformStep(`</${token.descriptor.name}>`, token.nextCursor);
+  }
+
+  return createTransformStep(renderNormalizedOpenTag(token), token.nextCursor);
+}
+
+function stripHtmlPreservingMarkdownToken(input, token) {
+  if (token.kind === "comment") {
+    return createTransformStep(" ", token.nextCursor);
+  }
+
+  if (token.kind === "unterminated") {
+    return createTransformStep(token.rawTag, token.nextCursor);
+  }
+
+  if (isPreservedMarkdownTag(token.rawTag)) {
+    return createTransformStep(token.rawTag, token.nextCursor);
+  }
+
+  if (!token.descriptor.name) {
+    return createTransformStep(" ", token.nextCursor);
+  }
+
+  return createSpaceStep(input, token);
+}
+
+function createSpaceStep(input, token) {
+  const nextCursor = shouldSkipRawText(token.descriptor)
+    ? skipRawTextBlock(input, token)
+    : token.nextCursor;
+  return createTransformStep(" ", nextCursor);
+}
+
+function createTransformStep(append, nextCursor) {
+  return { append, nextCursor };
+}
+
+function readNextHtmlToken(input, cursor) {
+  const tagStart = input.indexOf("<", cursor);
+  if (tagStart === -1) {
+    return {
+      kind: "trailing",
+      leadingText: input.slice(cursor),
+      nextCursor: input.length,
+    };
+  }
+
+  const leadingText = input.slice(cursor, tagStart);
+  if (input.startsWith("<!--", tagStart)) {
+    return readCommentToken(input, tagStart, leadingText);
+  }
+
+  const tagToken = readTagToken(input, tagStart);
+  if (!tagToken) {
+    return {
+      kind: "unterminated",
+      leadingText,
+      rawTag: input.slice(tagStart),
+      nextCursor: input.length,
+    };
+  }
+
+  return {
+    kind: "tag",
+    leadingText,
+    ...tagToken,
+  };
+}
+
+function readCommentToken(input, tagStart, leadingText) {
+  const commentEnd = input.indexOf("-->", tagStart + 4);
+  const nextCursor = commentEnd === -1 ? input.length : commentEnd + 3;
+  return {
+    kind: "comment",
+    leadingText,
+    rawTag: input.slice(tagStart, nextCursor),
+    nextCursor,
+  };
+}
+
+function readTagToken(input, tagStart) {
+  const tagEnd = findTagEnd(input, tagStart);
+  if (tagEnd === -1) {
+    return null;
+  }
+
+  const rawTag = input.slice(tagStart, tagEnd + 1);
+  return {
+    rawTag,
+    descriptor: parseTag(rawTag),
+    tagEnd,
+    nextCursor: tagEnd + 1,
+  };
+}
+
+function skipRawTextBlock(input, token) {
+  const closing = findMatchingElementClose(
+    input,
+    token.descriptor.name,
+    token.nextCursor,
+  );
+  return closing ? closing.end + 1 : input.length;
+}
+
+function shouldSkipRawText(descriptor) {
+  return !descriptor.closing && RAW_TEXT_TAGS.has(descriptor.name);
+}
+
+function isPreservedMarkdownTag(rawTag) {
+  const preserveMarkerIndex = rawTag[1] === "/" ? 2 : 1;
+  const preserveMarker = rawTag[preserveMarkerIndex];
+  return (
+    preserveMarker === "#" || preserveMarker === "[" || preserveMarker === "]"
+  );
+}
+
+function renderNormalizedOpenTag(token) {
+  const keptAttrs = parseAttributes(token.rawTag)
+    .filter(({ name }) => shouldKeepNormalizedAttribute(name))
+    .map(renderNormalizedAttribute);
+  return keptAttrs.length > 0
+    ? `<${token.descriptor.name} ${keptAttrs.join(" ")}>`
+    : `<${token.descriptor.name}>`;
+}
+
+function shouldKeepNormalizedAttribute(name) {
+  return NORMALIZED_ATTR_NAMES.has(name) || name.startsWith("aria-");
+}
+
+function renderNormalizedAttribute({ name, value }) {
+  return value === undefined ? name : `${name}="${String(value).trim()}"`;
+}
+
+function collapseMarkupWhitespace(output) {
+  return output.replaceAll(/\s+/g, " ").replaceAll(/>\s+</g, "><").trim();
 }
 
 function findOpeningTag(input, tagName, searchFrom) {
@@ -316,13 +343,7 @@ function findOpeningTag(input, tagName, searchFrom) {
   let index = lower.indexOf(needle, searchFrom);
 
   while (index !== -1) {
-    const boundary = lower[index + needle.length];
-    if (
-      boundary === undefined ||
-      boundary === ">" ||
-      boundary === "/" ||
-      /\s/.test(boundary)
-    ) {
+    if (isTagBoundaryCharacter(lower[index + needle.length])) {
       return index;
     }
     index = lower.indexOf(needle, index + needle.length);
@@ -338,38 +359,48 @@ function findMatchingElementClose(input, tagName, searchFrom) {
   let depth = 1;
 
   while (cursor < input.length) {
-    const nextOpen = findOpeningTag(input, tagName, cursor);
     const nextClose = lower.indexOf(closeNeedle, cursor);
     if (nextClose === -1) {
       return null;
     }
 
-    if (nextOpen !== -1 && nextOpen < nextClose) {
-      const openEnd = findTagEnd(input, nextOpen);
-      if (openEnd === -1) {
-        return null;
-      }
-      const descriptor = parseTag(input.slice(nextOpen, openEnd + 1));
-      if (!descriptor.selfClosing) {
-        depth += 1;
-      }
-      cursor = openEnd + 1;
+    const nestedOpen = readNestedOpen(input, tagName, cursor, nextClose);
+    if (nestedOpen) {
+      depth += nestedOpen.depthDelta;
+      cursor = nestedOpen.nextCursor;
       continue;
     }
 
-    const closeEnd = findTagEnd(input, nextClose);
-    if (closeEnd === -1) {
+    const closingTag = readTagToken(input, nextClose);
+    if (!closingTag) {
       return null;
     }
 
     depth -= 1;
     if (depth === 0) {
-      return { start: nextClose, end: closeEnd };
+      return { start: nextClose, end: closingTag.tagEnd };
     }
-    cursor = closeEnd + 1;
+    cursor = closingTag.nextCursor;
   }
 
   return null;
+}
+
+function readNestedOpen(input, tagName, cursor, nextClose) {
+  const nextOpen = findOpeningTag(input, tagName, cursor);
+  if (nextOpen === -1 || nextOpen >= nextClose) {
+    return null;
+  }
+
+  const openTag = readTagToken(input, nextOpen);
+  if (!openTag) {
+    return null;
+  }
+
+  return {
+    depthDelta: openTag.descriptor.selfClosing ? 0 : 1,
+    nextCursor: openTag.nextCursor,
+  };
 }
 
 function findTagEnd(input, tagStart) {
@@ -396,20 +427,13 @@ function findTagEnd(input, tagStart) {
 }
 
 function parseTag(rawTag) {
-  let cursor = 1;
-  while (cursor < rawTag.length && /\s/.test(rawTag[cursor] ?? "")) {
-    cursor += 1;
-  }
-
+  let cursor = skipWhitespace(rawTag, 1);
   const closing = rawTag[cursor] === "/";
   if (closing) {
     cursor += 1;
   }
 
-  while (cursor < rawTag.length && /\s/.test(rawTag[cursor] ?? "")) {
-    cursor += 1;
-  }
-
+  cursor = skipWhitespace(rawTag, cursor);
   const nameStart = cursor;
   while (cursor < rawTag.length && isTagNameCharacter(rawTag[cursor])) {
     cursor += 1;
@@ -425,80 +449,153 @@ function parseTag(rawTag) {
 
 function parseAttributes(rawTag) {
   const attributes = [];
-  let cursor = 1;
+  let cursor = skipWhitespace(rawTag, 1);
 
-  while (cursor < rawTag.length && /\s/.test(rawTag[cursor] ?? "")) {
-    cursor += 1;
-  }
   if (rawTag[cursor] === "/") {
     return attributes;
   }
 
-  while (cursor < rawTag.length && isTagNameCharacter(rawTag[cursor])) {
-    cursor += 1;
-  }
+  cursor = skipTagName(rawTag, cursor);
 
   while (cursor < rawTag.length) {
-    while (cursor < rawTag.length && /\s/.test(rawTag[cursor] ?? "")) {
-      cursor += 1;
-    }
-
-    const character = rawTag[cursor];
-    if (!character || character === ">" || character === "/") {
+    cursor = skipWhitespace(rawTag, cursor);
+    if (isAttributeListEnd(rawTag, cursor)) {
       break;
     }
 
-    const nameStart = cursor;
-    while (
-      cursor < rawTag.length &&
-      !/\s/.test(rawTag[cursor] ?? "") &&
-      !["=", "/", ">"].includes(rawTag[cursor] ?? "")
-    ) {
-      cursor += 1;
-    }
-
-    const name = rawTag.slice(nameStart, cursor).toLowerCase();
-    while (cursor < rawTag.length && /\s/.test(rawTag[cursor] ?? "")) {
-      cursor += 1;
-    }
-
-    let value;
-    if (rawTag[cursor] === "=") {
-      cursor += 1;
-      while (cursor < rawTag.length && /\s/.test(rawTag[cursor] ?? "")) {
-        cursor += 1;
-      }
-
-      const quote = rawTag[cursor];
-      if (quote === '"' || quote === "'") {
-        cursor += 1;
-        const valueStart = cursor;
-        while (cursor < rawTag.length && rawTag[cursor] !== quote) {
-          cursor += 1;
-        }
-        value = rawTag.slice(valueStart, cursor);
-        if (rawTag[cursor] === quote) {
-          cursor += 1;
-        }
-      } else {
-        const valueStart = cursor;
-        while (
-          cursor < rawTag.length &&
-          !/\s/.test(rawTag[cursor] ?? "") &&
-          !["/", ">"].includes(rawTag[cursor] ?? "")
-        ) {
-          cursor += 1;
-        }
-        value = rawTag.slice(valueStart, cursor);
-      }
-    }
-
-    if (name) {
-      attributes.push({ name, value });
+    const nextAttribute = readAttribute(rawTag, cursor);
+    cursor = nextAttribute.nextCursor;
+    if (nextAttribute.attribute) {
+      attributes.push(nextAttribute.attribute);
     }
   }
 
   return attributes;
+}
+
+function readAttribute(rawTag, cursor) {
+  const nameResult = readAttributeName(rawTag, cursor);
+  if (!nameResult.name) {
+    return { nextCursor: nameResult.nextCursor };
+  }
+
+  let nextCursor = skipWhitespace(rawTag, nameResult.nextCursor);
+  if (rawTag[nextCursor] !== "=") {
+    return {
+      attribute: { name: nameResult.name },
+      nextCursor,
+    };
+  }
+
+  nextCursor += 1;
+  nextCursor = skipWhitespace(rawTag, nextCursor);
+  const valueResult = readAttributeValue(rawTag, nextCursor);
+  return {
+    attribute: { name: nameResult.name, value: valueResult.value },
+    nextCursor: valueResult.nextCursor,
+  };
+}
+
+function readAttributeName(rawTag, cursor) {
+  const nameStart = cursor;
+  let nextCursor = cursor;
+  while (
+    nextCursor < rawTag.length &&
+    isAttributeNameCharacter(rawTag[nextCursor])
+  ) {
+    nextCursor += 1;
+  }
+
+  return {
+    name: rawTag.slice(nameStart, nextCursor).toLowerCase(),
+    nextCursor,
+  };
+}
+
+function readAttributeValue(rawTag, cursor) {
+  const quote = rawTag[cursor];
+  if (quote === '"' || quote === "'") {
+    return readQuotedAttributeValue(rawTag, cursor, quote);
+  }
+
+  return readUnquotedAttributeValue(rawTag, cursor);
+}
+
+function readQuotedAttributeValue(rawTag, cursor, quote) {
+  const valueStart = cursor + 1;
+  let nextCursor = valueStart;
+
+  while (nextCursor < rawTag.length && rawTag[nextCursor] !== quote) {
+    nextCursor += 1;
+  }
+
+  return {
+    value: rawTag.slice(valueStart, nextCursor),
+    nextCursor: rawTag[nextCursor] === quote ? nextCursor + 1 : nextCursor,
+  };
+}
+
+function readUnquotedAttributeValue(rawTag, cursor) {
+  const valueStart = cursor;
+  let nextCursor = cursor;
+
+  while (
+    nextCursor < rawTag.length &&
+    !isAttributeValueBoundary(rawTag[nextCursor])
+  ) {
+    nextCursor += 1;
+  }
+
+  return {
+    value: rawTag.slice(valueStart, nextCursor),
+    nextCursor,
+  };
+}
+
+function skipWhitespace(input, cursor) {
+  let nextCursor = cursor;
+  while (nextCursor < input.length && /\s/.test(input[nextCursor] ?? "")) {
+    nextCursor += 1;
+  }
+  return nextCursor;
+}
+
+function skipTagName(rawTag, cursor) {
+  let nextCursor = cursor;
+  while (nextCursor < rawTag.length && isTagNameCharacter(rawTag[nextCursor])) {
+    nextCursor += 1;
+  }
+  return nextCursor;
+}
+
+function isTagBoundaryCharacter(character) {
+  return (
+    character === undefined ||
+    character === ">" ||
+    character === "/" ||
+    /\s/.test(character)
+  );
+}
+
+function isAttributeNameCharacter(character) {
+  return !isAttributeListEndCharacter(character) && character !== "=";
+}
+
+function isAttributeListEnd(rawTag, cursor) {
+  return isAttributeListEndCharacter(rawTag[cursor]);
+}
+
+function isAttributeListEndCharacter(character) {
+  return !character || character === ">" || character === "/";
+}
+
+function isAttributeValueBoundary(character) {
+  return (
+    character === undefined ||
+    character === "/" ||
+    character === ">" ||
+    /\s/.test(character)
+  );
 }
 
 function isTagNameCharacter(character) {
