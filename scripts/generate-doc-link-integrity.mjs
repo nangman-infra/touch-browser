@@ -92,23 +92,26 @@ function stripCodeFences(markdown) {
 
 function extractMarkdownLinks(markdown) {
   const results = [];
-
-  for (let index = 0; index < markdown.length; index += 1) {
+  let index = 0;
+  while (index < markdown.length) {
     const labelStart =
       markdown[index] === "!" && markdown[index + 1] === "["
         ? index + 1
         : index;
     if (markdown[labelStart] !== "[") {
+      index += 1;
       continue;
     }
 
     const labelEnd = markdown.indexOf("]", labelStart + 1);
     if (labelEnd === -1 || markdown[labelEnd + 1] !== "(") {
+      index += 1;
       continue;
     }
 
     const hrefEnd = markdown.indexOf(")", labelEnd + 2);
     if (hrefEnd === -1) {
+      index += 1;
       continue;
     }
 
@@ -117,7 +120,7 @@ function extractMarkdownLinks(markdown) {
       results.push(href);
     }
 
-    index = hrefEnd;
+    index = hrefEnd + 1;
   }
 
   return results;
