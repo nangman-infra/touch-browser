@@ -1598,38 +1598,74 @@ fn negation_guard_check(normalized_claim: &str, normalized_support: &str) -> Gua
     }
 }
 
+fn append_unique_block_text(
+    seen_blocks: &mut BTreeSet<String>,
+    parts: &mut Vec<String>,
+    block: &SnapshotBlock,
+) {
+    if seen_blocks.insert(block.id.clone()) {
+        parts.push(block_search_text(block));
+    }
+}
+
+fn append_primary_heading_text(
+    seen_blocks: &mut BTreeSet<String>,
+    parts: &mut Vec<String>,
+    blocks: &[SnapshotBlock],
+) {
+    if let Some(primary_heading) = primary_heading_context(blocks) {
+        append_unique_block_text(seen_blocks, parts, primary_heading);
+    }
+}
+
+fn append_heading_context_text(
+    seen_blocks: &mut BTreeSet<String>,
+    parts: &mut Vec<String>,
+    blocks: &[SnapshotBlock],
+    block: &SnapshotBlock,
+) {
+    if let Some(heading) = nearest_heading_context(blocks, block) {
+        append_unique_block_text(seen_blocks, parts, heading);
+    }
+}
+
+fn append_neighbor_context_text(
+    seen_blocks: &mut BTreeSet<String>,
+    parts: &mut Vec<String>,
+    blocks: &[SnapshotBlock],
+    block: &SnapshotBlock,
+) {
+    let Some(candidate_index) = blocks
+        .iter()
+        .position(|candidate| std::ptr::eq(candidate, block))
+    else {
+        return;
+    };
+
+    for neighbor_index in contextual_neighbor_indices(blocks, candidate_index) {
+        append_unique_block_text(seen_blocks, parts, &blocks[neighbor_index]);
+    }
+}
+
+fn append_candidate_support_text(
+    seen_blocks: &mut BTreeSet<String>,
+    parts: &mut Vec<String>,
+    blocks: &[SnapshotBlock],
+    candidate: &ScoredCandidate<'_>,
+) {
+    append_unique_block_text(seen_blocks, parts, candidate.block);
+    append_heading_context_text(seen_blocks, parts, blocks, candidate.block);
+    append_neighbor_context_text(seen_blocks, parts, blocks, candidate.block);
+}
+
 fn aggregate_support_text(top_support: &[ScoredCandidate<'_>], blocks: &[SnapshotBlock]) -> String {
     let mut seen_blocks = BTreeSet::new();
     let mut parts = Vec::new();
 
-    if let Some(primary_heading) = primary_heading_context(blocks) {
-        if seen_blocks.insert(primary_heading.id.clone()) {
-            parts.push(block_search_text(primary_heading));
-        }
-    }
+    append_primary_heading_text(&mut seen_blocks, &mut parts, blocks);
 
     for candidate in top_support {
-        if seen_blocks.insert(candidate.block.id.clone()) {
-            parts.push(block_search_text(candidate.block));
-        }
-
-        if let Some(heading) = nearest_heading_context(blocks, candidate.block) {
-            if seen_blocks.insert(heading.id.clone()) {
-                parts.push(block_search_text(heading));
-            }
-        }
-
-        if let Some(candidate_index) = blocks
-            .iter()
-            .position(|block| std::ptr::eq(block, candidate.block))
-        {
-            for neighbor_index in contextual_neighbor_indices(blocks, candidate_index) {
-                let neighbor = &blocks[neighbor_index];
-                if seen_blocks.insert(neighbor.id.clone()) {
-                    parts.push(block_search_text(neighbor));
-                }
-            }
-        }
+        append_candidate_support_text(&mut seen_blocks, &mut parts, blocks, candidate);
     }
 
     parts.join(" ")
