@@ -619,8 +619,10 @@ mod tests {
     use serde_json::json;
     use tiny_http::{Header, Response as TinyResponse, Server, StatusCode};
     use touch_browser_contracts::{
-        SearchReport, SearchResultItem, SnapshotBlock, SnapshotBlockKind, SnapshotBlockRole,
-        SnapshotBudget, SnapshotDocument, SnapshotEvidence, SnapshotSource, SourceType,
+        ActionName, ReplayTranscript, ReplayTranscriptEntry, RiskClass, SearchReport,
+        SearchResultItem, SnapshotBlock, SnapshotBlockKind, SnapshotBlockRole, SnapshotBudget,
+        SnapshotDocument, SnapshotEvidence, SnapshotSource, SourceType, TranscriptKind,
+        TranscriptPayloadType, CONTRACT_VERSION,
     };
 
     use super::{
@@ -645,6 +647,99 @@ mod tests {
             .expect("time should be monotonic")
             .as_nanos();
         std::env::temp_dir().join(format!("touch-browser-{name}-{nanos}.json"))
+    }
+
+    struct ReplayScenarioFixture {
+        scenario: String,
+        root: PathBuf,
+    }
+
+    impl ReplayScenarioFixture {
+        fn create(name: &str) -> Self {
+            let nanos = SystemTime::now()
+                .duration_since(UNIX_EPOCH)
+                .expect("time should be monotonic")
+                .as_nanos();
+            let scenario = format!("{name}-{nanos}");
+            let root = repo_root().join("fixtures/scenarios").join(&scenario);
+            fs::create_dir_all(&root).expect("replay scenario dir should exist");
+
+            let transcript = ReplayTranscript {
+                version: CONTRACT_VERSION.to_string(),
+                session_id: "sscenario001".to_string(),
+                entries: vec![
+                    ReplayTranscriptEntry {
+                        seq: 1,
+                        timestamp: "2026-03-14T00:00:01+09:00".to_string(),
+                        kind: TranscriptKind::Command,
+                        payload_type: TranscriptPayloadType::ActionCommand,
+                        payload: json!({
+                            "version": CONTRACT_VERSION,
+                            "action": ActionName::Open,
+                            "targetUrl": "fixture://research/static-docs/getting-started",
+                            "riskClass": RiskClass::Low,
+                            "reason": "Open a read-only research document."
+                        }),
+                    },
+                    ReplayTranscriptEntry {
+                        seq: 2,
+                        timestamp: "2026-03-14T00:00:02+09:00".to_string(),
+                        kind: TranscriptKind::Command,
+                        payload_type: TranscriptPayloadType::ActionCommand,
+                        payload: json!({
+                            "version": CONTRACT_VERSION,
+                            "action": ActionName::Follow,
+                            "targetRef": "rnav:link:pricing",
+                            "riskClass": RiskClass::Low,
+                            "reason": "Follow the pricing link in the current snapshot."
+                        }),
+                    },
+                    ReplayTranscriptEntry {
+                        seq: 3,
+                        timestamp: "2026-03-14T00:00:03+09:00".to_string(),
+                        kind: TranscriptKind::Command,
+                        payload_type: TranscriptPayloadType::ActionCommand,
+                        payload: json!({
+                            "version": CONTRACT_VERSION,
+                            "action": ActionName::Extract,
+                            "targetUrl": "fixture://research/citation-heavy/pricing",
+                            "riskClass": RiskClass::Low,
+                            "reason": "Extract supported and unsupported claims.",
+                            "input": {
+                                "claims": [
+                                    {
+                                        "id": "c1",
+                                        "statement": "The Starter plan costs $29 per month."
+                                    },
+                                    {
+                                        "id": "c2",
+                                        "statement": "There is an Enterprise plan."
+                                    }
+                                ]
+                            }
+                        }),
+                    },
+                ],
+            };
+
+            fs::write(
+                root.join("replay-transcript.json"),
+                format!(
+                    "{}\n",
+                    serde_json::to_string_pretty(&transcript)
+                        .expect("replay transcript should serialize")
+                ),
+            )
+            .expect("replay transcript should be writable");
+
+            Self { scenario, root }
+        }
+    }
+
+    impl Drop for ReplayScenarioFixture {
+        fn drop(&mut self) {
+            let _ = fs::remove_dir_all(&self.root);
+        }
     }
 
     struct CliTestServer {
@@ -1672,8 +1767,9 @@ mod tests {
 
     #[test]
     fn dispatches_replay_command() {
+        let scenario = ReplayScenarioFixture::create("dispatches-replay-command");
         let output = dispatch(CliCommand::Replay {
-            scenario: "read-only-pricing".to_string(),
+            scenario: scenario.scenario.clone(),
         })
         .expect("replay should succeed");
 
