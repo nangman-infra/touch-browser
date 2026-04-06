@@ -447,6 +447,25 @@ fn summarize_json_payload(kind: &str, raw: &str) -> String {
     normalize_text(&format!("{kind}: {}", fields.join(" | ")))
 }
 
+const JSON_SUMMARY_PRIORITY_KEYS: [&str; 16] = [
+    "@type",
+    "name",
+    "headline",
+    "description",
+    "url",
+    "datePublished",
+    "dateModified",
+    "price",
+    "availability",
+    "title",
+    "page",
+    "pathname",
+    "slug",
+    "query",
+    "buildId",
+    "locale",
+];
+
 fn collect_json_summary_fields(
     value: &Value,
     path: &str,
@@ -459,93 +478,76 @@ fn collect_json_summary_fields(
     }
 
     match value {
-        Value::Object(map) => {
-            for key in [
-                "@type",
-                "name",
-                "headline",
-                "description",
-                "url",
-                "datePublished",
-                "dateModified",
-                "price",
-                "availability",
-                "title",
-                "page",
-                "pathname",
-                "slug",
-                "query",
-                "buildId",
-                "locale",
-            ] {
-                if output.len() >= limit {
-                    return;
-                }
-                if let Some(candidate) = map.get(key) {
-                    let next_path = if path.is_empty() {
-                        key.to_string()
-                    } else {
-                        format!("{path}.{key}")
-                    };
-                    collect_json_summary_fields(candidate, &next_path, output, depth + 1, limit);
-                }
-            }
-
-            for (key, candidate) in map {
-                if output.len() >= limit {
-                    return;
-                }
-                if [
-                    "@type",
-                    "name",
-                    "headline",
-                    "description",
-                    "url",
-                    "datePublished",
-                    "dateModified",
-                    "price",
-                    "availability",
-                    "title",
-                    "page",
-                    "pathname",
-                    "slug",
-                    "query",
-                    "buildId",
-                    "locale",
-                ]
-                .contains(&key.as_str())
-                {
-                    continue;
-                }
-                let next_path = if path.is_empty() {
-                    key.clone()
-                } else {
-                    format!("{path}.{key}")
-                };
-                collect_json_summary_fields(candidate, &next_path, output, depth + 1, limit);
-            }
-        }
-        Value::Array(items) => {
-            for item in items.iter().take(3) {
-                if output.len() >= limit {
-                    return;
-                }
-                collect_json_summary_fields(item, path, output, depth + 1, limit);
-            }
-        }
-        Value::String(text) => {
-            let normalized = normalize_text(text);
-            if !normalized.is_empty() {
-                output.push(format!("{path}: {normalized}"));
-            }
-        }
-        Value::Bool(flag) => {
-            output.push(format!("{path}: {flag}"));
-        }
-        Value::Number(number) => {
-            output.push(format!("{path}: {number}"));
-        }
+        Value::Object(map) => collect_json_summary_object_fields(map, path, output, depth, limit),
+        Value::Array(items) => collect_json_summary_array_fields(items, path, output, depth, limit),
+        Value::String(text) => append_json_summary_text(path, text, output),
+        Value::Bool(flag) => append_json_summary_scalar(path, flag, output),
+        Value::Number(number) => append_json_summary_scalar(path, number, output),
         Value::Null => {}
+    }
+}
+
+fn collect_json_summary_object_fields(
+    map: &serde_json::Map<String, Value>,
+    path: &str,
+    output: &mut Vec<String>,
+    depth: usize,
+    limit: usize,
+) {
+    for key in JSON_SUMMARY_PRIORITY_KEYS {
+        if output.len() >= limit {
+            return;
+        }
+        let Some(candidate) = map.get(key) else {
+            continue;
+        };
+        let next_path = next_json_summary_path(path, key);
+        collect_json_summary_fields(candidate, &next_path, output, depth + 1, limit);
+    }
+
+    for (key, candidate) in map {
+        if output.len() >= limit {
+            return;
+        }
+        if JSON_SUMMARY_PRIORITY_KEYS.contains(&key.as_str()) {
+            continue;
+        }
+        let next_path = next_json_summary_path(path, key);
+        collect_json_summary_fields(candidate, &next_path, output, depth + 1, limit);
+    }
+}
+
+fn collect_json_summary_array_fields(
+    items: &[Value],
+    path: &str,
+    output: &mut Vec<String>,
+    depth: usize,
+    limit: usize,
+) {
+    for item in items.iter().take(3) {
+        if output.len() >= limit {
+            return;
+        }
+        collect_json_summary_fields(item, path, output, depth + 1, limit);
+    }
+}
+
+fn append_json_summary_text(path: &str, text: &str, output: &mut Vec<String>) {
+    let normalized = normalize_text(text);
+    if !normalized.is_empty() {
+        output.push(format!("{path}: {normalized}"));
+    }
+}
+
+fn append_json_summary_scalar(path: &str, value: impl std::fmt::Display, output: &mut Vec<String>) {
+    output.push(format!("{path}: {value}"));
+}
+
+fn next_json_summary_path(path: &str, key: &str) -> String {
+    if path.is_empty() {
+        key.to_string()
+    } else {
+        format!("{path}.{key}")
     }
 }
 
