@@ -49,6 +49,9 @@ async function main() {
       const relativeTarget = path.relative(repoRoot, resolvedPath);
 
       if (!(await pathExists(resolvedPath))) {
+        if (isGeneratedScenarioArtifact(relativeTarget)) {
+          continue;
+        }
         relativeFailures.push({
           sourceFile: relativeFile,
           href,
@@ -172,6 +175,15 @@ function slugifyHeading(heading) {
 
 function normalizeRepoRelativePath(relativePath) {
   return relativePath.split(path.sep).join("/");
+}
+
+function isGeneratedScenarioArtifact(relativePath) {
+  const normalized = normalizeRepoRelativePath(relativePath);
+  return (
+    normalized.startsWith("fixtures/scenarios/") &&
+    (normalized.endsWith("/report.json") ||
+      normalized.endsWith("/summary.json"))
+  );
 }
 
 async function checkExternalUrl(url, sourceFiles) {
