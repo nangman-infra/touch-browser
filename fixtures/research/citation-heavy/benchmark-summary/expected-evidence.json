@@ -12,7 +12,7 @@
       "version": "1.0.0",
       "claimId": "c1",
       "statement": "The Core research suite reported citation precision of 97%.",
-      "support": ["b4", "b5"],
+      "support": ["b4", "b5", "b3"],
       "supportScore": 0.88,
       "citation": {
         "url": "fixture://research/citation-heavy/benchmark-summary",
@@ -26,8 +26,8 @@
       "version": "1.0.0",
       "claimId": "c2",
       "statement": "The Hostile review suite reported recall of 91%.",
-      "support": ["b4"],
-      "supportScore": 0.88,
+      "support": ["b4", "b3", "b5"],
+      "supportScore": 0.89,
       "citation": {
         "url": "fixture://research/citation-heavy/benchmark-summary",
         "retrievedAt": "2026-03-14T00:00:00+09:00",
@@ -44,10 +44,21 @@
       "statement": "The benchmark announces a native mobile SDK launch.",
       "reason": "insufficient-support-score",
       "checkedBlockRefs": [
+        "rmain:table:suite-recall-citation-precision-core-research-95",
         "rmain:text:the-internal-benchmark-compares-semantic-snapsho",
-        "rmain:heading:benchmark-summary",
-        "rhead:metadata:benchmark-summary"
-      ]
+        "rmain:text:core-research-kept-citation-precision-above-the-"
+      ],
+      "guardFailures": [
+        {
+          "kind": "anchor-coverage",
+          "detail": "anchor coverage 0.25 is below required 0.60"
+        },
+        {
+          "kind": "qualifier-coverage",
+          "detail": "qualifier coverage 0.00 is below required 1.00"
+        }
+      ],
+      "nextActionHint": "Browse a more specific source page before answering."
     }
   ],
   "claimOutcomes": [
@@ -56,7 +67,7 @@
       "claimId": "c1",
       "statement": "The Core research suite reported citation precision of 97%.",
       "verdict": "evidence-supported",
-      "support": ["b4", "b5"],
+      "support": ["b4", "b5", "b3"],
       "supportScore": 0.88,
       "citation": {
         "url": "fixture://research/citation-heavy/benchmark-summary",
@@ -76,8 +87,8 @@
       "claimId": "c2",
       "statement": "The Hostile review suite reported recall of 91%.",
       "verdict": "evidence-supported",
-      "support": ["b4"],
-      "supportScore": 0.88,
+      "support": ["b4", "b3", "b5"],
+      "supportScore": 0.89,
       "citation": {
         "url": "fixture://research/citation-heavy/benchmark-summary",
         "retrievedAt": "2026-03-14T00:00:00+09:00",
@@ -96,12 +107,24 @@
       "claimId": "c3",
       "statement": "The benchmark announces a native mobile SDK launch.",
       "verdict": "insufficient-evidence",
+      "support": ["b4"],
       "reason": "insufficient-support-score",
       "checkedBlockRefs": [
+        "rmain:table:suite-recall-citation-precision-core-research-95",
         "rmain:text:the-internal-benchmark-compares-semantic-snapsho",
-        "rmain:heading:benchmark-summary",
-        "rhead:metadata:benchmark-summary"
-      ]
+        "rmain:text:core-research-kept-citation-precision-above-the-"
+      ],
+      "guardFailures": [
+        {
+          "kind": "anchor-coverage",
+          "detail": "anchor coverage 0.25 is below required 0.60"
+        },
+        {
+          "kind": "qualifier-coverage",
+          "detail": "qualifier coverage 0.00 is below required 1.00"
+        }
+      ],
+      "nextActionHint": "Browse a more specific source page before answering."
     }
   ]
 }

@@ -12,8 +12,8 @@
       "version": "1.0.0",
       "claimId": "c1",
       "statement": "The runtime separates page content, policy state, and action inputs into distinct channels.",
-      "support": ["b6", "b9"],
-      "supportScore": 0.93,
+      "support": ["b6", "b7", "b5"],
+      "supportScore": 0.94,
       "citation": {
         "url": "fixture://research/static-docs/security-model",
         "retrievedAt": "2026-03-14T00:00:00+09:00",
@@ -26,8 +26,8 @@
       "version": "1.0.0",
       "claimId": "c2",
       "statement": "Replayable sessions emit audit logs that can be reviewed after each action.",
-      "support": ["b7"],
-      "supportScore": 0.93,
+      "support": ["b7", "b6", "b8"],
+      "supportScore": 0.94,
       "citation": {
         "url": "fixture://research/static-docs/security-model",
         "retrievedAt": "2026-03-14T00:00:00+09:00",
@@ -44,17 +44,10 @@
       "statement": "The security model includes automatic form submission.",
       "reason": "insufficient-support-score",
       "checkedBlockRefs": [
-        "rnav:link:security-model",
         "rmain:heading:security-model",
-        "rhead:metadata:security-model"
-      ],
-      "guardFailures": [
-        {
-          "kind": "anchor-coverage",
-          "detail": "anchor coverage 0.50 is below required 0.60"
-        }
-      ],
-      "nextActionHint": "Browse a more specific source page before answering."
+        "rmain:text:the-runtime-separates-page-content-policy-state-",
+        "rmain:text:all-replayable-sessions-emit-audit-logs-that-can"
+      ]
     }
   ],
   "claimOutcomes": [
@@ -63,8 +56,8 @@
       "claimId": "c1",
       "statement": "The runtime separates page content, policy state, and action inputs into distinct channels.",
       "verdict": "evidence-supported",
-      "support": ["b6", "b9"],
-      "supportScore": 0.93,
+      "support": ["b6", "b7", "b5"],
+      "supportScore": 0.94,
       "citation": {
         "url": "fixture://research/static-docs/security-model",
         "retrievedAt": "2026-03-14T00:00:00+09:00",
@@ -74,8 +67,8 @@
       },
       "checkedBlockRefs": [
         "rmain:text:the-runtime-separates-page-content-policy-state-",
-        "rmain:list:read-only-research-sessions-default-to-low-risk-",
-        "rmain:text:all-replayable-sessions-emit-audit-logs-that-can"
+        "rmain:text:all-replayable-sessions-emit-audit-logs-that-can",
+        "rmain:heading:security-model"
       ]
     },
     {
@@ -83,8 +76,8 @@
       "claimId": "c2",
       "statement": "Replayable sessions emit audit logs that can be reviewed after each action.",
       "verdict": "evidence-supported",
-      "support": ["b7"],
-      "supportScore": 0.93,
+      "support": ["b7", "b6", "b8"],
+      "supportScore": 0.94,
       "citation": {
         "url": "fixture://research/static-docs/security-model",
         "retrievedAt": "2026-03-14T00:00:00+09:00",
@@ -94,8 +87,8 @@
       },
       "checkedBlockRefs": [
         "rmain:text:all-replayable-sessions-emit-audit-logs-that-can",
-        "rmain:list:read-only-research-sessions-default-to-low-risk-",
-        "rmain:text:the-runtime-separates-page-content-policy-state-"
+        "rmain:text:the-runtime-separates-page-content-policy-state-",
+        "rmain:heading:core-rules"
       ]
     },
     {
@@ -103,20 +96,12 @@
       "claimId": "c3",
       "statement": "The security model includes automatic form submission.",
       "verdict": "insufficient-evidence",
-      "support": ["b3", "b5", "b1"],
       "reason": "insufficient-support-score",
       "checkedBlockRefs": [
-        "rnav:link:security-model",
         "rmain:heading:security-model",
-        "rhead:metadata:security-model"
-      ],
-      "guardFailures": [
-        {
-          "kind": "anchor-coverage",
-          "detail": "anchor coverage 0.50 is below required 0.60"
-        }
-      ],
-      "nextActionHint": "Browse a more specific source page before answering."
+        "rmain:text:the-runtime-separates-page-content-policy-state-",
+        "rmain:text:all-replayable-sessions-emit-audit-logs-that-can"
+      ]
     }
   ]
 }

@@ -12,8 +12,8 @@
       "version": "1.0.0",
       "claimId": "c1",
       "statement": "The page asks the runtime to select the correct Open docs link.",
-      "support": ["b3", "b5", "b7"],
-      "supportScore": 0.81,
+      "support": ["b3", "b4", "b2"],
+      "supportScore": 0.79,
       "citation": {
         "url": "fixture://research/navigation/browser-follow-duplicate",
         "retrievedAt": "2026-03-14T00:00:00+09:00",
@@ -26,8 +26,8 @@
       "version": "1.0.0",
       "claimId": "c2",
       "statement": "Current docs",
-      "support": ["b6", "b3", "b4"],
-      "supportScore": 0.92,
+      "support": ["b6"],
+      "supportScore": 0.93,
       "citation": {
         "url": "fixture://research/navigation/browser-follow-duplicate",
         "retrievedAt": "2026-03-14T00:00:00+09:00",
@@ -56,8 +56,8 @@
       "claimId": "c1",
       "statement": "The page asks the runtime to select the correct Open docs link.",
       "verdict": "evidence-supported",
-      "support": ["b3", "b5", "b7"],
-      "supportScore": 0.81,
+      "support": ["b3", "b4", "b2"],
+      "supportScore": 0.79,
       "citation": {
         "url": "fixture://research/navigation/browser-follow-duplicate",
         "retrievedAt": "2026-03-14T00:00:00+09:00",
@@ -67,8 +67,8 @@
       },
       "checkedBlockRefs": [
         "rmain:text:follow-content",
-        "rmain:link:docs",
-        "rmain:link:docs:2"
+        "rmain:heading:legacy-docs",
+        "rmain:heading:browser-follow-duplicate"
       ]
     },
     {
@@ -76,8 +76,8 @@
       "claimId": "c2",
       "statement": "Current docs",
       "verdict": "evidence-supported",
-      "support": ["b6", "b3", "b4"],
-      "supportScore": 0.92,
+      "support": ["b6"],
+      "supportScore": 0.93,
       "citation": {
         "url": "fixture://research/navigation/browser-follow-duplicate",
         "retrievedAt": "2026-03-14T00:00:00+09:00",

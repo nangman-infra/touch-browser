@@ -12,8 +12,8 @@
       "version": "1.0.0",
       "claimId": "c1",
       "statement": "The runtime exposes open, snapshot, extract, diff, compact, and replay commands.",
-      "support": ["b6"],
-      "supportScore": 0.93,
+      "support": ["b6", "b7", "b5"],
+      "supportScore": 0.94,
       "citation": {
         "url": "fixture://research/navigation/api-reference",
         "retrievedAt": "2026-03-14T00:00:00+09:00",
@@ -26,8 +26,8 @@
       "version": "1.0.0",
       "claimId": "c2",
       "statement": "Snapshot responses include stable refs and evidence metadata.",
-      "support": ["b8", "b10"],
-      "supportScore": 0.93,
+      "support": ["b8", "b9", "b7"],
+      "supportScore": 0.94,
       "citation": {
         "url": "fixture://research/navigation/api-reference",
         "retrievedAt": "2026-03-14T00:00:00+09:00",
@@ -37,21 +37,22 @@
       }
     }
   ],
-  "insufficientEvidenceClaims": [
+  "insufficientEvidenceClaims": [],
+  "needsMoreBrowsingClaims": [
     {
       "version": "1.0.0",
       "claimId": "c3",
       "statement": "The API reference documents a purchase command.",
-      "reason": "insufficient-support-score",
+      "reason": "needs-more-browsing",
       "checkedBlockRefs": [
         "rmain:heading:overview",
-        "rhead:metadata:api-reference",
-        "rmain:text:the-runtime-exposes-open-snapshot-extract-diff-c"
+        "rmain:text:the-runtime-exposes-open-snapshot-extract-diff-c",
+        "rmain:heading:snapshot"
       ],
       "guardFailures": [
         {
           "kind": "anchor-coverage",
-          "detail": "anchor coverage 0.25 is below required 0.60"
+          "detail": "anchor coverage 0.50 is below required 0.60"
         }
       ],
       "nextActionHint": "Browse a more specific source page before answering."
@@ -63,8 +64,8 @@
       "claimId": "c1",
       "statement": "The runtime exposes open, snapshot, extract, diff, compact, and replay commands.",
       "verdict": "evidence-supported",
-      "support": ["b6"],
-      "supportScore": 0.93,
+      "support": ["b6", "b7", "b5"],
+      "supportScore": 0.94,
       "citation": {
         "url": "fixture://research/navigation/api-reference",
         "retrievedAt": "2026-03-14T00:00:00+09:00",
@@ -74,8 +75,8 @@
       },
       "checkedBlockRefs": [
         "rmain:text:the-runtime-exposes-open-snapshot-extract-diff-c",
-        "rmain:text:snapshot-responses-include-stable-refs-and-evide",
-        "rmain:text:evidence-blocks-must-point-back-to-the-supportin"
+        "rmain:heading:snapshot",
+        "rmain:heading:overview"
       ]
     },
     {
@@ -83,8 +84,8 @@
       "claimId": "c2",
       "statement": "Snapshot responses include stable refs and evidence metadata.",
       "verdict": "evidence-supported",
-      "support": ["b8", "b10"],
-      "supportScore": 0.93,
+      "support": ["b8", "b9", "b7"],
+      "supportScore": 0.94,
       "citation": {
         "url": "fixture://research/navigation/api-reference",
         "retrievedAt": "2026-03-14T00:00:00+09:00",
@@ -94,26 +95,26 @@
       },
       "checkedBlockRefs": [
         "rmain:text:snapshot-responses-include-stable-refs-and-evide",
-        "rmain:text:evidence-blocks-must-point-back-to-the-supportin",
-        "rmain:text:the-runtime-exposes-open-snapshot-extract-diff-c"
+        "rmain:heading:evidence",
+        "rmain:heading:snapshot"
       ]
     },
     {
       "version": "1.0.0",
       "claimId": "c3",
       "statement": "The API reference documents a purchase command.",
-      "verdict": "insufficient-evidence",
-      "support": ["b5", "b1"],
-      "reason": "insufficient-support-score",
+      "verdict": "needs-more-browsing",
+      "support": ["b5", "b6", "b7"],
+      "reason": "needs-more-browsing",
       "checkedBlockRefs": [
         "rmain:heading:overview",
-        "rhead:metadata:api-reference",
-        "rmain:text:the-runtime-exposes-open-snapshot-extract-diff-c"
+        "rmain:text:the-runtime-exposes-open-snapshot-extract-diff-c",
+        "rmain:heading:snapshot"
       ],
       "guardFailures": [
         {
           "kind": "anchor-coverage",
-          "detail": "anchor coverage 0.25 is below required 0.60"
+          "detail": "anchor coverage 0.50 is below required 0.60"
         }
       ],
       "nextActionHint": "Browse a more specific source page before answering."

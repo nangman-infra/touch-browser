@@ -12,8 +12,8 @@
       "version": "1.0.0",
       "claimId": "c1",
       "statement": "Release Hub groups stable, beta, and archived release tracks.",
-      "support": ["b3", "b4"],
-      "supportScore": 0.93,
+      "support": ["b3", "b4", "b2"],
+      "supportScore": 0.94,
       "citation": {
         "url": "fixture://research/navigation/release-hub",
         "retrievedAt": "2026-03-14T00:00:00+09:00",
@@ -26,8 +26,8 @@
       "version": "1.0.0",
       "claimId": "c2",
       "statement": "Stable track",
-      "support": ["b4", "b3"],
-      "supportScore": 0.94,
+      "support": ["b4", "b3", "b2"],
+      "supportScore": 0.91,
       "citation": {
         "url": "fixture://research/navigation/release-hub",
         "retrievedAt": "2026-03-14T00:00:00+09:00",
@@ -45,16 +45,9 @@
       "reason": "insufficient-support-score",
       "checkedBlockRefs": [
         "rmain:text:release-hub-groups-stable-beta-and-archived-rele",
-        "rmain:heading:release-hub",
-        "rhead:metadata:release-hub"
-      ],
-      "guardFailures": [
-        {
-          "kind": "anchor-coverage",
-          "detail": "anchor coverage 0.33 is below required 0.67"
-        }
-      ],
-      "nextActionHint": "Browse a more specific source page before answering."
+        "rmain:list:stable-track-beta-track-archived-track",
+        "rmain:heading:release-hub"
+      ]
     }
   ],
   "claimOutcomes": [
@@ -63,8 +56,8 @@
       "claimId": "c1",
       "statement": "Release Hub groups stable, beta, and archived release tracks.",
       "verdict": "evidence-supported",
-      "support": ["b3", "b4"],
-      "supportScore": 0.93,
+      "support": ["b3", "b4", "b2"],
+      "supportScore": 0.94,
       "citation": {
         "url": "fixture://research/navigation/release-hub",
         "retrievedAt": "2026-03-14T00:00:00+09:00",
@@ -83,8 +76,8 @@
       "claimId": "c2",
       "statement": "Stable track",
       "verdict": "evidence-supported",
-      "support": ["b4", "b3"],
-      "supportScore": 0.94,
+      "support": ["b4", "b3", "b2"],
+      "supportScore": 0.91,
       "citation": {
         "url": "fixture://research/navigation/release-hub",
         "retrievedAt": "2026-03-14T00:00:00+09:00",
@@ -103,20 +96,12 @@
       "claimId": "c3",
       "statement": "The release hub contains a credential reset form.",
       "verdict": "insufficient-evidence",
-      "support": ["b3", "b2", "b1"],
       "reason": "insufficient-support-score",
       "checkedBlockRefs": [
         "rmain:text:release-hub-groups-stable-beta-and-archived-rele",
-        "rmain:heading:release-hub",
-        "rhead:metadata:release-hub"
-      ],
-      "guardFailures": [
-        {
-          "kind": "anchor-coverage",
-          "detail": "anchor coverage 0.33 is below required 0.67"
-        }
-      ],
-      "nextActionHint": "Browse a more specific source page before answering."
+        "rmain:list:stable-track-beta-track-archived-track",
+        "rmain:heading:release-hub"
+      ]
     }
   ]
 }

@@ -12,8 +12,8 @@
       "version": "1.0.0",
       "claimId": "c1",
       "statement": "The page asks the runtime to follow the Advanced guide link.",
-      "support": ["b3", "b4"],
-      "supportScore": 0.8,
+      "support": ["b3", "b4", "b2"],
+      "supportScore": 0.74,
       "citation": {
         "url": "fixture://research/navigation/browser-follow",
         "retrievedAt": "2026-03-14T00:00:00+09:00",
@@ -26,8 +26,8 @@
       "version": "1.0.0",
       "claimId": "c2",
       "statement": "The page includes an Advanced guide link.",
-      "support": ["b3", "b4"],
-      "supportScore": 0.86,
+      "support": ["b3", "b4", "b2"],
+      "supportScore": 0.87,
       "citation": {
         "url": "fixture://research/navigation/browser-follow",
         "retrievedAt": "2026-03-14T00:00:00+09:00",
@@ -56,8 +56,8 @@
       "claimId": "c1",
       "statement": "The page asks the runtime to follow the Advanced guide link.",
       "verdict": "evidence-supported",
-      "support": ["b3", "b4"],
-      "supportScore": 0.8,
+      "support": ["b3", "b4", "b2"],
+      "supportScore": 0.74,
       "citation": {
         "url": "fixture://research/navigation/browser-follow",
         "retrievedAt": "2026-03-14T00:00:00+09:00",
@@ -76,8 +76,8 @@
       "claimId": "c2",
       "statement": "The page includes an Advanced guide link.",
       "verdict": "evidence-supported",
-      "support": ["b3", "b4"],
-      "supportScore": 0.86,
+      "support": ["b3", "b4", "b2"],
+      "supportScore": 0.87,
       "citation": {
         "url": "fixture://research/navigation/browser-follow",
         "retrievedAt": "2026-03-14T00:00:00+09:00",

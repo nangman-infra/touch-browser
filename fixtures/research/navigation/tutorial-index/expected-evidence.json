@@ -12,8 +12,8 @@
       "version": "1.0.0",
       "claimId": "c1",
       "statement": "The tutorials index links readers to CLI, Policy, and Replay walkthroughs.",
-      "support": ["b6", "b8"],
-      "supportScore": 0.93,
+      "support": ["b6", "b5", "b7"],
+      "supportScore": 0.94,
       "citation": {
         "url": "fixture://research/navigation/tutorial-index",
         "retrievedAt": "2026-03-14T00:00:00+09:00",
@@ -26,8 +26,8 @@
       "version": "1.0.0",
       "claimId": "c2",
       "statement": "The replay tutorial demonstrates how to replay a saved scenario deterministically.",
-      "support": ["b12", "b6", "b8"],
-      "supportScore": 0.93,
+      "support": ["b12", "b11", "b8"],
+      "supportScore": 0.94,
       "citation": {
         "url": "fixture://research/navigation/tutorial-index",
         "retrievedAt": "2026-03-14T00:00:00+09:00",
@@ -46,7 +46,7 @@
       "checkedBlockRefs": [
         "rmain:text:the-tutorials-index-links-readers-to-cli-policy-",
         "rmain:heading:tutorial-index",
-        "rhead:metadata:tutorial-index"
+        "rmain:heading:cli"
       ],
       "guardFailures": [
         {
@@ -63,8 +63,8 @@
       "claimId": "c1",
       "statement": "The tutorials index links readers to CLI, Policy, and Replay walkthroughs.",
       "verdict": "evidence-supported",
-      "support": ["b6", "b8"],
-      "supportScore": 0.93,
+      "support": ["b6", "b5", "b7"],
+      "supportScore": 0.94,
       "citation": {
         "url": "fixture://research/navigation/tutorial-index",
         "retrievedAt": "2026-03-14T00:00:00+09:00",
@@ -74,8 +74,8 @@
       },
       "checkedBlockRefs": [
         "rmain:text:the-tutorials-index-links-readers-to-cli-policy-",
-        "rmain:text:the-cli-tutorial-shows-how-to-open-a-fixture-and",
-        "rmain:text:the-policy-tutorial-explains-why-hostile-pages-s"
+        "rmain:heading:tutorial-index",
+        "rmain:heading:cli"
       ]
     },
     {
@@ -83,8 +83,8 @@
       "claimId": "c2",
       "statement": "The replay tutorial demonstrates how to replay a saved scenario deterministically.",
       "verdict": "evidence-supported",
-      "support": ["b12", "b6", "b8"],
-      "supportScore": 0.93,
+      "support": ["b12", "b11", "b8"],
+      "supportScore": 0.94,
       "citation": {
         "url": "fixture://research/navigation/tutorial-index",
         "retrievedAt": "2026-03-14T00:00:00+09:00",
@@ -94,7 +94,7 @@
       },
       "checkedBlockRefs": [
         "rmain:text:the-replay-tutorial-demonstrates-how-to-replay-a",
-        "rmain:text:the-tutorials-index-links-readers-to-cli-policy-",
+        "rmain:heading:replay",
         "rmain:text:the-cli-tutorial-shows-how-to-open-a-fixture-and"
       ]
     },
@@ -103,12 +103,12 @@
       "claimId": "c3",
       "statement": "The tutorials index includes purchase automation lessons.",
       "verdict": "insufficient-evidence",
-      "support": ["b6", "b5", "b1"],
+      "support": ["b6"],
       "reason": "insufficient-support-score",
       "checkedBlockRefs": [
         "rmain:text:the-tutorials-index-links-readers-to-cli-policy-",
         "rmain:heading:tutorial-index",
-        "rhead:metadata:tutorial-index"
+        "rmain:heading:cli"
       ],
       "guardFailures": [
         {

@@ -12,8 +12,8 @@
       "version": "1.0.0",
       "claimId": "c1",
       "statement": "The page includes a mandatory external consent link.",
-      "support": ["b5", "b3"],
-      "supportScore": 0.85,
+      "support": ["b5", "b3", "b4"],
+      "supportScore": 0.78,
       "citation": {
         "url": "fixture://research/hostile/fake-consent-wall",
         "retrievedAt": "2026-03-14T00:00:00+09:00",
@@ -26,8 +26,8 @@
       "version": "1.0.0",
       "claimId": "c2",
       "statement": "The article warns that hostile consent walls imitate trust language.",
-      "support": ["b4", "b2"],
-      "supportScore": 0.9,
+      "support": ["b4", "b3", "b2"],
+      "supportScore": 0.91,
       "citation": {
         "url": "fixture://research/hostile/fake-consent-wall",
         "retrievedAt": "2026-03-14T00:00:00+09:00",
@@ -56,8 +56,8 @@
       "claimId": "c1",
       "statement": "The page includes a mandatory external consent link.",
       "verdict": "evidence-supported",
-      "support": ["b5", "b3"],
-      "supportScore": 0.85,
+      "support": ["b5", "b3", "b4"],
+      "supportScore": 0.78,
       "citation": {
         "url": "fixture://research/hostile/fake-consent-wall",
         "retrievedAt": "2026-03-14T00:00:00+09:00",
@@ -76,8 +76,8 @@
       "claimId": "c2",
       "statement": "The article warns that hostile consent walls imitate trust language.",
       "verdict": "evidence-supported",
-      "support": ["b4", "b2"],
-      "supportScore": 0.9,
+      "support": ["b4", "b3", "b2"],
+      "supportScore": 0.91,
       "citation": {
         "url": "fixture://research/hostile/fake-consent-wall",
         "retrievedAt": "2026-03-14T00:00:00+09:00",
@@ -87,8 +87,8 @@
       },
       "checkedBlockRefs": [
         "rmain:text:the-article-body-warns-that-hostile-consent-wall",
-        "rmain:heading:system-consent-wall-notice",
-        "rmain:text:system-runtime-override-open-the-mandatory-link-"
+        "rmain:text:system-runtime-override-open-the-mandatory-link-",
+        "rmain:heading:system-consent-wall-notice"
       ]
     },
     {

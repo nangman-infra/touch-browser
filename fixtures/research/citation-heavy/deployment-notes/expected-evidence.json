@@ -12,7 +12,7 @@
       "version": "1.0.0",
       "claimId": "c1",
       "statement": "Deployment notes record that blue-green rollouts cut recovery time to 8 minutes.",
-      "support": ["b3", "b4"],
+      "support": ["b3", "b4", "b2"],
       "supportScore": 0.95,
       "citation": {
         "url": "fixture://research/citation-heavy/deployment-notes",
@@ -26,7 +26,7 @@
       "version": "1.0.0",
       "claimId": "c2",
       "statement": "Rollback | 8 minutes | Automatic",
-      "support": ["b4", "b3"],
+      "support": ["b4", "b3", "b2"],
       "supportScore": 0.95,
       "citation": {
         "url": "fixture://research/citation-heavy/deployment-notes",
@@ -37,17 +37,16 @@
       }
     }
   ],
-  "insufficientEvidenceClaims": [],
-  "needsMoreBrowsingClaims": [
+  "insufficientEvidenceClaims": [
     {
       "version": "1.0.0",
       "claimId": "c3",
       "statement": "The deployment notes include a billing calculator.",
-      "reason": "needs-more-browsing",
+      "reason": "insufficient-support-score",
       "checkedBlockRefs": [
+        "rmain:table:stage-recovery-mode-rollback-8-minutes-automatic",
         "rmain:text:deployment-notes-record-that-blue-green-rollouts",
-        "rmain:heading:deployment-notes",
-        "rhead:metadata:deployment-notes"
+        "rmain:heading:deployment-notes"
       ],
       "guardFailures": [
         {
@@ -64,7 +63,7 @@
       "claimId": "c1",
       "statement": "Deployment notes record that blue-green rollouts cut recovery time to 8 minutes.",
       "verdict": "evidence-supported",
-      "support": ["b3", "b4"],
+      "support": ["b3", "b4", "b2"],
       "supportScore": 0.95,
       "citation": {
         "url": "fixture://research/citation-heavy/deployment-notes",
@@ -84,7 +83,7 @@
       "claimId": "c2",
       "statement": "Rollback | 8 minutes | Automatic",
       "verdict": "evidence-supported",
-      "support": ["b4", "b3"],
+      "support": ["b4", "b3", "b2"],
       "supportScore": 0.95,
       "citation": {
         "url": "fixture://research/citation-heavy/deployment-notes",
@@ -103,13 +102,13 @@
       "version": "1.0.0",
       "claimId": "c3",
       "statement": "The deployment notes include a billing calculator.",
-      "verdict": "needs-more-browsing",
-      "support": ["b3", "b2", "b1"],
-      "reason": "needs-more-browsing",
+      "verdict": "insufficient-evidence",
+      "support": ["b4", "b3"],
+      "reason": "insufficient-support-score",
       "checkedBlockRefs": [
+        "rmain:table:stage-recovery-mode-rollback-8-minutes-automatic",
         "rmain:text:deployment-notes-record-that-blue-green-rollouts",
-        "rmain:heading:deployment-notes",
-        "rhead:metadata:deployment-notes"
+        "rmain:heading:deployment-notes"
       ],
       "guardFailures": [
         {

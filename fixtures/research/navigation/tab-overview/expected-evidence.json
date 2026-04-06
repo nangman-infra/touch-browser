@@ -12,8 +12,8 @@
       "version": "1.0.0",
       "claimId": "c1",
       "statement": "Researchers often open the Architecture tab first.",
-      "support": ["b8", "b3"],
-      "supportScore": 0.93,
+      "support": ["b8", "b3", "b4"],
+      "supportScore": 0.94,
       "citation": {
         "url": "fixture://research/navigation/tab-overview",
         "retrievedAt": "2026-03-14T00:00:00+09:00",
@@ -26,8 +26,8 @@
       "version": "1.0.0",
       "claimId": "c2",
       "statement": "The page lists Architecture, Benchmarks, and Policy tabs.",
-      "support": ["b4", "b8"],
-      "supportScore": 0.8,
+      "support": ["b4", "b3", "b8"],
+      "supportScore": 0.86,
       "citation": {
         "url": "fixture://research/navigation/tab-overview",
         "retrievedAt": "2026-03-14T00:00:00+09:00",
@@ -56,8 +56,8 @@
       "claimId": "c1",
       "statement": "Researchers often open the Architecture tab first.",
       "verdict": "evidence-supported",
-      "support": ["b8", "b3"],
-      "supportScore": 0.93,
+      "support": ["b8", "b3", "b4"],
+      "supportScore": 0.94,
       "citation": {
         "url": "fixture://research/navigation/tab-overview",
         "retrievedAt": "2026-03-14T00:00:00+09:00",
@@ -76,8 +76,8 @@
       "claimId": "c2",
       "statement": "The page lists Architecture, Benchmarks, and Policy tabs.",
       "verdict": "evidence-supported",
-      "support": ["b4", "b8"],
-      "supportScore": 0.8,
+      "support": ["b4", "b3", "b8"],
+      "supportScore": 0.86,
       "citation": {
         "url": "fixture://research/navigation/tab-overview",
         "retrievedAt": "2026-03-14T00:00:00+09:00",
@@ -87,8 +87,8 @@
       },
       "checkedBlockRefs": [
         "rmain:list:architecture-benchmarks-policy",
-        "rmain:text:researchers-often-open-the-architecture-tab-firs",
-        "rmain:text:the-runtime-can-scan-documentation-tabs-before-o"
+        "rmain:text:the-runtime-can-scan-documentation-tabs-before-o",
+        "rmain:text:researchers-often-open-the-architecture-tab-firs"
       ]
     },
     {

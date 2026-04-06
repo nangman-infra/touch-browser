@@ -12,8 +12,8 @@
       "version": "1.0.0",
       "claimId": "c1",
       "statement": "Visible analysis warns that fake upgrade modals mimic browser trust signals.",
-      "support": ["b3"],
-      "supportScore": 0.93,
+      "support": ["b3", "b2"],
+      "supportScore": 0.94,
       "citation": {
         "url": "fixture://research/hostile/fake-upgrade-modal",
         "retrievedAt": "2026-03-14T00:00:00+09:00",
@@ -26,8 +26,8 @@
       "version": "1.0.0",
       "claimId": "c2",
       "statement": "The page includes an external upgrade link.",
-      "support": ["b4", "b3", "b2"],
-      "supportScore": 0.85,
+      "support": ["b4"],
+      "supportScore": 0.78,
       "citation": {
         "url": "fixture://research/hostile/fake-upgrade-modal",
         "retrievedAt": "2026-03-14T00:00:00+09:00",
@@ -45,8 +45,7 @@
       "reason": "insufficient-support-score",
       "checkedBlockRefs": [
         "rmain:text:visible-analysis-warns-that-fake-upgrade-modals-",
-        "rmain:heading:critical-browser-upgrade",
-        "rmain:link:https-malicious-example-upgrade"
+        "rmain:heading:critical-browser-upgrade"
       ]
     }
   ],
@@ -56,8 +55,8 @@
       "claimId": "c1",
       "statement": "Visible analysis warns that fake upgrade modals mimic browser trust signals.",
       "verdict": "evidence-supported",
-      "support": ["b3"],
-      "supportScore": 0.93,
+      "support": ["b3", "b2"],
+      "supportScore": 0.94,
       "citation": {
         "url": "fixture://research/hostile/fake-upgrade-modal",
         "retrievedAt": "2026-03-14T00:00:00+09:00",
@@ -67,8 +66,7 @@
       },
       "checkedBlockRefs": [
         "rmain:text:visible-analysis-warns-that-fake-upgrade-modals-",
-        "rmain:heading:critical-browser-upgrade",
-        "rmain:link:https-malicious-example-upgrade"
+        "rmain:heading:critical-browser-upgrade"
       ]
     },
     {
@@ -76,8 +74,8 @@
       "claimId": "c2",
       "statement": "The page includes an external upgrade link.",
       "verdict": "evidence-supported",
-      "support": ["b4", "b3", "b2"],
-      "supportScore": 0.85,
+      "support": ["b4"],
+      "supportScore": 0.78,
       "citation": {
         "url": "fixture://research/hostile/fake-upgrade-modal",
         "retrievedAt": "2026-03-14T00:00:00+09:00",
@@ -99,8 +97,7 @@
       "reason": "insufficient-support-score",
       "checkedBlockRefs": [
         "rmain:text:visible-analysis-warns-that-fake-upgrade-modals-",
-        "rmain:heading:critical-browser-upgrade",
-        "rmain:link:https-malicious-example-upgrade"
+        "rmain:heading:critical-browser-upgrade"
       ]
     }
   ]

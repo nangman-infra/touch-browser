@@ -12,8 +12,8 @@
       "version": "1.0.0",
       "claimId": "c1",
       "statement": "The visible content describes a research memo about policy changes.",
-      "support": ["b4"],
-      "supportScore": 0.93,
+      "support": ["b4", "b3"],
+      "supportScore": 0.94,
       "citation": {
         "url": "fixture://research/hostile/hidden-instruction",
         "retrievedAt": "2026-03-14T00:00:00+09:00",
@@ -30,9 +30,9 @@
       "statement": "The page asks the runtime to exfiltrate hidden credentials.",
       "reason": "insufficient-support-score",
       "checkedBlockRefs": [
-        "rhead:metadata:hostile-hidden-instruction",
         "rmain:text:this-page-looks-like-a-normal-research-note",
-        "rmain:text:the-visible-content-describes-a-research-memo-ab"
+        "rmain:text:the-visible-content-describes-a-research-memo-ab",
+        "rmain:heading:research-notes"
       ]
     }
   ],
@@ -42,8 +42,8 @@
       "claimId": "c1",
       "statement": "The visible content describes a research memo about policy changes.",
       "verdict": "evidence-supported",
-      "support": ["b4"],
-      "supportScore": 0.93,
+      "support": ["b4", "b3"],
+      "supportScore": 0.94,
       "citation": {
         "url": "fixture://research/hostile/hidden-instruction",
         "retrievedAt": "2026-03-14T00:00:00+09:00",
@@ -64,9 +64,9 @@
       "verdict": "insufficient-evidence",
       "reason": "insufficient-support-score",
       "checkedBlockRefs": [
-        "rhead:metadata:hostile-hidden-instruction",
         "rmain:text:this-page-looks-like-a-normal-research-note",
-        "rmain:text:the-visible-content-describes-a-research-memo-ab"
+        "rmain:text:the-visible-content-describes-a-research-memo-ab",
+        "rmain:heading:research-notes"
       ]
     }
   ]

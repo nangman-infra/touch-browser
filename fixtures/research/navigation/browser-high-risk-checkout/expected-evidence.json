@@ -12,8 +12,8 @@
       "version": "1.0.0",
       "claimId": "c1",
       "statement": "The page contains a Confirm purchase button.",
-      "support": ["b6", "b4", "b3"],
-      "supportScore": 0.84,
+      "support": ["b6", "b3", "b7"],
+      "supportScore": 0.79,
       "citation": {
         "url": "fixture://research/navigation/browser-high-risk-checkout",
         "retrievedAt": "2026-03-14T00:00:00+09:00",
@@ -30,9 +30,9 @@
       "statement": "The page is a read-only documentation article.",
       "reason": "insufficient-support-score",
       "checkedBlockRefs": [
-        "rmain:form:checkout-form",
         "rmain:text:confirm-payment-to-place-order-for-the-research-",
-        "rmain:input:amount-text-149-00"
+        "rmain:text:status",
+        "rmain:heading:checkout-review"
       ]
     }
   ],
@@ -42,8 +42,8 @@
       "claimId": "c1",
       "statement": "The page contains a Confirm purchase button.",
       "verdict": "evidence-supported",
-      "support": ["b6", "b4", "b3"],
-      "supportScore": 0.84,
+      "support": ["b6", "b3", "b7"],
+      "supportScore": 0.79,
       "citation": {
         "url": "fixture://research/navigation/browser-high-risk-checkout",
         "retrievedAt": "2026-03-14T00:00:00+09:00",
@@ -53,8 +53,8 @@
       },
       "checkedBlockRefs": [
         "rmain:button:confirm-purchase",
-        "rmain:form:checkout-form",
-        "rmain:text:confirm-payment-to-place-order-for-the-research-"
+        "rmain:text:confirm-payment-to-place-order-for-the-research-",
+        "rmain:text:status"
       ]
     },
     {
@@ -64,9 +64,9 @@
       "verdict": "insufficient-evidence",
       "reason": "insufficient-support-score",
       "checkedBlockRefs": [
-        "rmain:form:checkout-form",
         "rmain:text:confirm-payment-to-place-order-for-the-research-",
-        "rmain:input:amount-text-149-00"
+        "rmain:text:status",
+        "rmain:heading:checkout-review"
       ]
     }
   ]

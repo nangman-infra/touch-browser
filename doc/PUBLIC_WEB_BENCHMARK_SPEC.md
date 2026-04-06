@@ -89,6 +89,7 @@ These are intentionally official, public, document-style sources where content q
 ## 6. Limits
 
 - the sample count is still small and biased toward stable document pages
-- JS-heavy applications, authenticated apps, and anti-bot pages are intentionally excluded
+- JS-heavy applications are measured separately in [JS_RENDERER_BENCHMARK_SPEC.md](JS_RENDERER_BENCHMARK_SPEC.md)
+- authenticated apps and anti-bot pages are intentionally excluded
 - this benchmark is not a head-to-head competitive scrape benchmark against Exa or Firecrawl outputs
 - the live public baseline is not part of the default `pnpm test` gate because network volatility and upstream page changes should stay separate from deterministic regression signals

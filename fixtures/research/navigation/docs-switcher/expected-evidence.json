@@ -12,8 +12,8 @@
       "version": "1.0.0",
       "claimId": "c1",
       "statement": "Docs Switcher links architecture, policy, and replay references from one index.",
-      "support": ["b3", "b4", "b5"],
-      "supportScore": 0.93,
+      "support": ["b3", "b4", "b2"],
+      "supportScore": 0.94,
       "citation": {
         "url": "fixture://research/navigation/docs-switcher",
         "retrievedAt": "2026-03-14T00:00:00+09:00",
@@ -27,7 +27,7 @@
       "claimId": "c2",
       "statement": "Replay reference",
       "support": ["b4", "b3", "b7"],
-      "supportScore": 0.94,
+      "supportScore": 0.95,
       "citation": {
         "url": "fixture://research/navigation/docs-switcher",
         "retrievedAt": "2026-03-14T00:00:00+09:00",
@@ -46,7 +46,7 @@
       "checkedBlockRefs": [
         "rmain:text:docs-switcher-links-architecture-policy-and-repl",
         "rmain:heading:docs-switcher",
-        "rhead:metadata:docs-switcher"
+        "rmain:list:architecture-reference-policy-reference-replay-r"
       ],
       "guardFailures": [
         {
@@ -63,8 +63,8 @@
       "claimId": "c1",
       "statement": "Docs Switcher links architecture, policy, and replay references from one index.",
       "verdict": "evidence-supported",
-      "support": ["b3", "b4", "b5"],
-      "supportScore": 0.93,
+      "support": ["b3", "b4", "b2"],
+      "supportScore": 0.94,
       "citation": {
         "url": "fixture://research/navigation/docs-switcher",
         "retrievedAt": "2026-03-14T00:00:00+09:00",
@@ -75,7 +75,7 @@
       "checkedBlockRefs": [
         "rmain:text:docs-switcher-links-architecture-policy-and-repl",
         "rmain:list:architecture-reference-policy-reference-replay-r",
-        "rmain:link:architecture"
+        "rmain:heading:docs-switcher"
       ]
     },
     {
@@ -84,7 +84,7 @@
       "statement": "Replay reference",
       "verdict": "evidence-supported",
       "support": ["b4", "b3", "b7"],
-      "supportScore": 0.94,
+      "supportScore": 0.95,
       "citation": {
         "url": "fixture://research/navigation/docs-switcher",
         "retrievedAt": "2026-03-14T00:00:00+09:00",
@@ -103,12 +103,12 @@
       "claimId": "c3",
       "statement": "The docs switcher submits a purchase form.",
       "verdict": "insufficient-evidence",
-      "support": ["b3", "b2", "b1"],
+      "support": ["b3", "b2", "b4"],
       "reason": "insufficient-support-score",
       "checkedBlockRefs": [
         "rmain:text:docs-switcher-links-architecture-policy-and-repl",
         "rmain:heading:docs-switcher",
-        "rhead:metadata:docs-switcher"
+        "rmain:list:architecture-reference-policy-reference-replay-r"
       ],
       "guardFailures": [
         {

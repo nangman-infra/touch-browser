@@ -12,8 +12,8 @@
       "version": "1.0.0",
       "claimId": "c1",
       "statement": "Citation Contracts require supported claims to carry a source URL and retrieved timestamp.",
-      "support": ["b3"],
-      "supportScore": 0.93,
+      "support": ["b3", "b4", "b2"],
+      "supportScore": 0.94,
       "citation": {
         "url": "fixture://research/static-docs/citation-contracts",
         "retrievedAt": "2026-03-14T00:00:00+09:00",
@@ -26,8 +26,8 @@
       "version": "1.0.0",
       "claimId": "c2",
       "statement": "Support refs point to stable snapshot blocks.",
-      "support": ["b4"],
-      "supportScore": 0.94,
+      "support": ["b4", "b3"],
+      "supportScore": 0.95,
       "citation": {
         "url": "fixture://research/static-docs/citation-contracts",
         "retrievedAt": "2026-03-14T00:00:00+09:00",
@@ -45,8 +45,8 @@
       "reason": "insufficient-support-score",
       "checkedBlockRefs": [
         "rmain:text:citation-contracts-require-supported-claims-to-c",
-        "rmain:heading:citation-contracts",
-        "rmain:link:citation-contracts"
+        "rmain:list:support-refs-point-to-stable-snapshot-blocks-uns",
+        "rmain:heading:citation-contracts"
       ]
     }
   ],
@@ -56,8 +56,8 @@
       "claimId": "c1",
       "statement": "Citation Contracts require supported claims to carry a source URL and retrieved timestamp.",
       "verdict": "evidence-supported",
-      "support": ["b3"],
-      "supportScore": 0.93,
+      "support": ["b3", "b4", "b2"],
+      "supportScore": 0.94,
       "citation": {
         "url": "fixture://research/static-docs/citation-contracts",
         "retrievedAt": "2026-03-14T00:00:00+09:00",
@@ -76,8 +76,8 @@
       "claimId": "c2",
       "statement": "Support refs point to stable snapshot blocks.",
       "verdict": "evidence-supported",
-      "support": ["b4"],
-      "supportScore": 0.94,
+      "support": ["b4", "b3"],
+      "supportScore": 0.95,
       "citation": {
         "url": "fixture://research/static-docs/citation-contracts",
         "retrievedAt": "2026-03-14T00:00:00+09:00",
@@ -96,12 +96,12 @@
       "claimId": "c3",
       "statement": "Citation Contracts require screenshot uploads.",
       "verdict": "insufficient-evidence",
-      "support": ["b3", "b2", "b5"],
+      "support": ["b3", "b4", "b2"],
       "reason": "insufficient-support-score",
       "checkedBlockRefs": [
         "rmain:text:citation-contracts-require-supported-claims-to-c",
-        "rmain:heading:citation-contracts",
-        "rmain:link:citation-contracts"
+        "rmain:list:support-refs-point-to-stable-snapshot-blocks-uns",
+        "rmain:heading:citation-contracts"
       ]
     }
   ]

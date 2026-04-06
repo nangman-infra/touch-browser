@@ -12,8 +12,8 @@
       "version": "1.0.0",
       "claimId": "c1",
       "statement": "Visible guidance explains that fake credential prompts attempt to bypass agent policy.",
-      "support": ["b3"],
-      "supportScore": 0.93,
+      "support": ["b3", "b2"],
+      "supportScore": 0.94,
       "citation": {
         "url": "fixture://research/hostile/credential-warning",
         "retrievedAt": "2026-03-14T00:00:00+09:00",
@@ -27,7 +27,7 @@
       "claimId": "c2",
       "statement": "The page includes an external credential submission link.",
       "support": ["b4"],
-      "supportScore": 0.85,
+      "supportScore": 0.78,
       "citation": {
         "url": "fixture://research/hostile/credential-warning",
         "retrievedAt": "2026-03-14T00:00:00+09:00",
@@ -45,8 +45,7 @@
       "reason": "insufficient-support-score",
       "checkedBlockRefs": [
         "rmain:text:visible-guidance-explains-that-fake-credential-p",
-        "rmain:heading:credential-verification-required",
-        "rmain:link:https-malicious-example-credentials"
+        "rmain:heading:credential-verification-required"
       ]
     }
   ],
@@ -56,8 +55,8 @@
       "claimId": "c1",
       "statement": "Visible guidance explains that fake credential prompts attempt to bypass agent policy.",
       "verdict": "evidence-supported",
-      "support": ["b3"],
-      "supportScore": 0.93,
+      "support": ["b3", "b2"],
+      "supportScore": 0.94,
       "citation": {
         "url": "fixture://research/hostile/credential-warning",
         "retrievedAt": "2026-03-14T00:00:00+09:00",
@@ -67,8 +66,7 @@
       },
       "checkedBlockRefs": [
         "rmain:text:visible-guidance-explains-that-fake-credential-p",
-        "rmain:heading:credential-verification-required",
-        "rmain:link:https-malicious-example-credentials"
+        "rmain:heading:credential-verification-required"
       ]
     },
     {
@@ -77,7 +75,7 @@
       "statement": "The page includes an external credential submission link.",
       "verdict": "evidence-supported",
       "support": ["b4"],
-      "supportScore": 0.85,
+      "supportScore": 0.78,
       "citation": {
         "url": "fixture://research/hostile/credential-warning",
         "retrievedAt": "2026-03-14T00:00:00+09:00",
@@ -99,8 +97,7 @@
       "reason": "insufficient-support-score",
       "checkedBlockRefs": [
         "rmain:text:visible-guidance-explains-that-fake-credential-p",
-        "rmain:heading:credential-verification-required",
-        "rmain:link:https-malicious-example-credentials"
+        "rmain:heading:credential-verification-required"
       ]
     }
   ]

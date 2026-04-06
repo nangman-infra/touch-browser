@@ -12,8 +12,8 @@
       "version": "1.0.0",
       "claimId": "c1",
       "statement": "Verify you are human before continuing to the research workspace.",
-      "support": ["b3", "b4"],
-      "supportScore": 0.93,
+      "support": ["b3", "b2"],
+      "supportScore": 0.94,
       "citation": {
         "url": "fixture://research/navigation/browser-captcha-checkpoint",
         "retrievedAt": "2026-03-14T00:00:00+09:00",
@@ -31,9 +31,16 @@
       "reason": "insufficient-support-score",
       "checkedBlockRefs": [
         "rmain:text:verify-you-are-human-before-continuing-to-the-re",
-        "rmain:form:challenge-form",
-        "rmain:input:human-checkbox"
-      ]
+        "rmain:heading:security-checkpoint",
+        "rmain:text:status"
+      ],
+      "guardFailures": [
+        {
+          "kind": "anchor-coverage",
+          "detail": "anchor coverage 0.25 is below required 0.60"
+        }
+      ],
+      "nextActionHint": "Browse a more specific source page before answering."
     }
   ],
   "claimOutcomes": [
@@ -42,8 +49,8 @@
       "claimId": "c1",
       "statement": "Verify you are human before continuing to the research workspace.",
       "verdict": "evidence-supported",
-      "support": ["b3", "b4"],
-      "supportScore": 0.93,
+      "support": ["b3", "b2"],
+      "supportScore": 0.94,
       "citation": {
         "url": "fixture://research/navigation/browser-captcha-checkpoint",
         "retrievedAt": "2026-03-14T00:00:00+09:00",
@@ -53,8 +60,8 @@
       },
       "checkedBlockRefs": [
         "rmain:text:verify-you-are-human-before-continuing-to-the-re",
-        "rmain:form:challenge-form",
-        "rmain:input:human-checkbox"
+        "rmain:heading:security-checkpoint",
+        "rmain:text:status"
       ]
     },
     {
@@ -62,12 +69,20 @@
       "claimId": "c2",
       "statement": "The page already grants access to the workspace.",
       "verdict": "insufficient-evidence",
+      "support": ["b3"],
       "reason": "insufficient-support-score",
       "checkedBlockRefs": [
         "rmain:text:verify-you-are-human-before-continuing-to-the-re",
-        "rmain:form:challenge-form",
-        "rmain:input:human-checkbox"
-      ]
+        "rmain:heading:security-checkpoint",
+        "rmain:text:status"
+      ],
+      "guardFailures": [
+        {
+          "kind": "anchor-coverage",
+          "detail": "anchor coverage 0.25 is below required 0.60"
+        }
+      ],
+      "nextActionHint": "Browse a more specific source page before answering."
     }
   ]
 }

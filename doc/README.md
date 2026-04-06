@@ -18,6 +18,7 @@ This directory is the usage and operations index for the uploaded repository.
 | inspect documentation link integrity | [DOC_LINK_INTEGRITY_SPEC.md](DOC_LINK_INTEGRITY_SPEC.md) |
 | inspect the markdown-baseline comparison benchmark | [TOOL_COMPARISON_BENCHMARK_SPEC.md](TOOL_COMPARISON_BENCHMARK_SPEC.md) |
 | inspect adversarial contradiction and unresolved benchmark results | [ADVERSARIAL_BENCHMARK_SPEC.md](ADVERSARIAL_BENCHMARK_SPEC.md) |
+| inspect live JS-rendered page coverage | [JS_RENDERER_BENCHMARK_SPEC.md](JS_RENDERER_BENCHMARK_SPEC.md) |
 
 ## Workflows And Integrations
 
@@ -29,6 +30,7 @@ This directory is the usage and operations index for the uploaded repository.
 | staged public/trusted workflow | [STAGED_REFERENCE_WORKFLOW_SPEC.md](STAGED_REFERENCE_WORKFLOW_SPEC.md) |
 | public-web workflow | [PUBLIC_REFERENCE_WORKFLOW_SPEC.md](PUBLIC_REFERENCE_WORKFLOW_SPEC.md) |
 | real-user public research benchmark | [REAL_USER_RESEARCH_BENCHMARK_SPEC.md](REAL_USER_RESEARCH_BENCHMARK_SPEC.md) |
+| JS-rendered docs/app benchmark | [JS_RENDERER_BENCHMARK_SPEC.md](JS_RENDERER_BENCHMARK_SPEC.md) |
 | external baseline and product fit | [EXTERNAL_BASELINE_AND_POSITIONING.md](EXTERNAL_BASELINE_AND_POSITIONING.md) |
 | link integrity benchmark | [DOC_LINK_INTEGRITY_SPEC.md](DOC_LINK_INTEGRITY_SPEC.md) |
 | tool comparison benchmark | [TOOL_COMPARISON_BENCHMARK_SPEC.md](TOOL_COMPARISON_BENCHMARK_SPEC.md) |
@@ -47,6 +49,7 @@ This directory is the usage and operations index for the uploaded repository.
 | inspect bounded context and integration boundaries | [CONTEXT_MAP.md](CONTEXT_MAP.md) |
 | align domain terms across code, schema, and docs | [UBIQUITOUS_LANGUAGE.md](UBIQUITOUS_LANGUAGE.md) |
 | inspect DDD-lite completion and quality gate criteria | [DDD_COMPLETION_CRITERIA.md](DDD_COMPLETION_CRITERIA.md) |
+| inspect product maturity and feature completion criteria | [PRODUCT_MATURITY_CRITERIA.md](PRODUCT_MATURITY_CRITERIA.md) |
 | inspect Sonar SAFE exclusions and rationale | [SONAR_SAFE_BASELINE.md](SONAR_SAFE_BASELINE.md) |
 
 ## Repository Shortcuts

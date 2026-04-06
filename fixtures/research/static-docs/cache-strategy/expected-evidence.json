@@ -12,8 +12,8 @@
       "version": "1.0.0",
       "claimId": "c1",
       "statement": "The acquisition layer stores requested URLs and final redirected URLs as cache aliases.",
-      "support": ["b3"],
-      "supportScore": 0.9,
+      "support": ["b3", "b4", "b2"],
+      "supportScore": 0.91,
       "citation": {
         "url": "fixture://research/static-docs/cache-strategy",
         "retrievedAt": "2026-03-14T00:00:00+09:00",
@@ -26,8 +26,8 @@
       "version": "1.0.0",
       "claimId": "c2",
       "statement": "The docs recommend rejecting unsupported content types before snapshot compilation.",
-      "support": ["b4"],
-      "supportScore": 0.81,
+      "support": ["b4", "b3", "b5"],
+      "supportScore": 0.8,
       "citation": {
         "url": "fixture://research/static-docs/cache-strategy",
         "retrievedAt": "2026-03-14T00:00:00+09:00",
@@ -47,7 +47,14 @@
         "rmain:text:the-current-cli-does-not-depend-on-a-long-lived-",
         "rmain:list:reject-unsupported-content-types-before-snapshot",
         "rmain:text:the-acquisition-layer-stores-both-requested-urls"
-      ]
+      ],
+      "guardFailures": [
+        {
+          "kind": "anchor-coverage",
+          "detail": "anchor coverage 0.25 is below required 0.60"
+        }
+      ],
+      "nextActionHint": "Browse a more specific source page before answering."
     }
   ],
   "claimOutcomes": [
@@ -56,8 +63,8 @@
       "claimId": "c1",
       "statement": "The acquisition layer stores requested URLs and final redirected URLs as cache aliases.",
       "verdict": "evidence-supported",
-      "support": ["b3"],
-      "supportScore": 0.9,
+      "support": ["b3", "b4", "b2"],
+      "supportScore": 0.91,
       "citation": {
         "url": "fixture://research/static-docs/cache-strategy",
         "retrievedAt": "2026-03-14T00:00:00+09:00",
@@ -76,8 +83,8 @@
       "claimId": "c2",
       "statement": "The docs recommend rejecting unsupported content types before snapshot compilation.",
       "verdict": "evidence-supported",
-      "support": ["b4"],
-      "supportScore": 0.81,
+      "support": ["b4", "b3", "b5"],
+      "supportScore": 0.8,
       "citation": {
         "url": "fixture://research/static-docs/cache-strategy",
         "retrievedAt": "2026-03-14T00:00:00+09:00",
@@ -96,12 +103,20 @@
       "claimId": "c3",
       "statement": "The runtime requires a permanent browser daemon to read static pages.",
       "verdict": "insufficient-evidence",
+      "support": ["b5"],
       "reason": "insufficient-support-score",
       "checkedBlockRefs": [
         "rmain:text:the-current-cli-does-not-depend-on-a-long-lived-",
         "rmain:list:reject-unsupported-content-types-before-snapshot",
         "rmain:text:the-acquisition-layer-stores-both-requested-urls"
-      ]
+      ],
+      "guardFailures": [
+        {
+          "kind": "anchor-coverage",
+          "detail": "anchor coverage 0.25 is below required 0.60"
+        }
+      ],
+      "nextActionHint": "Browse a more specific source page before answering."
     }
   ]
 }

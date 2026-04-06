@@ -12,8 +12,8 @@
       "version": "1.0.0",
       "claimId": "c1",
       "statement": "Touch Browser compiles web pages into semantic state for research agents.",
-      "support": ["b6", "b8"],
-      "supportScore": 0.93,
+      "support": ["b6", "b5", "b7"],
+      "supportScore": 0.94,
       "citation": {
         "url": "fixture://research/static-docs/getting-started",
         "retrievedAt": "2026-03-14T00:00:00+09:00",
@@ -26,8 +26,8 @@
       "version": "1.0.0",
       "claimId": "c2",
       "statement": "Quickstart includes opening a research URL.",
-      "support": ["b8"],
-      "supportScore": 0.8,
+      "support": ["b8", "b7", "b6"],
+      "supportScore": 0.85,
       "citation": {
         "url": "fixture://research/static-docs/getting-started",
         "retrievedAt": "2026-03-14T00:00:00+09:00",
@@ -46,7 +46,7 @@
       "checkedBlockRefs": [
         "rmain:list:1-install-the-runtime-2-open-a-research-url-3-ca",
         "rmain:text:touch-browser-compiles-web-pages-into-semantic-s",
-        "rnav:link:docs"
+        "rmain:heading:getting-started"
       ]
     }
   ],
@@ -56,8 +56,8 @@
       "claimId": "c1",
       "statement": "Touch Browser compiles web pages into semantic state for research agents.",
       "verdict": "evidence-supported",
-      "support": ["b6", "b8"],
-      "supportScore": 0.93,
+      "support": ["b6", "b5", "b7"],
+      "supportScore": 0.94,
       "citation": {
         "url": "fixture://research/static-docs/getting-started",
         "retrievedAt": "2026-03-14T00:00:00+09:00",
@@ -67,8 +67,8 @@
       },
       "checkedBlockRefs": [
         "rmain:text:touch-browser-compiles-web-pages-into-semantic-s",
-        "rmain:list:1-install-the-runtime-2-open-a-research-url-3-ca",
-        "rnav:link:docs"
+        "rmain:heading:getting-started",
+        "rmain:heading:quickstart"
       ]
     },
     {
@@ -76,8 +76,8 @@
       "claimId": "c2",
       "statement": "Quickstart includes opening a research URL.",
       "verdict": "evidence-supported",
-      "support": ["b8"],
-      "supportScore": 0.8,
+      "support": ["b8", "b7", "b6"],
+      "supportScore": 0.85,
       "citation": {
         "url": "fixture://research/static-docs/getting-started",
         "retrievedAt": "2026-03-14T00:00:00+09:00",
@@ -87,8 +87,8 @@
       },
       "checkedBlockRefs": [
         "rmain:list:1-install-the-runtime-2-open-a-research-url-3-ca",
-        "rmain:text:touch-browser-compiles-web-pages-into-semantic-s",
-        "rmain:heading:quickstart"
+        "rmain:heading:quickstart",
+        "rmain:text:touch-browser-compiles-web-pages-into-semantic-s"
       ]
     },
     {
@@ -100,7 +100,7 @@
       "checkedBlockRefs": [
         "rmain:list:1-install-the-runtime-2-open-a-research-url-3-ca",
         "rmain:text:touch-browser-compiles-web-pages-into-semantic-s",
-        "rnav:link:docs"
+        "rmain:heading:getting-started"
       ]
     }
   ]

@@ -12,8 +12,8 @@
       "version": "1.0.0",
       "claimId": "c1",
       "statement": "Trusted Sources recommends domain allowlists before enabling browser actions.",
-      "support": ["b3", "b4"],
-      "supportScore": 0.93,
+      "support": ["b3", "b4", "b2"],
+      "supportScore": 0.94,
       "citation": {
         "url": "fixture://research/static-docs/trusted-sources",
         "retrievedAt": "2026-03-14T00:00:00+09:00",
@@ -26,8 +26,8 @@
       "version": "1.0.0",
       "claimId": "c2",
       "statement": "High-risk domains require review.",
-      "support": ["b4"],
-      "supportScore": 0.94,
+      "support": ["b4", "b3"],
+      "supportScore": 0.95,
       "citation": {
         "url": "fixture://research/static-docs/trusted-sources",
         "retrievedAt": "2026-03-14T00:00:00+09:00",
@@ -45,8 +45,8 @@
       "reason": "insufficient-support-score",
       "checkedBlockRefs": [
         "rmain:text:trusted-sources-recommends-domain-allowlists-bef",
-        "rmain:heading:trusted-sources",
-        "rmain:link:trusted-sources"
+        "rmain:list:high-risk-domains-require-review-trusted-domains",
+        "rmain:heading:trusted-sources"
       ]
     }
   ],
@@ -56,8 +56,8 @@
       "claimId": "c1",
       "statement": "Trusted Sources recommends domain allowlists before enabling browser actions.",
       "verdict": "evidence-supported",
-      "support": ["b3", "b4"],
-      "supportScore": 0.93,
+      "support": ["b3", "b4", "b2"],
+      "supportScore": 0.94,
       "citation": {
         "url": "fixture://research/static-docs/trusted-sources",
         "retrievedAt": "2026-03-14T00:00:00+09:00",
@@ -76,8 +76,8 @@
       "claimId": "c2",
       "statement": "High-risk domains require review.",
       "verdict": "evidence-supported",
-      "support": ["b4"],
-      "supportScore": 0.94,
+      "support": ["b4", "b3"],
+      "supportScore": 0.95,
       "citation": {
         "url": "fixture://research/static-docs/trusted-sources",
         "retrievedAt": "2026-03-14T00:00:00+09:00",
@@ -96,12 +96,12 @@
       "claimId": "c3",
       "statement": "Trusted Sources enables automatic purchases.",
       "verdict": "insufficient-evidence",
-      "support": ["b3", "b2", "b5"],
+      "support": ["b3", "b4", "b2"],
       "reason": "insufficient-support-score",
       "checkedBlockRefs": [
         "rmain:text:trusted-sources-recommends-domain-allowlists-bef",
-        "rmain:heading:trusted-sources",
-        "rmain:link:trusted-sources"
+        "rmain:list:high-risk-domains-require-review-trusted-domains",
+        "rmain:heading:trusted-sources"
       ]
     }
   ]

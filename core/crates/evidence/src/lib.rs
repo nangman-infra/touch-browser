@@ -1,4 +1,7 @@
-use std::{collections::BTreeSet, sync::OnceLock};
+use std::{
+    collections::{BTreeMap, BTreeSet},
+    sync::OnceLock,
+};
 
 use ferrous_opencc::{config::BuiltinConfig, OpenCC};
 use thiserror::Error;
@@ -131,6 +134,7 @@ pub enum EvidenceError {
     NoClaims,
 }
 
+#[derive(Debug)]
 struct ClaimResolution<'a> {
     verdict: EvidenceClaimVerdict,
     support: Vec<ScoredCandidate<'a>>,
@@ -141,7 +145,7 @@ struct ClaimResolution<'a> {
     next_action_hint: Option<String>,
 }
 
-#[derive(Clone)]
+#[derive(Clone, Debug)]
 struct ScoredCandidate<'a> {
     block: &'a SnapshotBlock,
     score: f64,
@@ -156,9 +160,14 @@ struct ClaimAnalysisInput {
     normalized_claim: String,
 }
 
+struct ScoringContext {
+    claim_token_weights: BTreeMap<String, f64>,
+}
+
 fn analyze_claim<'a>(claim: &ClaimRequest, blocks: &'a [SnapshotBlock]) -> ClaimResolution<'a> {
     let analysis = build_claim_analysis_input(claim);
-    let scored = score_candidates(blocks, &analysis);
+    let scoring_context = build_scoring_context(blocks, &analysis.claim_tokens);
+    let scored = score_candidates(blocks, &analysis, &scoring_context);
     let checked_refs = checked_refs(&scored);
     let contradictory_support = contradictory_support(&scored);
 
@@ -188,15 +197,24 @@ fn analyze_claim<'a>(claim: &ClaimRequest, blocks: &'a [SnapshotBlock]) -> Claim
         &analysis.claim_anchor_tokens,
         &analysis.claim_qualifier_tokens,
     );
-    let effective_score =
-        effective_support_score(claim, &analysis, &top_support, blocks, best_score);
+    let effective_score = effective_support_score(
+        claim,
+        &analysis,
+        &top_support,
+        blocks,
+        &scoring_context,
+        best_score,
+    );
+    let support_threshold = support_acceptance_threshold(&top_support, &assessment);
 
     if let Some(resolution) = guarded_resolution(
         claim,
+        &analysis,
         &top_support,
         &checked_refs,
         &assessment,
         effective_score,
+        support_threshold,
     ) {
         return resolution;
     }
@@ -218,15 +236,20 @@ fn build_claim_analysis_input(claim: &ClaimRequest) -> ClaimAnalysisInput {
 fn score_candidates<'a>(
     blocks: &'a [SnapshotBlock],
     analysis: &ClaimAnalysisInput,
+    scoring_context: &ScoringContext,
 ) -> Vec<ScoredCandidate<'a>> {
     let mut scored = blocks
         .iter()
-        .filter_map(|block| {
+        .enumerate()
+        .filter_map(|(index, block)| {
             score_block(
+                blocks,
+                index,
                 block,
                 &analysis.normalized_claim,
                 &analysis.claim_tokens,
                 &analysis.claim_numeric_tokens,
+                scoring_context,
             )
         })
         .collect::<Vec<_>>();
@@ -238,6 +261,54 @@ fn score_candidates<'a>(
             .unwrap_or(std::cmp::Ordering::Equal)
     });
     scored
+}
+
+fn build_scoring_context(blocks: &[SnapshotBlock], claim_tokens: &[String]) -> ScoringContext {
+    let block_count = blocks.len().max(1) as f64;
+    let document_frequency = claim_token_document_frequency(blocks, claim_tokens);
+
+    let claim_token_weights = claim_tokens
+        .iter()
+        .cloned()
+        .map(|token| {
+            let doc_frequency = *document_frequency.get(&token).unwrap_or(&0) as f64;
+            let inverse_document_frequency =
+                (((block_count - doc_frequency) + 0.5) / (doc_frequency + 0.5)).ln() + 1.0;
+            (token, inverse_document_frequency.max(0.2))
+        })
+        .collect();
+
+    ScoringContext {
+        claim_token_weights,
+    }
+}
+
+fn claim_token_document_frequency(
+    blocks: &[SnapshotBlock],
+    claim_tokens: &[String],
+) -> BTreeMap<String, usize> {
+    let mut document_frequency = claim_tokens
+        .iter()
+        .cloned()
+        .map(|token| (token, 0usize))
+        .collect::<BTreeMap<_, _>>();
+
+    for block in blocks {
+        let block_tokens = tokenize_significant(&block_search_text(block))
+            .into_iter()
+            .collect::<BTreeSet<_>>();
+
+        for claim_token in claim_tokens {
+            if block_tokens
+                .iter()
+                .any(|block_token| tokens_match(claim_token, block_token))
+            {
+                *document_frequency.entry(claim_token.clone()).or_default() += 1;
+            }
+        }
+    }
+
+    document_frequency
 }
 
 fn checked_refs(scored: &[ScoredCandidate<'_>]) -> Vec<String> {
@@ -333,7 +404,7 @@ fn top_support_candidates<'a>(
 ) -> Vec<ScoredCandidate<'a>> {
     non_contradictory
         .into_iter()
-        .filter(|candidate| candidate.score >= 0.25)
+        .filter(|candidate| candidate.score >= 0.22)
         .take(3)
         .collect()
 }
@@ -368,6 +439,7 @@ fn effective_support_score(
     analysis: &ClaimAnalysisInput,
     top_support: &[ScoredCandidate<'_>],
     blocks: &[SnapshotBlock],
+    scoring_context: &ScoringContext,
     best_score: f64,
 ) -> f64 {
     let aggregated_score = aggregate_support_score(
@@ -377,16 +449,19 @@ fn effective_support_score(
         &analysis.claim_numeric_tokens,
         top_support,
         blocks,
+        scoring_context,
     );
     best_score.max(aggregated_score)
 }
 
 fn guarded_resolution<'a>(
     claim: &ClaimRequest,
+    analysis: &ClaimAnalysisInput,
     top_support: &[ScoredCandidate<'a>],
     checked_refs: &[String],
     assessment: &GuardAssessment,
     effective_score: f64,
+    support_threshold: f64,
 ) -> Option<ClaimResolution<'a>> {
     if let Some(reason) = assessment.contradiction_reason.clone() {
         return Some(ClaimResolution {
@@ -400,7 +475,20 @@ fn guarded_resolution<'a>(
         });
     }
 
-    if effective_score >= 0.52 && assessment.guard_failures.is_empty() {
+    if effective_score >= support_threshold && assessment.guard_failures.is_empty() {
+        if button_claim_requires_more_browsing(&analysis.claim_tokens, top_support) {
+            return Some(ClaimResolution {
+                verdict: EvidenceClaimVerdict::NeedsMoreBrowsing,
+                support: top_support.to_vec(),
+                confidence: None,
+                reason: Some(UnsupportedClaimReason::NeedsMoreBrowsing),
+                checked_refs: checked_refs.to_vec(),
+                guard_failures: Vec::new(),
+                next_action_hint: Some(
+                    "Browse a more specific source page before answering.".to_string(),
+                ),
+            });
+        }
         return None;
     }
 
@@ -450,6 +538,88 @@ fn supported_resolution<'a>(
     }
 }
 
+fn support_acceptance_threshold(
+    top_support: &[ScoredCandidate<'_>],
+    assessment: &GuardAssessment,
+) -> f64 {
+    if !assessment.guard_failures.is_empty() || top_support.len() < 2 {
+        return 0.52;
+    }
+
+    let narrative_support_count = top_support
+        .iter()
+        .filter(|candidate| is_narrative_aggregate_block(candidate.block))
+        .count();
+    if narrative_support_count >= 2 {
+        0.46
+    } else {
+        0.52
+    }
+}
+
+fn button_claim_requires_more_browsing(
+    claim_tokens: &[String],
+    top_support: &[ScoredCandidate<'_>],
+) -> bool {
+    let claim_token_set = claim_tokens
+        .iter()
+        .map(String::as_str)
+        .collect::<BTreeSet<_>>();
+    if !claim_token_set.contains("button") {
+        return false;
+    }
+
+    if claim_token_set.iter().any(|token| {
+        matches!(
+            *token,
+            "sign"
+                | "login"
+                | "submit"
+                | "email"
+                | "password"
+                | "verification"
+                | "code"
+                | "credential"
+        )
+    }) {
+        return false;
+    }
+
+    if top_support.iter().any(|candidate| {
+        matches!(
+            candidate.block.kind,
+            SnapshotBlockKind::Form | SnapshotBlockKind::Input
+        )
+    }) {
+        return false;
+    }
+
+    let meaningful_claim_tokens = claim_tokens
+        .iter()
+        .filter(|token| {
+            !matches!(
+                token.as_str(),
+                "button" | "contain" | "contains" | "includ" | "page"
+            ) && !token.chars().all(|character| character.is_ascii_digit())
+        })
+        .collect::<Vec<_>>();
+
+    if meaningful_claim_tokens.is_empty() {
+        return true;
+    }
+
+    let corroborating_non_button = top_support.iter().any(|candidate| {
+        !matches!(candidate.block.kind, SnapshotBlockKind::Button)
+            && meaningful_claim_tokens.iter().any(|claim_token| {
+                tokenize_significant(&block_search_text(candidate.block))
+                    .iter()
+                    .any(|token| tokens_match(claim_token, token))
+            })
+    });
+
+    !corroborating_non_button
+}
+
 #[derive(Debug, Default)]
 struct GuardAssessment {
     contradiction_reason: Option<UnsupportedClaimReason>,
@@ -463,10 +633,13 @@ struct GuardCheck {
 }
 
 fn score_block<'a>(
+    blocks: &'a [SnapshotBlock],
+    index: usize,
     block: &'a SnapshotBlock,
     normalized_claim: &str,
     claim_tokens: &[String],
     claim_numeric_tokens: &[String],
+    scoring_context: &ScoringContext,
 ) -> Option<ScoredCandidate<'a>> {
     let search_text = block_search_text(block);
     let block_tokens = tokenize_significant(&search_text);
@@ -474,16 +647,41 @@ fn score_block<'a>(
         return None;
     }
 
-    let lexical_overlap = token_overlap_ratio(claim_tokens, &block_tokens);
-    let exact_bonus = exact_match_bonus(normalized_claim, &normalize_text(&search_text));
-    let numeric_overlap = numeric_overlap_ratio(claim_numeric_tokens, &search_text);
+    let contextual_text = contextual_search_text(blocks, index);
+    let contextual_tokens = tokenize_significant(&contextual_text);
+    let lexical_overlap = weighted_token_overlap_ratio(
+        claim_tokens,
+        &block_tokens,
+        &scoring_context.claim_token_weights,
+    );
+    let contextual_overlap = weighted_token_overlap_ratio(
+        claim_tokens,
+        &contextual_tokens,
+        &scoring_context.claim_token_weights,
+    );
+    let exact_bonus = exact_match_bonus(normalized_claim, &normalize_text(&contextual_text));
+    let numeric_overlap = numeric_overlap_ratio(claim_numeric_tokens, &contextual_text);
+    let numeric_presence_bonus = numeric_presence_bonus(claim_numeric_tokens, &contextual_text);
     let kind_bonus = kind_score_bonus(&block.kind);
-    let contradictory = contradiction_detected(normalized_claim, &search_text)
+    let control_bonus = ui_control_bonus(blocks, index, claim_tokens, block);
+    let structural_adjustment = block_structural_adjustment(block);
+    let version_noise_penalty =
+        version_noise_penalty(claim_tokens, claim_numeric_tokens, &contextual_text);
+    let contextual_bonus = (contextual_overlap - lexical_overlap).max(0.0) * 0.10;
+    let contradictory = contradiction_detected(normalized_claim, &contextual_text)
         || contradiction_detected(normalized_claim, &block.text);
-    let mut score =
-        (lexical_overlap * 0.72) + (exact_bonus * 0.18) + (numeric_overlap * 0.10) + kind_bonus;
+    let mut score = (lexical_overlap * 0.40)
+        + (contextual_overlap * 0.26)
+        + (exact_bonus * 0.16)
+        + (numeric_overlap * 0.08)
+        + numeric_presence_bonus
+        + kind_bonus
+        + control_bonus
+        + structural_adjustment
+        + version_noise_penalty
+        + contextual_bonus;
 
-    if contradictory && lexical_overlap >= 0.4 {
+    if contradictory && contextual_overlap >= 0.35 {
         score *= 0.2;
     }
 
@@ -492,6 +690,126 @@ fn score_block<'a>(
         score: score.min(1.0),
         contradictory,
     })
+}
+
+fn contextual_search_text(blocks: &[SnapshotBlock], index: usize) -> String {
+    let block = &blocks[index];
+    if !allows_context_expansion(block) {
+        return block_search_text(block);
+    }
+
+    let mut seen_blocks = BTreeSet::new();
+    let mut parts = Vec::new();
+
+    if let Some(heading) = nearest_heading_context(blocks, block) {
+        if seen_blocks.insert(heading.id.clone()) {
+            parts.push(block_search_text(heading));
+        }
+    }
+
+    if seen_blocks.insert(block.id.clone()) {
+        parts.push(block_search_text(block));
+    }
+
+    for neighbor_index in contextual_neighbor_indices(blocks, index) {
+        let neighbor = &blocks[neighbor_index];
+        if seen_blocks.insert(neighbor.id.clone()) {
+            parts.push(block_search_text(neighbor));
+        }
+    }
+
+    parts.join(" ")
+}
+
+fn allows_context_expansion(block: &SnapshotBlock) -> bool {
+    matches!(
+        block.kind,
+        SnapshotBlockKind::Heading
+            | SnapshotBlockKind::Text
+            | SnapshotBlockKind::List
+            | SnapshotBlockKind::Table
+            | SnapshotBlockKind::Metadata
+    ) && matches!(
+        block.role,
+        touch_browser_contracts::SnapshotBlockRole::Content
+            | touch_browser_contracts::SnapshotBlockRole::Supporting
+            | touch_browser_contracts::SnapshotBlockRole::Metadata
+            | touch_browser_contracts::SnapshotBlockRole::TableCell
+    )
+}
+
+fn contextual_neighbor_indices(blocks: &[SnapshotBlock], index: usize) -> Vec<usize> {
+    let mut neighbors = Vec::new();
+    let region = stable_ref_region(&blocks[index]);
+
+    for candidate_index in [index.checked_sub(1), Some(index + 1)]
+        .into_iter()
+        .flatten()
+    {
+        let Some(candidate) = blocks.get(candidate_index) else {
+            continue;
+        };
+
+        if stable_ref_region(candidate) != region {
+            continue;
+        }
+
+        if !is_contextual_neighbor(candidate) {
+            continue;
+        }
+
+        neighbors.push(candidate_index);
+    }
+
+    neighbors
+}
+
+fn stable_ref_region(block: &SnapshotBlock) -> &str {
+    block.stable_ref.split(':').next().unwrap_or_default()
+}
+
+fn is_contextual_neighbor(block: &SnapshotBlock) -> bool {
+    match block.kind {
+        SnapshotBlockKind::Heading => false,
+        SnapshotBlockKind::Text | SnapshotBlockKind::List | SnapshotBlockKind::Table => {
+            block.text.trim().chars().count() >= 16
+        }
+        SnapshotBlockKind::Metadata => block.text.trim().chars().count() >= 24,
+        SnapshotBlockKind::Link => {
+            matches!(
+                block.role,
+                touch_browser_contracts::SnapshotBlockRole::Content
+                    | touch_browser_contracts::SnapshotBlockRole::Supporting
+            ) && block.text.trim().chars().count() >= 20
+        }
+        SnapshotBlockKind::Button | SnapshotBlockKind::Form | SnapshotBlockKind::Input => false,
+    }
+}
+
+fn block_structural_adjustment(block: &SnapshotBlock) -> f64 {
+    let stable_ref = block.stable_ref.to_ascii_lowercase();
+    let role_adjustment = match block.role {
+        touch_browser_contracts::SnapshotBlockRole::Content => 0.04,
+        touch_browser_contracts::SnapshotBlockRole::Supporting => 0.01,
+        touch_browser_contracts::SnapshotBlockRole::Metadata => -0.04,
+        touch_browser_contracts::SnapshotBlockRole::PrimaryNav
+        | touch_browser_contracts::SnapshotBlockRole::SecondaryNav => -0.24,
+        touch_browser_contracts::SnapshotBlockRole::Cta => -0.16,
+        touch_browser_contracts::SnapshotBlockRole::FormControl => -0.30,
+        touch_browser_contracts::SnapshotBlockRole::TableCell => 0.05,
+    };
+
+    let region_adjustment = if stable_ref.starts_with("rmain:") {
+        0.05
+    } else if stable_ref.starts_with("rnav:") {
+        -0.18
+    } else if stable_ref.starts_with("rfooter:") {
+        -0.16
+    } else {
+        0.0
+    };
+
+    role_adjustment + region_adjustment
 }
 
 fn contradiction_detected(normalized_claim: &str, block_text: &str) -> bool {
@@ -599,6 +917,42 @@ fn token_overlap_ratio(claim_tokens: &[String], block_tokens: &[String]) -> f64 
     matched as f64 / claim_tokens.len() as f64
 }
 
+fn weighted_token_overlap_ratio(
+    claim_tokens: &[String],
+    block_tokens: &[String],
+    claim_token_weights: &BTreeMap<String, f64>,
+) -> f64 {
+    if claim_tokens.is_empty() {
+        return 0.0;
+    }
+
+    let block_token_set = block_tokens.iter().cloned().collect::<BTreeSet<_>>();
+    let total_weight = claim_tokens
+        .iter()
+        .map(|claim_token| claim_token_weight(claim_token, claim_token_weights))
+        .sum::<f64>();
+
+    if total_weight <= f64::EPSILON {
+        return token_overlap_ratio(claim_tokens, block_tokens);
+    }
+
+    let matched_weight = claim_tokens
+        .iter()
+        .filter(|claim_token| {
+            block_token_set
+                .iter()
+                .any(|block_token| tokens_match(claim_token, block_token))
+        })
+        .map(|claim_token| claim_token_weight(claim_token, claim_token_weights))
+        .sum::<f64>();
+
+    matched_weight / total_weight
+}
+
+fn claim_token_weight(token: &str, claim_token_weights: &BTreeMap<String, f64>) -> f64 {
+    claim_token_weights.get(token).copied().unwrap_or(1.0)
+}
+
 fn numeric_overlap_ratio(claim_numeric_tokens: &[String], block_text: &str) -> f64 {
     if claim_numeric_tokens.is_empty() {
         return 0.0;
@@ -611,6 +965,66 @@ fn numeric_overlap_ratio(claim_numeric_tokens: &[String], block_text: &str) -> f
         .count();
 
     matched as f64 / claim_numeric_tokens.len() as f64
+}
+
+fn numeric_presence_bonus(claim_numeric_tokens: &[String], block_text: &str) -> f64 {
+    if claim_numeric_tokens.is_empty() {
+        return 0.0;
+    }
+
+    if numeric_tokens(block_text).is_empty() {
+        0.0
+    } else {
+        0.06
+    }
+}
+
+fn version_noise_penalty(
+    claim_tokens: &[String],
+    claim_numeric_tokens: &[String],
+    contextual_text: &str,
+) -> f64 {
+    if !claim_numeric_tokens.is_empty() || claim_mentions_version_or_release(claim_tokens) {
+        return 0.0;
+    }
+
+    let normalized_context = normalize_text(contextual_text);
+    let context_tokens = normalized_context
+        .split_whitespace()
+        .collect::<BTreeSet<_>>();
+
+    let mentions_version_marker = context_tokens
+        .iter()
+        .any(|token| is_version_like_token(token));
+    let mentions_release_flow = context_tokens
+        .iter()
+        .any(|token| RELEASE_NOISE_TOKENS.contains(token));
+
+    if mentions_version_marker || mentions_release_flow {
+        -0.08
+    } else {
+        0.0
+    }
+}
+
+fn claim_mentions_version_or_release(claim_tokens: &[String]) -> bool {
+    claim_tokens
+        .iter()
+        .any(|token| RELEASE_NOISE_TOKENS.contains(&token.as_str()) || is_version_like_token(token))
+}
+
+fn is_version_like_token(token: &str) -> bool {
+    if let Some(rest) = token.strip_prefix('v') {
+        return !rest.is_empty()
+            && rest
+                .chars()
+                .all(|character| character.is_ascii_digit() || character == '.');
+    }
+
+    token.chars().filter(|character| *character == '.').count() >= 1
+        && token
+            .chars()
+            .all(|character| character.is_ascii_digit() || character == '.')
 }
 
 fn exact_match_bonus(normalized_claim: &str, normalized_block_text: &str) -> f64 {
@@ -642,6 +1056,80 @@ fn kind_score_bonus(kind: &SnapshotBlockKind) -> f64 {
         SnapshotBlockKind::Input => 0.06,
         SnapshotBlockKind::Button => 0.01,
     }
+}
+
+fn ui_control_bonus(
+    blocks: &[SnapshotBlock],
+    index: usize,
+    claim_tokens: &[String],
+    block: &SnapshotBlock,
+) -> f64 {
+    let claim_token_set = claim_tokens
+        .iter()
+        .map(String::as_str)
+        .collect::<BTreeSet<_>>();
+    let mentions_button = claim_token_set.contains("button") || claim_token_set.contains("sign");
+    let mentions_auth_control = claim_token_set.iter().any(|token| {
+        matches!(
+            *token,
+            "sign"
+                | "login"
+                | "submit"
+                | "email"
+                | "password"
+                | "verification"
+                | "code"
+                | "credential"
+        )
+    });
+    let mentions_field = claim_token_set.contains("field")
+        || claim_token_set.contains("input")
+        || claim_token_set.contains("form")
+        || claim_token_set.contains("email")
+        || claim_token_set.contains("password")
+        || claim_token_set.contains("verification")
+        || claim_token_set.contains("code")
+        || claim_token_set.contains("credential");
+
+    match block.kind {
+        SnapshotBlockKind::Button if mentions_button && mentions_auth_control => 0.22,
+        SnapshotBlockKind::Button
+            if mentions_button && button_claim_has_context(blocks, index, claim_tokens) =>
+        {
+            0.18
+        }
+        SnapshotBlockKind::Input if mentions_field => 0.20,
+        SnapshotBlockKind::Form if mentions_field => 0.16,
+        _ => 0.0,
+    }
+}
+
+fn button_claim_has_context(
+    blocks: &[SnapshotBlock],
+    index: usize,
+    claim_tokens: &[String],
+) -> bool {
+    let contextual_tokens = contextual_neighbor_indices(blocks, index)
+        .into_iter()
+        .flat_map(|neighbor_index| {
+            tokenize_significant(&block_search_text(&blocks[neighbor_index]))
+        })
+        .collect::<BTreeSet<_>>();
+    let meaningful_claim_tokens = claim_tokens
+        .iter()
+        .filter(|token| {
+            !matches!(
+                token.as_str(),
+                "button" | "field" | "form" | "input" | "contain" | "contains" | "includ"
+            ) && !token.chars().all(|character| character.is_ascii_digit())
+        })
+        .collect::<Vec<_>>();
+
+    meaningful_claim_tokens.iter().any(|token| {
+        contextual_tokens
+            .iter()
+            .any(|candidate| tokens_match(token, candidate))
+    })
 }
 
 fn round_confidence(score: f64) -> f64 {
@@ -1130,6 +1618,18 @@ fn aggregate_support_text(top_support: &[ScoredCandidate<'_>], blocks: &[Snapsho
                 parts.push(block_search_text(heading));
             }
         }
+
+        if let Some(candidate_index) = blocks
+            .iter()
+            .position(|block| std::ptr::eq(block, candidate.block))
+        {
+            for neighbor_index in contextual_neighbor_indices(blocks, candidate_index) {
+                let neighbor = &blocks[neighbor_index];
+                if seen_blocks.insert(neighbor.id.clone()) {
+                    parts.push(block_search_text(neighbor));
+                }
+            }
+        }
     }
 
     parts.join(" ")
@@ -1142,6 +1642,7 @@ fn aggregate_support_score(
     claim_numeric_tokens: &[String],
     top_support: &[ScoredCandidate<'_>],
     blocks: &[SnapshotBlock],
+    scoring_context: &ScoringContext,
 ) -> f64 {
     let claim_anchor_tokens = anchor_tokens(&tokenize_significant(&claim.statement));
     let narrative_support_count = top_support
@@ -1167,13 +1668,138 @@ fn aggregate_support_score(
         return 0.0;
     }
 
-    let lexical_overlap = token_overlap_ratio(claim_tokens, &aggregated_tokens);
+    let lexical_overlap = weighted_token_overlap_ratio(
+        claim_tokens,
+        &aggregated_tokens,
+        &scoring_context.claim_token_weights,
+    );
     let exact_bonus = exact_match_bonus(normalized_claim, &normalize_text(&aggregated_text));
     let numeric_overlap = numeric_overlap_ratio(claim_numeric_tokens, &aggregated_text);
     let title_bonus = relevant_primary_heading.map(|_| 0.04).unwrap_or(0.0);
+    let distributed_support_bonus =
+        distributed_support_bonus(&claim.statement, top_support, scoring_context);
+    let multi_block_context_bonus =
+        multi_block_context_bonus(narrative_support_count, relevant_primary_heading.is_some());
+    let support_density_bonus = support_density_bonus(top_support, narrative_support_count);
 
-    ((lexical_overlap * 0.74) + (exact_bonus * 0.18) + (numeric_overlap * 0.08) + title_bonus)
+    ((lexical_overlap * 0.76)
+        + (exact_bonus * 0.14)
+        + (numeric_overlap * 0.06)
+        + title_bonus
+        + multi_block_context_bonus
+        + support_density_bonus
+        + distributed_support_bonus)
         .min(1.0)
+}
+
+fn distributed_support_bonus(
+    claim_text: &str,
+    top_support: &[ScoredCandidate<'_>],
+    scoring_context: &ScoringContext,
+) -> f64 {
+    if top_support.len() < 2 {
+        return 0.0;
+    }
+
+    let claim_anchor_tokens = anchor_tokens(&tokenize_significant(claim_text));
+    if claim_anchor_tokens.len() < 2 {
+        return 0.0;
+    }
+
+    let mut covered_anchor_tokens = BTreeSet::new();
+    let mut supporting_blocks = 0usize;
+
+    for candidate in top_support {
+        let block_tokens = tokenize_significant(&block_search_text(candidate.block));
+        let matched = claim_anchor_tokens
+            .iter()
+            .filter(|claim_token| {
+                block_tokens
+                    .iter()
+                    .any(|block_token| tokens_match(claim_token, block_token))
+            })
+            .cloned()
+            .collect::<BTreeSet<_>>();
+
+        if !matched.is_empty() {
+            supporting_blocks += 1;
+            covered_anchor_tokens.extend(matched);
+        }
+    }
+
+    if supporting_blocks < 2 {
+        return 0.0;
+    }
+
+    let coverage = weighted_anchor_coverage(
+        &claim_anchor_tokens,
+        &covered_anchor_tokens,
+        &scoring_context.claim_token_weights,
+    );
+
+    if coverage >= 0.8 {
+        0.14
+    } else if coverage >= 0.6 {
+        0.10
+    } else {
+        0.0
+    }
+}
+
+fn multi_block_context_bonus(
+    narrative_support_count: usize,
+    has_relevant_primary_heading: bool,
+) -> f64 {
+    if narrative_support_count >= 2 && has_relevant_primary_heading {
+        0.06
+    } else if narrative_support_count >= 2 {
+        0.03
+    } else {
+        0.0
+    }
+}
+
+fn support_density_bonus(
+    top_support: &[ScoredCandidate<'_>],
+    narrative_support_count: usize,
+) -> f64 {
+    if narrative_support_count < 2 {
+        return 0.0;
+    }
+
+    top_support
+        .iter()
+        .map(|candidate| candidate.score)
+        .sum::<f64>()
+        .min(1.0)
+        * 0.24
+}
+
+fn weighted_anchor_coverage(
+    claim_anchor_tokens: &[String],
+    covered_anchor_tokens: &BTreeSet<String>,
+    claim_token_weights: &BTreeMap<String, f64>,
+) -> f64 {
+    if claim_anchor_tokens.is_empty() {
+        return 0.0;
+    }
+
+    let total_weight = claim_anchor_tokens
+        .iter()
+        .map(|token| claim_token_weight(token, claim_token_weights))
+        .sum::<f64>();
+
+    if total_weight <= f64::EPSILON {
+        return 0.0;
+    }
+
+    let matched_weight = claim_anchor_tokens
+        .iter()
+        .filter(|token| covered_anchor_tokens.contains(*token))
+        .map(|token| claim_token_weight(token, claim_token_weights))
+        .sum::<f64>();
+
+    matched_weight / total_weight
 }
 
 fn is_narrative_aggregate_block(block: &SnapshotBlock) -> bool {
@@ -1457,13 +2083,20 @@ fn next_action_hint_for_failures(failures: &[EvidenceGuardFailure]) -> Option<St
 const STOP_WORDS: &[&str] = &[
     "the", "and", "for", "with", "that", "this", "from", "into", "your", "must", "now", "are",
     "all", "per", "there", "page", "include", "includes", "includ", "contain", "contains", "list",
-    "built", "flow", "runtime", "plan", "touch", "browser",
+    "built", "flow", "runtime", "plan", "touch", "browser", "both", "modern", "feature", "app",
+    "model", "style",
 ];
 
 const ANCHOR_STOP_WORDS: &[&str] = &[
     "support",
     "avail",
     "available",
+    "feature",
+    "features",
+    "modern",
+    "app",
+    "apps",
+    "model",
     "provid",
     "service",
     "system",
@@ -1498,6 +2131,17 @@ const GA_STATUS_TOKENS: &[&str] = &["launched", "generally", "ga"];
 
 const DEPRECATED_STATUS_TOKENS: &[&str] =
     &["deprecated", "legacy", "retired", "sunset", "unsupported"];
+
+const RELEASE_NOISE_TOKENS: &[&str] = &[
+    "upgrade",
+    "upgrading",
+    "changelog",
+    "release",
+    "releases",
+    "remix",
+    "migration",
+    "migrat",
+];
 
 struct ContradictionPattern {
     positive: &'static str,
@@ -2260,6 +2904,229 @@ mod tests {
         assert!(report.contradicted_claims.is_empty());
         assert!(report.needs_more_browsing_claims.is_empty());
         assert!(report.unsupported_claims.is_empty());
+    }
+
+    #[test]
+    fn supports_paraphrased_claims_from_adjacent_evidence_blocks() {
+        let snapshot = SnapshotDocument {
+            version: "1.0.0".to_string(),
+            stable_ref_version: "1".to_string(),
+            source: touch_browser_contracts::SnapshotSource {
+                source_url: "https://developer.mozilla.org/en-US/docs/Web/API/Fetch_API"
+                    .to_string(),
+                source_type: touch_browser_contracts::SourceType::Http,
+                title: Some("Fetch API".to_string()),
+            },
+            budget: touch_browser_contracts::SnapshotBudget {
+                requested_tokens: 512,
+                estimated_tokens: 96,
+                emitted_tokens: 96,
+                truncated: false,
+            },
+            blocks: vec![
+                touch_browser_contracts::SnapshotBlock {
+                    version: "1.0.0".to_string(),
+                    id: "b1".to_string(),
+                    kind: touch_browser_contracts::SnapshotBlockKind::Heading,
+                    stable_ref: "rmain:heading:fetch-api".to_string(),
+                    role: touch_browser_contracts::SnapshotBlockRole::Content,
+                    text: "Fetch API".to_string(),
+                    attributes: serde_json::from_str(r#"{"level":1}"#)
+                        .expect("heading attributes should deserialize"),
+                    evidence: touch_browser_contracts::SnapshotEvidence {
+                        source_url:
+                            "https://developer.mozilla.org/en-US/docs/Web/API/Fetch_API"
+                                .to_string(),
+                        source_type: touch_browser_contracts::SourceType::Http,
+                        dom_path_hint: Some("html > body > main > h1".to_string()),
+                        byte_range_start: None,
+                        byte_range_end: None,
+                    },
+                },
+                touch_browser_contracts::SnapshotBlock {
+                    version: "1.0.0".to_string(),
+                    id: "b2".to_string(),
+                    kind: touch_browser_contracts::SnapshotBlockKind::Text,
+                    stable_ref: "rmain:text:interface".to_string(),
+                    role: touch_browser_contracts::SnapshotBlockRole::Content,
+                    text: "The Fetch API provides an interface for fetching resources."
+                        .to_string(),
+                    attributes: Default::default(),
+                    evidence: touch_browser_contracts::SnapshotEvidence {
+                        source_url:
+                            "https://developer.mozilla.org/en-US/docs/Web/API/Fetch_API"
+                                .to_string(),
+                        source_type: touch_browser_contracts::SourceType::Http,
+                        dom_path_hint: Some("html > body > main > p:nth-of-type(1)".to_string()),
+                        byte_range_start: None,
+                        byte_range_end: None,
+                    },
+                },
+                touch_browser_contracts::SnapshotBlock {
+                    version: "1.0.0".to_string(),
+                    id: "b3".to_string(),
+                    kind: touch_browser_contracts::SnapshotBlockKind::Text,
+                    stable_ref: "rmain:text:promise".to_string(),
+                    role: touch_browser_contracts::SnapshotBlockRole::Content,
+                    text: "The fetch() method returns a Promise that resolves to the Response to that request."
+                        .to_string(),
+                    attributes: Default::default(),
+                    evidence: touch_browser_contracts::SnapshotEvidence {
+                        source_url:
+                            "https://developer.mozilla.org/en-US/docs/Web/API/Fetch_API"
+                                .to_string(),
+                        source_type: touch_browser_contracts::SourceType::Http,
+                        dom_path_hint: Some("html > body > main > p:nth-of-type(2)".to_string()),
+                        byte_range_start: None,
+                        byte_range_end: None,
+                    },
+                },
+            ],
+        };
+
+        let report = EvidenceExtractor
+            .extract(&EvidenceInput::new(
+                snapshot,
+                vec![ClaimRequest::new(
+                    "c1",
+                    "The Fetch API lets JavaScript code request resources and returns a promise-based response model.",
+                )],
+                "2026-04-07T00:00:00+09:00",
+                SourceRisk::Low,
+                Some("Fetch API".to_string()),
+            ))
+            .expect("evidence extraction should succeed");
+
+        assert_eq!(report.supported_claims.len(), 1);
+        assert!(report.contradicted_claims.is_empty());
+        assert!(report.needs_more_browsing_claims.is_empty());
+        assert!(report.unsupported_claims.is_empty());
+    }
+
+    #[test]
+    fn prefers_main_content_over_navigation_for_js_docs_claims() {
+        let snapshot = SnapshotDocument {
+            version: "1.0.0".to_string(),
+            stable_ref_version: "1".to_string(),
+            source: touch_browser_contracts::SnapshotSource {
+                source_url: "https://reactrouter.com/home".to_string(),
+                source_type: touch_browser_contracts::SourceType::Playwright,
+                title: Some("React Router Home".to_string()),
+            },
+            budget: touch_browser_contracts::SnapshotBudget {
+                requested_tokens: 512,
+                estimated_tokens: 128,
+                emitted_tokens: 128,
+                truncated: false,
+            },
+            blocks: vec![
+                touch_browser_contracts::SnapshotBlock {
+                    version: "1.0.0".to_string(),
+                    id: "b1".to_string(),
+                    kind: touch_browser_contracts::SnapshotBlockKind::Link,
+                    stable_ref: "rnav:link:framework-conventions".to_string(),
+                    role: touch_browser_contracts::SnapshotBlockRole::PrimaryNav,
+                    text: "API Framework Conventions".to_string(),
+                    attributes: Default::default(),
+                    evidence: touch_browser_contracts::SnapshotEvidence {
+                        source_url: "https://reactrouter.com/home".to_string(),
+                        source_type: touch_browser_contracts::SourceType::Playwright,
+                        dom_path_hint: Some("html > body > nav > a:nth-of-type(1)".to_string()),
+                        byte_range_start: None,
+                        byte_range_end: None,
+                    },
+                },
+                touch_browser_contracts::SnapshotBlock {
+                    version: "1.0.0".to_string(),
+                    id: "b2".to_string(),
+                    kind: touch_browser_contracts::SnapshotBlockKind::Heading,
+                    stable_ref: "rmain:heading:react-router-home".to_string(),
+                    role: touch_browser_contracts::SnapshotBlockRole::Content,
+                    text: "React Router Home".to_string(),
+                    attributes: serde_json::from_str(r#"{"level":1}"#)
+                        .expect("heading attributes should deserialize"),
+                    evidence: touch_browser_contracts::SnapshotEvidence {
+                        source_url: "https://reactrouter.com/home".to_string(),
+                        source_type: touch_browser_contracts::SourceType::Playwright,
+                        dom_path_hint: Some("html > body > main > h1".to_string()),
+                        byte_range_start: None,
+                        byte_range_end: None,
+                    },
+                },
+                touch_browser_contracts::SnapshotBlock {
+                    version: "1.0.0".to_string(),
+                    id: "b3".to_string(),
+                    kind: touch_browser_contracts::SnapshotBlockKind::Text,
+                    stable_ref: "rmain:text:intro".to_string(),
+                    role: touch_browser_contracts::SnapshotBlockRole::Content,
+                    text: "React Router is a multi-strategy router for React bridging the gap from React 18 to React 19."
+                        .to_string(),
+                    attributes: Default::default(),
+                    evidence: touch_browser_contracts::SnapshotEvidence {
+                        source_url: "https://reactrouter.com/home".to_string(),
+                        source_type: touch_browser_contracts::SourceType::Playwright,
+                        dom_path_hint: Some("html > body > main > p:nth-of-type(1)".to_string()),
+                        byte_range_start: None,
+                        byte_range_end: None,
+                    },
+                },
+                touch_browser_contracts::SnapshotBlock {
+                    version: "1.0.0".to_string(),
+                    id: "b4".to_string(),
+                    kind: touch_browser_contracts::SnapshotBlockKind::List,
+                    stable_ref: "rmain:list:modes".to_string(),
+                    role: touch_browser_contracts::SnapshotBlockRole::Content,
+                    text: "- Framework - Data - Declarative".to_string(),
+                    attributes: Default::default(),
+                    evidence: touch_browser_contracts::SnapshotEvidence {
+                        source_url: "https://reactrouter.com/home".to_string(),
+                        source_type: touch_browser_contracts::SourceType::Playwright,
+                        dom_path_hint: Some("html > body > main > ul".to_string()),
+                        byte_range_start: None,
+                        byte_range_end: None,
+                    },
+                },
+                touch_browser_contracts::SnapshotBlock {
+                    version: "1.0.0".to_string(),
+                    id: "b5".to_string(),
+                    kind: touch_browser_contracts::SnapshotBlockKind::Text,
+                    stable_ref: "rmain:text:modes-explainer".to_string(),
+                    role: touch_browser_contracts::SnapshotBlockRole::Content,
+                    text: "These icons indicate which mode the content is relevant to."
+                        .to_string(),
+                    attributes: Default::default(),
+                    evidence: touch_browser_contracts::SnapshotEvidence {
+                        source_url: "https://reactrouter.com/home".to_string(),
+                        source_type: touch_browser_contracts::SourceType::Playwright,
+                        dom_path_hint: Some("html > body > main > p:nth-of-type(2)".to_string()),
+                        byte_range_start: None,
+                        byte_range_end: None,
+                    },
+                },
+            ],
+        };
+
+        let report = EvidenceExtractor
+            .extract(&EvidenceInput::new(
+                snapshot,
+                vec![ClaimRequest::new(
+                    "c1",
+                    "React Router supports both declarative routing and framework-style features for modern React apps.",
+                )],
+                "2026-04-07T00:00:00+09:00",
+                SourceRisk::Low,
+                Some("React Router Home".to_string()),
+            ))
+            .expect("evidence extraction should succeed");
+
+        assert_eq!(report.supported_claims.len(), 1);
+        assert!(report.contradicted_claims.is_empty());
+        assert!(report.needs_more_browsing_claims.is_empty());
+        assert!(report.unsupported_claims.is_empty());
+        assert!(report.claim_outcomes[0]
+            .checked_block_refs
+            .iter()
+            .all(|reference| !reference.starts_with("rnav:")));
     }
 
     fn parse_risk(value: &str) -> SourceRisk {
