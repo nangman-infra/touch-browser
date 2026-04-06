@@ -49,7 +49,7 @@
     "test": "pnpm run contracts:check && pnpm run contracts:manifest && pnpm run architecture:check && pnpm run test:rust && pnpm run test:adapter:gate && pnpm run test:evals:gate",
     "quality:ci": "pnpm run lint && cargo fmt --all --check && pnpm run architecture:check && pnpm run typecheck && cargo clippy --workspace --all-targets -- -D warnings && pnpm run test",
     "quality:sonar-reports": "mkdir -p sonar-reports && cargo clippy --workspace --all-targets --message-format=json --quiet > sonar-reports/clippy.json",
-    "quality:sonar-coverage": "pnpm run test:adapter:sonar",
+    "quality:sonar-coverage": "pnpm run test:adapter:sonar && node scripts/normalize-sonar-lcov.mjs sonar-reports/adapters-playwright/lcov.info adapters/playwright",
     "adapter:playwright": "pnpm exec tsx adapters/playwright/src/index.ts",
     "evals:smoke": "pnpm exec tsx evals/src/index.ts",
     "mcp:bridge": "node scripts/touch-browser-mcp-bridge.mjs",
