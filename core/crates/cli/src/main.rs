@@ -1205,7 +1205,7 @@ mod tests {
         let full = ReadViewOutput::new(&snapshot, None, None, false);
         let main = ReadViewOutput::new(&snapshot, None, None, true);
 
-        assert!(full.markdown_text.contains("Contents"));
+        assert!(!full.markdown_text.contains("Contents"));
         assert!(full.markdown_text.contains("Privacy"));
         assert!(main.markdown_text.contains("Main article body."));
         assert!(!main.markdown_text.contains("Contents"));
