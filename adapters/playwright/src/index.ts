@@ -1239,7 +1239,9 @@ async function resolveSearchUserAgent(): Promise<string> {
 }
 
 function fallbackSearchBrowserVersion(): string {
-  return SEARCH_USER_AGENT_FALLBACK.match(/Chrome\/([0-9.]+)/)?.[1] ?? "146.0.0.0";
+  return (
+    SEARCH_USER_AGENT_FALLBACK.match(/Chrome\/([0-9.]+)/)?.[1] ?? "146.0.0.0"
+  );
 }
 
 function shouldUseDedicatedSearchBrowser(source: BrowserSource): boolean {
