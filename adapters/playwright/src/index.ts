@@ -8,16 +8,6 @@ import {
   handleType,
 } from "./handlers/index.js";
 import { failure, readStdin, success } from "./rpc.js";
-import {
-  applySearchIdentityToGlobal,
-  hasSearchIdentityMarkerForTests,
-  resetSearchIdentityCachesForTests,
-  resolveSearchBrowserVersionForTests,
-  resolveSearchLocaleForTests,
-  resolveSearchUserAgentForTests,
-  searchIdentityPlatformProfileForTests,
-  writeSearchIdentityMarkerForTests,
-} from "./search-identity.js";
 import type {
   AdapterStatus,
   JsonRpcRequest,
@@ -42,7 +32,7 @@ export {
   resolveSearchUserAgentForTests,
   searchIdentityPlatformProfileForTests,
   writeSearchIdentityMarkerForTests,
-};
+} from "./search-identity.js";
 
 export function adapterStatus(): AdapterStatus {
   return {

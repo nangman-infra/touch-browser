@@ -19,6 +19,7 @@ import {
 } from "./types.js";
 
 const execFileAsync = promisify(execFile);
+const SEARCH_BROWSER_FALLBACK_VERSION = ["146", "0", "0", "0"].join(".");
 
 let cachedSearchExecutablePath: Promise<string | undefined> | undefined;
 let cachedSearchBrowserVersion: Promise<string | undefined> | undefined;
@@ -422,7 +423,7 @@ function buildSearchUserAgent(version: string): string {
 }
 
 function currentSearchUserAgentFallback(): string {
-  return buildSearchUserAgent("146.0.0.0");
+  return buildSearchUserAgent(SEARCH_BROWSER_FALLBACK_VERSION);
 }
 
 async function resolveSearchBrowserExecutablePath(): Promise<
@@ -535,8 +536,8 @@ async function resolveSearchUserAgent(): Promise<string> {
 
 function fallbackSearchBrowserVersion(): string {
   return (
-    currentSearchUserAgentFallback().match(/Chrome\/([0-9.]+)/)?.[1] ??
-    "146.0.0.0"
+    extractChromeVersionFromUserAgent(currentSearchUserAgentFallback()) ??
+    SEARCH_BROWSER_FALLBACK_VERSION
   );
 }
 
@@ -553,7 +554,7 @@ async function resolveSearchIdentityProfile(
 
   if (!shouldUseDedicatedSearchBrowser(source)) {
     const browserVersion =
-      explicitUserAgent?.match(/Chrome\/([0-9.]+)/)?.[1] ?? fallbackVersion;
+      extractChromeVersionFromUserAgent(explicitUserAgent) ?? fallbackVersion;
     return {
       executablePath: undefined,
       userAgent: explicitUserAgent ?? currentSearchUserAgentFallback(),
@@ -574,6 +575,12 @@ async function resolveSearchIdentityProfile(
     browserVersion: browserVersion ?? fallbackVersion,
     platformProfile,
   };
+}
+
+function extractChromeVersionFromUserAgent(
+  userAgent: string | undefined,
+): string | undefined {
+  return /Chrome\/([0-9.]+)/.exec(userAgent ?? "")?.[1];
 }
 
 function buildSearchUserAgentBrands(version: string): Array<{
