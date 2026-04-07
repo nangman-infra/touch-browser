@@ -166,6 +166,20 @@ struct ScoringContext {
 
 fn analyze_claim<'a>(claim: &ClaimRequest, blocks: &'a [SnapshotBlock]) -> ClaimResolution<'a> {
     let analysis = build_claim_analysis_input(claim);
+    if claim_is_low_signal_noise(&claim.statement, &analysis.claim_tokens) {
+        return ClaimResolution {
+            verdict: EvidenceClaimVerdict::InsufficientEvidence,
+            support: Vec::new(),
+            confidence: None,
+            reason: Some(UnsupportedClaimReason::InsufficientConfidence),
+            checked_refs: Vec::new(),
+            guard_failures: Vec::new(),
+            next_action_hint: Some(
+                "Rewrite the claim into a shorter, source-checkable statement before answering."
+                    .to_string(),
+            ),
+        };
+    }
     let scoring_context = build_scoring_context(blocks, &analysis.claim_tokens);
     let scored = score_candidates(blocks, &analysis, &scoring_context);
     let checked_refs = checked_refs(&scored);
@@ -231,6 +245,39 @@ fn build_claim_analysis_input(claim: &ClaimRequest) -> ClaimAnalysisInput {
         normalized_claim: normalize_text(&claim.statement),
         claim_tokens,
     }
+}
+
+fn claim_is_low_signal_noise(statement: &str, claim_tokens: &[String]) -> bool {
+    let char_count = statement.chars().count();
+    if char_count < 240 {
+        return false;
+    }
+
+    let significant_tokens = claim_tokens
+        .iter()
+        .filter(|token| token.len() >= 2)
+        .collect::<Vec<_>>();
+    if significant_tokens.len() < 18 {
+        return false;
+    }
+
+    let unique_tokens = significant_tokens
+        .iter()
+        .map(|token| token.as_str())
+        .collect::<BTreeSet<_>>();
+    let unique_ratio = unique_tokens.len() as f64 / significant_tokens.len() as f64;
+    let max_repetition = unique_tokens
+        .iter()
+        .map(|token| {
+            significant_tokens
+                .iter()
+                .filter(|candidate| candidate.as_str() == *token)
+                .count()
+        })
+        .max()
+        .unwrap_or(0);
+
+    unique_ratio <= 0.45 || max_repetition >= 8
 }
 
 fn score_candidates<'a>(
@@ -2455,12 +2502,28 @@ const CONTRADICTION_PATTERNS: &[ContradictionPattern] = &[
         negative: "not enabled",
     },
     ContradictionPattern {
+        positive: "enabled",
+        negative: "disabled",
+    },
+    ContradictionPattern {
         positive: "synchronous",
         negative: "asynchronous",
     },
     ContradictionPattern {
         positive: "blocking",
         negative: "non blocking",
+    },
+    ContradictionPattern {
+        positive: "mutable",
+        negative: "immutable",
+    },
+    ContradictionPattern {
+        positive: "stateful",
+        negative: "stateless",
+    },
+    ContradictionPattern {
+        positive: "encrypted",
+        negative: "unencrypted",
     },
 ];
 
@@ -3761,6 +3824,71 @@ mod tests {
 
         assert_eq!(report.supported_claims.len(), 1);
         assert_eq!(report.supported_claims[0].claim_id, "c1");
+    }
+
+    #[test]
+    fn rejects_low_signal_repetitive_claims() {
+        let repetitive_claim = format!("파이썬은 {}좋은 언어이다", "매우 ".repeat(200));
+        let snapshot = SnapshotDocument {
+            version: "1.0.0".to_string(),
+            stable_ref_version: "1".to_string(),
+            source: touch_browser_contracts::SnapshotSource {
+                source_url: "https://www.python.org/".to_string(),
+                source_type: touch_browser_contracts::SourceType::Http,
+                title: Some("Welcome to Python.org".to_string()),
+            },
+            budget: touch_browser_contracts::SnapshotBudget {
+                requested_tokens: 512,
+                estimated_tokens: 32,
+                emitted_tokens: 32,
+                truncated: false,
+            },
+            blocks: vec![touch_browser_contracts::SnapshotBlock {
+                version: "1.0.0".to_string(),
+                id: "b1".to_string(),
+                kind: touch_browser_contracts::SnapshotBlockKind::Text,
+                stable_ref: "rmain:text:intro".to_string(),
+                role: touch_browser_contracts::SnapshotBlockRole::Content,
+                text: "Python is a powerful programming language.".to_string(),
+                attributes: Default::default(),
+                evidence: touch_browser_contracts::SnapshotEvidence {
+                    source_url: "https://www.python.org/".to_string(),
+                    source_type: touch_browser_contracts::SourceType::Http,
+                    dom_path_hint: Some("html > body > main > p".to_string()),
+                    byte_range_start: None,
+                    byte_range_end: None,
+                },
+            }],
+        };
+
+        let report = EvidenceExtractor
+            .extract(&EvidenceInput::new(
+                snapshot,
+                vec![ClaimRequest::new("c1", repetitive_claim)],
+                "2026-04-07T00:00:00+09:00",
+                SourceRisk::Low,
+                Some("Welcome to Python.org".to_string()),
+            ))
+            .expect("evidence extraction should succeed");
+
+        assert!(report.supported_claims.is_empty());
+        assert_eq!(report.unsupported_claims.len(), 1);
+        assert_eq!(
+            report.unsupported_claims[0].reason,
+            UnsupportedClaimReason::InsufficientConfidence
+        );
+    }
+
+    #[test]
+    fn contradiction_detection_matches_mutability_polarity_locally() {
+        assert!(contradiction_detected(
+            &normalize_text("The data structure is mutable."),
+            "The data structure is immutable once created.",
+        ));
+        assert!(!contradiction_detected(
+            &normalize_text("The data structure is immutable."),
+            "The immutable configuration object can reference mutable caches.",
+        ));
     }
 
     fn parse_risk(value: &str) -> SourceRisk {

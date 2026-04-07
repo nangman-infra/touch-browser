@@ -422,21 +422,37 @@ fn combine_session_synthesis_reports(
         )
     }
 
+    fn claim_status_priority(status: SessionSynthesisClaimStatus) -> usize {
+        match status {
+            SessionSynthesisClaimStatus::InsufficientEvidence => 0,
+            SessionSynthesisClaimStatus::NeedsMoreBrowsing => 1,
+            SessionSynthesisClaimStatus::EvidenceSupported => 2,
+            SessionSynthesisClaimStatus::Contradicted => 3,
+        }
+    }
+
     fn merge_claim(
-        aggregates: &mut BTreeMap<(String, String), AggregateClaim>,
+        aggregates: &mut BTreeMap<String, AggregateClaim>,
         claim: &SessionSynthesisClaim,
         status: SessionSynthesisClaimStatus,
     ) {
-        let key = (claim.claim_id.clone(), claim.statement.clone());
+        let key = claim.claim_id.clone();
+        let initial_status = status.clone();
         let aggregate = aggregates.entry(key).or_insert_with(|| AggregateClaim {
             claim_id: claim.claim_id.clone(),
             statement: claim.statement.clone(),
-            status,
+            status: initial_status,
             snapshot_ids: BTreeSet::new(),
             support_refs: BTreeSet::new(),
             citations: Vec::new(),
             citation_keys: BTreeSet::new(),
         });
+        if aggregate.statement.trim().is_empty() {
+            aggregate.statement = claim.statement.clone();
+        }
+        if claim_status_priority(status.clone()) > claim_status_priority(aggregate.status.clone()) {
+            aggregate.status = status;
+        }
 
         aggregate
             .snapshot_ids
@@ -456,10 +472,7 @@ fn combine_session_synthesis_reports(
     let mut working_set_refs = BTreeSet::new();
     let mut synthesized_notes = Vec::new();
     let mut note_keys = BTreeSet::new();
-    let mut supported = BTreeMap::<(String, String), AggregateClaim>::new();
-    let mut contradicted = BTreeMap::<(String, String), AggregateClaim>::new();
-    let mut unsupported = BTreeMap::<(String, String), AggregateClaim>::new();
-    let mut needs_more_browsing = BTreeMap::<(String, String), AggregateClaim>::new();
+    let mut aggregates = BTreeMap::<String, AggregateClaim>::new();
     let mut snapshot_count = 0usize;
     let mut evidence_report_count = 0usize;
     let mut generated_at = DEFAULT_OPENED_AT.to_string();
@@ -477,48 +490,57 @@ fn combine_session_synthesis_reports(
         }
         for claim in &report.supported_claims {
             merge_claim(
-                &mut supported,
+                &mut aggregates,
                 claim,
                 SessionSynthesisClaimStatus::EvidenceSupported,
             );
         }
         for claim in &report.contradicted_claims {
             merge_claim(
-                &mut contradicted,
+                &mut aggregates,
                 claim,
                 SessionSynthesisClaimStatus::Contradicted,
             );
         }
         for claim in &report.unsupported_claims {
             merge_claim(
-                &mut unsupported,
+                &mut aggregates,
                 claim,
                 SessionSynthesisClaimStatus::InsufficientEvidence,
             );
         }
         for claim in &report.needs_more_browsing_claims {
             merge_claim(
-                &mut needs_more_browsing,
+                &mut aggregates,
                 claim,
                 SessionSynthesisClaimStatus::NeedsMoreBrowsing,
             );
         }
     }
 
-    let into_claims = |aggregates: BTreeMap<(String, String), AggregateClaim>| {
-        aggregates
-            .into_values()
-            .map(|aggregate| SessionSynthesisClaim {
-                version: CONTRACT_VERSION.to_string(),
-                claim_id: aggregate.claim_id,
-                statement: aggregate.statement,
-                status: aggregate.status,
-                snapshot_ids: aggregate.snapshot_ids.into_iter().collect(),
-                support_refs: aggregate.support_refs.into_iter().collect(),
-                citations: aggregate.citations,
-            })
-            .collect::<Vec<_>>()
-    };
+    let mut supported_claims = Vec::new();
+    let mut contradicted_claims = Vec::new();
+    let mut unsupported_claims = Vec::new();
+    let mut needs_more_browsing_claims = Vec::new();
+    for aggregate in aggregates.into_values() {
+        let claim = SessionSynthesisClaim {
+            version: CONTRACT_VERSION.to_string(),
+            claim_id: aggregate.claim_id,
+            statement: aggregate.statement,
+            status: aggregate.status.clone(),
+            snapshot_ids: aggregate.snapshot_ids.into_iter().collect(),
+            support_refs: aggregate.support_refs.into_iter().collect(),
+            citations: aggregate.citations,
+        };
+        match claim.status {
+            SessionSynthesisClaimStatus::EvidenceSupported => supported_claims.push(claim),
+            SessionSynthesisClaimStatus::Contradicted => contradicted_claims.push(claim),
+            SessionSynthesisClaimStatus::InsufficientEvidence => unsupported_claims.push(claim),
+            SessionSynthesisClaimStatus::NeedsMoreBrowsing => {
+                needs_more_browsing_claims.push(claim);
+            }
+        }
+    }
 
     SessionSynthesisReport {
         version: CONTRACT_VERSION.to_string(),
@@ -529,9 +551,9 @@ fn combine_session_synthesis_reports(
         visited_urls: visited_urls.into_iter().collect(),
         working_set_refs: working_set_refs.into_iter().collect(),
         synthesized_notes,
-        supported_claims: into_claims(supported),
-        contradicted_claims: into_claims(contradicted),
-        unsupported_claims: into_claims(unsupported),
-        needs_more_browsing_claims: into_claims(needs_more_browsing),
+        supported_claims,
+        contradicted_claims,
+        unsupported_claims,
+        needs_more_browsing_claims,
     }
 }

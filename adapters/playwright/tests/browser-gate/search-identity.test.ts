@@ -16,6 +16,57 @@ import {
   writeSearchIdentityMarkerForTests,
 } from "../support/adapter-helpers.js";
 
+function macSearchIdentityInitPayload(
+  overrides: {
+    languages?: string[];
+    userAgent?: string;
+    browserVersion?: string;
+    userAgentDataBrands?: Array<{ brand: string; version: string }>;
+  } = {},
+) {
+  return {
+    languages: overrides.languages ?? ["en-US", "en"],
+    userAgent:
+      overrides.userAgent ??
+      "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/146.0.0.0 Safari/537.36",
+    browserVersion: overrides.browserVersion ?? "146.0.0.0",
+    userAgentDataBrands: overrides.userAgentDataBrands ?? [
+      { brand: "Not=A?Brand", version: "99" },
+      { brand: "Chromium", version: "146" },
+      { brand: "Google Chrome", version: "146" },
+    ],
+    navigatorPlatform: "MacIntel",
+    userAgentDataPlatform: "macOS",
+    architecture: "x86",
+    bitness: "64",
+    platformVersion: "14.0.0",
+    webGlVendor: "Intel Inc.",
+    webGlRenderer: "Intel Iris OpenGL Engine",
+  };
+}
+
+function expectedRuntimeSearchUserAgentFragment(): string {
+  const runtimePlatform = os.platform();
+  const runtimeArch = os.arch();
+  const isArm = runtimeArch.startsWith("arm");
+  const is64Bit = runtimeArch.includes("64") || runtimeArch === "arm64";
+
+  switch (runtimePlatform) {
+    case "win32":
+      return isArm
+        ? "Windows NT 10.0; Win64; ARM64"
+        : is64Bit
+          ? "Windows NT 10.0; Win64; x64"
+          : "Windows NT 10.0";
+    case "linux":
+      return isArm ? "X11; Linux aarch64" : "X11; Linux x86_64";
+    default:
+      return isArm
+        ? "Macintosh; ARM Mac OS X 14_0_0"
+        : "Macintosh; Intel Mac OS X 10_15_7";
+  }
+}
+
 async function withEnvironment<T>(
   overrides: Record<string, string | undefined>,
   run: () => Promise<T>,
@@ -310,6 +361,9 @@ describe("playwright adapter search identity coverage", () => {
         await expect(resolveSearchUserAgentForTests()).resolves.toContain(
           "Chrome/146.0.0.0",
         );
+        await expect(resolveSearchUserAgentForTests()).resolves.toContain(
+          expectedRuntimeSearchUserAgentFragment(),
+        );
       },
     );
 
@@ -353,17 +407,7 @@ describe("playwright adapter search identity coverage", () => {
         WebGLRenderingContext: { prototype: webGlPrototype },
         WebGL2RenderingContext: { prototype: webGl2Prototype },
       },
-      {
-        languages: ["en-US", "en"],
-        userAgent:
-          "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/146.0.0.0 Safari/537.36",
-        browserVersion: "146.0.0.0",
-        userAgentDataBrands: [
-          { brand: "Not=A?Brand", version: "99" },
-          { brand: "Chromium", version: "146" },
-          { brand: "Google Chrome", version: "146" },
-        ],
-      },
+      macSearchIdentityInitPayload(),
     );
 
     expect(navigatorTarget.webdriver).toBeUndefined();
@@ -453,13 +497,13 @@ describe("playwright adapter search identity coverage", () => {
       writable: true,
     });
 
-    applySearchIdentityToGlobal(globalScope, {
-      languages: ["ko-KR", "ko"],
-      userAgent:
-        "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/146.0.0.0 Safari/537.36",
-      browserVersion: "146.0.0.0",
-      userAgentDataBrands: [{ brand: "Chromium", version: "146" }],
-    });
+    applySearchIdentityToGlobal(
+      globalScope,
+      macSearchIdentityInitPayload({
+        languages: ["ko-KR", "ko"],
+        userAgentDataBrands: [{ brand: "Chromium", version: "146" }],
+      }),
+    );
 
     expect(navigatorTarget.userAgent).toContain("Chrome/146.0.0.0");
     expect(

@@ -859,7 +859,7 @@ struct AggregateClaim {
 }
 
 fn aggregate_session_claims(session: &ReadOnlySession) -> Vec<SessionSynthesisClaim> {
-    let mut aggregates = BTreeMap::<(String, String), AggregateClaim>::new();
+    let mut aggregates = BTreeMap::<String, AggregateClaim>::new();
 
     for evidence_record in &session.evidence_reports {
         for supported_claim in &evidence_record.report.supported_claims {
@@ -926,13 +926,13 @@ fn aggregate_session_claims(session: &ReadOnlySession) -> Vec<SessionSynthesisCl
 }
 
 fn ensure_aggregate<'a>(
-    aggregates: &'a mut BTreeMap<(String, String), AggregateClaim>,
+    aggregates: &'a mut BTreeMap<String, AggregateClaim>,
     claim_id: &str,
     statement: &str,
     default_status: SessionSynthesisClaimStatus,
 ) -> &'a mut AggregateClaim {
-    let key = (claim_id.to_string(), statement.to_string());
-    aggregates.entry(key).or_insert_with(|| AggregateClaim {
+    let key = claim_id.to_string();
+    let aggregate = aggregates.entry(key).or_insert_with(|| AggregateClaim {
         claim_id: claim_id.to_string(),
         statement: statement.to_string(),
         status: default_status,
@@ -940,7 +940,11 @@ fn ensure_aggregate<'a>(
         support_refs: BTreeSet::new(),
         citations: Vec::new(),
         citation_keys: BTreeSet::new(),
-    })
+    });
+    if aggregate.statement.trim().is_empty() {
+        aggregate.statement = statement.to_string();
+    }
+    aggregate
 }
 
 fn update_claim_status(aggregate: &mut AggregateClaim, next_status: SessionSynthesisClaimStatus) {
@@ -975,8 +979,8 @@ fn claim_status_priority(status: SessionSynthesisClaimStatus) -> usize {
     match status {
         SessionSynthesisClaimStatus::InsufficientEvidence => 0,
         SessionSynthesisClaimStatus::NeedsMoreBrowsing => 1,
-        SessionSynthesisClaimStatus::Contradicted => 2,
-        SessionSynthesisClaimStatus::EvidenceSupported => 3,
+        SessionSynthesisClaimStatus::EvidenceSupported => 2,
+        SessionSynthesisClaimStatus::Contradicted => 3,
     }
 }
 
@@ -1026,13 +1030,15 @@ mod tests {
     use tiny_http::{Header, Response as TinyResponse, Server, StatusCode};
     use touch_browser_acquisition::{AcquisitionConfig, AcquisitionEngine};
     use touch_browser_contracts::{
-        ReplayTranscript, SessionMode, SessionStatus, SourceRisk, SourceType, TranscriptKind,
-        TranscriptPayloadType,
+        EvidenceCitation, EvidenceClaimOutcome, EvidenceClaimVerdict, EvidenceReport,
+        EvidenceSource, ReplayTranscript, SessionMode, SessionStatus, SourceRisk, SourceType,
+        TranscriptKind, TranscriptPayloadType, UnsupportedClaimReason, CONTRACT_VERSION,
     };
     use touch_browser_memory::{plan_memory_turn, summarize_turns};
 
     use super::{
-        CatalogDocument, ClaimInput, CompactInput, DiffInput, FixtureCatalog, ReadOnlyRuntime,
+        CatalogDocument, ClaimInput, CompactInput, DiffInput, EvidenceRecord, FixtureCatalog,
+        ReadOnlyRuntime,
     };
 
     #[derive(Debug, Deserialize)]
@@ -1376,6 +1382,94 @@ mod tests {
             .synthesized_notes
             .iter()
             .any(|note| note.contains("Starter plan costs $29")));
+    }
+
+    #[test]
+    fn synthesizes_claims_by_claim_id_and_prioritizes_contradictions() {
+        let runtime = ReadOnlyRuntime::default();
+        let mut session = runtime.start_session("ssynthesis002", "2026-03-14T00:00:00+09:00");
+
+        session.evidence_reports.push(EvidenceRecord {
+            snapshot_id: "snapshot-1".to_string(),
+            report: synthesis_report(vec![EvidenceClaimOutcome {
+                version: CONTRACT_VERSION.to_string(),
+                claim_id: "claim-dup".to_string(),
+                statement: "Python supports async IO.".to_string(),
+                verdict: EvidenceClaimVerdict::EvidenceSupported,
+                support: vec!["rmain:text:async".to_string()],
+                support_score: Some(0.91),
+                citation: Some(sample_citation("https://example.com/async")),
+                reason: None,
+                checked_block_refs: vec!["rmain:text:async".to_string()],
+                guard_failures: Vec::new(),
+                next_action_hint: None,
+                verification_verdict: None,
+            }]),
+        });
+        session.evidence_reports.push(EvidenceRecord {
+            snapshot_id: "snapshot-2".to_string(),
+            report: synthesis_report(vec![EvidenceClaimOutcome {
+                version: CONTRACT_VERSION.to_string(),
+                claim_id: "claim-dup".to_string(),
+                statement: "Python supports async IO".to_string(),
+                verdict: EvidenceClaimVerdict::Contradicted,
+                support: Vec::new(),
+                support_score: None,
+                citation: None,
+                reason: Some(UnsupportedClaimReason::ContradictoryEvidence),
+                checked_block_refs: vec!["rmain:text:sync-only".to_string()],
+                guard_failures: Vec::new(),
+                next_action_hint: None,
+                verification_verdict: None,
+            }]),
+        });
+
+        let synthesis = runtime
+            .synthesize_session(&session, "2026-03-14T00:00:05+09:00", 8)
+            .expect("synthesis should work");
+
+        assert!(synthesis.supported_claims.is_empty());
+        assert_eq!(synthesis.contradicted_claims.len(), 1);
+        assert_eq!(synthesis.contradicted_claims[0].claim_id, "claim-dup");
+        assert_eq!(
+            synthesis.contradicted_claims[0].statement,
+            "Python supports async IO."
+        );
+        assert_eq!(
+            synthesis.contradicted_claims[0].snapshot_ids,
+            vec!["snapshot-1".to_string(), "snapshot-2".to_string()]
+        );
+    }
+
+    fn synthesis_report(claim_outcomes: Vec<EvidenceClaimOutcome>) -> EvidenceReport {
+        let mut report = EvidenceReport {
+            version: CONTRACT_VERSION.to_string(),
+            generated_at: "2026-03-14T00:00:00+09:00".to_string(),
+            source: EvidenceSource {
+                source_url: "https://example.com".to_string(),
+                source_type: SourceType::Http,
+                source_risk: SourceRisk::Low,
+                source_label: Some("Example".to_string()),
+            },
+            supported_claims: Vec::new(),
+            contradicted_claims: Vec::new(),
+            unsupported_claims: Vec::new(),
+            needs_more_browsing_claims: Vec::new(),
+            claim_outcomes,
+            verification: None,
+        };
+        report.rebuild_claim_buckets();
+        report
+    }
+
+    fn sample_citation(url: &str) -> EvidenceCitation {
+        EvidenceCitation {
+            url: url.to_string(),
+            retrieved_at: "2026-03-14T00:00:00+09:00".to_string(),
+            source_type: SourceType::Http,
+            source_risk: SourceRisk::Low,
+            source_label: Some("Example".to_string()),
+        }
     }
 
     fn fixture_catalog() -> FixtureCatalog {

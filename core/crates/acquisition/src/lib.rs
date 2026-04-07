@@ -1,7 +1,6 @@
 use std::{
-    collections::{hash_map::DefaultHasher, BTreeMap, HashMap},
+    collections::{BTreeMap, HashMap},
     fs,
-    hash::{Hash, Hasher},
     path::PathBuf,
     time::{Duration, SystemTime, UNIX_EPOCH},
 };
@@ -23,6 +22,7 @@ pub struct AcquisitionConfig {
     pub max_redirects: usize,
     pub persistent_cache_dir: Option<PathBuf>,
     pub persistent_cache_ttl: Duration,
+    pub request_timeout: Duration,
 }
 
 impl Default for AcquisitionConfig {
@@ -34,6 +34,7 @@ impl Default for AcquisitionConfig {
                 std::env::temp_dir().join("touch-browser-acquisition-cache"),
             ),
             persistent_cache_ttl: Duration::from_secs(60),
+            request_timeout: Duration::from_secs(10),
         }
     }
 }
@@ -71,9 +72,16 @@ struct PersistentCachedDocument {
     result: AcquiredDocument,
 }
 
-#[derive(Debug, Clone, Default)]
+#[derive(Debug, Clone, Default, Serialize, Deserialize, PartialEq, Eq)]
 struct RobotsPolicy {
     disallow_rules: Vec<String>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+struct PersistentRobotsPolicy {
+    origin: String,
+    fetched_at_unix_seconds: u64,
+    policy: RobotsPolicy,
 }
 
 pub struct AcquisitionEngine {
@@ -87,6 +95,8 @@ pub struct AcquisitionEngine {
 impl AcquisitionEngine {
     pub fn new(config: AcquisitionConfig) -> Result<Self, AcquisitionError> {
         let client = Client::builder()
+            .timeout(config.request_timeout)
+            .connect_timeout(config.request_timeout)
             .redirect(reqwest::redirect::Policy::none())
             .build()
             .map_err(AcquisitionError::Http)?;
@@ -201,13 +211,62 @@ impl AcquisitionEngine {
 
     fn persistent_cache_path(&self, cache_key: &str) -> Option<PathBuf> {
         let cache_dir = self.config.persistent_cache_dir.as_ref()?;
-        Some(cache_dir.join(format!("{:016x}.json", cache_key_hash(cache_key))))
+        Some(cache_dir.join(format!("{:016x}.json", stable_cache_key_hash(cache_key))))
+    }
+
+    fn robots_cache_path(&self, origin: &str) -> Option<PathBuf> {
+        let cache_dir = self.config.persistent_cache_dir.as_ref()?;
+        Some(
+            cache_dir
+                .join("robots")
+                .join(format!("{:016x}.json", stable_cache_key_hash(origin))),
+        )
     }
 
     fn cache_entry_expired(&self, fetched_at_unix_seconds: u64) -> bool {
         self.config.persistent_cache_ttl.is_zero()
             || current_unix_seconds().saturating_sub(fetched_at_unix_seconds)
                 > self.config.persistent_cache_ttl.as_secs()
+    }
+
+    fn load_persistent_robots_policy(&self, origin: &str) -> Option<RobotsPolicy> {
+        let cache_path = self.robots_cache_path(origin)?;
+        let raw = fs::read(&cache_path).ok()?;
+        let cached: PersistentRobotsPolicy = serde_json::from_slice(&raw).ok()?;
+        if cached.origin != origin {
+            return None;
+        }
+        if self.cache_entry_expired(cached.fetched_at_unix_seconds) {
+            let _ = fs::remove_file(cache_path);
+            return None;
+        }
+
+        Some(cached.policy)
+    }
+
+    fn store_persistent_robots_policy(
+        &self,
+        origin: &str,
+        policy: &RobotsPolicy,
+    ) -> Result<(), AcquisitionError> {
+        let Some(cache_path) = self.robots_cache_path(origin) else {
+            return Ok(());
+        };
+        if let Some(parent) = cache_path.parent() {
+            fs::create_dir_all(parent).map_err(AcquisitionError::PersistentCacheIo)?;
+        }
+
+        let cached = PersistentRobotsPolicy {
+            origin: origin.to_string(),
+            fetched_at_unix_seconds: current_unix_seconds(),
+            policy: policy.clone(),
+        };
+        fs::write(
+            cache_path,
+            serde_json::to_vec(&cached).map_err(AcquisitionError::PersistentCacheJson)?,
+        )
+        .map_err(AcquisitionError::PersistentCacheIo)?;
+        Ok(())
     }
 
     fn fetch_fixture(&self, url: &str) -> Result<AcquiredDocument, AcquisitionError> {
@@ -298,7 +357,12 @@ impl AcquisitionEngine {
         };
 
         if !self.robots_cache.contains_key(&origin) {
-            let policy = self.fetch_robots_policy(url)?;
+            let policy = if let Some(cached_policy) = self.load_persistent_robots_policy(&origin) {
+                cached_policy
+            } else {
+                self.fetch_robots_policy(url)?
+            };
+            let _ = self.store_persistent_robots_policy(&origin, &policy);
             self.robots_cache.insert(origin.clone(), policy);
         }
 
@@ -327,12 +391,18 @@ impl AcquisitionEngine {
         robots_url.set_query(None);
         robots_url.set_fragment(None);
 
-        let response = self.get(robots_url.as_str())?;
+        let response = match self.get(robots_url.as_str()) {
+            Ok(response) => response,
+            Err(_) => return Ok(RobotsPolicy::default()),
+        };
         if response.status().is_client_error() || response.status().is_server_error() {
             return Ok(RobotsPolicy::default());
         }
 
-        let body = response.text().map_err(AcquisitionError::Http)?;
+        let body = match response.text() {
+            Ok(body) => body,
+            Err(_) => return Ok(RobotsPolicy::default()),
+        };
         Ok(parse_robots(body.as_str(), self.config.user_agent.as_str()))
     }
 }
@@ -369,10 +439,16 @@ fn normalize_cache_key(url: &str) -> Result<String, AcquisitionError> {
     Ok(parsed.to_string())
 }
 
-fn cache_key_hash(cache_key: &str) -> u64 {
-    let mut hasher = DefaultHasher::new();
-    cache_key.hash(&mut hasher);
-    hasher.finish()
+fn stable_cache_key_hash(cache_key: &str) -> u64 {
+    const OFFSET_BASIS: u64 = 0xcbf29ce484222325;
+    const PRIME: u64 = 0x0000_0100_0000_01b3;
+
+    let mut hash = OFFSET_BASIS;
+    for byte in cache_key.as_bytes() {
+        hash ^= u64::from(*byte);
+        hash = hash.wrapping_mul(PRIME);
+    }
+    hash
 }
 
 fn current_unix_seconds() -> u64 {
@@ -470,8 +546,11 @@ mod tests {
 
     use tiny_http::{Header, Response as TinyResponse, Server, StatusCode};
     use touch_browser_contracts::CacheStatus;
+    use url::Url;
 
-    use super::{AcquisitionConfig, AcquisitionEngine, AcquisitionError, FixtureResource};
+    use super::{
+        AcquisitionConfig, AcquisitionEngine, AcquisitionError, FixtureResource, RobotsPolicy,
+    };
 
     #[test]
     fn fetches_fixtures_and_caches_by_requested_url() {
@@ -634,6 +713,61 @@ mod tests {
         let _ = fs::remove_dir_all(cache_dir);
     }
 
+    #[test]
+    fn falls_back_to_default_policy_when_robots_fetch_errors() {
+        let listener = TcpListener::bind("127.0.0.1:0").expect("listener bind");
+        let address = listener.local_addr().expect("local addr");
+        drop(listener);
+
+        let engine = AcquisitionEngine::new(AcquisitionConfig::default()).expect("engine");
+        let url = Url::parse(&format!("http://{address}/final")).expect("url should parse");
+
+        let policy = engine
+            .fetch_robots_policy(&url)
+            .expect("robots fetch failures should fall back to default policy");
+
+        assert_eq!(policy, RobotsPolicy::default());
+    }
+
+    #[test]
+    fn reuses_persistent_robots_cache_across_engine_instances() {
+        let requests = Arc::new(AtomicUsize::new(0));
+        let server = TestServer::start(requests.clone(), false);
+        let cache_dir = std::env::temp_dir().join(format!(
+            "touch-browser-robots-cache-test-{}",
+            SystemTime::now()
+                .duration_since(UNIX_EPOCH)
+                .expect("time should be monotonic")
+                .as_nanos()
+        ));
+        let config = AcquisitionConfig {
+            persistent_cache_dir: Some(cache_dir.clone()),
+            ..AcquisitionConfig::default()
+        };
+
+        {
+            let mut engine = AcquisitionEngine::new(config.clone()).expect("engine");
+            engine
+                .fetch(&format!("{}/final", server.base_url()))
+                .expect("first fetch");
+        }
+        requests.store(0, Ordering::SeqCst);
+        {
+            let mut engine = AcquisitionEngine::new(config).expect("engine");
+            engine
+                .fetch(&format!("{}/another", server.base_url()))
+                .expect("second fetch");
+        }
+
+        assert_eq!(
+            requests.load(Ordering::SeqCst),
+            1,
+            "second engine should reuse persisted robots policy and only fetch the document",
+        );
+
+        let _ = fs::remove_dir_all(cache_dir);
+    }
+
     struct TestServer {
         base_url: String,
         stop_flag: Arc<AtomicBool>,
@@ -671,6 +805,11 @@ mod tests {
                         "/start" => redirect_response("/final"),
                         "/final" => html_response(
                             "<html><body><h1>Final</h1></body></html>",
+                            "text/html; charset=utf-8",
+                            200,
+                        ),
+                        "/another" => html_response(
+                            "<html><body><h1>Another</h1></body></html>",
                             "text/html; charset=utf-8",
                             200,
                         ),

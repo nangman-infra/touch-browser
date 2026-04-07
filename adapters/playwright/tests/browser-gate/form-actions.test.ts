@@ -45,6 +45,45 @@ describe("playwright adapter browser form actions", () => {
     });
   });
 
+  it("waits for delayed SPA updates after click actions settle", async () => {
+    const click = await handleRequest({
+      jsonrpc: "2.0",
+      id: "req-click-delayed",
+      method: "browser.click",
+      params: {
+        html: `
+          <!doctype html>
+          <html>
+            <body>
+              <main>
+                <p id="status">Pending click.</p>
+                <button
+                  type="button"
+                  onclick="setTimeout(() => { document.getElementById('status').textContent = 'Delayed click completed.'; }, 600);"
+                >
+                  Continue
+                </button>
+              </main>
+            </body>
+          </html>
+        `,
+        targetRef: "rmain:button:continue",
+        targetText: "Continue",
+        targetTagName: "button",
+        headless: true,
+      },
+    });
+
+    expect(click).toMatchObject({
+      jsonrpc: "2.0",
+      id: "req-click-delayed",
+      result: {
+        method: "browser.click",
+        visibleText: "Delayed click completed. Continue",
+      },
+    });
+  });
+
   it("executes browser-backed typing with inline html", async () => {
     const typed = await handleRequest({
       jsonrpc: "2.0",

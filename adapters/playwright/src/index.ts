@@ -130,10 +130,16 @@ type ScoredCandidate = {
 const CONTEXT_LOCK_TIMEOUT_MS = 30_000;
 const CONTEXT_LOCK_RETRY_MS = 150;
 const CONTEXT_LOCK_STALE_MS = 120_000;
+const PAGE_NAVIGATION_TIMEOUT_MS = 15_000;
+const PAGE_ACTION_TIMEOUT_MS = 10_000;
+const ACTION_SETTLE_TIMEOUT_MS = 1_500;
+const ACTION_SETTLE_IDLE_TIMEOUT_MS = 1_250;
+const ACTION_SETTLE_EXTRA_WAIT_MS = 700;
+const SEARCH_PROFILE_POST_LOAD_IDLE_MS = 3_000;
+const SEARCH_PROFILE_POST_LOAD_WAIT_MS = 350;
+const MAX_CAPTURED_LINKS = 50;
 const SEARCH_PROFILE_MARKER = ".touch-browser-search-profile.json";
 const execFileAsync = promisify(execFile);
-const SEARCH_USER_AGENT_FALLBACK =
-  "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/146.0.0.0 Safari/537.36";
 let cachedSearchExecutablePath: Promise<string | undefined> | undefined;
 let cachedSearchBrowserVersion: Promise<string | undefined> | undefined;
 const EVIDENCE_SELECTOR_KEYWORDS = [
@@ -151,6 +157,7 @@ type SearchIdentityProfile = {
   readonly executablePath: string | undefined;
   readonly userAgent: string;
   readonly browserVersion: string;
+  readonly platformProfile: SearchIdentityPlatformProfile;
 };
 
 type SearchIdentityBrand = {
@@ -163,6 +170,13 @@ type SearchIdentityInitPayload = {
   readonly userAgent: string;
   readonly browserVersion: string;
   readonly userAgentDataBrands: readonly SearchIdentityBrand[];
+  readonly navigatorPlatform: string;
+  readonly userAgentDataPlatform: string;
+  readonly architecture: string;
+  readonly bitness: string;
+  readonly platformVersion: string;
+  readonly webGlVendor: string;
+  readonly webGlRenderer: string;
 };
 
 type SearchIdentityWebGlPrototype = {
@@ -185,6 +199,23 @@ type SearchIdentityGlobalScope = {
     prototype?: SearchIdentityWebGlPrototype;
   };
   chrome?: unknown;
+};
+
+type SearchIdentityPlatformProfile = {
+  readonly navigatorPlatform: string;
+  readonly userAgentPlatformFragment: string;
+  readonly userAgentDataPlatform: string;
+  readonly architecture: string;
+  readonly bitness: string;
+  readonly platformVersion: string;
+  readonly webGlVendor: string;
+  readonly webGlRenderer: string;
+};
+
+type EvidencePopupSnapshot = {
+  readonly id: string;
+  readonly label: string;
+  readonly html: string;
 };
 
 export function adapterStatus(): AdapterStatus {
@@ -245,6 +276,13 @@ export function applySearchIdentityToGlobal(
     userAgent,
     browserVersion,
     userAgentDataBrands,
+    navigatorPlatform,
+    userAgentDataPlatform,
+    architecture,
+    bitness,
+    platformVersion,
+    webGlVendor,
+    webGlRenderer,
   }: SearchIdentityInitPayload,
 ): void {
   const patch = (target: object, key: PropertyKey, value: unknown) => {
@@ -271,7 +309,7 @@ export function applySearchIdentityToGlobal(
   patch(globalScope.navigator, "webdriver", undefined);
   patch(globalScope.navigator, "userAgent", userAgent);
   patch(globalScope.navigator, "vendor", "Google Inc.");
-  patch(globalScope.navigator, "platform", "MacIntel");
+  patch(globalScope.navigator, "platform", navigatorPlatform);
   patch(globalScope.navigator, "hardwareConcurrency", 8);
   patch(globalScope.navigator, "deviceMemory", 8);
   patch(globalScope.navigator, "maxTouchPoints", 0);
@@ -292,15 +330,15 @@ export function applySearchIdentityToGlobal(
   patch(globalScope.navigator, "userAgentData", {
     brands: userAgentDataBrands,
     mobile: false,
-    platform: "macOS",
+    platform: userAgentDataPlatform,
     getHighEntropyValues: async (hints: readonly string[]) => {
       const values: Record<string, unknown> = {
-        architecture: "x86",
-        bitness: "64",
+        architecture,
+        bitness,
         mobile: false,
         model: "",
-        platform: "macOS",
-        platformVersion: "14.0.0",
+        platform: userAgentDataPlatform,
+        platformVersion,
         uaFullVersion: browserVersion,
         fullVersionList: userAgentDataBrands,
         wow64: false,
@@ -315,7 +353,7 @@ export function applySearchIdentityToGlobal(
     toJSON: () => ({
       brands: userAgentDataBrands,
       mobile: false,
-      platform: "macOS",
+      platform: userAgentDataPlatform,
     }),
   });
 
@@ -345,10 +383,10 @@ export function applySearchIdentityToGlobal(
     const originalGetParameter = prototype.getParameter;
     prototype.getParameter = function (parameter: number) {
       if (parameter === 37445) {
-        return "Intel Inc.";
+        return webGlVendor;
       }
       if (parameter === 37446) {
-        return "Intel Iris OpenGL Engine";
+        return webGlRenderer;
       }
       return originalGetParameter.call(this, parameter);
     };
@@ -961,7 +999,11 @@ async function readLinks(
 ): Promise<Array<{ text: string; href: string | null }>> {
   const links = [];
 
-  for (let index = 0; index < Math.min(linkCount, 10); index += 1) {
+  for (
+    let index = 0;
+    index < Math.min(linkCount, MAX_CAPTURED_LINKS);
+    index += 1
+  ) {
     const locator = page.locator("a").nth(index);
     const [text, href] = await Promise.all([
       locator.textContent().catch(() => ""),
@@ -974,6 +1016,11 @@ async function readLinks(
   }
 
   return links;
+}
+
+function applyPageTimeouts(page: Page): void {
+  page.setDefaultNavigationTimeout(PAGE_NAVIGATION_TIMEOUT_MS);
+  page.setDefaultTimeout(PAGE_ACTION_TIMEOUT_MS);
 }
 
 async function withPage<T>(
@@ -999,6 +1046,7 @@ async function withPage<T>(
 
       try {
         const page = context.pages()[0] ?? (await context.newPage());
+        applyPageTimeouts(page);
         const shouldLoad =
           !!effectiveSource.html ||
           page.url() === "about:blank" ||
@@ -1025,6 +1073,7 @@ async function withPage<T>(
       );
       try {
         const page = context.pages()[0] ?? (await context.newPage());
+        applyPageTimeouts(page);
         await loadPageSource(page, source);
         return await run(page);
       } finally {
@@ -1045,6 +1094,7 @@ async function withPage<T>(
       screen: { width: 1600, height: 1200 },
     });
     const page = await context.newPage();
+    applyPageTimeouts(page);
 
     try {
       await loadPageSource(page, source);
@@ -1208,6 +1258,76 @@ async function readLockOwnerHint(ownerPath: string): Promise<string> {
   return "";
 }
 
+function searchIdentityPlatformProfile(): SearchIdentityPlatformProfile {
+  const runtimePlatform = os.platform();
+  const runtimeArch = os.arch();
+  const architecture = runtimeArch.startsWith("arm") ? "arm" : "x86";
+  const bitness =
+    runtimeArch.includes("64") || runtimeArch === "arm64" ? "64" : "32";
+
+  switch (runtimePlatform) {
+    case "win32":
+      return {
+        navigatorPlatform: "Win32",
+        userAgentPlatformFragment:
+          architecture === "arm"
+            ? "Windows NT 10.0; Win64; ARM64"
+            : bitness === "64"
+              ? "Windows NT 10.0; Win64; x64"
+              : "Windows NT 10.0",
+        userAgentDataPlatform: "Windows",
+        architecture,
+        bitness,
+        platformVersion: "15.0.0",
+        webGlVendor: "Google Inc. (Microsoft)",
+        webGlRenderer:
+          architecture === "arm"
+            ? "ANGLE (Qualcomm Adreno Direct3D11 vs_5_0 ps_5_0)"
+            : "ANGLE (Intel, Intel(R) UHD Graphics Direct3D11 vs_5_0 ps_5_0)",
+      };
+    case "linux":
+      return {
+        navigatorPlatform:
+          architecture === "arm" ? "Linux armv8l" : "Linux x86_64",
+        userAgentPlatformFragment:
+          architecture === "arm" ? "X11; Linux aarch64" : "X11; Linux x86_64",
+        userAgentDataPlatform: "Linux",
+        architecture,
+        bitness,
+        platformVersion: "6.0.0",
+        webGlVendor: "Google Inc. (Linux)",
+        webGlRenderer:
+          architecture === "arm"
+            ? "ANGLE (ARM Mali OpenGL ES)"
+            : "ANGLE (Intel, Mesa Intel(R) Graphics OpenGL)",
+      };
+    default:
+      return {
+        navigatorPlatform: "MacIntel",
+        userAgentPlatformFragment:
+          architecture === "arm"
+            ? "Macintosh; ARM Mac OS X 14_0_0"
+            : "Macintosh; Intel Mac OS X 10_15_7",
+        userAgentDataPlatform: "macOS",
+        architecture,
+        bitness,
+        platformVersion: "14.0.0",
+        webGlVendor: "Intel Inc.",
+        webGlRenderer:
+          architecture === "arm" ? "Apple GPU" : "Intel Iris OpenGL Engine",
+      };
+  }
+}
+
+function buildSearchUserAgent(version: string): string {
+  const profile = searchIdentityPlatformProfile();
+  return `Mozilla/5.0 (${profile.userAgentPlatformFragment}) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/${version} Safari/537.36`;
+}
+
+function currentSearchUserAgentFallback(): string {
+  return buildSearchUserAgent("146.0.0.0");
+}
+
 async function closeContextQuietly(context: BrowserContext): Promise<void> {
   await context.close().catch(() => {});
 }
@@ -1234,17 +1354,30 @@ async function loadPageSource(
   if (source.html) {
     if (source.searchIdentity) {
       const dataUrl = `data:text/html;charset=utf-8,${encodeURIComponent(source.html)}`;
-      await page.goto(dataUrl, { waitUntil: "domcontentloaded" });
+      await page.goto(dataUrl, {
+        waitUntil: "domcontentloaded",
+        timeout: PAGE_NAVIGATION_TIMEOUT_MS,
+      });
     } else {
-      await page.setContent(source.html, { waitUntil: "domcontentloaded" });
+      await page.setContent(source.html, {
+        waitUntil: "domcontentloaded",
+        timeout: PAGE_NAVIGATION_TIMEOUT_MS,
+      });
     }
   } else if (source.url) {
-    await page.goto(source.url, { waitUntil: "domcontentloaded" });
+    await page.goto(source.url, {
+      waitUntil: "domcontentloaded",
+      timeout: PAGE_NAVIGATION_TIMEOUT_MS,
+    });
     if (source.searchIdentity) {
       await page
-        .waitForLoadState("networkidle", { timeout: 3_000 })
+        .waitForLoadState("networkidle", {
+          timeout: SEARCH_PROFILE_POST_LOAD_IDLE_MS,
+        })
         .catch(() => {});
-      await page.waitForTimeout(250).catch(() => {});
+      await page
+        .waitForTimeout(SEARCH_PROFILE_POST_LOAD_WAIT_MS)
+        .catch(() => {});
     }
   }
 }
@@ -1307,18 +1440,22 @@ async function capturePageState(page: Page): Promise<BrowserPageState> {
 
 async function maybeExpandEvidenceSelectors(page: Page): Promise<void> {
   const seenControls = new Set<string>();
+  const popupSnapshots: EvidencePopupSnapshot[] = [];
   const selectors = [
     "button[aria-haspopup='listbox'][aria-expanded='false']",
     "[role='combobox'][aria-expanded='false']",
   ];
 
   for (const selector of selectors) {
-    const controlCount = await page
-      .locator(selector)
-      .count()
-      .catch(() => 0);
-    for (let index = 0; index < Math.min(controlCount, 4); index += 1) {
-      const locator = page.locator(selector).nth(index);
+    for (let processed = 0; processed < 8; processed += 1) {
+      const locator = await nextEvidenceSelectorLocator(
+        page,
+        selector,
+        seenControls,
+      );
+      if (!locator) {
+        break;
+      }
       const descriptor = await selectorDescriptor(locator);
       if (!descriptor || !looksLikeEvidenceSelector(descriptor)) {
         continue;
@@ -1334,10 +1471,177 @@ async function maybeExpandEvidenceSelectors(page: Page): Promise<void> {
         continue;
       }
 
+      const popupId = await locator
+        .getAttribute("aria-controls")
+        .catch(() => null);
+      if (!popupId) {
+        continue;
+      }
+
       await locator.click().catch(() => {});
       await settleAfterAction(page);
+      const popupSnapshot = await captureEvidencePopupSnapshot(
+        page,
+        popupId,
+        descriptor,
+      );
+      if (popupSnapshot) {
+        popupSnapshots.push(popupSnapshot);
+      }
+      await closeEvidencePopup(page, popupId);
     }
   }
+
+  await injectEvidencePopupSnapshots(page, popupSnapshots);
+}
+
+async function nextEvidenceSelectorLocator(
+  page: Page,
+  selector: string,
+  seenControls: Set<string>,
+): Promise<Locator | undefined> {
+  const candidates = await page
+    .locator(selector)
+    .evaluateAll((nodes) =>
+      nodes.map((node, index) => {
+        const text = (node.textContent ?? "").replace(/\s+/g, " ").trim();
+        const ariaLabel = node.getAttribute("aria-label") ?? "";
+        const name = node.getAttribute("name") ?? "";
+        return {
+          index,
+          descriptor: [text, ariaLabel, name]
+            .filter((value) => value.length > 0)
+            .join(" ")
+            .replace(/\s+/g, " ")
+            .trim(),
+        };
+      }),
+    )
+    .catch(() => []);
+
+  for (const candidate of candidates) {
+    if (
+      !candidate.descriptor ||
+      !looksLikeEvidenceSelector(candidate.descriptor)
+    ) {
+      continue;
+    }
+    if (seenControls.has(candidate.descriptor.toLowerCase())) {
+      continue;
+    }
+    const locator = page.locator(selector).nth(candidate.index);
+    const isVisible = await locator.isVisible().catch(() => false);
+    if (!isVisible) {
+      continue;
+    }
+    return locator;
+  }
+
+  return undefined;
+}
+
+async function captureEvidencePopupSnapshot(
+  page: Page,
+  popupId: string,
+  descriptor: string,
+): Promise<EvidencePopupSnapshot | undefined> {
+  return page
+    .evaluate(
+      ({ popupId: id, label }) => {
+        const popup = document.getElementById(id);
+        if (!(popup instanceof HTMLElement)) {
+          return undefined;
+        }
+
+        const clone = popup.cloneNode(true);
+        if (!(clone instanceof HTMLElement)) {
+          return undefined;
+        }
+
+        for (const styleNode of clone.querySelectorAll("style")) {
+          styleNode.remove();
+        }
+        return {
+          id: `touch-browser-evidence-popup-${id}`,
+          label,
+          html: clone.outerHTML,
+        };
+      },
+      { popupId, label: descriptor },
+    )
+    .catch(() => undefined);
+}
+
+async function closeEvidencePopup(page: Page, popupId: string): Promise<void> {
+  await page.keyboard.press("Escape").catch(() => {});
+  await page.waitForTimeout(100).catch(() => {});
+  const popupStillOpen = await page
+    .evaluate((id) => {
+      const popup = document.getElementById(id);
+      if (!(popup instanceof HTMLElement)) {
+        return false;
+      }
+
+      const hidden =
+        popup.hidden ||
+        popup.getAttribute("aria-hidden") === "true" ||
+        popup.getAttribute("data-state") === "closed";
+      if (hidden) {
+        return false;
+      }
+
+      const computed = window.getComputedStyle(popup);
+      return (
+        computed.display !== "none" &&
+        computed.visibility !== "hidden" &&
+        computed.opacity !== "0"
+      );
+    }, popupId)
+    .catch(() => false);
+
+  if (popupStillOpen) {
+    await page.mouse.click(8, 8).catch(() => {});
+    await page.waitForTimeout(100).catch(() => {});
+  }
+}
+
+async function injectEvidencePopupSnapshots(
+  page: Page,
+  popupSnapshots: readonly EvidencePopupSnapshot[],
+): Promise<void> {
+  if (popupSnapshots.length === 0) {
+    return;
+  }
+
+  await page
+    .evaluate((entries) => {
+      for (const entry of entries) {
+        if (document.getElementById(entry.id)) {
+          continue;
+        }
+
+        const template = document.createElement("template");
+        template.innerHTML = entry.html.trim();
+        const element = template.content.firstElementChild;
+        if (!(element instanceof HTMLElement)) {
+          continue;
+        }
+
+        element.id = entry.id;
+        element.hidden = false;
+        element.setAttribute("aria-hidden", "false");
+        element.setAttribute(
+          "data-touch-browser-evidence-selector",
+          entry.label,
+        );
+        element.style.display = "block";
+        element.style.visibility = "visible";
+        element.style.opacity = "1";
+        element.style.position = "static";
+        document.body.appendChild(element);
+      }
+    }, popupSnapshots)
+    .catch(() => {});
 }
 
 async function selectorDescriptor(locator: Locator): Promise<string> {
@@ -1498,12 +1802,13 @@ async function resolveSearchUserAgent(): Promise<string> {
 
   const version =
     (await resolveSearchBrowserVersion()) ?? fallbackSearchBrowserVersion();
-  return `Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/${version} Safari/537.36`;
+  return buildSearchUserAgent(version);
 }
 
 function fallbackSearchBrowserVersion(): string {
   return (
-    SEARCH_USER_AGENT_FALLBACK.match(/Chrome\/([0-9.]+)/)?.[1] ?? "146.0.0.0"
+    currentSearchUserAgentFallback().match(/Chrome\/([0-9.]+)/)?.[1] ??
+    "146.0.0.0"
   );
 }
 
@@ -1516,14 +1821,16 @@ async function resolveSearchIdentityProfile(
 ): Promise<SearchIdentityProfile> {
   const fallbackVersion = fallbackSearchBrowserVersion();
   const explicitUserAgent = process.env.TOUCH_BROWSER_SEARCH_USER_AGENT;
+  const platformProfile = searchIdentityPlatformProfile();
 
   if (!shouldUseDedicatedSearchBrowser(source)) {
     const browserVersion =
       explicitUserAgent?.match(/Chrome\/([0-9.]+)/)?.[1] ?? fallbackVersion;
     return {
       executablePath: undefined,
-      userAgent: explicitUserAgent ?? SEARCH_USER_AGENT_FALLBACK,
+      userAgent: explicitUserAgent ?? currentSearchUserAgentFallback(),
       browserVersion,
+      platformProfile,
     };
   }
 
@@ -1537,6 +1844,7 @@ async function resolveSearchIdentityProfile(
     executablePath,
     userAgent,
     browserVersion: browserVersion ?? fallbackVersion,
+    platformProfile,
   };
 }
 
@@ -1557,7 +1865,7 @@ async function installSearchIdentity(
   source: BrowserSource,
 ): Promise<void> {
   const languages = resolveSearchLanguages();
-  const { userAgent, browserVersion } =
+  const { userAgent, browserVersion, platformProfile } =
     await resolveSearchIdentityProfile(source);
   const userAgentDataBrands = buildSearchUserAgentBrands(browserVersion);
   await context.addInitScript({
@@ -1566,6 +1874,13 @@ async function installSearchIdentity(
       userAgent,
       browserVersion,
       userAgentDataBrands,
+      navigatorPlatform: platformProfile.navigatorPlatform,
+      userAgentDataPlatform: platformProfile.userAgentDataPlatform,
+      architecture: platformProfile.architecture,
+      bitness: platformProfile.bitness,
+      platformVersion: platformProfile.platformVersion,
+      webGlVendor: platformProfile.webGlVendor,
+      webGlRenderer: platformProfile.webGlRenderer,
     }),
   });
 }
@@ -1914,10 +2229,14 @@ function prevPaginationSelectors(): string[] {
 
 async function settleAfterAction(page: Page): Promise<void> {
   await page
-    .waitForLoadState("domcontentloaded", { timeout: 250 })
+    .waitForLoadState("domcontentloaded", {
+      timeout: ACTION_SETTLE_TIMEOUT_MS,
+    })
     .catch(() => {});
-  await page.waitForLoadState("networkidle", { timeout: 250 }).catch(() => {});
-  await page.waitForTimeout(75);
+  await page
+    .waitForLoadState("networkidle", { timeout: ACTION_SETTLE_IDLE_TIMEOUT_MS })
+    .catch(() => {});
+  await page.waitForTimeout(ACTION_SETTLE_EXTRA_WAIT_MS).catch(() => {});
 }
 
 function success(id: JsonRpcId, result: unknown): JsonRpcSuccess {

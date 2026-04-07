@@ -53,7 +53,14 @@ const DEFAULT_REQUESTED_TOKENS: usize = 512;
 const DEFAULT_SEARCH_TOKENS: usize = 2048;
 
 fn main() {
-    let args = env::args().skip(1).collect::<Vec<_>>();
+    let processed_args = preprocess_cli_args(env::args().skip(1).collect::<Vec<_>>());
+    if let Some(help_text) = processed_args.help_text.as_deref() {
+        println!("{help_text}");
+        return;
+    }
+
+    let args = processed_args.args;
+    let json_errors = processed_args.json_errors;
     let operation = args
         .first()
         .cloned()
@@ -68,14 +75,14 @@ fn main() {
                 None,
                 &Value::Null,
             );
-            eprintln!("{error}");
+            emit_cli_error(&error, json_errors);
             std::process::exit(1);
         }
     };
 
     if matches!(command, CliCommand::Serve) {
         if let Err(error) = handle_serve() {
-            eprintln!("{error}");
+            emit_cli_error(&error, json_errors);
             std::process::exit(1);
         }
         return;
@@ -114,9 +121,197 @@ fn main() {
                 None,
                 &Value::Null,
             );
-            eprintln!("{error}");
+            emit_cli_error(&error, json_errors);
             std::process::exit(1);
         }
+    }
+}
+
+#[derive(Debug, Clone, Default)]
+struct ProcessedCliArgs {
+    args: Vec<String>,
+    json_errors: bool,
+    help_text: Option<String>,
+}
+
+#[derive(Debug, Serialize)]
+struct CliErrorPayload {
+    error: String,
+    kind: String,
+    message: String,
+    hint: Option<String>,
+}
+
+fn is_help_flag(value: &str) -> bool {
+    matches!(value, "--help" | "-h")
+}
+
+fn preprocess_cli_args(raw_args: Vec<String>) -> ProcessedCliArgs {
+    let mut json_errors = false;
+    let mut args = Vec::with_capacity(raw_args.len());
+    for arg in raw_args {
+        if arg == "--json-errors" {
+            json_errors = true;
+        } else {
+            args.push(arg);
+        }
+    }
+
+    let help_text = if args.is_empty() {
+        Some(usage())
+    } else if matches!(args.first().map(String::as_str), Some("help")) {
+        args.get(1)
+            .and_then(|command| command_usage(command))
+            .or_else(|| Some(usage()))
+    } else if matches!(args.first().map(String::as_str), Some(flag) if is_help_flag(flag)) {
+        Some(usage())
+    } else if args.len() >= 2 && is_help_flag(&args[1]) {
+        command_usage(&args[0])
+    } else {
+        None
+    };
+
+    ProcessedCliArgs {
+        args,
+        json_errors,
+        help_text,
+    }
+}
+
+fn emit_cli_error(error: &CliError, json_errors: bool) {
+    if json_errors {
+        let payload = build_cli_error_payload(error);
+        let serialized = serde_json::to_string(&payload)
+            .unwrap_or_else(|_| "{\"error\":\"serialization-failed\",\"kind\":\"internal-error\",\"message\":\"failed to serialize CLI error payload\",\"hint\":null}".to_string());
+        eprintln!("{serialized}");
+    } else {
+        eprintln!("{error}");
+    }
+}
+
+fn build_cli_error_payload(error: &CliError) -> CliErrorPayload {
+    match error {
+        CliError::Usage(message) => {
+            let (code, hint) = usage_error_details(message);
+            CliErrorPayload {
+                error: code.to_string(),
+                kind: "usage-error".to_string(),
+                message: message.clone(),
+                hint,
+            }
+        }
+        CliError::Acquisition(_) => CliErrorPayload {
+            error: "acquisition-error".to_string(),
+            kind: "runtime-error".to_string(),
+            message: error.to_string(),
+            hint: None,
+        },
+        CliError::Observation(_) => CliErrorPayload {
+            error: "observation-error".to_string(),
+            kind: "runtime-error".to_string(),
+            message: error.to_string(),
+            hint: None,
+        },
+        CliError::Runtime(_) => CliErrorPayload {
+            error: "runtime-error".to_string(),
+            kind: "runtime-error".to_string(),
+            message: error.to_string(),
+            hint: None,
+        },
+        CliError::Adapter(_) => CliErrorPayload {
+            error: "adapter-error".to_string(),
+            kind: "runtime-error".to_string(),
+            message: error.to_string(),
+            hint: None,
+        },
+        CliError::Verifier(_) => CliErrorPayload {
+            error: "verifier-error".to_string(),
+            kind: "runtime-error".to_string(),
+            message: error.to_string(),
+            hint: None,
+        },
+        CliError::Telemetry(_) => CliErrorPayload {
+            error: "telemetry-error".to_string(),
+            kind: "runtime-error".to_string(),
+            message: error.to_string(),
+            hint: None,
+        },
+        CliError::Io(_) | CliError::IoPath { .. } => CliErrorPayload {
+            error: "io-error".to_string(),
+            kind: "runtime-error".to_string(),
+            message: error.to_string(),
+            hint: None,
+        },
+        CliError::Json(_) | CliError::JsonPath { .. } => CliErrorPayload {
+            error: "json-error".to_string(),
+            kind: "runtime-error".to_string(),
+            message: error.to_string(),
+            hint: None,
+        },
+    }
+}
+
+fn usage_error_details(message: &str) -> (&'static str, Option<String>) {
+    if message.contains("Unknown command") {
+        return (
+            "unknown-command",
+            Some("run `touch-browser --help` to list supported commands.".to_string()),
+        );
+    }
+    if message.contains("A target URL or fixture URI is required.") {
+        return (
+            "missing-target",
+            Some(
+                "provide a target URL or fixture URI as the first positional argument.".to_string(),
+            ),
+        );
+    }
+    if message.contains("--claim requires")
+        || message.contains("requires `--claim")
+        || message.contains("at least one `--claim`")
+    {
+        return (
+            "missing-claim",
+            Some("provide --claim <statement> at least once.".to_string()),
+        );
+    }
+    if message.contains("--session-file requires")
+        || message.contains("requires `--session-file <path>`")
+    {
+        return (
+            "missing-session-file",
+            Some("provide --session-file <path>.".to_string()),
+        );
+    }
+    if message.contains("--ref requires") || message.contains("requires `--ref <stable-ref>`") {
+        return (
+            "missing-ref",
+            Some("provide --ref <stable-ref>.".to_string()),
+        );
+    }
+    if message.contains("--value requires") || message.contains("requires `--value <text>`") {
+        return ("missing-value", Some("provide --value <text>.".to_string()));
+    }
+    if message.contains("--risk requires") || message.contains("--ack-risk requires") {
+        return (
+            "missing-risk",
+            Some("provide the required risk acknowledgement value.".to_string()),
+        );
+    }
+    ("usage-error", None)
+}
+
+fn command_usage(command_name: &str) -> Option<String> {
+    let prefix = format!("  touch-browser {command_name} ");
+    let usage_text = usage();
+    let lines = usage_text
+        .lines()
+        .filter(|line| line.starts_with(&prefix))
+        .collect::<Vec<_>>();
+    if lines.is_empty() {
+        None
+    } else {
+        Some(format!("Usage:\n{}", lines.join("\n")))
     }
 }
 
@@ -629,10 +824,11 @@ mod tests {
         application::search_support::{
             build_search_report, default_search_session_file, derived_search_result_session_file,
         },
-        browser_context_dir_for_session_file, build_browser_cli_session, dispatch,
-        load_browser_cli_session, parse_command, repo_root, save_browser_cli_session, AckRisk,
-        ApproveOptions, CliCommand, ClickOptions, ExpandOptions, ExtractOptions, FollowOptions,
-        ObservationCompiler, ObservationInput, OutputFormat, PaginateOptions, PaginationDirection,
+        browser_context_dir_for_session_file, build_browser_cli_session, build_cli_error_payload,
+        command_usage, dispatch, load_browser_cli_session, parse_command, preprocess_cli_args,
+        repo_root, save_browser_cli_session, AckRisk, ApproveOptions, CliCommand, CliError,
+        ClickOptions, ExpandOptions, ExtractOptions, FollowOptions, ObservationCompiler,
+        ObservationInput, OutputFormat, PaginateOptions, PaginationDirection,
         PersistedBrowserState, PolicyProfile, ReadViewOutput, SearchActionActor, SearchEngine,
         SearchOpenResultOptions, SearchOpenTopOptions, SearchOptions, SearchReportStatus,
         SessionExtractOptions, SessionFileOptions, SessionProfileSetOptions, SessionReadOptions,
@@ -647,6 +843,40 @@ mod tests {
             .expect("time should be monotonic")
             .as_nanos();
         std::env::temp_dir().join(format!("touch-browser-{name}-{nanos}.json"))
+    }
+
+    #[test]
+    fn preprocesses_help_and_json_error_flags() {
+        let processed = preprocess_cli_args(vec![
+            "--json-errors".to_string(),
+            "extract".to_string(),
+            "--help".to_string(),
+        ]);
+
+        assert!(processed.json_errors);
+        assert_eq!(
+            processed.args,
+            vec!["extract".to_string(), "--help".to_string()]
+        );
+        assert_eq!(
+            processed.help_text,
+            command_usage("extract"),
+            "command help should surface the extract synopsis",
+        );
+    }
+
+    #[test]
+    fn builds_structured_usage_error_payload() {
+        let payload = build_cli_error_payload(&CliError::Usage(
+            "extract requires `--claim <statement>`.".to_string(),
+        ));
+
+        assert_eq!(payload.error, "missing-claim");
+        assert_eq!(payload.kind, "usage-error");
+        assert_eq!(
+            payload.hint.as_deref(),
+            Some("provide --claim <statement> at least once."),
+        );
     }
 
     struct ReplayScenarioFixture {

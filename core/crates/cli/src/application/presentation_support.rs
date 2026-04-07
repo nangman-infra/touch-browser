@@ -16,12 +16,12 @@ use self::{
     markdown_render::render_markdown_block,
 };
 use touch_browser_contracts::{
-    CompactRefIndexEntry, SessionSynthesisClaim, SessionSynthesisReport, SnapshotBlockKind,
-    SnapshotDocument,
+    CompactRefIndexEntry, SessionSynthesisClaim, SessionSynthesisReport, SnapshotBlock,
+    SnapshotBlockKind, SnapshotDocument,
 };
 
 #[cfg(test)]
-use touch_browser_contracts::{SnapshotBlock, SnapshotBlockRole};
+use touch_browser_contracts::SnapshotBlockRole;
 
 pub(crate) fn render_compact_snapshot(snapshot: &SnapshotDocument) -> String {
     let has_heading = snapshot
@@ -108,6 +108,39 @@ fn app_title_fallback_compact(snapshot: &SnapshotDocument) -> Option<String> {
         .map(|title| format!("h1 {title}"))
 }
 
+fn preferred_main_content_markers() -> [&'static str; 6] {
+    [
+        "article",
+        "role=article",
+        "markdown-body",
+        "entry-content",
+        "readme",
+        "article-content",
+    ]
+}
+
+fn block_matches_preferred_main_content(block: &SnapshotBlock) -> bool {
+    let dom_path = block
+        .evidence
+        .dom_path_hint
+        .as_deref()
+        .unwrap_or_default()
+        .to_ascii_lowercase();
+    preferred_main_content_markers()
+        .iter()
+        .any(|marker| dom_path.contains(marker))
+}
+
+fn prefer_article_like_main_content(snapshot: &SnapshotDocument) -> bool {
+    snapshot
+        .blocks
+        .iter()
+        .filter(|block| block_layout_zone(block) == Some(LayoutZone::Main))
+        .filter(|block| block_matches_preferred_main_content(block))
+        .count()
+        >= 2
+}
+
 pub(crate) fn render_reading_compact_snapshot(snapshot: &SnapshotDocument) -> String {
     let has_heading = snapshot
         .blocks
@@ -118,6 +151,7 @@ pub(crate) fn render_reading_compact_snapshot(snapshot: &SnapshotDocument) -> St
         .iter()
         .any(|block| block_layout_zone(block) == Some(LayoutZone::Main));
     let app_like_main_surface = has_main_zone && is_interactive_app_main_surface(snapshot);
+    let prefer_article_like_main = has_main_zone && prefer_article_like_main_content(snapshot);
 
     let rendered = snapshot
         .blocks
@@ -129,6 +163,7 @@ pub(crate) fn render_reading_compact_snapshot(snapshot: &SnapshotDocument) -> St
                 keep_main_reading_block(block, has_heading, has_main_zone)
             }
         })
+        .filter(|block| !prefer_article_like_main || block_matches_preferred_main_content(block))
         .map(render_compact_block)
         .collect::<Vec<_>>()
         .join("\n");
@@ -166,6 +201,7 @@ pub(crate) fn render_main_read_view_markdown(snapshot: &SnapshotDocument) -> Str
         .iter()
         .any(|block| block_layout_zone(block) == Some(LayoutZone::Main));
     let app_like_main_surface = has_main_zone && is_interactive_app_main_surface(snapshot);
+    let prefer_article_like_main = has_main_zone && prefer_article_like_main_content(snapshot);
 
     let rendered = snapshot
         .blocks
@@ -177,6 +213,7 @@ pub(crate) fn render_main_read_view_markdown(snapshot: &SnapshotDocument) -> Str
                 keep_main_read_view_block(block, has_heading, has_main_zone)
             }
         })
+        .filter(|block| !prefer_article_like_main || block_matches_preferred_main_content(block))
         .map(render_markdown_block)
         .filter(|block| !block.is_empty())
         .collect::<Vec<_>>()
@@ -1142,6 +1179,116 @@ mod tests {
             render_reading_compact_snapshot(&snapshot),
             "h1 Tailwind Play"
         );
+    }
+
+    #[test]
+    fn main_read_view_prefers_article_like_main_content_over_github_repo_chrome() {
+        let snapshot = SnapshotDocument {
+            version: CONTRACT_VERSION.to_string(),
+            stable_ref_version: STABLE_REF_VERSION.to_string(),
+            source: SnapshotSource {
+                source_url: "https://github.com/python/cpython".to_string(),
+                source_type: SourceType::Playwright,
+                title: Some("python/cpython".to_string()),
+            },
+            budget: SnapshotBudget {
+                requested_tokens: 512,
+                estimated_tokens: 96,
+                emitted_tokens: 96,
+                truncated: false,
+            },
+            blocks: vec![
+                SnapshotBlock {
+                    version: CONTRACT_VERSION.to_string(),
+                    id: "b1".to_string(),
+                    kind: SnapshotBlockKind::Text,
+                    stable_ref: "rmain:text:sponsor".to_string(),
+                    role: SnapshotBlockRole::Supporting,
+                    text: "Sponsor CPython development".to_string(),
+                    attributes: BTreeMap::from([("zone".to_string(), json!("main"))]),
+                    evidence: SnapshotEvidence {
+                        source_url: "https://github.com/python/cpython".to_string(),
+                        source_type: SourceType::Playwright,
+                        dom_path_hint: Some(
+                            "html > body > div > main > div.overviewcontent-module__box--promo"
+                                .to_string(),
+                        ),
+                        byte_range_start: None,
+                        byte_range_end: None,
+                    },
+                },
+                SnapshotBlock {
+                    version: CONTRACT_VERSION.to_string(),
+                    id: "b2".to_string(),
+                    kind: SnapshotBlockKind::Table,
+                    stable_ref: "rmain:table:files".to_string(),
+                    role: SnapshotBlockRole::Supporting,
+                    text: "| Name | Last commit |\n| README.md | docs |".to_string(),
+                    attributes: BTreeMap::from([("zone".to_string(), json!("main"))]),
+                    evidence: SnapshotEvidence {
+                        source_url: "https://github.com/python/cpython".to_string(),
+                        source_type: SourceType::Playwright,
+                        dom_path_hint: Some(
+                            "html > body > div > main > section.overviewrepofiles-module__container > table"
+                                .to_string(),
+                        ),
+                        byte_range_start: None,
+                        byte_range_end: None,
+                    },
+                },
+                SnapshotBlock {
+                    version: CONTRACT_VERSION.to_string(),
+                    id: "b3".to_string(),
+                    kind: SnapshotBlockKind::Heading,
+                    stable_ref: "rmain:heading:readme".to_string(),
+                    role: SnapshotBlockRole::Content,
+                    text: "CPython".to_string(),
+                    attributes: BTreeMap::from([("zone".to_string(), json!("main"))]),
+                    evidence: SnapshotEvidence {
+                        source_url: "https://github.com/python/cpython".to_string(),
+                        source_type: SourceType::Playwright,
+                        dom_path_hint: Some(
+                            "html > body > div > main > article.markdown-body.entry-content > h1"
+                                .to_string(),
+                        ),
+                        byte_range_start: None,
+                        byte_range_end: None,
+                    },
+                },
+                SnapshotBlock {
+                    version: CONTRACT_VERSION.to_string(),
+                    id: "b4".to_string(),
+                    kind: SnapshotBlockKind::Text,
+                    stable_ref: "rmain:text:readme".to_string(),
+                    role: SnapshotBlockRole::Content,
+                    text: "CPython is the reference implementation of the Python programming language."
+                        .to_string(),
+                    attributes: BTreeMap::from([("zone".to_string(), json!("main"))]),
+                    evidence: SnapshotEvidence {
+                        source_url: "https://github.com/python/cpython".to_string(),
+                        source_type: SourceType::Playwright,
+                        dom_path_hint: Some(
+                            "html > body > div > main > article.markdown-body.entry-content > p:nth-of-type(1)"
+                                .to_string(),
+                        ),
+                        byte_range_start: None,
+                        byte_range_end: None,
+                    },
+                },
+            ],
+        };
+
+        let markdown = render_main_read_view_markdown(&snapshot);
+        assert!(markdown.contains("# CPython"));
+        assert!(markdown.contains("reference implementation"));
+        assert!(!markdown.contains("Sponsor CPython development"));
+        assert!(!markdown.contains("Last commit"));
+
+        let compact = render_reading_compact_snapshot(&snapshot);
+        assert!(compact.contains("CPython"));
+        assert!(compact.contains("reference implementation"));
+        assert!(!compact.contains("Sponsor CPython development"));
+        assert!(!compact.contains("Last commit"));
     }
 
     #[test]

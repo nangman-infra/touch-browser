@@ -147,5 +147,139 @@ describe("playwright adapter browser snapshots", () => {
       visibleText: expect.stringContaining("macOS"),
       html: expect.stringContaining('aria-expanded="true"'),
     });
+  }, 15_000);
+
+  it("captures more than ten visible links from dense result pages", async () => {
+    const links = Array.from({ length: 12 }, (_, index) => {
+      const rank = index + 1;
+      return `<a href="/result-${rank}">Result ${rank}</a>`;
+    }).join("");
+    const response = await handleRequest({
+      jsonrpc: "2.0",
+      id: "req-many-links",
+      method: "browser.snapshot",
+      params: {
+        html: `<!doctype html><html><body><main>${links}</main></body></html>`,
+        budget: 700,
+      },
+    });
+
+    const success = expectJsonRpcSuccess(response);
+    expect(success.result).toMatchObject({
+      linkCount: 12,
+      links: expect.arrayContaining([
+        { text: "Result 1", href: "/result-1" },
+        { text: "Result 12", href: "/result-12" },
+      ]),
+    });
+    expect(((success.result as { links?: unknown[] }).links ?? []).length).toBe(
+      12,
+    );
   });
+
+  it("preserves multiple selector option popups as snapshot evidence", async () => {
+    const response = await handleRequest({
+      jsonrpc: "2.0",
+      id: "req-multi-selector",
+      method: "browser.snapshot",
+      params: {
+        html: `
+          <!doctype html>
+          <html>
+            <body>
+              <div
+                id="overlay"
+                hidden
+                style="position: fixed; inset: 0; background: transparent;"
+              ></div>
+              <main>
+                <button
+                  id="os-trigger"
+                  type="button"
+                  aria-label="Operating System"
+                  aria-haspopup="listbox"
+                  aria-expanded="false"
+                  aria-controls="os-options"
+                >
+                  Linux
+                </button>
+                <div id="os-options" role="listbox" hidden>
+                  <style>.decorative-style { color: red; }</style>
+                  <div role="option">Windows</div>
+                  <div role="option">macOS</div>
+                  <div role="option">Linux</div>
+                </div>
+                <button
+                  id="platform-trigger"
+                  type="button"
+                  aria-label="Platform"
+                  aria-haspopup="listbox"
+                  aria-expanded="false"
+                  aria-controls="platform-options"
+                >
+                  x64
+                </button>
+                <div id="platform-options" role="listbox" hidden>
+                  <style>.decorative-style { color: blue; }</style>
+                  <div role="option">x64</div>
+                  <div role="option">arm64</div>
+                </div>
+              </main>
+              <script>
+                let openPopup = null;
+                const overlay = document.getElementById("overlay");
+                const closePopup = () => {
+                  if (!openPopup) {
+                    return;
+                  }
+
+                  const trigger = document.querySelector(
+                    '[aria-controls="' + openPopup.id + '"]',
+                  );
+                  if (trigger) {
+                    trigger.setAttribute("aria-expanded", "false");
+                  }
+                  openPopup.hidden = true;
+                  openPopup = null;
+                  overlay.hidden = true;
+                };
+
+                document.addEventListener("keydown", (event) => {
+                  if (event.key === "Escape") {
+                    closePopup();
+                  }
+                });
+
+                for (const id of ["os", "platform"]) {
+                  const trigger = document.getElementById(id + "-trigger");
+                  const popup = document.getElementById(id + "-options");
+                  trigger?.addEventListener("click", () => {
+                    if (openPopup && openPopup !== popup) {
+                      return;
+                    }
+                    trigger.setAttribute("aria-expanded", "true");
+                    popup.hidden = false;
+                    openPopup = popup;
+                    overlay.hidden = false;
+                  });
+                }
+              </script>
+            </body>
+          </html>
+        `,
+        budget: 700,
+      },
+    });
+
+    const success = expectJsonRpcSuccess(response);
+    expect(success.result).toMatchObject({
+      visibleText: expect.stringContaining("macOS"),
+      html: expect.stringContaining(
+        "touch-browser-evidence-popup-platform-options",
+      ),
+    });
+    expect(
+      (success.result as { visibleText?: string }).visibleText ?? "",
+    ).toContain("arm64");
+  }, 15_000);
 });

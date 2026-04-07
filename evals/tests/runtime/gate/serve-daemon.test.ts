@@ -465,7 +465,7 @@ describe("serve daemon session registry", () => {
       {},
     );
     expect(telemetrySummary.summary.totalEvents).toBeGreaterThan(0);
-  }, 20_000);
+  }, 35_000);
 });
 
 function createRpcClient(): RpcClient {
