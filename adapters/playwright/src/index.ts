@@ -1675,9 +1675,9 @@ async function captureEvidencePopupSnapshot(
         return undefined;
       }
 
-      clone.querySelectorAll("style").forEach((styleNode) => {
+      for (const styleNode of clone.querySelectorAll("style")) {
         styleNode.remove();
-      });
+      }
       return clone.outerHTML;
     })
     .catch(() => undefined);
