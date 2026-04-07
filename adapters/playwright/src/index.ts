@@ -136,6 +136,16 @@ const SEARCH_USER_AGENT_FALLBACK =
   "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/146.0.0.0 Safari/537.36";
 let cachedSearchExecutablePath: Promise<string | undefined> | undefined;
 let cachedSearchBrowserVersion: Promise<string | undefined> | undefined;
+const EVIDENCE_SELECTOR_KEYWORDS = [
+  "platform",
+  "operating system",
+  "os",
+  "architecture",
+  "arch",
+  "version",
+  "package manager",
+  "installer",
+];
 
 type SearchIdentityProfile = {
   readonly executablePath: string | undefined;
@@ -432,7 +442,10 @@ async function handleSnapshot(
         profileDir,
         searchIdentity,
       ),
-      capturePageState,
+      async (page) => {
+        await maybeExpandEvidenceSelectors(page);
+        return capturePageState(page);
+      },
     );
     return success(request.id, {
       status: "ok",
@@ -1290,6 +1303,58 @@ async function capturePageState(page: Page): Promise<BrowserPageState> {
     : new Error(
         describeUnknownValue(lastError, "Unknown browser page state error"),
       );
+}
+
+async function maybeExpandEvidenceSelectors(page: Page): Promise<void> {
+  const seenControls = new Set<string>();
+  const selectors = [
+    "button[aria-haspopup='listbox'][aria-expanded='false']",
+    "[role='combobox'][aria-expanded='false']",
+  ];
+
+  for (const selector of selectors) {
+    const controlCount = await page
+      .locator(selector)
+      .count()
+      .catch(() => 0);
+    for (let index = 0; index < Math.min(controlCount, 4); index += 1) {
+      const locator = page.locator(selector).nth(index);
+      const descriptor = await selectorDescriptor(locator);
+      if (!descriptor || !looksLikeEvidenceSelector(descriptor)) {
+        continue;
+      }
+      const cacheKey = descriptor.toLowerCase();
+      if (seenControls.has(cacheKey)) {
+        continue;
+      }
+      seenControls.add(cacheKey);
+
+      const isVisible = await locator.isVisible().catch(() => false);
+      if (!isVisible) {
+        continue;
+      }
+
+      await locator.click().catch(() => {});
+      await settleAfterAction(page);
+    }
+  }
+}
+
+async function selectorDescriptor(locator: Locator): Promise<string> {
+  const [text, ariaLabel, name] = await Promise.all([
+    locator.textContent().catch(() => ""),
+    locator.getAttribute("aria-label").catch(() => null),
+    locator.getAttribute("name").catch(() => null),
+  ]);
+
+  return normalizeWhitespace([text, ariaLabel, name].filter(Boolean).join(" "));
+}
+
+function looksLikeEvidenceSelector(text: string): boolean {
+  const normalized = text.toLowerCase();
+  return EVIDENCE_SELECTOR_KEYWORDS.some((keyword) =>
+    normalized.includes(keyword),
+  );
 }
 
 function browserSource(

@@ -203,20 +203,19 @@ fn collect_candidates(
     let mut order = 0usize;
 
     for node in document.descendants() {
-        let Some(element) = node.as_element() else {
-            continue;
-        };
-
-        let tag = element.name.local.to_string();
-        if !is_semantic_tag(&tag) {
+        if node.as_element().is_none() {
             continue;
         }
+
+        let Some(tag) = semantic_tag(&node) else {
+            continue;
+        };
 
         if is_hidden(&node, hidden_rules) || is_nested_duplicate(&node, &tag) {
             continue;
         }
 
-        let text = extract_semantic_text(&node, &tag)?;
+        let text = extract_semantic_text(&node, &tag, hidden_rules)?;
         if text.is_empty() {
             continue;
         }
@@ -235,7 +234,7 @@ fn collect_candidates(
             format!("{base_ref}:{}", *count)
         };
 
-        let mut attributes = semantic_attributes(&node, &tag, &text)?;
+        let mut attributes = semantic_attributes(&node, &tag, &text, hidden_rules)?;
         attributes.insert("zone".to_string(), json!(zone));
         attributes.insert("tagName".to_string(), json!(tag));
         if let Some(ancestor_signal) = hostile_signal_hint(input.source_url.as_str(), &text) {
@@ -262,6 +261,23 @@ fn collect_candidates(
 
     candidates.sort_by_key(|candidate| candidate.order);
     Ok(candidates)
+}
+
+fn semantic_tag(node: &NodeRef) -> Option<String> {
+    let element = node.as_element()?;
+    let role = element
+        .attributes
+        .borrow()
+        .get("role")
+        .map(|value| value.to_ascii_lowercase());
+    match role.as_deref() {
+        Some("combobox") => Some("combobox".to_string()),
+        Some("listbox") => Some("listbox".to_string()),
+        _ => {
+            let tag = element.name.local.to_string();
+            is_semantic_tag(&tag).then_some(tag)
+        }
+    }
 }
 
 fn apply_budget(budget: usize, candidates: &mut [CandidateBlock]) -> Vec<CandidateBlock> {
@@ -417,6 +433,7 @@ fn is_semantic_tag(tag: &str) -> bool {
             | "form"
             | "button"
             | "input"
+            | "select"
             | "script"
     )
 }
@@ -430,18 +447,56 @@ fn is_nested_duplicate(node: &NodeRef, tag: &str) -> bool {
     }
 }
 
-fn extract_semantic_text(node: &NodeRef, tag: &str) -> Result<String, ObservationError> {
+fn extract_semantic_text(
+    node: &NodeRef,
+    tag: &str,
+    hidden_rules: &HiddenRules,
+) -> Result<String, ObservationError> {
     match tag {
-        "title" | "h1" | "h2" | "h3" | "h4" | "h5" | "h6" | "p" | "a" | "button" => {
-            Ok(normalize_text(&node.text_contents()))
+        "title" => Ok(normalize_text(&node.text_contents())),
+        "h1" | "h2" | "h3" | "h4" | "h5" | "h6" | "p" | "a" | "button" | "form" => {
+            Ok(extract_visible_text(node, hidden_rules))
         }
-        "ul" | "ol" => extract_list_text(node, tag == "ol"),
-        "table" => extract_table_text(node),
-        "form" => Ok(normalize_text(&node.text_contents())),
+        "ul" | "ol" => extract_list_text(node, tag == "ol", hidden_rules),
+        "table" => extract_table_text(node, hidden_rules),
         "input" => Ok(extract_input_label(node)),
+        "select" => extract_select_text(node, hidden_rules),
+        "combobox" => extract_combobox_text(node, hidden_rules),
+        "listbox" => extract_listbox_text(node, hidden_rules),
         "script" => Ok(extract_script_semantic_text(node)),
         _ => Ok(String::new()),
     }
+}
+
+fn extract_visible_text(node: &NodeRef, hidden_rules: &HiddenRules) -> String {
+    let text = node
+        .descendants()
+        .filter_map(|descendant| {
+            let text_node = descendant.as_text()?;
+            if has_hidden_ancestor_within(&descendant, node, hidden_rules) {
+                return None;
+            }
+            let normalized = normalize_text(&text_node.borrow());
+            (!normalized.is_empty()).then_some(normalized)
+        })
+        .collect::<Vec<_>>()
+        .join(" ");
+    normalize_text(&text)
+}
+
+fn has_hidden_ancestor_within(node: &NodeRef, root: &NodeRef, hidden_rules: &HiddenRules) -> bool {
+    for ancestor in node.ancestors() {
+        if let Some(element) = ancestor.as_element() {
+            if element_hides_node(element, hidden_rules) {
+                return true;
+            }
+        }
+        if ancestor == *root {
+            return false;
+        }
+    }
+
+    false
 }
 
 fn extract_script_semantic_text(node: &NodeRef) -> String {
@@ -592,13 +647,17 @@ fn next_json_summary_path(path: &str, key: &str) -> String {
     }
 }
 
-fn extract_list_text(node: &NodeRef, ordered: bool) -> Result<String, ObservationError> {
+fn extract_list_text(
+    node: &NodeRef,
+    ordered: bool,
+    hidden_rules: &HiddenRules,
+) -> Result<String, ObservationError> {
     let items = node
         .select("li")
         .map_err(|_| ObservationError::InvalidSelection("li".to_string()))?
         .enumerate()
         .filter_map(|(index, item)| {
-            let item_text = normalize_text(&item.text_contents());
+            let item_text = extract_visible_text(item.as_node(), hidden_rules);
             if item_text.is_empty() {
                 None
             } else if ordered {
@@ -612,7 +671,10 @@ fn extract_list_text(node: &NodeRef, ordered: bool) -> Result<String, Observatio
     Ok(items.join(" "))
 }
 
-fn extract_table_text(node: &NodeRef) -> Result<String, ObservationError> {
+fn extract_table_text(
+    node: &NodeRef,
+    hidden_rules: &HiddenRules,
+) -> Result<String, ObservationError> {
     let mut rows = Vec::new();
     let row_nodes = node
         .select("tr")
@@ -624,7 +686,7 @@ fn extract_table_text(node: &NodeRef) -> Result<String, ObservationError> {
             .select("th, td")
             .map_err(|_| ObservationError::InvalidSelection("th, td".to_string()))?
             .filter_map(|cell| {
-                let cell_text = normalize_text(&cell.text_contents());
+                let cell_text = extract_visible_text(cell.as_node(), hidden_rules);
                 (!cell_text.is_empty()).then_some(cell_text)
             })
             .collect::<Vec<_>>();
@@ -654,6 +716,175 @@ fn extract_input_label(node: &NodeRef) -> String {
     }
 
     normalize_text(&parts.join(" "))
+}
+
+fn extract_select_text(
+    node: &NodeRef,
+    hidden_rules: &HiddenRules,
+) -> Result<String, ObservationError> {
+    let current = selected_select_options(node, hidden_rules)?;
+    let options = select_option_labels(node, hidden_rules)?;
+    let mut parts = control_descriptor_parts(node);
+    if !current.is_empty() {
+        parts.push(format!("current {}", current.join(" | ")));
+    }
+    if !options.is_empty() {
+        parts.push(format!("options {}", options.join(" | ")));
+    }
+
+    Ok(normalize_text(&parts.join(" ")))
+}
+
+fn extract_combobox_text(
+    node: &NodeRef,
+    hidden_rules: &HiddenRules,
+) -> Result<String, ObservationError> {
+    let mut parts = control_descriptor_parts(node);
+    let current = extract_visible_text(node, hidden_rules);
+    if !current.is_empty() {
+        parts.push(format!("current {current}"));
+    }
+
+    if let Some(listbox) = controlled_popup(node, "listbox") {
+        let options = listbox_option_labels(&listbox, hidden_rules);
+        if !options.is_empty() {
+            parts.push(format!("options {}", options.join(" | ")));
+        }
+    }
+
+    Ok(normalize_text(&parts.join(" ")))
+}
+
+fn extract_listbox_text(
+    node: &NodeRef,
+    hidden_rules: &HiddenRules,
+) -> Result<String, ObservationError> {
+    let mut parts = control_descriptor_parts(node);
+    let options = listbox_option_labels(node, hidden_rules);
+    if !options.is_empty() {
+        parts.push(format!("options {}", options.join(" | ")));
+    } else {
+        let fallback = extract_visible_text(node, hidden_rules);
+        if !fallback.is_empty() {
+            parts.push(fallback);
+        }
+    }
+
+    Ok(normalize_text(&parts.join(" ")))
+}
+
+fn control_descriptor_parts(node: &NodeRef) -> Vec<String> {
+    let Some(element) = node.as_element() else {
+        return Vec::new();
+    };
+    let attrs = element.attributes.borrow();
+    let mut parts = Vec::new();
+    for key in ["name", "aria-label", "title", "placeholder"] {
+        if let Some(value) = attrs.get(key) {
+            let normalized = normalize_text(value);
+            if !normalized.is_empty() {
+                parts.push(normalized);
+            }
+        }
+    }
+    parts
+}
+
+fn selected_select_options(
+    node: &NodeRef,
+    hidden_rules: &HiddenRules,
+) -> Result<Vec<String>, ObservationError> {
+    let mut selected = node
+        .select("option[selected]")
+        .map_err(|_| ObservationError::InvalidSelection("option[selected]".to_string()))?
+        .filter_map(|option| {
+            let text = extract_visible_text(option.as_node(), hidden_rules);
+            (!text.is_empty()).then_some(text)
+        })
+        .collect::<Vec<_>>();
+    if !selected.is_empty() {
+        return Ok(selected);
+    }
+
+    selected = node
+        .select("option")
+        .map_err(|_| ObservationError::InvalidSelection("option".to_string()))?
+        .find_map(|option| {
+            let text = extract_visible_text(option.as_node(), hidden_rules);
+            (!text.is_empty()).then_some(vec![text])
+        })
+        .unwrap_or_default();
+
+    Ok(selected)
+}
+
+fn select_option_labels(
+    node: &NodeRef,
+    hidden_rules: &HiddenRules,
+) -> Result<Vec<String>, ObservationError> {
+    Ok(node
+        .select("option")
+        .map_err(|_| ObservationError::InvalidSelection("option".to_string()))?
+        .filter_map(|option| {
+            let text = extract_visible_text(option.as_node(), hidden_rules);
+            (!text.is_empty()).then_some(text)
+        })
+        .collect())
+}
+
+fn controlled_popup(node: &NodeRef, expected_role: &str) -> Option<NodeRef> {
+    let element = node.as_element()?;
+    let attrs = element.attributes.borrow();
+    let popup_id = attrs.get("aria-controls")?;
+    let root = node.ancestors().last()?;
+
+    root.descendants().find(|candidate| {
+        let Some(candidate_element) = candidate.as_element() else {
+            return false;
+        };
+        let candidate_attrs = candidate_element.attributes.borrow();
+        candidate_attrs.get("id") == Some(popup_id)
+            && candidate_attrs
+                .get("role")
+                .map(|role| role.eq_ignore_ascii_case(expected_role))
+                .unwrap_or(false)
+    })
+}
+
+fn listbox_option_labels(node: &NodeRef, hidden_rules: &HiddenRules) -> Vec<String> {
+    let mut options = node
+        .descendants()
+        .filter_map(|candidate| {
+            let element = candidate.as_element()?;
+            let attrs = element.attributes.borrow();
+            let role = attrs.get("role")?;
+            if !role.eq_ignore_ascii_case("option") {
+                return None;
+            }
+            let text = extract_visible_text(&candidate, hidden_rules);
+            (!text.is_empty()).then_some(text)
+        })
+        .collect::<Vec<_>>();
+
+    if !options.is_empty() {
+        options.sort();
+        options.dedup();
+        return options;
+    }
+
+    options = node
+        .select("li")
+        .ok()
+        .into_iter()
+        .flatten()
+        .filter_map(|item| {
+            let text = extract_visible_text(item.as_node(), hidden_rules);
+            (!text.is_empty()).then_some(text)
+        })
+        .collect::<Vec<_>>();
+    options.sort();
+    options.dedup();
+    options
 }
 
 fn semantic_zone(node: &NodeRef, tag: &str) -> &'static str {
@@ -723,11 +954,12 @@ fn semantic_kind(tag: &str) -> SnapshotBlockKind {
         "script" => SnapshotBlockKind::Metadata,
         "h1" | "h2" | "h3" | "h4" | "h5" | "h6" => SnapshotBlockKind::Heading,
         "a" => SnapshotBlockKind::Link,
+        "listbox" => SnapshotBlockKind::List,
         "ul" | "ol" => SnapshotBlockKind::List,
         "table" => SnapshotBlockKind::Table,
         "form" => SnapshotBlockKind::Form,
         "button" => SnapshotBlockKind::Button,
-        "input" => SnapshotBlockKind::Input,
+        "input" | "select" | "combobox" => SnapshotBlockKind::Input,
         _ => SnapshotBlockKind::Text,
     }
 }
@@ -741,8 +973,10 @@ fn semantic_role(node: &NodeRef, tag: &str, zone: &str) -> SnapshotBlockRole {
         SnapshotBlockRole::PrimaryNav
     } else if zone == "aside" {
         SnapshotBlockRole::SecondaryNav
-    } else if matches!(tag, "form" | "button" | "input") {
+    } else if matches!(tag, "form" | "button" | "input" | "select" | "combobox") {
         SnapshotBlockRole::FormControl
+    } else if tag == "listbox" {
+        SnapshotBlockRole::Supporting
     } else if tag == "a" && link_is_external(node) {
         SnapshotBlockRole::Cta
     } else {
@@ -754,6 +988,7 @@ fn semantic_attributes(
     node: &NodeRef,
     tag: &str,
     text: &str,
+    hidden_rules: &HiddenRules,
 ) -> Result<BTreeMap<String, Value>, ObservationError> {
     let mut attributes = BTreeMap::new();
 
@@ -766,6 +1001,9 @@ fn semantic_attributes(
         "table" => insert_table_attributes(node, &mut attributes)?,
         "form" => insert_form_attributes(node, &mut attributes)?,
         "input" => insert_input_attributes(node, &mut attributes),
+        "select" => insert_select_attributes(node, hidden_rules, &mut attributes)?,
+        "combobox" => insert_combobox_attributes(node, hidden_rules, &mut attributes),
+        "listbox" => insert_listbox_attributes(node, hidden_rules, &mut attributes),
         _ => {}
     }
 
@@ -862,6 +1100,65 @@ fn insert_input_attributes(node: &NodeRef, attributes: &mut BTreeMap<String, Val
         if let Some(name) = attrs.get("name") {
             attributes.insert("name".to_string(), json!(name));
         }
+    }
+}
+
+fn insert_select_attributes(
+    node: &NodeRef,
+    hidden_rules: &HiddenRules,
+    attributes: &mut BTreeMap<String, Value>,
+) -> Result<(), ObservationError> {
+    let options = select_option_labels(node, hidden_rules)?;
+    let selected = selected_select_options(node, hidden_rules)?;
+    attributes.insert("optionCount".to_string(), json!(options.len()));
+    if !options.is_empty() {
+        attributes.insert("options".to_string(), json!(options));
+        attributes.insert("selectionSemantic".to_string(), json!("available-options"));
+    }
+    if !selected.is_empty() {
+        attributes.insert("selectedOptions".to_string(), json!(selected));
+    }
+    Ok(())
+}
+
+fn insert_combobox_attributes(
+    node: &NodeRef,
+    hidden_rules: &HiddenRules,
+    attributes: &mut BTreeMap<String, Value>,
+) {
+    if let Some(element) = node.as_element() {
+        let attrs = element.attributes.borrow();
+        if let Some(expanded) = attrs.get("aria-expanded") {
+            attributes.insert("expanded".to_string(), json!(expanded == "true"));
+        }
+        if let Some(controls) = attrs.get("aria-controls") {
+            attributes.insert("controls".to_string(), json!(controls));
+        }
+    }
+
+    let current_value = extract_visible_text(node, hidden_rules);
+    if !current_value.is_empty() {
+        attributes.insert("currentValue".to_string(), json!(current_value));
+    }
+    if let Some(listbox) = controlled_popup(node, "listbox") {
+        let options = listbox_option_labels(&listbox, hidden_rules);
+        if !options.is_empty() {
+            attributes.insert("options".to_string(), json!(options));
+            attributes.insert("selectionSemantic".to_string(), json!("available-options"));
+        }
+    }
+}
+
+fn insert_listbox_attributes(
+    node: &NodeRef,
+    hidden_rules: &HiddenRules,
+    attributes: &mut BTreeMap<String, Value>,
+) {
+    let options = listbox_option_labels(node, hidden_rules);
+    attributes.insert("optionCount".to_string(), json!(options.len()));
+    if !options.is_empty() {
+        attributes.insert("options".to_string(), json!(options));
+        attributes.insert("selectionSemantic".to_string(), json!("available-options"));
     }
 }
 
@@ -1325,6 +1622,101 @@ mod tests {
         assert!(metadata_blocks
             .iter()
             .any(|block| block.text.contains("Modern Docs")));
+    }
+
+    #[test]
+    fn strips_hidden_noscript_markup_from_visible_text_blocks() {
+        let compiler = ObservationCompiler;
+        let html = r#"
+            <html>
+              <body>
+                <main>
+                  <h1>Downloads</h1>
+                  <p>
+                    Get Node.js v24.14.1 (LTS)
+                    <noscript>
+                      <style>.select-hidden { display: none !important; }</style>
+                      <div class="index-module__select">macOS Windows Linux</div>
+                    </noscript>
+                  </p>
+                </main>
+              </body>
+            </html>
+        "#;
+
+        let snapshot = compiler
+            .compile(&ObservationInput::new(
+                "https://example.com/download",
+                SourceType::Playwright,
+                html,
+                512,
+            ))
+            .expect("compile should work");
+
+        let text_block = snapshot
+            .blocks
+            .iter()
+            .find(|block| block.text.contains("Get Node.js"))
+            .expect("visible paragraph block should exist");
+        assert!(text_block.text.contains("Get Node.js v24.14.1 (LTS)"));
+        assert!(!text_block.text.contains("<style>"));
+        assert!(!text_block.text.contains("index-module__select"));
+        assert!(!text_block.text.contains("macOS Windows Linux"));
+    }
+
+    #[test]
+    fn captures_selectors_as_semantic_option_blocks() {
+        let compiler = ObservationCompiler;
+        let html = r#"
+            <html>
+              <body>
+                <main>
+                  <h1>Downloads</h1>
+                  <button
+                    type="button"
+                    role="combobox"
+                    aria-label="Platform"
+                    aria-expanded="true"
+                    aria-controls="platform-list"
+                  >
+                    Linux
+                  </button>
+                  <ul id="platform-list" role="listbox">
+                    <li role="option">macOS</li>
+                    <li role="option">Windows</li>
+                    <li role="option">Linux</li>
+                  </ul>
+                </main>
+              </body>
+            </html>
+        "#;
+
+        let snapshot = compiler
+            .compile(&ObservationInput::new(
+                "https://example.com/download",
+                SourceType::Playwright,
+                html,
+                512,
+            ))
+            .expect("compile should work");
+
+        let selector_blocks = snapshot
+            .blocks
+            .iter()
+            .filter(|block| {
+                matches!(
+                    block.attributes.get("selectionSemantic"),
+                    Some(serde_json::Value::String(value)) if value == "available-options"
+                )
+            })
+            .collect::<Vec<_>>();
+
+        assert!(selector_blocks
+            .iter()
+            .any(|block| block.text.contains("current Linux")));
+        assert!(selector_blocks
+            .iter()
+            .any(|block| block.text.contains("macOS")));
     }
 
     fn repo_root() -> PathBuf {

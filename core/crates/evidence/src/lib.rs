@@ -682,7 +682,7 @@ fn score_block<'a>(
         + contextual_bonus;
 
     if contradictory && contextual_overlap >= 0.35 {
-        score *= 0.2;
+        score *= 0.6;
     }
 
     (score > 0.0).then_some(ScoredCandidate {
@@ -788,6 +788,10 @@ fn is_contextual_neighbor(block: &SnapshotBlock) -> bool {
 
 fn block_structural_adjustment(block: &SnapshotBlock) -> f64 {
     let stable_ref = block.stable_ref.to_ascii_lowercase();
+    let has_available_options = matches!(
+        block.attributes.get("selectionSemantic"),
+        Some(serde_json::Value::String(value)) if value == "available-options"
+    );
     let role_adjustment = match block.role {
         touch_browser_contracts::SnapshotBlockRole::Content => 0.04,
         touch_browser_contracts::SnapshotBlockRole::Supporting => 0.01,
@@ -795,6 +799,7 @@ fn block_structural_adjustment(block: &SnapshotBlock) -> f64 {
         touch_browser_contracts::SnapshotBlockRole::PrimaryNav
         | touch_browser_contracts::SnapshotBlockRole::SecondaryNav => -0.24,
         touch_browser_contracts::SnapshotBlockRole::Cta => -0.16,
+        touch_browser_contracts::SnapshotBlockRole::FormControl if has_available_options => -0.05,
         touch_browser_contracts::SnapshotBlockRole::FormControl => -0.30,
         touch_browser_contracts::SnapshotBlockRole::TableCell => 0.05,
     };
@@ -830,7 +835,7 @@ fn contradiction_detected(normalized_claim: &str, block_text: &str) -> bool {
 }
 
 fn contains_phrase(text: &str, phrase: &str) -> bool {
-    text.contains(phrase)
+    contains_token_sequence(text, phrase)
 }
 
 fn block_search_text(block: &SnapshotBlock) -> String {
@@ -841,6 +846,9 @@ fn block_search_text(block: &SnapshotBlock) -> String {
             serde_json::Value::String(text) => parts.push(text.clone()),
             serde_json::Value::Bool(true) => parts.push(key.clone()),
             serde_json::Value::Number(number) => parts.push(number.to_string()),
+            serde_json::Value::Array(items) => {
+                parts.extend(items.iter().filter_map(search_term_from_attribute_value));
+            }
             _ => {}
         }
     }
@@ -850,9 +858,22 @@ fn block_search_text(block: &SnapshotBlock) -> String {
     parts.join(" ")
 }
 
+fn search_term_from_attribute_value(value: &serde_json::Value) -> Option<String> {
+    match value {
+        serde_json::Value::String(text) => Some(text.clone()),
+        serde_json::Value::Bool(true) => Some("true".to_string()),
+        serde_json::Value::Number(number) => Some(number.to_string()),
+        _ => None,
+    }
+}
+
 fn block_semantic_terms(block: &SnapshotBlock) -> Vec<String> {
     let mut parts = Vec::new();
     let normalized_text = normalize_text(&block.text);
+    let selection_semantic = block
+        .attributes
+        .get("selectionSemantic")
+        .and_then(serde_json::Value::as_str);
 
     match block.kind {
         SnapshotBlockKind::List => {
@@ -886,6 +907,14 @@ fn block_semantic_terms(block: &SnapshotBlock) -> Vec<String> {
             parts.push("field".to_string());
         }
         _ => {}
+    }
+
+    if selection_semantic == Some("available-options") {
+        parts.push("option".to_string());
+        parts.push("options".to_string());
+        parts.push("available".to_string());
+        parts.push("availability".to_string());
+        parts.push("supported".to_string());
     }
 
     if normalized_text.contains("submit") {
@@ -1032,16 +1061,35 @@ fn exact_match_bonus(normalized_claim: &str, normalized_block_text: &str) -> f64
         return 0.0;
     }
 
-    if normalized_block_text.contains(normalized_claim) {
+    if contains_token_sequence(normalized_block_text, normalized_claim) {
         1.0
-    } else if normalized_claim
-        .split_whitespace()
-        .all(|token| normalized_block_text.contains(token))
-    {
-        0.55
     } else {
-        0.0
+        let claim_tokens = tokenize_all(normalized_claim);
+        let block_token_set = tokenize_all(normalized_block_text)
+            .into_iter()
+            .collect::<BTreeSet<_>>();
+        if !claim_tokens.is_empty()
+            && claim_tokens
+                .iter()
+                .all(|token| block_token_set.contains(token))
+        {
+            0.70
+        } else {
+            0.0
+        }
     }
+}
+
+fn contains_token_sequence(text: &str, phrase: &str) -> bool {
+    let text_tokens = tokenize_all(text);
+    let phrase_tokens = tokenize_all(phrase);
+    if phrase_tokens.is_empty() || text_tokens.len() < phrase_tokens.len() {
+        return false;
+    }
+
+    text_tokens
+        .windows(phrase_tokens.len())
+        .any(|window| window == phrase_tokens.as_slice())
 }
 
 fn kind_score_bonus(kind: &SnapshotBlockKind) -> f64 {
@@ -1090,8 +1138,32 @@ fn ui_control_bonus(
         || claim_token_set.contains("verification")
         || claim_token_set.contains("code")
         || claim_token_set.contains("credential");
+    let mentions_availability = claim_token_set.contains("available")
+        || claim_token_set.contains("availability")
+        || claim_token_set.contains("support")
+        || claim_token_set.contains("supported");
+    let mentions_platform = claim_token_set.iter().any(|token| {
+        matches!(
+            *token,
+            "platform" | "operating" | "system" | "os" | "macos" | "windows" | "linux"
+        )
+    });
+    let has_available_options = matches!(
+        block.attributes.get("selectionSemantic"),
+        Some(serde_json::Value::String(value)) if value == "available-options"
+    );
 
     match block.kind {
+        SnapshotBlockKind::Input
+            if has_available_options && mentions_availability && mentions_platform =>
+        {
+            0.24
+        }
+        SnapshotBlockKind::List
+            if has_available_options && mentions_availability && mentions_platform =>
+        {
+            0.18
+        }
         SnapshotBlockKind::Button if mentions_button && mentions_auth_control => 0.22,
         SnapshotBlockKind::Button
             if mentions_button && button_claim_has_context(blocks, index, claim_tokens) =>
@@ -1164,8 +1236,6 @@ fn tokenize_all(text: &str) -> Vec<String> {
         .into_iter()
         .flat_map(|token| expand_semantic_tokens(&token, false))
         .filter(|token| !token.is_empty())
-        .collect::<BTreeSet<_>>()
-        .into_iter()
         .collect()
 }
 
@@ -2209,6 +2279,14 @@ const CONTRADICTION_PATTERNS: &[ContradictionPattern] = &[
         positive: "enabled",
         negative: "not enabled",
     },
+    ContradictionPattern {
+        positive: "synchronous",
+        negative: "asynchronous",
+    },
+    ContradictionPattern {
+        positive: "blocking",
+        negative: "non blocking",
+    },
 ];
 
 #[cfg(test)]
@@ -2338,7 +2416,8 @@ mod tests {
                 kind: touch_browser_contracts::SnapshotBlockKind::Text,
                 stable_ref: "rmain:text:example-domains-note".to_string(),
                 role: touch_browser_contracts::SnapshotBlockRole::Content,
-                text: "These domains are available for documentation and are not available for registration or transfer.".to_string(),
+                text: "example.com is not available for registration or transfer. These domains are available for documentation examples."
+                    .to_string(),
                 attributes: Default::default(),
                 evidence: touch_browser_contracts::SnapshotEvidence {
                     source_url: "https://www.iana.org/help/example-domains".to_string(),
@@ -2355,7 +2434,7 @@ mod tests {
                 snapshot,
                 vec![ClaimRequest::new(
                     "c1",
-                    "example.com is available for general registration.",
+                    "example.com is available for registration or transfer.",
                 )],
                 "2026-03-17T00:00:00+09:00",
                 SourceRisk::Low,
@@ -3163,6 +3242,188 @@ mod tests {
             .checked_block_refs
             .iter()
             .all(|reference| !reference.starts_with("rnav:")));
+    }
+
+    #[test]
+    fn rejects_synchronous_runtime_claim_when_support_is_asynchronous() {
+        let snapshot = SnapshotDocument {
+            version: "1.0.0".to_string(),
+            stable_ref_version: "1".to_string(),
+            source: touch_browser_contracts::SnapshotSource {
+                source_url: "https://nodejs.org/en/about".to_string(),
+                source_type: touch_browser_contracts::SourceType::Playwright,
+                title: Some("About Node.js".to_string()),
+            },
+            budget: touch_browser_contracts::SnapshotBudget {
+                requested_tokens: 512,
+                estimated_tokens: 96,
+                emitted_tokens: 96,
+                truncated: false,
+            },
+            blocks: vec![
+                touch_browser_contracts::SnapshotBlock {
+                    version: "1.0.0".to_string(),
+                    id: "b1".to_string(),
+                    kind: touch_browser_contracts::SnapshotBlockKind::Heading,
+                    stable_ref: "rmain:heading:about-nodejs".to_string(),
+                    role: touch_browser_contracts::SnapshotBlockRole::Content,
+                    text: "About Node.js".to_string(),
+                    attributes: serde_json::from_str(r#"{"level":1}"#)
+                        .expect("heading attributes should deserialize"),
+                    evidence: touch_browser_contracts::SnapshotEvidence {
+                        source_url: "https://nodejs.org/en/about".to_string(),
+                        source_type: touch_browser_contracts::SourceType::Playwright,
+                        dom_path_hint: Some("html > body > main > h1".to_string()),
+                        byte_range_start: None,
+                        byte_range_end: None,
+                    },
+                },
+                touch_browser_contracts::SnapshotBlock {
+                    version: "1.0.0".to_string(),
+                    id: "b2".to_string(),
+                    kind: touch_browser_contracts::SnapshotBlockKind::Text,
+                    stable_ref: "rmain:text:runtime-overview".to_string(),
+                    role: touch_browser_contracts::SnapshotBlockRole::Content,
+                    text: "As an asynchronous event-driven JavaScript runtime, Node.js is designed to build scalable network applications."
+                        .to_string(),
+                    attributes: Default::default(),
+                    evidence: touch_browser_contracts::SnapshotEvidence {
+                        source_url: "https://nodejs.org/en/about".to_string(),
+                        source_type: touch_browser_contracts::SourceType::Playwright,
+                        dom_path_hint: Some("html > body > main > p:nth-of-type(1)".to_string()),
+                        byte_range_start: None,
+                        byte_range_end: None,
+                    },
+                },
+                touch_browser_contracts::SnapshotBlock {
+                    version: "1.0.0".to_string(),
+                    id: "b3".to_string(),
+                    kind: touch_browser_contracts::SnapshotBlockKind::Text,
+                    stable_ref: "rmain:text:standard-library".to_string(),
+                    role: touch_browser_contracts::SnapshotBlockRole::Content,
+                    text: "The synchronous methods of the Node.js standard library are convenient for startup tasks."
+                        .to_string(),
+                    attributes: Default::default(),
+                    evidence: touch_browser_contracts::SnapshotEvidence {
+                        source_url: "https://nodejs.org/en/about".to_string(),
+                        source_type: touch_browser_contracts::SourceType::Playwright,
+                        dom_path_hint: Some("html > body > main > p:nth-of-type(2)".to_string()),
+                        byte_range_start: None,
+                        byte_range_end: None,
+                    },
+                },
+            ],
+        };
+
+        let report = EvidenceExtractor
+            .extract(&EvidenceInput::new(
+                snapshot,
+                vec![ClaimRequest::new("c1", "Node.js is a synchronous runtime.")],
+                "2026-04-07T00:00:00+09:00",
+                SourceRisk::Low,
+                Some("About Node.js".to_string()),
+            ))
+            .expect("evidence extraction should succeed");
+
+        assert!(report.supported_claims.is_empty());
+        assert!(report
+            .contradicted_claims
+            .iter()
+            .any(|claim| claim.claim_id == "c1"));
+    }
+
+    #[test]
+    fn supports_availability_claims_from_selector_options() {
+        let snapshot = SnapshotDocument {
+            version: "1.0.0".to_string(),
+            stable_ref_version: "1".to_string(),
+            source: touch_browser_contracts::SnapshotSource {
+                source_url: "https://nodejs.org/en/download".to_string(),
+                source_type: touch_browser_contracts::SourceType::Playwright,
+                title: Some("Node.js Downloads".to_string()),
+            },
+            budget: touch_browser_contracts::SnapshotBudget {
+                requested_tokens: 512,
+                estimated_tokens: 96,
+                emitted_tokens: 96,
+                truncated: false,
+            },
+            blocks: vec![
+                touch_browser_contracts::SnapshotBlock {
+                    version: "1.0.0".to_string(),
+                    id: "b1".to_string(),
+                    kind: touch_browser_contracts::SnapshotBlockKind::Heading,
+                    stable_ref: "rmain:heading:downloads".to_string(),
+                    role: touch_browser_contracts::SnapshotBlockRole::Content,
+                    text: "Node.js Downloads".to_string(),
+                    attributes: serde_json::from_str(r#"{"level":1}"#)
+                        .expect("heading attributes should deserialize"),
+                    evidence: touch_browser_contracts::SnapshotEvidence {
+                        source_url: "https://nodejs.org/en/download".to_string(),
+                        source_type: touch_browser_contracts::SourceType::Playwright,
+                        dom_path_hint: Some("html > body > main > h1".to_string()),
+                        byte_range_start: None,
+                        byte_range_end: None,
+                    },
+                },
+                touch_browser_contracts::SnapshotBlock {
+                    version: "1.0.0".to_string(),
+                    id: "b2".to_string(),
+                    kind: touch_browser_contracts::SnapshotBlockKind::Text,
+                    stable_ref: "rmain:text:download-selector".to_string(),
+                    role: touch_browser_contracts::SnapshotBlockRole::Content,
+                    text: "Choose a platform to download Node.js installers.".to_string(),
+                    attributes: Default::default(),
+                    evidence: touch_browser_contracts::SnapshotEvidence {
+                        source_url: "https://nodejs.org/en/download".to_string(),
+                        source_type: touch_browser_contracts::SourceType::Playwright,
+                        dom_path_hint: Some("html > body > main > p:nth-of-type(1)".to_string()),
+                        byte_range_start: None,
+                        byte_range_end: None,
+                    },
+                },
+                touch_browser_contracts::SnapshotBlock {
+                    version: "1.0.0".to_string(),
+                    id: "b3".to_string(),
+                    kind: touch_browser_contracts::SnapshotBlockKind::List,
+                    stable_ref: "rmain:list:platform-options".to_string(),
+                    role: touch_browser_contracts::SnapshotBlockRole::Supporting,
+                    text: "- macOS - Windows - Linux".to_string(),
+                    attributes: serde_json::json!({
+                        "zone": "main",
+                        "tagName": "listbox",
+                        "options": ["macOS", "Windows", "Linux"],
+                        "selectionSemantic": "available-options",
+                        "textLength": 27
+                    })
+                    .as_object()
+                    .expect("attributes should be an object")
+                    .clone()
+                    .into_iter()
+                    .collect(),
+                    evidence: touch_browser_contracts::SnapshotEvidence {
+                        source_url: "https://nodejs.org/en/download".to_string(),
+                        source_type: touch_browser_contracts::SourceType::Playwright,
+                        dom_path_hint: Some("html > body > main > ul[role=listbox]".to_string()),
+                        byte_range_start: None,
+                        byte_range_end: None,
+                    },
+                },
+            ],
+        };
+
+        let report = EvidenceExtractor
+            .extract(&EvidenceInput::new(
+                snapshot,
+                vec![ClaimRequest::new("c1", "Node.js is available for macOS.")],
+                "2026-04-07T00:00:00+09:00",
+                SourceRisk::Low,
+                Some("Node.js Downloads".to_string()),
+            ))
+            .expect("evidence extraction should succeed");
+
+        assert_eq!(report.supported_claims.len(), 1);
+        assert_eq!(report.supported_claims[0].claim_id, "c1");
     }
 
     fn parse_risk(value: &str) -> SourceRisk {

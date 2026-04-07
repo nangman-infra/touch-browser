@@ -1,4 +1,4 @@
-use std::fs;
+use std::{fs, path::Path};
 
 use super::{
     context::CliAppContext,
@@ -11,14 +11,15 @@ use super::{
 use crate::{
     current_policy_with_allowlist, fail_action, is_fixture_target, plan_memory_turn, repo_root,
     slot_timestamp, succeed_action, summarize_turns, verify_action_result_if_requested,
-    ActionCommand, ActionFailureKind, ActionName, ActionResult, ActionStatus, BrowserOrigin,
-    ClaimInput, CliError, CompactSnapshotOutput, ExtractCommandOutput, ExtractOptions,
-    MemorySummaryOutput, PolicyCommandOutput, ReadViewOutput, ReplayCommandOutput,
-    ReplayTranscript, RiskClass, SearchCommandOutput, SearchEngine, SearchNextCommands,
-    SearchOpenResultCommandOutput, SearchOpenResultOptions, SearchOpenTopCommandOutput,
-    SearchOpenTopItem, SearchOpenTopOptions, SearchOptions, SearchReport, SearchReportStatus,
-    SearchResultItem, SnapshotBlock, SnapshotBlockKind, SnapshotBlockRole, SnapshotDocument,
-    SourceRisk, SourceType, TargetOptions, CONTRACT_VERSION, DEFAULT_OPENED_AT,
+    ActionCommand, ActionFailureKind, ActionName, ActionResult, ActionStatus, BrowserCliSession,
+    BrowserOrigin, BrowserSessionContext, ClaimInput, CliError, CompactSnapshotOutput,
+    ExtractCommandOutput, ExtractOptions, MemorySummaryOutput, PolicyCommandOutput, ReadViewOutput,
+    ReplayCommandOutput, ReplayTranscript, RiskClass, SearchCommandOutput, SearchEngine,
+    SearchNextCommands, SearchOpenResultCommandOutput, SearchOpenResultOptions,
+    SearchOpenTopCommandOutput, SearchOpenTopItem, SearchOpenTopOptions, SearchOptions,
+    SearchReport, SearchReportStatus, SearchResultItem, SnapshotBlock, SnapshotBlockKind,
+    SnapshotBlockRole, SnapshotDocument, SourceRisk, SourceType, TargetOptions, CONTRACT_VERSION,
+    DEFAULT_OPENED_AT,
 };
 use serde::Serialize;
 
@@ -58,6 +59,80 @@ fn claim_inputs_from_statements(statements: &[String]) -> Result<Vec<ClaimInput>
 
 fn shell_quote(value: &str) -> String {
     format!("'{}'", value.replace('\'', "'\"'\"'"))
+}
+
+fn merged_allowlisted_domains(existing: &[String], added: &[String]) -> Vec<String> {
+    let mut domains = existing
+        .iter()
+        .chain(added.iter())
+        .filter(|domain| !domain.trim().is_empty())
+        .cloned()
+        .collect::<Vec<_>>();
+    domains.sort();
+    domains.dedup();
+    domains
+}
+
+#[allow(clippy::too_many_arguments)]
+fn persist_browser_context(
+    ctx: &CliAppContext<'_>,
+    session_file: &Path,
+    context: &BrowserSessionContext,
+    target: &str,
+    headed: bool,
+    allowlisted_domains: &[String],
+    latest_search: Option<SearchReport>,
+) -> Result<BrowserCliSession, CliError> {
+    let ports = ctx.ports;
+    if session_file.exists() {
+        let mut persisted = ports.session_store.load_session(session_file)?;
+        let timestamp = ports.browser.next_session_timestamp(&persisted.session);
+        context.runtime.open_snapshot(
+            &mut persisted.session,
+            target,
+            context.snapshot.clone(),
+            context.source_risk.clone(),
+            context.source_label.clone(),
+            &timestamp,
+        )?;
+        persisted.version = CONTRACT_VERSION.to_string();
+        persisted.headless = !headed;
+        persisted.requested_budget = context.snapshot.budget.requested_tokens;
+        persisted.browser_state = Some(context.browser_state.clone());
+        persisted.browser_context_dir = context.browser_context_dir.clone();
+        persisted.browser_profile_dir = context.browser_profile_dir.clone();
+        persisted.browser_origin = Some(BrowserOrigin {
+            target: target.to_string(),
+            source_risk: Some(context.source_risk.clone()),
+            source_label: context.source_label.clone(),
+        });
+        persisted.allowlisted_domains =
+            merged_allowlisted_domains(&persisted.allowlisted_domains, allowlisted_domains);
+        if let Some(latest_search) = latest_search {
+            persisted.latest_search = Some(latest_search);
+        }
+        ports.session_store.save_session(session_file, &persisted)?;
+        return Ok(persisted);
+    }
+
+    let persisted = ports.browser.build_browser_cli_session(
+        &context.session,
+        context.snapshot.budget.requested_tokens,
+        !headed,
+        Some(context.browser_state.clone()),
+        context.browser_context_dir.clone(),
+        context.browser_profile_dir.clone(),
+        Some(BrowserOrigin {
+            target: target.to_string(),
+            source_risk: Some(context.source_risk.clone()),
+            source_label: context.source_label.clone(),
+        }),
+        allowlisted_domains.to_vec(),
+        Vec::new(),
+        latest_search,
+    );
+    ports.session_store.save_session(session_file, &persisted)?;
+    Ok(persisted)
 }
 
 fn target_requires_browser_session(options: &TargetOptions) -> bool {
@@ -378,24 +453,14 @@ pub(crate) fn handle_search_open_result(
         "scliopen001",
         DEFAULT_OPENED_AT,
     )?;
-    ports.session_store.save_session(
+    let refreshed = persist_browser_context(
+        ctx,
         &session_file,
-        &ports.browser.build_browser_cli_session(
-            &context.session,
-            context.snapshot.budget.requested_tokens,
-            !options.headed,
-            Some(context.browser_state.clone()),
-            context.browser_context_dir.clone(),
-            context.browser_profile_dir.clone(),
-            Some(BrowserOrigin {
-                target: selected.url.clone(),
-                source_risk: Some(SourceRisk::Low),
-                source_label: None,
-            }),
-            persisted.allowlisted_domains.clone(),
-            Vec::new(),
-            Some(latest_search.clone()),
-        ),
+        &context,
+        &selected.url,
+        options.headed,
+        &persisted.allowlisted_domains,
+        Some(latest_search.clone()),
     )?;
     let opened = succeed_action(
         ActionName::Open,
@@ -403,9 +468,9 @@ pub(crate) fn handle_search_open_result(
         context.snapshot,
         "Opened browser-backed document.",
         current_policy_with_allowlist(
-            &context.session,
+            &refreshed.session,
             ctx.policy_kernel,
-            &persisted.allowlisted_domains,
+            &refreshed.allowlisted_domains,
         ),
     )?;
 
@@ -502,24 +567,14 @@ pub(crate) fn handle_search_open_top(
                 "scliopen001",
                 DEFAULT_OPENED_AT,
             )?;
-            ports.session_store.save_session(
+            let refreshed = persist_browser_context(
+                ctx,
                 &result_session_file,
-                &ports.browser.build_browser_cli_session(
-                    &context.session,
-                    context.snapshot.budget.requested_tokens,
-                    !options.headed,
-                    Some(context.browser_state.clone()),
-                    context.browser_context_dir.clone(),
-                    context.browser_profile_dir.clone(),
-                    Some(BrowserOrigin {
-                        target: selected.url.clone(),
-                        source_risk: Some(SourceRisk::Low),
-                        source_label: None,
-                    }),
-                    persisted.allowlisted_domains.clone(),
-                    Vec::new(),
-                    None,
-                ),
+                &context,
+                &selected.url,
+                options.headed,
+                &persisted.allowlisted_domains,
+                None,
             )?;
             let opened = succeed_action(
                 ActionName::Open,
@@ -527,9 +582,9 @@ pub(crate) fn handle_search_open_top(
                 context.snapshot,
                 "Opened browser-backed document.",
                 current_policy_with_allowlist(
-                    &context.session,
+                    &refreshed.session,
                     ctx.policy_kernel,
-                    &persisted.allowlisted_domains,
+                    &refreshed.allowlisted_domains,
                 ),
             )?;
 
@@ -630,38 +685,39 @@ pub(crate) fn handle_browser_open(
         "scliopen001",
         DEFAULT_OPENED_AT,
     )?;
-    if let Some(session_file) = options.session_file.as_ref() {
-        ports.session_store.save_session(
-            session_file,
-            &ports.browser.build_browser_cli_session(
-                &context.session,
-                context.snapshot.budget.requested_tokens,
-                !options.headed,
-                Some(context.browser_state.clone()),
-                context.browser_context_dir.clone(),
-                context.browser_profile_dir.clone(),
-                Some(BrowserOrigin {
-                    target: options.target.clone(),
-                    source_risk: options.source_risk,
-                    source_label: options.source_label.clone(),
-                }),
-                options.allowlisted_domains.clone(),
-                Vec::new(),
+    let persisted = options
+        .session_file
+        .as_ref()
+        .map(|session_file| {
+            persist_browser_context(
+                ctx,
+                session_file,
+                &context,
+                &options.target,
+                options.headed,
+                &options.allowlisted_domains,
                 None,
-            ),
-        )?;
-    }
+            )
+        })
+        .transpose()?;
 
     succeed_action(
         ActionName::Open,
         "snapshot-document",
         context.snapshot,
         "Opened browser-backed document.",
-        current_policy_with_allowlist(
-            &context.session,
-            ctx.policy_kernel,
-            &options.allowlisted_domains,
-        ),
+        match persisted.as_ref() {
+            Some(persisted) => current_policy_with_allowlist(
+                &persisted.session,
+                ctx.policy_kernel,
+                &persisted.allowlisted_domains,
+            ),
+            None => current_policy_with_allowlist(
+                &context.session,
+                ctx.policy_kernel,
+                &options.allowlisted_domains,
+            ),
+        },
     )
 }
 
@@ -692,31 +748,30 @@ pub(crate) fn handle_compact_view(
             DEFAULT_OPENED_AT,
         )?;
 
-        if let Some(session_file) = options.session_file.as_ref() {
-            ports.session_store.save_session(
-                session_file,
-                &ports.browser.build_browser_cli_session(
-                    &context.session,
-                    context.snapshot.budget.requested_tokens,
-                    !options.headed,
-                    Some(context.browser_state.clone()),
-                    context.browser_context_dir.clone(),
-                    context.browser_profile_dir.clone(),
-                    Some(BrowserOrigin {
-                        target: options.target.clone(),
-                        source_risk: options.source_risk,
-                        source_label: options.source_label.clone(),
-                    }),
-                    options.allowlisted_domains.clone(),
-                    Vec::new(),
+        let persisted = options
+            .session_file
+            .as_ref()
+            .map(|session_file| {
+                persist_browser_context(
+                    ctx,
+                    session_file,
+                    &context,
+                    &options.target,
+                    options.headed,
+                    &options.allowlisted_domains,
                     None,
-                ),
-            )?;
-        }
+                )
+            })
+            .transpose()?;
 
         return Ok(CompactSnapshotOutput::new(
             &context.snapshot,
-            Some(context.session.state),
+            Some(
+                persisted
+                    .as_ref()
+                    .map(|session| session.session.state.clone())
+                    .unwrap_or(context.session.state),
+            ),
             options.session_file.map(|path| path.display().to_string()),
         ));
     }
@@ -787,31 +842,30 @@ pub(crate) fn handle_read_view(
             DEFAULT_OPENED_AT,
         )?;
 
-        if let Some(session_file) = options.session_file.as_ref() {
-            ports.session_store.save_session(
-                session_file,
-                &ports.browser.build_browser_cli_session(
-                    &context.session,
-                    context.snapshot.budget.requested_tokens,
-                    !options.headed,
-                    Some(context.browser_state.clone()),
-                    context.browser_context_dir.clone(),
-                    context.browser_profile_dir.clone(),
-                    Some(BrowserOrigin {
-                        target: options.target.clone(),
-                        source_risk: options.source_risk,
-                        source_label: options.source_label.clone(),
-                    }),
-                    options.allowlisted_domains.clone(),
-                    Vec::new(),
+        let persisted = options
+            .session_file
+            .as_ref()
+            .map(|session_file| {
+                persist_browser_context(
+                    ctx,
+                    session_file,
+                    &context,
+                    &options.target,
+                    options.headed,
+                    &options.allowlisted_domains,
                     None,
-                ),
-            )?;
-        }
+                )
+            })
+            .transpose()?;
 
         return Ok(ReadViewOutput::new(
             &context.snapshot,
-            Some(context.session.state),
+            Some(
+                persisted
+                    .as_ref()
+                    .map(|session| session.session.state.clone())
+                    .unwrap_or(context.session.state),
+            ),
             options.session_file.map(|path| path.display().to_string()),
             options.main_only,
         ));
@@ -882,18 +936,43 @@ pub(crate) fn handle_extract(
             "scliextract001",
             DEFAULT_OPENED_AT,
         )?;
+        let persisted_session = options
+            .session_file
+            .as_ref()
+            .map(|session_file| {
+                persist_browser_context(
+                    ctx,
+                    session_file,
+                    &context,
+                    &options.target,
+                    options.headed,
+                    &options.allowlisted_domains,
+                    None,
+                )
+            })
+            .transpose()?;
         let open_result = succeed_action(
             ActionName::Open,
             "snapshot-document",
             context.snapshot.clone(),
             "Opened browser-backed document.",
-            current_policy_with_allowlist(
-                &context.session,
-                ctx.policy_kernel,
-                &options.allowlisted_domains,
-            ),
+            match persisted_session.as_ref() {
+                Some(persisted) => current_policy_with_allowlist(
+                    &persisted.session,
+                    ctx.policy_kernel,
+                    &persisted.allowlisted_domains,
+                ),
+                None => current_policy_with_allowlist(
+                    &context.session,
+                    ctx.policy_kernel,
+                    &options.allowlisted_domains,
+                ),
+            },
         )?;
-        let mut session = context.session;
+        let mut session = persisted_session
+            .as_ref()
+            .map(|persisted| persisted.session.clone())
+            .unwrap_or_else(|| context.session.clone());
         let extract_timestamp = slot_timestamp(1, 30);
         let report = context
             .runtime
@@ -917,32 +996,23 @@ pub(crate) fn handle_extract(
             options.verifier_command.as_deref(),
             &extract_timestamp,
         )?;
-        if let Some(session_file) = options.session_file.as_ref() {
-            ports.session_store.save_session(
-                session_file,
-                &ports.browser.build_browser_cli_session(
-                    &session,
-                    context.snapshot.budget.requested_tokens,
-                    !options.headed,
-                    Some(context.browser_state.clone()),
-                    context.browser_context_dir.clone(),
-                    context.browser_profile_dir.clone(),
-                    Some(BrowserOrigin {
-                        target: options.target.clone(),
-                        source_risk: options.source_risk,
-                        source_label: options.source_label.clone(),
-                    }),
-                    options.allowlisted_domains.clone(),
-                    Vec::new(),
-                    None,
-                ),
-            )?;
-        }
+        let persisted = if let Some(session_file) = options.session_file.as_ref() {
+            let mut persisted = persisted_session
+                .expect("persisted browser session should exist when session file is provided");
+            persisted.session = session.clone();
+            ports.session_store.save_session(session_file, &persisted)?;
+            Some(persisted)
+        } else {
+            None
+        };
 
         return Ok(ExtractCommandOutput {
             open: open_result,
             extract: extract_result,
-            session_state: session.state,
+            session_state: persisted
+                .as_ref()
+                .map(|persisted| persisted.session.state.clone())
+                .unwrap_or(session.state),
         });
     }
 

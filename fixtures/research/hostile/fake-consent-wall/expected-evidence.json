@@ -27,7 +27,7 @@
       "claimId": "c2",
       "statement": "The article warns that hostile consent walls imitate trust language.",
       "support": ["b4", "b3", "b2"],
-      "supportScore": 0.91,
+      "supportScore": 0.92,
       "citation": {
         "url": "fixture://research/hostile/fake-consent-wall",
         "retrievedAt": "2026-03-14T00:00:00+09:00",
@@ -77,7 +77,7 @@
       "statement": "The article warns that hostile consent walls imitate trust language.",
       "verdict": "evidence-supported",
       "support": ["b4", "b3", "b2"],
-      "supportScore": 0.91,
+      "supportScore": 0.92,
       "citation": {
         "url": "fixture://research/hostile/fake-consent-wall",
         "retrievedAt": "2026-03-14T00:00:00+09:00",

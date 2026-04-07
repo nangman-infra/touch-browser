@@ -12,6 +12,8 @@ pub(crate) struct BrowserSessionContext {
     pub(crate) runtime: ReadOnlyRuntime,
     pub(crate) session: ReadOnlySession,
     pub(crate) snapshot: SnapshotDocument,
+    pub(crate) source_risk: SourceRisk,
+    pub(crate) source_label: Option<String>,
     pub(crate) browser_state: PersistedBrowserState,
     pub(crate) browser_context_dir: Option<String>,
     pub(crate) browser_profile_dir: Option<String>,

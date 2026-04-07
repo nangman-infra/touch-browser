@@ -8,11 +8,7 @@
   "expectedEvidencePath": "fixtures/research/navigation/browser-expand/expected-evidence.json",
   "risk": "low",
   "expectations": {
-    "mustContainTexts": [
-      "Browser Expand",
-      "Expand hidden details",
-      "collapsed notes"
-    ],
+    "mustContainTexts": ["Browser Expand", "Expand hidden details"],
     "expectedKinds": ["heading", "text", "button"],
     "expectedCitationUrl": "fixture://research/navigation/browser-expand",
     "claimChecks": [

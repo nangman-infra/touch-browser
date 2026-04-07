@@ -96,4 +96,56 @@ describe("playwright adapter browser snapshots", () => {
     expect(visibleText.endsWith("|object|false")).toBe(true);
     expect(visibleText.startsWith("true|")).toBe(false);
   }, 15_000);
+
+  it("expands obvious selector controls before capturing snapshot evidence", async () => {
+    const response = await handleRequest({
+      jsonrpc: "2.0",
+      id: "req-platform-selector",
+      method: "browser.snapshot",
+      params: {
+        html: `
+          <!doctype html>
+          <html>
+            <head><title>Downloads</title></head>
+            <body>
+              <main>
+                <h1>Downloads</h1>
+                <button
+                  id="platform-trigger"
+                  type="button"
+                  aria-label="Platform"
+                  aria-haspopup="listbox"
+                  aria-expanded="false"
+                  aria-controls="platform-options"
+                >
+                  Linux
+                </button>
+                <ul id="platform-options" role="listbox" hidden>
+                  <li role="option">macOS</li>
+                  <li role="option">Windows</li>
+                  <li role="option">Linux</li>
+                </ul>
+              </main>
+              <script>
+                const trigger = document.getElementById("platform-trigger");
+                const list = document.getElementById("platform-options");
+                trigger?.addEventListener("click", () => {
+                  trigger.setAttribute("aria-expanded", "true");
+                  list.hidden = false;
+                });
+              </script>
+            </body>
+          </html>
+        `,
+        budget: 700,
+      },
+    });
+
+    const success = expectJsonRpcSuccess(response);
+    expect(success.result).toMatchObject({
+      title: "Downloads",
+      visibleText: expect.stringContaining("macOS"),
+      html: expect.stringContaining('aria-expanded="true"'),
+    });
+  });
 });

@@ -12,8 +12,8 @@
       "version": "1.0.0",
       "claimId": "c1",
       "statement": "The page asks the runtime to expand hidden details.",
-      "support": ["b3", "b2", "b5"],
-      "supportScore": 0.73,
+      "support": ["b3", "b2"],
+      "supportScore": 0.74,
       "citation": {
         "url": "fixture://research/navigation/browser-expand",
         "retrievedAt": "2026-03-14T00:00:00+09:00",
@@ -26,7 +26,7 @@
       "version": "1.0.0",
       "claimId": "c2",
       "statement": "The page includes an Expand details button.",
-      "support": ["b4", "b3", "b5"],
+      "support": ["b4", "b3", "b2"],
       "supportScore": 0.79,
       "citation": {
         "url": "fixture://research/navigation/browser-expand",
@@ -45,7 +45,6 @@
       "reason": "insufficient-support-score",
       "checkedBlockRefs": [
         "rmain:text:expand-hidden-details-to-reveal-the-supporting-n",
-        "rmain:text:details",
         "rmain:heading:browser-expand"
       ]
     }
@@ -56,8 +55,8 @@
       "claimId": "c1",
       "statement": "The page asks the runtime to expand hidden details.",
       "verdict": "evidence-supported",
-      "support": ["b3", "b2", "b5"],
-      "supportScore": 0.73,
+      "support": ["b3", "b2"],
+      "supportScore": 0.74,
       "citation": {
         "url": "fixture://research/navigation/browser-expand",
         "retrievedAt": "2026-03-14T00:00:00+09:00",
@@ -68,7 +67,7 @@
       "checkedBlockRefs": [
         "rmain:text:expand-hidden-details-to-reveal-the-supporting-n",
         "rmain:heading:browser-expand",
-        "rmain:text:details"
+        "rhead:metadata:browser-expand"
       ]
     },
     {
@@ -76,7 +75,7 @@
       "claimId": "c2",
       "statement": "The page includes an Expand details button.",
       "verdict": "evidence-supported",
-      "support": ["b4", "b3", "b5"],
+      "support": ["b4", "b3", "b2"],
       "supportScore": 0.79,
       "citation": {
         "url": "fixture://research/navigation/browser-expand",
@@ -88,7 +87,7 @@
       "checkedBlockRefs": [
         "rmain:button:expand-details",
         "rmain:text:expand-hidden-details-to-reveal-the-supporting-n",
-        "rmain:text:details"
+        "rmain:heading:browser-expand"
       ]
     },
     {
@@ -99,7 +98,6 @@
       "reason": "insufficient-support-score",
       "checkedBlockRefs": [
         "rmain:text:expand-hidden-details-to-reveal-the-supporting-n",
-        "rmain:text:details",
         "rmain:heading:browser-expand"
       ]
     }

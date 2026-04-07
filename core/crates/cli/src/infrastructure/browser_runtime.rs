@@ -68,8 +68,8 @@ pub(crate) fn open_browser_session(
         &mut session,
         target,
         observed.snapshot,
-        observed.source_risk,
-        observed.source_label,
+        observed.source_risk.clone(),
+        observed.source_label.clone(),
         timestamp,
     )?;
 
@@ -77,6 +77,8 @@ pub(crate) fn open_browser_session(
         runtime,
         session,
         snapshot,
+        source_risk: observed.source_risk,
+        source_label: observed.source_label,
         browser_state: observed.browser_state,
         browser_context_dir: observed.browser_context_dir,
         browser_profile_dir: observed.browser_profile_dir,

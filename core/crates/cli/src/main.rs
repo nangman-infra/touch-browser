@@ -827,6 +827,50 @@ mod tests {
                             </html>"#,
                             200,
                         ),
+                        "/polluted-selector" => html_response(
+                            r#"<!doctype html>
+                            <html>
+                              <head><title>Node Downloads</title></head>
+                              <body>
+                                <main>
+                                  <h1>Node Downloads</h1>
+                                  <p>
+                                    Get Node.js v24.14.1 (LTS)
+                                    <noscript>
+                                      <style>.select-hidden { display: none !important; }</style>
+                                      <div class="index-module__select">macOS Windows Linux</div>
+                                    </noscript>
+                                  </p>
+                                  <button
+                                    id="platform-trigger"
+                                    type="button"
+                                    aria-label="Platform"
+                                    aria-haspopup="listbox"
+                                    aria-expanded="false"
+                                    aria-controls="platform-options"
+                                  >
+                                    Linux
+                                  </button>
+                                  <ul id="platform-options" role="listbox" hidden>
+                                    <li role="option">macOS</li>
+                                    <li role="option">Windows</li>
+                                    <li role="option">Linux</li>
+                                  </ul>
+                                </main>
+                                <script>
+                                  const trigger =
+                                    document.getElementById("platform-trigger");
+                                  const list =
+                                    document.getElementById("platform-options");
+                                  trigger?.addEventListener("click", () => {
+                                    trigger.setAttribute("aria-expanded", "true");
+                                    list.hidden = false;
+                                  });
+                                </script>
+                              </body>
+                            </html>"#,
+                            200,
+                        ),
                         _ => html_response("<html><body>missing</body></html>", 404),
                     };
 
@@ -3615,5 +3659,131 @@ mod tests {
         );
 
         fs::remove_dir_all(&profile_dir).expect("external profile dir cleanup should succeed");
+    }
+
+    #[test]
+    fn browser_open_appends_existing_session_history() {
+        let server = CliTestServer::start();
+        let session_file = temp_session_path("browser-open-append-history");
+
+        dispatch(CliCommand::Open(TargetOptions {
+            target: server.url("/static"),
+            budget: DEFAULT_REQUESTED_TOKENS,
+            source_risk: None,
+            source_label: None,
+            allowlisted_domains: Vec::new(),
+            browser: true,
+            headed: false,
+            main_only: false,
+            session_file: Some(session_file.clone()),
+        }))
+        .expect("first browser-backed open should persist session");
+
+        dispatch(CliCommand::Open(TargetOptions {
+            target: server.url("/docs-shell"),
+            budget: DEFAULT_REQUESTED_TOKENS,
+            source_risk: None,
+            source_label: None,
+            allowlisted_domains: Vec::new(),
+            browser: true,
+            headed: false,
+            main_only: false,
+            session_file: Some(session_file.clone()),
+        }))
+        .expect("second browser-backed open should append session");
+
+        let persisted =
+            load_browser_cli_session(&session_file).expect("session should load after two opens");
+        assert_eq!(persisted.session.snapshots.len(), 2);
+        assert_eq!(persisted.session.state.visited_urls.len(), 2);
+        assert_eq!(
+            persisted.session.state.visited_urls,
+            vec![server.url("/static"), server.url("/docs-shell")]
+        );
+
+        dispatch(CliCommand::SessionClose(SessionFileOptions {
+            session_file,
+        }))
+        .expect("session close should succeed");
+    }
+
+    #[test]
+    fn browser_session_outputs_strip_markup_and_extract_selector_availability() {
+        let server = CliTestServer::start();
+        let session_file = temp_session_path("polluted-selector-session");
+
+        dispatch(CliCommand::Open(TargetOptions {
+            target: server.url("/polluted-selector"),
+            budget: DEFAULT_REQUESTED_TOKENS,
+            source_risk: None,
+            source_label: None,
+            allowlisted_domains: Vec::new(),
+            browser: true,
+            headed: false,
+            main_only: false,
+            session_file: Some(session_file.clone()),
+        }))
+        .expect("browser-backed open should persist session");
+
+        let compact = dispatch(CliCommand::SessionCompact(SessionFileOptions {
+            session_file: session_file.clone(),
+        }))
+        .expect("session compact should succeed");
+        let compact_text = compact["compactText"]
+            .as_str()
+            .expect("compact text should exist");
+        let reading_compact = compact["readingCompactText"]
+            .as_str()
+            .expect("reading compact text should exist");
+        assert!(compact_text.contains("Get Node.js v24.14.1"));
+        assert!(compact_text.contains("macOS"));
+        assert!(!compact_text.contains("<style>"));
+        assert!(!compact_text.contains("index-module__select"));
+        assert!(!reading_compact.contains("<style>"));
+        assert!(!reading_compact.contains("index-module__select"));
+
+        let read = dispatch(CliCommand::SessionRead(SessionReadOptions {
+            session_file: session_file.clone(),
+            main_only: true,
+        }))
+        .expect("session read should succeed");
+        let markdown = read["markdownText"]
+            .as_str()
+            .expect("markdown text should exist");
+        assert!(markdown.contains("Get Node.js v24.14.1"));
+        assert!(markdown.contains("macOS"));
+        assert!(!markdown.contains("<style>"));
+        assert!(!markdown.contains("index-module__select"));
+
+        let synthesis = dispatch(CliCommand::SessionSynthesize(SessionSynthesizeOptions {
+            session_file: session_file.clone(),
+            note_limit: 8,
+            format: OutputFormat::Markdown,
+        }))
+        .expect("session synthesis should succeed");
+        let synthesis_markdown = synthesis["markdown"]
+            .as_str()
+            .expect("session synthesis markdown should exist");
+        assert!(synthesis_markdown.contains("Get Node.js v24.14.1"));
+        assert!(!synthesis_markdown.contains("<style>"));
+        assert!(!synthesis_markdown.contains("index-module__select"));
+
+        let extract = dispatch(CliCommand::SessionExtract(SessionExtractOptions {
+            session_file: Some(session_file.clone()),
+            engine: None,
+            claims: vec!["Node.js is available for macOS.".to_string()],
+            verifier_command: None,
+        }))
+        .expect("session extract should succeed");
+        assert_eq!(extract["extract"]["status"], "succeeded");
+        assert_eq!(
+            extract["extract"]["output"]["evidenceSupportedClaims"][0]["statement"],
+            "Node.js is available for macOS."
+        );
+
+        dispatch(CliCommand::SessionClose(SessionFileOptions {
+            session_file,
+        }))
+        .expect("session close should succeed");
     }
 }

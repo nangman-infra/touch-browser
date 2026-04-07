@@ -8,8 +8,8 @@
   },
   "budget": {
     "requestedTokens": 512,
-    "estimatedTokens": 43,
-    "emittedTokens": 43,
+    "estimatedTokens": 25,
+    "emittedTokens": 25,
     "truncated": false
   },
   "blocks": [
@@ -79,24 +79,6 @@
       "attributes": {
         "tagName": "button",
         "textLength": 14,
-        "zone": "main"
-      },
-      "evidence": {
-        "sourceUrl": "fixture://research/navigation/browser-expand",
-        "sourceType": "fixture",
-        "domPathHint": "html > body > main"
-      }
-    },
-    {
-      "version": "1.0.0",
-      "id": "b5",
-      "kind": "text",
-      "ref": "rmain:text:details",
-      "role": "content",
-      "text": "Expanded details confirm that the runtime can reveal collapsed notes.",
-      "attributes": {
-        "tagName": "p",
-        "textLength": 69,
         "zone": "main"
       },
       "evidence": {
