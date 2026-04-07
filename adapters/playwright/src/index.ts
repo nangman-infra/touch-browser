@@ -1702,7 +1702,11 @@ async function closeEvidencePopup(page: Page, popupId: string): Promise<void> {
       popup.isVisible().catch(() => false),
       popup.getAttribute("hidden").catch(() => null),
       popup.getAttribute("aria-hidden").catch(() => null),
-      popup.getAttribute("data-state").catch(() => null),
+      popup
+        .evaluate((node) =>
+          node instanceof HTMLElement ? (node.dataset.state ?? null) : null,
+        )
+        .catch(() => null),
     ]);
   const popupStillOpen =
     popupStillVisible &&
@@ -1753,11 +1757,7 @@ async function injectEvidencePopupSnapshots(
 }
 
 function popupLocator(page: Page, popupId: string): Locator {
-  return page.locator(`[id="${escapeAttributeValue(popupId)}"]`);
-}
-
-function escapeAttributeValue(value: string): string {
-  return value.replaceAll("\\", "\\\\").replaceAll('"', '\\"');
+  return page.locator(`[id=${JSON.stringify(popupId)}]`);
 }
 
 async function selectorDescriptor(locator: Locator): Promise<string> {
