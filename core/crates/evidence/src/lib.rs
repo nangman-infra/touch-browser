@@ -349,7 +349,22 @@ fn contradiction_resolution<'a>(
         &analysis.claim_anchor_tokens,
         &analysis.claim_qualifier_tokens,
     );
-    let reason = assessment.contradiction_reason.clone()?;
+    let reason = assessment
+        .contradiction_reason
+        .clone()
+        .or(Some(UnsupportedClaimReason::NegationMismatch))?;
+    let mut guard_failures = assessment.guard_failures;
+    if !guard_failures
+        .iter()
+        .any(|failure| matches!(failure.kind, EvidenceGuardKind::Negation))
+    {
+        guard_failures.push(EvidenceGuardFailure {
+            kind: EvidenceGuardKind::Negation,
+            detail:
+                "The retrieved support contains polarity language that conflicts with the claim."
+                    .to_string(),
+        });
+    }
 
     Some(ClaimResolution {
         verdict: EvidenceClaimVerdict::Contradicted,
@@ -357,7 +372,7 @@ fn contradiction_resolution<'a>(
         confidence: None,
         reason: Some(reason),
         checked_refs: contradiction_checked_refs,
-        guard_failures: assessment.guard_failures,
+        guard_failures,
         next_action_hint: None,
     })
 }
@@ -825,17 +840,164 @@ fn contradiction_detected(normalized_claim: &str, block_text: &str) -> bool {
     }
 
     CONTRADICTION_PATTERNS.iter().any(|pattern| {
-        let claim_positive = contains_phrase(normalized_claim, pattern.positive);
-        let claim_negative = contains_phrase(normalized_claim, pattern.negative);
-        let block_positive = contains_phrase(&normalized_block, pattern.positive);
-        let block_negative = contains_phrase(&normalized_block, pattern.negative);
-
-        (claim_positive && block_negative) || (claim_negative && block_positive)
+        contradiction_matches_pattern(normalized_claim, &normalized_block, block_text, pattern)
     })
 }
 
 fn contains_phrase(text: &str, phrase: &str) -> bool {
     contains_token_sequence(text, phrase)
+}
+
+fn contradiction_matches_pattern(
+    normalized_claim: &str,
+    normalized_block: &str,
+    raw_block: &str,
+    pattern: &ContradictionPattern,
+) -> bool {
+    let claim_polarity = polarity_state(normalized_claim, pattern);
+
+    if matches!(claim_polarity, PolarityState::None | PolarityState::Both) {
+        return false;
+    }
+
+    let (same_phrase, opposite_phrase) = match claim_polarity {
+        PolarityState::Positive => (pattern.positive, pattern.negative),
+        PolarityState::Negative => (pattern.negative, pattern.positive),
+        PolarityState::None | PolarityState::Both => return false,
+    };
+
+    let opposite_claim = normalized_claim.replacen(same_phrase, opposite_phrase, 1);
+    if opposite_claim != normalized_claim && contains_phrase(normalized_block, &opposite_claim) {
+        return true;
+    }
+
+    let claim_context_tokens = phrase_context_tokens(normalized_claim, same_phrase);
+    let anchor_tokens = contradiction_anchor_tokens(normalized_claim, pattern);
+    if claim_context_tokens.is_empty() && anchor_tokens.is_empty() {
+        return false;
+    }
+
+    split_normalized_segments(raw_block)
+        .into_iter()
+        .any(|segment| {
+            if !matches_opposite_polarity(claim_polarity, polarity_state(&segment, pattern)) {
+                return false;
+            }
+
+            if !claim_context_tokens.is_empty() {
+                return phrase_context_overlap(&claim_context_tokens, &segment, opposite_phrase);
+            }
+
+            token_overlap_ratio(&anchor_tokens, &tokenize_significant(&segment)) >= 0.6
+        })
+}
+
+fn contradiction_anchor_tokens(
+    normalized_claim: &str,
+    pattern: &ContradictionPattern,
+) -> Vec<String> {
+    let polarity_tokens = tokenize_all(pattern.positive)
+        .into_iter()
+        .chain(tokenize_all(pattern.negative))
+        .collect::<BTreeSet<_>>();
+
+    anchor_tokens(
+        &tokenize_significant(normalized_claim)
+            .into_iter()
+            .filter(|token| !polarity_tokens.contains(token))
+            .collect::<Vec<_>>(),
+    )
+}
+
+fn split_normalized_segments(text: &str) -> Vec<String> {
+    text.split(['.', '!', '?', ';', ':', '\n', '\r'])
+        .map(normalize_text)
+        .filter(|segment| !segment.is_empty())
+        .collect()
+}
+
+fn phrase_context_overlap(claim_context_tokens: &[String], segment: &str, phrase: &str) -> bool {
+    let segment_context_tokens = phrase_context_tokens(segment, phrase);
+    if segment_context_tokens.is_empty() {
+        return false;
+    }
+
+    token_overlap_ratio(claim_context_tokens, &segment_context_tokens) >= 0.5
+}
+
+fn matches_opposite_polarity(claim: PolarityState, support: PolarityState) -> bool {
+    matches!(
+        (claim, support),
+        (PolarityState::Positive, PolarityState::Negative)
+            | (PolarityState::Negative, PolarityState::Positive)
+    )
+}
+
+fn polarity_state(text: &str, pattern: &ContradictionPattern) -> PolarityState {
+    let positive_spans = phrase_match_spans(text, pattern.positive);
+    let negative_spans = phrase_match_spans(text, pattern.negative);
+
+    let has_negative = !negative_spans.is_empty();
+    let has_positive = positive_spans.iter().any(|positive_span| {
+        !negative_spans
+            .iter()
+            .any(|negative_span| span_contains(*negative_span, *positive_span))
+    });
+
+    match (has_positive, has_negative) {
+        (true, true) => PolarityState::Both,
+        (true, false) => PolarityState::Positive,
+        (false, true) => PolarityState::Negative,
+        (false, false) => PolarityState::None,
+    }
+}
+
+fn phrase_match_spans(text: &str, phrase: &str) -> Vec<(usize, usize)> {
+    let text_tokens = tokenize_all(text);
+    let phrase_tokens = tokenize_all(phrase);
+
+    if phrase_tokens.is_empty() || text_tokens.len() < phrase_tokens.len() {
+        return Vec::new();
+    }
+
+    text_tokens
+        .windows(phrase_tokens.len())
+        .enumerate()
+        .filter_map(|(index, window)| {
+            (window == phrase_tokens.as_slice()).then_some((index, index + phrase_tokens.len()))
+        })
+        .collect()
+}
+
+fn phrase_context_tokens(text: &str, phrase: &str) -> Vec<String> {
+    let tokens = tokenize_all(text);
+    let phrase_tokens = tokenize_all(phrase);
+
+    if phrase_tokens.is_empty() || tokens.len() < phrase_tokens.len() {
+        return Vec::new();
+    }
+
+    let mut context_tokens = BTreeSet::new();
+
+    for (_start, end) in phrase_match_spans(text, phrase) {
+        let context_end = (end + 4).min(tokens.len());
+
+        for token in &tokens[end..context_end] {
+            if CONTRADICTION_CONTEXT_STOP_WORDS.contains(&token.as_str()) {
+                continue;
+            }
+            if token.len() < 3 {
+                continue;
+            }
+            context_tokens.insert(token.clone());
+        }
+    }
+
+    context_tokens.into_iter().collect()
+}
+
+fn span_contains(container: (usize, usize), inner: (usize, usize)) -> bool {
+    container.0 <= inner.0 && container.1 >= inner.1
 }
 
 fn block_search_text(block: &SnapshotBlock) -> String {
@@ -2209,6 +2371,11 @@ const ANCHOR_STOP_WORDS: &[&str] = &[
     "platform",
 ];
 
+const CONTRADICTION_CONTEXT_STOP_WORDS: &[&str] = &[
+    "a", "an", "the", "and", "or", "as", "at", "be", "been", "being", "by", "for", "from", "in",
+    "into", "is", "its", "of", "on", "that", "their", "this", "those", "to", "with",
+];
+
 const QUALIFIER_TOKENS: &[&str] = &[
     "all",
     "every",
@@ -2252,6 +2419,14 @@ const RELEASE_NOISE_TOKENS: &[&str] = &[
 struct ContradictionPattern {
     positive: &'static str,
     negative: &'static str,
+}
+
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+enum PolarityState {
+    None,
+    Positive,
+    Negative,
+    Both,
 }
 
 const CONTRADICTION_PATTERNS: &[ContradictionPattern] = &[
@@ -2298,7 +2473,9 @@ mod tests {
         EvidenceReport, SnapshotDocument, SourceRisk, UnsupportedClaimReason,
     };
 
-    use super::{ClaimRequest, EvidenceExtractor, EvidenceInput};
+    use super::{
+        contradiction_detected, normalize_text, ClaimRequest, EvidenceExtractor, EvidenceInput,
+    };
 
     #[derive(Debug, Deserialize)]
     #[serde(rename_all = "camelCase")]
@@ -2448,6 +2625,60 @@ mod tests {
             report.contradicted_claims[0].reason,
             UnsupportedClaimReason::NegationMismatch
         );
+    }
+
+    #[test]
+    fn supports_negative_availability_claim_when_page_matches_negative_polarity() {
+        let snapshot = SnapshotDocument {
+            version: "1.0.0".to_string(),
+            stable_ref_version: "1".to_string(),
+            source: touch_browser_contracts::SnapshotSource {
+                source_url: "https://www.iana.org/help/example-domains".to_string(),
+                source_type: touch_browser_contracts::SourceType::Playwright,
+                title: Some("Example Domains".to_string()),
+            },
+            budget: touch_browser_contracts::SnapshotBudget {
+                requested_tokens: 512,
+                estimated_tokens: 32,
+                emitted_tokens: 32,
+                truncated: false,
+            },
+            blocks: vec![touch_browser_contracts::SnapshotBlock {
+                version: "1.0.0".to_string(),
+                id: "b1".to_string(),
+                kind: touch_browser_contracts::SnapshotBlockKind::Text,
+                stable_ref: "rmain:text:example-domains-note".to_string(),
+                role: touch_browser_contracts::SnapshotBlockRole::Content,
+                text: "example.com is not available for registration or transfer. These domains are available for documentation examples."
+                    .to_string(),
+                attributes: Default::default(),
+                evidence: touch_browser_contracts::SnapshotEvidence {
+                    source_url: "https://www.iana.org/help/example-domains".to_string(),
+                    source_type: touch_browser_contracts::SourceType::Playwright,
+                    dom_path_hint: Some("html > body > main".to_string()),
+                    byte_range_start: None,
+                    byte_range_end: None,
+                },
+            }],
+        };
+
+        let report = EvidenceExtractor
+            .extract(&EvidenceInput::new(
+                snapshot,
+                vec![ClaimRequest::new(
+                    "c1",
+                    "example.com is not available for registration or transfer.",
+                )],
+                "2026-04-07T00:00:00+09:00",
+                SourceRisk::Low,
+                Some("Example Domains".to_string()),
+            ))
+            .expect("evidence extraction should succeed");
+
+        assert_eq!(report.supported_claims.len(), 1);
+        assert!(report.contradicted_claims.is_empty());
+        assert!(report.needs_more_browsing_claims.is_empty());
+        assert!(report.unsupported_claims.is_empty());
     }
 
     #[test]
@@ -3330,6 +3561,112 @@ mod tests {
             .contradicted_claims
             .iter()
             .any(|claim| claim.claim_id == "c1"));
+    }
+
+    #[test]
+    fn supports_asynchronous_runtime_claim_when_synchronous_is_only_contrastive() {
+        let snapshot = SnapshotDocument {
+            version: "1.0.0".to_string(),
+            stable_ref_version: "1".to_string(),
+            source: touch_browser_contracts::SnapshotSource {
+                source_url: "https://nodejs.org/en/about".to_string(),
+                source_type: touch_browser_contracts::SourceType::Playwright,
+                title: Some("About Node.js".to_string()),
+            },
+            budget: touch_browser_contracts::SnapshotBudget {
+                requested_tokens: 512,
+                estimated_tokens: 96,
+                emitted_tokens: 96,
+                truncated: false,
+            },
+            blocks: vec![
+                touch_browser_contracts::SnapshotBlock {
+                    version: "1.0.0".to_string(),
+                    id: "b1".to_string(),
+                    kind: touch_browser_contracts::SnapshotBlockKind::Heading,
+                    stable_ref: "rmain:heading:about-nodejs".to_string(),
+                    role: touch_browser_contracts::SnapshotBlockRole::Content,
+                    text: "About Node.js".to_string(),
+                    attributes: serde_json::from_str(r#"{"level":1}"#)
+                        .expect("heading attributes should deserialize"),
+                    evidence: touch_browser_contracts::SnapshotEvidence {
+                        source_url: "https://nodejs.org/en/about".to_string(),
+                        source_type: touch_browser_contracts::SourceType::Playwright,
+                        dom_path_hint: Some("html > body > main > h1".to_string()),
+                        byte_range_start: None,
+                        byte_range_end: None,
+                    },
+                },
+                touch_browser_contracts::SnapshotBlock {
+                    version: "1.0.0".to_string(),
+                    id: "b2".to_string(),
+                    kind: touch_browser_contracts::SnapshotBlockKind::Text,
+                    stable_ref: "rmain:text:runtime-overview".to_string(),
+                    role: touch_browser_contracts::SnapshotBlockRole::Content,
+                    text: "As an asynchronous event-driven JavaScript runtime, Node.js is designed to build scalable network applications."
+                        .to_string(),
+                    attributes: Default::default(),
+                    evidence: touch_browser_contracts::SnapshotEvidence {
+                        source_url: "https://nodejs.org/en/about".to_string(),
+                        source_type: touch_browser_contracts::SourceType::Playwright,
+                        dom_path_hint: Some("html > body > main > p:nth-of-type(1)".to_string()),
+                        byte_range_start: None,
+                        byte_range_end: None,
+                    },
+                },
+                touch_browser_contracts::SnapshotBlock {
+                    version: "1.0.0".to_string(),
+                    id: "b3".to_string(),
+                    kind: touch_browser_contracts::SnapshotBlockKind::Text,
+                    stable_ref: "rmain:text:standard-library".to_string(),
+                    role: touch_browser_contracts::SnapshotBlockRole::Supporting,
+                    text: "The synchronous methods of the Node.js standard library are convenient for startup tasks."
+                        .to_string(),
+                    attributes: Default::default(),
+                    evidence: touch_browser_contracts::SnapshotEvidence {
+                        source_url: "https://nodejs.org/en/about".to_string(),
+                        source_type: touch_browser_contracts::SourceType::Playwright,
+                        dom_path_hint: Some("html > body > main > p:nth-of-type(2)".to_string()),
+                        byte_range_start: None,
+                        byte_range_end: None,
+                    },
+                },
+            ],
+        };
+
+        let report = EvidenceExtractor
+            .extract(&EvidenceInput::new(
+                snapshot,
+                vec![ClaimRequest::new(
+                    "c1",
+                    "Node.js is an asynchronous runtime.",
+                )],
+                "2026-04-07T00:00:00+09:00",
+                SourceRisk::Low,
+                Some("About Node.js".to_string()),
+            ))
+            .expect("evidence extraction should succeed");
+
+        assert_eq!(report.supported_claims.len(), 1);
+        assert!(report.contradicted_claims.is_empty());
+        assert!(report.unsupported_claims.is_empty());
+        assert!(report.needs_more_browsing_claims.is_empty());
+    }
+
+    #[test]
+    fn contradiction_detection_matches_async_polarity_locally() {
+        assert!(contradiction_detected(
+            &normalize_text("Node.js is a synchronous runtime."),
+            "As an asynchronous event-driven JavaScript runtime, Node.js is designed to build scalable network applications."
+        ));
+        assert!(!contradiction_detected(
+            &normalize_text("Node.js is an asynchronous runtime."),
+            "The synchronous methods of the Node.js standard library are convenient for startup tasks."
+        ));
+        assert!(!contradiction_detected(
+            &normalize_text("Node.js is an asynchronous runtime."),
+            "As an asynchronous event-driven JavaScript runtime, Node.js is designed to build scalable network applications. The synchronous methods of the Node.js standard library are convenient for startup tasks."
+        ));
     }
 
     #[test]
