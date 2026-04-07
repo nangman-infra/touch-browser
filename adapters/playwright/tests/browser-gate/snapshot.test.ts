@@ -282,4 +282,144 @@ describe("playwright adapter browser snapshots", () => {
       (success.result as { visibleText?: string }).visibleText ?? "",
     ).toContain("arm64");
   }, 15_000);
+
+  it("skips invisible or missing-popup selectors while preserving valid evidence selectors", async () => {
+    const response = await handleRequest({
+      jsonrpc: "2.0",
+      id: "req-selector-filtering",
+      method: "browser.snapshot",
+      params: {
+        html: `
+          <!doctype html>
+          <html>
+            <body>
+              <main>
+                <button
+                  type="button"
+                  aria-label="Platform"
+                  aria-haspopup="listbox"
+                  aria-expanded="false"
+                  style="display:none"
+                >
+                  Hidden
+                </button>
+                <button
+                  id="missing-trigger"
+                  type="button"
+                  aria-label="Operating system"
+                  aria-haspopup="listbox"
+                  aria-expanded="false"
+                >
+                  Missing popup
+                </button>
+                <button
+                  id="valid-trigger"
+                  type="button"
+                  aria-label="Package manager"
+                  aria-haspopup="listbox"
+                  aria-expanded="false"
+                  aria-controls="package-options"
+                >
+                  npm
+                </button>
+                <div id="package-options" role="listbox" hidden>
+                  <div role="option">npm</div>
+                  <div role="option">pnpm</div>
+                </div>
+              </main>
+              <script>
+                const validTrigger = document.getElementById("valid-trigger");
+                const popup = document.getElementById("package-options");
+                validTrigger?.addEventListener("click", () => {
+                  validTrigger.setAttribute("aria-expanded", "true");
+                  popup.hidden = false;
+                });
+                document.addEventListener("keydown", (event) => {
+                  if (event.key === "Escape") {
+                    validTrigger?.setAttribute("aria-expanded", "false");
+                    popup.hidden = true;
+                  }
+                });
+              </script>
+            </body>
+          </html>
+        `,
+        budget: 700,
+      },
+    });
+
+    const success = expectJsonRpcSuccess(response);
+    expect(success.result).toMatchObject({
+      visibleText: expect.stringContaining("pnpm"),
+      html: expect.stringContaining(
+        "touch-browser-evidence-popup-package-options",
+      ),
+    });
+    expect((success.result as { html?: string }).html ?? "").not.toContain(
+      "touch-browser-evidence-popup-missing",
+    );
+  }, 15_000);
+
+  it("falls back to an outside click when escape does not close an evidence popup", async () => {
+    const response = await handleRequest({
+      jsonrpc: "2.0",
+      id: "req-selector-close-fallback",
+      method: "browser.snapshot",
+      params: {
+        html: `
+          <!doctype html>
+          <html>
+            <body>
+              <main>
+                <button
+                  id="platform-trigger"
+                  type="button"
+                  aria-label="Platform"
+                  aria-haspopup="listbox"
+                  aria-expanded="false"
+                  aria-controls="platform-options"
+                >
+                  x64
+                </button>
+                <div
+                  id="platform-options"
+                  role="listbox"
+                  hidden
+                  data-state="closed"
+                >
+                  <div role="option">x64</div>
+                  <div role="option">arm64</div>
+                </div>
+              </main>
+              <script>
+                const trigger = document.getElementById("platform-trigger");
+                const popup = document.getElementById("platform-options");
+                trigger?.addEventListener("click", () => {
+                  trigger.setAttribute("aria-expanded", "true");
+                  popup.hidden = false;
+                  popup.dataset.state = "open";
+                });
+                document.body.addEventListener("click", (event) => {
+                  if (event.target === document.body) {
+                    trigger?.setAttribute("aria-expanded", "false");
+                    popup.hidden = true;
+                    popup.dataset.state = "closed";
+                  }
+                });
+              </script>
+            </body>
+          </html>
+        `,
+        budget: 700,
+      },
+    });
+
+    const success = expectJsonRpcSuccess(response);
+    expect(success.result).toMatchObject({
+      visibleText: expect.stringContaining("arm64"),
+      html: expect.stringContaining(
+        "touch-browser-evidence-popup-platform-options",
+      ),
+    });
+  }, 15_000);
 });

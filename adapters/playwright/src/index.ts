@@ -138,6 +138,7 @@ const ACTION_SETTLE_EXTRA_WAIT_MS = 700;
 const SEARCH_PROFILE_POST_LOAD_IDLE_MS = 3_000;
 const SEARCH_PROFILE_POST_LOAD_WAIT_MS = 350;
 const MAX_CAPTURED_LINKS = 50;
+const MAX_EVIDENCE_SELECTOR_CANDIDATES = 8;
 const SEARCH_PROFILE_MARKER = ".touch-browser-search-profile.json";
 const execFileAsync = promisify(execFile);
 let cachedSearchExecutablePath: Promise<string | undefined> | undefined;
@@ -218,6 +219,26 @@ type EvidencePopupSnapshot = {
   readonly html: string;
 };
 
+type SearchIdentityArchitecture = "arm" | "x86";
+
+type SearchIdentityRuntimeProfile = {
+  readonly architecture: SearchIdentityArchitecture;
+  readonly bitness: "32" | "64";
+};
+
+type EvidenceSelectorTarget = {
+  readonly locator: Locator;
+  readonly popupId: string;
+  readonly descriptor: string;
+};
+
+type EvidenceSelectorCandidate = {
+  readonly index: number;
+  readonly descriptor: string;
+  readonly cacheKey: string;
+  readonly popupId: string | null;
+};
+
 export function adapterStatus(): AdapterStatus {
   return {
     status: "ready",
@@ -267,6 +288,10 @@ export async function resolveSearchBrowserVersionForTests(): Promise<
 
 export async function resolveSearchUserAgentForTests(): Promise<string> {
   return resolveSearchUserAgent();
+}
+
+export function searchIdentityPlatformProfileForTests(): SearchIdentityPlatformProfile {
+  return searchIdentityPlatformProfile();
 }
 
 export function applySearchIdentityToGlobal(
@@ -1258,64 +1283,135 @@ async function readLockOwnerHint(ownerPath: string): Promise<string> {
   return "";
 }
 
+function resolveSearchIdentityRuntimeProfile(
+  runtimeArch: string,
+): SearchIdentityRuntimeProfile {
+  const architecture: SearchIdentityArchitecture = runtimeArch.startsWith("arm")
+    ? "arm"
+    : "x86";
+  return {
+    architecture,
+    bitness:
+      runtimeArch.includes("64") || runtimeArch === "arm64" ? "64" : "32",
+  };
+}
+
+function windowsUserAgentPlatformFragment(
+  architecture: SearchIdentityArchitecture,
+  bitness: string,
+): string {
+  if (architecture === "arm") {
+    return "Windows NT 10.0; Win64; ARM64";
+  }
+  if (bitness === "64") {
+    return "Windows NT 10.0; Win64; x64";
+  }
+  return "Windows NT 10.0";
+}
+
+function windowsWebGlRenderer(
+  architecture: SearchIdentityArchitecture,
+): string {
+  if (architecture === "arm") {
+    return "ANGLE (Qualcomm Adreno Direct3D11 vs_5_0 ps_5_0)";
+  }
+  return "ANGLE (Intel, Intel(R) UHD Graphics Direct3D11 vs_5_0 ps_5_0)";
+}
+
+function linuxNavigatorPlatform(
+  architecture: SearchIdentityArchitecture,
+): string {
+  return architecture === "arm" ? "Linux armv8l" : "Linux x86_64";
+}
+
+function linuxUserAgentPlatformFragment(
+  architecture: SearchIdentityArchitecture,
+): string {
+  return architecture === "arm" ? "X11; Linux aarch64" : "X11; Linux x86_64";
+}
+
+function linuxWebGlRenderer(architecture: SearchIdentityArchitecture): string {
+  if (architecture === "arm") {
+    return "ANGLE (ARM Mali OpenGL ES)";
+  }
+  return "ANGLE (Intel, Mesa Intel(R) Graphics OpenGL)";
+}
+
+function macUserAgentPlatformFragment(
+  architecture: SearchIdentityArchitecture,
+): string {
+  return architecture === "arm"
+    ? "Macintosh; ARM Mac OS X 14_0_0"
+    : "Macintosh; Intel Mac OS X 10_15_7";
+}
+
+function macWebGlRenderer(architecture: SearchIdentityArchitecture): string {
+  return architecture === "arm" ? "Apple GPU" : "Intel Iris OpenGL Engine";
+}
+
+function buildWindowsSearchIdentityPlatformProfile(
+  runtimeProfile: SearchIdentityRuntimeProfile,
+): SearchIdentityPlatformProfile {
+  return {
+    navigatorPlatform: "Win32",
+    userAgentPlatformFragment: windowsUserAgentPlatformFragment(
+      runtimeProfile.architecture,
+      runtimeProfile.bitness,
+    ),
+    userAgentDataPlatform: "Windows",
+    architecture: runtimeProfile.architecture,
+    bitness: runtimeProfile.bitness,
+    platformVersion: "15.0.0",
+    webGlVendor: "Google Inc. (Microsoft)",
+    webGlRenderer: windowsWebGlRenderer(runtimeProfile.architecture),
+  };
+}
+
+function buildLinuxSearchIdentityPlatformProfile(
+  runtimeProfile: SearchIdentityRuntimeProfile,
+): SearchIdentityPlatformProfile {
+  return {
+    navigatorPlatform: linuxNavigatorPlatform(runtimeProfile.architecture),
+    userAgentPlatformFragment: linuxUserAgentPlatformFragment(
+      runtimeProfile.architecture,
+    ),
+    userAgentDataPlatform: "Linux",
+    architecture: runtimeProfile.architecture,
+    bitness: runtimeProfile.bitness,
+    platformVersion: "6.0.0",
+    webGlVendor: "Google Inc. (Linux)",
+    webGlRenderer: linuxWebGlRenderer(runtimeProfile.architecture),
+  };
+}
+
+function buildMacSearchIdentityPlatformProfile(
+  runtimeProfile: SearchIdentityRuntimeProfile,
+): SearchIdentityPlatformProfile {
+  return {
+    navigatorPlatform: "MacIntel",
+    userAgentPlatformFragment: macUserAgentPlatformFragment(
+      runtimeProfile.architecture,
+    ),
+    userAgentDataPlatform: "macOS",
+    architecture: runtimeProfile.architecture,
+    bitness: runtimeProfile.bitness,
+    platformVersion: "14.0.0",
+    webGlVendor: "Intel Inc.",
+    webGlRenderer: macWebGlRenderer(runtimeProfile.architecture),
+  };
+}
+
 function searchIdentityPlatformProfile(): SearchIdentityPlatformProfile {
   const runtimePlatform = os.platform();
-  const runtimeArch = os.arch();
-  const architecture = runtimeArch.startsWith("arm") ? "arm" : "x86";
-  const bitness =
-    runtimeArch.includes("64") || runtimeArch === "arm64" ? "64" : "32";
+  const runtimeProfile = resolveSearchIdentityRuntimeProfile(os.arch());
 
   switch (runtimePlatform) {
     case "win32":
-      return {
-        navigatorPlatform: "Win32",
-        userAgentPlatformFragment:
-          architecture === "arm"
-            ? "Windows NT 10.0; Win64; ARM64"
-            : bitness === "64"
-              ? "Windows NT 10.0; Win64; x64"
-              : "Windows NT 10.0",
-        userAgentDataPlatform: "Windows",
-        architecture,
-        bitness,
-        platformVersion: "15.0.0",
-        webGlVendor: "Google Inc. (Microsoft)",
-        webGlRenderer:
-          architecture === "arm"
-            ? "ANGLE (Qualcomm Adreno Direct3D11 vs_5_0 ps_5_0)"
-            : "ANGLE (Intel, Intel(R) UHD Graphics Direct3D11 vs_5_0 ps_5_0)",
-      };
+      return buildWindowsSearchIdentityPlatformProfile(runtimeProfile);
     case "linux":
-      return {
-        navigatorPlatform:
-          architecture === "arm" ? "Linux armv8l" : "Linux x86_64",
-        userAgentPlatformFragment:
-          architecture === "arm" ? "X11; Linux aarch64" : "X11; Linux x86_64",
-        userAgentDataPlatform: "Linux",
-        architecture,
-        bitness,
-        platformVersion: "6.0.0",
-        webGlVendor: "Google Inc. (Linux)",
-        webGlRenderer:
-          architecture === "arm"
-            ? "ANGLE (ARM Mali OpenGL ES)"
-            : "ANGLE (Intel, Mesa Intel(R) Graphics OpenGL)",
-      };
+      return buildLinuxSearchIdentityPlatformProfile(runtimeProfile);
     default:
-      return {
-        navigatorPlatform: "MacIntel",
-        userAgentPlatformFragment:
-          architecture === "arm"
-            ? "Macintosh; ARM Mac OS X 14_0_0"
-            : "Macintosh; Intel Mac OS X 10_15_7",
-        userAgentDataPlatform: "macOS",
-        architecture,
-        bitness,
-        platformVersion: "14.0.0",
-        webGlVendor: "Intel Inc.",
-        webGlRenderer:
-          architecture === "arm" ? "Apple GPU" : "Intel Iris OpenGL Engine",
-      };
+      return buildMacSearchIdentityPlatformProfile(runtimeProfile);
   }
 }
 
@@ -1447,77 +1543,53 @@ async function maybeExpandEvidenceSelectors(page: Page): Promise<void> {
   ];
 
   for (const selector of selectors) {
-    for (let processed = 0; processed < 8; processed += 1) {
-      const locator = await nextEvidenceSelectorLocator(
-        page,
-        selector,
-        seenControls,
-      );
-      if (!locator) {
-        break;
-      }
-      const descriptor = await selectorDescriptor(locator);
-      if (!descriptor || !looksLikeEvidenceSelector(descriptor)) {
-        continue;
-      }
-      const cacheKey = descriptor.toLowerCase();
-      if (seenControls.has(cacheKey)) {
-        continue;
-      }
-      seenControls.add(cacheKey);
-
-      const isVisible = await locator.isVisible().catch(() => false);
-      if (!isVisible) {
-        continue;
-      }
-
-      const popupId = await locator
-        .getAttribute("aria-controls")
-        .catch(() => null);
-      if (!popupId) {
-        continue;
-      }
-
-      await locator.click().catch(() => {});
-      await settleAfterAction(page);
-      const popupSnapshot = await captureEvidencePopupSnapshot(
-        page,
-        popupId,
-        descriptor,
-      );
-      if (popupSnapshot) {
-        popupSnapshots.push(popupSnapshot);
-      }
-      await closeEvidencePopup(page, popupId);
-    }
+    popupSnapshots.push(
+      ...(await collectEvidencePopupSnapshots(page, selector, seenControls)),
+    );
   }
 
   await injectEvidencePopupSnapshots(page, popupSnapshots);
 }
 
-async function nextEvidenceSelectorLocator(
+async function collectEvidencePopupSnapshots(
   page: Page,
   selector: string,
   seenControls: Set<string>,
-): Promise<Locator | undefined> {
-  const candidates = await page
-    .locator(selector)
-    .evaluateAll((nodes) =>
-      nodes.map((node, index) => {
-        const text = (node.textContent ?? "").replace(/\s+/g, " ").trim();
-        const ariaLabel = node.getAttribute("aria-label") ?? "";
-        const name = node.getAttribute("name") ?? "";
-        return {
-          index,
-          descriptor: [text, ariaLabel, name]
-            .filter((value) => value.length > 0)
-            .join(" ")
-            .replace(/\s+/g, " ")
-            .trim(),
-        };
-      }),
-    )
-    .catch(() => []);
+): Promise<EvidencePopupSnapshot[]> {
+  const popupSnapshots: EvidencePopupSnapshot[] = [];
+
+  for (
+    let processed = 0;
+    processed < MAX_EVIDENCE_SELECTOR_CANDIDATES;
+    processed += 1
+  ) {
+    const target = await nextEvidenceSelectorTarget(
+      page,
+      selector,
+      seenControls,
+    );
+    if (!target) {
+      break;
+    }
+
+    const popupSnapshot = await openEvidenceSelectorAndCapturePopup(
+      page,
+      target,
+    );
+    if (popupSnapshot) {
+      popupSnapshots.push(popupSnapshot);
+    }
+  }
+
+  return popupSnapshots;
+}
+
+async function nextEvidenceSelectorTarget(
+  page: Page,
+  selector: string,
+  seenControls: Set<string>,
+): Promise<EvidenceSelectorTarget | undefined> {
+  const candidates = await describeEvidenceSelectorCandidates(page, selector);
 
   for (const candidate of candidates) {
     if (
@@ -1526,18 +1598,65 @@ async function nextEvidenceSelectorLocator(
     ) {
       continue;
     }
-    if (seenControls.has(candidate.descriptor.toLowerCase())) {
+    if (seenControls.has(candidate.cacheKey) || !candidate.popupId) {
       continue;
     }
+
     const locator = page.locator(selector).nth(candidate.index);
-    const isVisible = await locator.isVisible().catch(() => false);
-    if (!isVisible) {
+    if (!(await isLocatorVisible(locator))) {
       continue;
     }
-    return locator;
+
+    seenControls.add(candidate.cacheKey);
+    return {
+      locator,
+      popupId: candidate.popupId,
+      descriptor: candidate.descriptor,
+    };
   }
 
   return undefined;
+}
+
+async function describeEvidenceSelectorCandidates(
+  page: Page,
+  selector: string,
+): Promise<readonly EvidenceSelectorCandidate[]> {
+  const candidates: EvidenceSelectorCandidate[] = [];
+  const selectorLocator = page.locator(selector);
+  const candidateCount = await selectorLocator.count().catch(() => 0);
+
+  for (let index = 0; index < candidateCount; index += 1) {
+    const locator = selectorLocator.nth(index);
+    const descriptor = await selectorDescriptor(locator);
+    candidates.push({
+      index,
+      descriptor,
+      cacheKey: descriptor.toLowerCase(),
+      popupId: await locator.getAttribute("aria-controls").catch(() => null),
+    });
+  }
+
+  return candidates;
+}
+
+async function isLocatorVisible(locator: Locator): Promise<boolean> {
+  return locator.isVisible().catch(() => false);
+}
+
+async function openEvidenceSelectorAndCapturePopup(
+  page: Page,
+  target: EvidenceSelectorTarget,
+): Promise<EvidencePopupSnapshot | undefined> {
+  await target.locator.click().catch(() => {});
+  await settleAfterAction(page);
+  const popupSnapshot = await captureEvidencePopupSnapshot(
+    page,
+    target.popupId,
+    target.descriptor,
+  );
+  await closeEvidencePopup(page, target.popupId);
+  return popupSnapshot;
 }
 
 async function captureEvidencePopupSnapshot(
@@ -1545,59 +1664,51 @@ async function captureEvidencePopupSnapshot(
   popupId: string,
   descriptor: string,
 ): Promise<EvidencePopupSnapshot | undefined> {
-  return page
-    .evaluate(
-      ({ popupId: id, label }) => {
-        const popup = document.getElementById(id);
-        if (!(popup instanceof HTMLElement)) {
-          return undefined;
-        }
+  const popupHtml = await popupLocator(page, popupId)
+    .evaluate((popup) => {
+      if (!(popup instanceof HTMLElement)) {
+        return undefined;
+      }
 
-        const clone = popup.cloneNode(true);
-        if (!(clone instanceof HTMLElement)) {
-          return undefined;
-        }
+      const clone = popup.cloneNode(true);
+      if (!(clone instanceof HTMLElement)) {
+        return undefined;
+      }
 
-        for (const styleNode of clone.querySelectorAll("style")) {
-          styleNode.remove();
-        }
-        return {
-          id: `touch-browser-evidence-popup-${id}`,
-          label,
-          html: clone.outerHTML,
-        };
-      },
-      { popupId, label: descriptor },
-    )
+      clone.querySelectorAll("style").forEach((styleNode) => {
+        styleNode.remove();
+      });
+      return clone.outerHTML;
+    })
     .catch(() => undefined);
+
+  if (!popupHtml) {
+    return undefined;
+  }
+
+  return {
+    id: `touch-browser-evidence-popup-${popupId}`,
+    label: descriptor,
+    html: popupHtml,
+  };
 }
 
 async function closeEvidencePopup(page: Page, popupId: string): Promise<void> {
   await page.keyboard.press("Escape").catch(() => {});
   await page.waitForTimeout(100).catch(() => {});
-  const popupStillOpen = await page
-    .evaluate((id) => {
-      const popup = document.getElementById(id);
-      if (!(popup instanceof HTMLElement)) {
-        return false;
-      }
-
-      const hidden =
-        popup.hidden ||
-        popup.getAttribute("aria-hidden") === "true" ||
-        popup.getAttribute("data-state") === "closed";
-      if (hidden) {
-        return false;
-      }
-
-      const computed = window.getComputedStyle(popup);
-      return (
-        computed.display !== "none" &&
-        computed.visibility !== "hidden" &&
-        computed.opacity !== "0"
-      );
-    }, popupId)
-    .catch(() => false);
+  const popup = popupLocator(page, popupId);
+  const [popupStillVisible, hiddenAttribute, ariaHidden, dataState] =
+    await Promise.all([
+      popup.isVisible().catch(() => false),
+      popup.getAttribute("hidden").catch(() => null),
+      popup.getAttribute("aria-hidden").catch(() => null),
+      popup.getAttribute("data-state").catch(() => null),
+    ]);
+  const popupStillOpen =
+    popupStillVisible &&
+    hiddenAttribute === null &&
+    ariaHidden !== "true" &&
+    dataState !== "closed";
 
   if (popupStillOpen) {
     await page.mouse.click(8, 8).catch(() => {});
@@ -1630,10 +1741,7 @@ async function injectEvidencePopupSnapshots(
         element.id = entry.id;
         element.hidden = false;
         element.setAttribute("aria-hidden", "false");
-        element.setAttribute(
-          "data-touch-browser-evidence-selector",
-          entry.label,
-        );
+        element.dataset.touchBrowserEvidenceSelector = entry.label;
         element.style.display = "block";
         element.style.visibility = "visible";
         element.style.opacity = "1";
@@ -1642,6 +1750,14 @@ async function injectEvidencePopupSnapshots(
       }
     }, popupSnapshots)
     .catch(() => {});
+}
+
+function popupLocator(page: Page, popupId: string): Locator {
+  return page.locator(`[id="${escapeAttributeValue(popupId)}"]`);
+}
+
+function escapeAttributeValue(value: string): string {
+  return value.replaceAll("\\", "\\\\").replaceAll('"', '\\"');
 }
 
 async function selectorDescriptor(locator: Locator): Promise<string> {

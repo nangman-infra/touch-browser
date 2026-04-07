@@ -12,6 +12,7 @@ export {
   resetSearchIdentityCachesForTests,
   resolveSearchBrowserVersionForTests,
   resolveSearchLocaleForTests,
+  searchIdentityPlatformProfileForTests,
   resolveSearchUserAgentForTests,
   writeSearchIdentityMarkerForTests,
 } from "../../src/index.js";

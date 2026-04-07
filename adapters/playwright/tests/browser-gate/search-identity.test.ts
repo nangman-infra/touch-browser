@@ -13,6 +13,7 @@ import {
   resolveSearchBrowserVersionForTests,
   resolveSearchLocaleForTests,
   resolveSearchUserAgentForTests,
+  searchIdentityPlatformProfileForTests,
   writeSearchIdentityMarkerForTests,
 } from "../support/adapter-helpers.js";
 
@@ -377,6 +378,43 @@ describe("playwright adapter search identity coverage", () => {
         );
       },
     );
+  });
+
+  it("derives platform-specific search identity profiles from runtime platform and architecture", () => {
+    const platformSpy = vi.spyOn(os, "platform");
+    const archSpy = vi.spyOn(os, "arch");
+
+    platformSpy.mockReturnValue("win32");
+    archSpy.mockReturnValue("arm64");
+    expect(searchIdentityPlatformProfileForTests()).toMatchObject({
+      navigatorPlatform: "Win32",
+      userAgentDataPlatform: "Windows",
+      architecture: "arm",
+      bitness: "64",
+      webGlVendor: "Google Inc. (Microsoft)",
+    });
+
+    platformSpy.mockReturnValue("linux");
+    archSpy.mockReturnValue("x64");
+    expect(searchIdentityPlatformProfileForTests()).toMatchObject({
+      navigatorPlatform: "Linux x86_64",
+      userAgentDataPlatform: "Linux",
+      architecture: "x86",
+      bitness: "64",
+      userAgentPlatformFragment: "X11; Linux x86_64",
+    });
+
+    platformSpy.mockReturnValue("darwin");
+    archSpy.mockReturnValue("arm64");
+    expect(searchIdentityPlatformProfileForTests()).toMatchObject({
+      navigatorPlatform: "MacIntel",
+      userAgentDataPlatform: "macOS",
+      architecture: "arm",
+      webGlRenderer: "Apple GPU",
+    });
+
+    platformSpy.mockRestore();
+    archSpy.mockRestore();
   });
 
   it("applies search identity overrides to a browser-like global", async () => {
