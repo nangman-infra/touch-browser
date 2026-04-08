@@ -5,6 +5,7 @@ from __future__ import annotations
 import json
 import shutil
 import subprocess
+from dataclasses import dataclass
 from pathlib import Path
 from urllib.parse import urlparse
 
@@ -13,14 +14,93 @@ from PIL import Image, ImageDraw, ImageFont
 
 REPO_ROOT = Path(__file__).resolve().parents[1]
 OUTPUT_PATH = REPO_ROOT / "demo" / "terminal-demo.gif"
-WIDTH = 1280
-HEIGHT = 720
+WIDTH = 1440
+HEIGHT = 810
 BACKGROUND = "#0f1720"
 PANEL = "#111827"
+SURFACE = "#0c1424"
 TEXT = "#e5e7eb"
 MUTED = "#94a3b8"
 ACCENT = "#22c55e"
 PROMPT = "#38bdf8"
+DIVIDER = "#223047"
+OUTLINE = "#1f3148"
+
+
+@dataclass(frozen=True)
+class LayoutMetrics:
+    frame_width: int
+    frame_height: int
+    panel_left: int
+    panel_top: int
+    panel_right: int
+    panel_bottom: int
+    panel_radius: int
+    title_bar_height: int
+    content_left: int
+    content_right: int
+    content_width: int
+    title_y: int
+    title_bar_bottom: int
+    badge_padding_x: int
+    badge_padding_y: int
+    badge_radius: int
+    command_top_gap: int
+    section_gap: int
+    divider_gap: int
+    content_line_spacing: int
+    caption_spacing: int
+    response_padding_x: int
+    response_padding_y: int
+    response_radius: int
+    footer_bottom_padding: int
+
+
+def build_layout_metrics(width: int, height: int) -> LayoutMetrics:
+    scale = min(width / 1440, height / 810)
+    outer_margin_x = round(36 * scale)
+    outer_margin_y = round(38 * scale)
+    panel_left = outer_margin_x
+    panel_top = outer_margin_y
+    panel_right = width - outer_margin_x
+    panel_bottom = height - outer_margin_y
+    panel_width = panel_right - panel_left
+    inner_padding_x = round(40 * scale)
+    content_width = min(
+        panel_width - (inner_padding_x * 2),
+        round(width * 0.72),
+    )
+    content_left = panel_left + inner_padding_x
+    content_right = content_left + content_width
+    title_bar_height = round(72 * scale)
+
+    return LayoutMetrics(
+        frame_width=width,
+        frame_height=height,
+        panel_left=panel_left,
+        panel_top=panel_top,
+        panel_right=panel_right,
+        panel_bottom=panel_bottom,
+        panel_radius=round(26 * scale),
+        title_bar_height=title_bar_height,
+        content_left=content_left,
+        content_right=content_right,
+        content_width=content_width,
+        title_y=panel_top + round(14 * scale),
+        title_bar_bottom=panel_top + title_bar_height,
+        badge_padding_x=round(14 * scale),
+        badge_padding_y=round(8 * scale),
+        badge_radius=round(14 * scale),
+        command_top_gap=round(24 * scale),
+        section_gap=round(16 * scale),
+        divider_gap=round(14 * scale),
+        content_line_spacing=round(12 * scale),
+        caption_spacing=round(10 * scale),
+        response_padding_x=round(16 * scale),
+        response_padding_y=round(14 * scale),
+        response_radius=round(18 * scale),
+        footer_bottom_padding=round(24 * scale),
+    )
 
 
 def main() -> None:
@@ -190,117 +270,187 @@ def cleanup_session_file(path: Path) -> None:
 def render_terminal_frame(title: str, command: str, lines: list[str], caption: str) -> Image.Image:
     image = Image.new("RGB", (WIDTH, HEIGHT), BACKGROUND)
     draw = ImageDraw.Draw(image)
+    layout = build_layout_metrics(WIDTH, HEIGHT)
 
-    title_font = load_font(38)
-    badge_font = load_font(16)
-    body_font = load_font(28)
-    caption_font = load_font(24)
+    font_scale = min(WIDTH / 1440, HEIGHT / 810)
+    title_font = load_font(round(34 * font_scale))
+    badge_font = load_font(round(16 * font_scale))
+    command_font = load_font(round(22 * font_scale))
+    body_font = load_font(round(22 * font_scale))
+    caption_font = load_font(round(18 * font_scale))
 
-    panel_rect = (48, 56, WIDTH - 48, HEIGHT - 56)
-    title_bar_bottom = panel_rect[1] + 52
-    content_left = panel_rect[0] + 32
-    content_right = panel_rect[2] - 32
-    content_width = content_right - content_left
-    line_spacing = 14
+    command_line_height = line_height(draw, command_font)
     body_line_height = line_height(draw, body_font)
     caption_line_height = line_height(draw, caption_font)
 
-    draw.rounded_rectangle(panel_rect, radius=24, fill=PANEL)
+    panel_rect = (
+        layout.panel_left,
+        layout.panel_top,
+        layout.panel_right,
+        layout.panel_bottom,
+    )
+    draw.rounded_rectangle(panel_rect, radius=layout.panel_radius, fill=PANEL)
     draw.rounded_rectangle(
-        (panel_rect[0], panel_rect[1], panel_rect[2], title_bar_bottom),
-        radius=24,
+        (panel_rect[0], panel_rect[1], panel_rect[2], layout.title_bar_bottom),
+        radius=layout.panel_radius,
         fill="#0b1220",
     )
-    draw.text((content_left, panel_rect[1] + 12), title, fill=TEXT, font=title_font)
+    draw.text(
+        (layout.content_left, layout.title_y),
+        title,
+        fill=TEXT,
+        font=title_font,
+    )
 
     badge_text = "read-view / compact-view / extract"
-    badge_padding_x = 14
-    badge_padding_y = 8
-    badge_width = int(draw.textlength(badge_text, font=badge_font)) + badge_padding_x * 2
-    badge_height = badge_font.size + badge_padding_y * 2
-    badge_x = panel_rect[2] - 20 - badge_width
-    badge_y = panel_rect[1] + 10
+    badge_width = (
+        int(draw.textlength(badge_text, font=badge_font))
+        + layout.badge_padding_x * 2
+    )
+    badge_height = badge_font.size + layout.badge_padding_y * 2
+    badge_x = panel_rect[2] - layout.content_left + panel_rect[0] - badge_width
+    badge_y = panel_rect[1] + round(12 * font_scale)
     draw.rounded_rectangle(
         (badge_x, badge_y, badge_x + badge_width, badge_y + badge_height),
-        radius=14,
-        fill="#111827",
-        outline="#223047",
+        radius=layout.badge_radius,
+        fill="#101a2e",
+        outline=OUTLINE,
         width=1,
     )
     draw.text(
-        (badge_x + badge_padding_x, badge_y + badge_padding_y - 1),
+        (badge_x + layout.badge_padding_x, badge_y + layout.badge_padding_y - 1),
         badge_text,
         fill=MUTED,
         font=badge_font,
     )
 
     command_text = command.removeprefix("$ ").strip()
-    command_lines = wrap_command_block(draw, command_text, body_font, content_width)
-    command_y = title_bar_bottom + 22
-    draw_multiline_lines(
+    command_lines = wrap_command_block(
         draw,
-        content_left,
-        command_y,
-        command_lines,
-        body_font,
-        line_spacing,
-        TEXT,
-        prompt_color=PROMPT,
+        command_text,
+        command_font,
+        layout.content_width,
     )
-
-    command_height = block_height(len(command_lines), body_line_height, line_spacing)
-    divider_y = command_y + command_height + 16
-    draw.line(
-        (content_left, divider_y, content_right, divider_y),
-        fill="#223047",
-        width=1,
+    command_height = block_height(
+        len(command_lines),
+        command_line_height,
+        layout.content_line_spacing,
     )
-
+    body_lines = wrap_code_block(draw, lines, body_font, layout.content_width)
     caption_lines = wrap_text_to_width(
         draw,
         caption,
         caption_font,
-        content_width,
+        layout.content_width,
         continuation_prefix="",
+    )
+
+    natural_body_height = block_height(
+        len(body_lines),
+        body_line_height,
+        layout.content_line_spacing,
+    )
+    response_height = max(
+        round(160 * font_scale),
+        natural_body_height + (layout.response_padding_y * 2),
     )
     footer_height = block_height(
         len(caption_lines),
         caption_line_height,
-        10,
+        layout.caption_spacing,
     )
-    footer_y = panel_rect[3] - 24 - footer_height
+    natural_cluster_height = (
+        command_height
+        + layout.divider_gap
+        + 1
+        + layout.section_gap
+        + response_height
+        + layout.section_gap
+        + layout.divider_gap
+        + 1
+        + footer_height
+    )
+    available_cluster_height = (
+        panel_rect[3]
+        - layout.footer_bottom_padding
+        - (layout.title_bar_bottom + layout.command_top_gap)
+    )
+    cluster_offset = max(
+        0,
+        round((available_cluster_height - natural_cluster_height) * 0.18),
+    )
+    command_y = layout.title_bar_bottom + layout.command_top_gap + cluster_offset
+    divider_y = command_y + command_height + layout.divider_gap
+    response_top = divider_y + layout.section_gap
+    response_rect = (
+        layout.content_left - layout.response_padding_x,
+        response_top,
+        layout.content_right + layout.response_padding_x,
+        response_top + response_height,
+    )
+    footer_y = response_rect[3] + layout.section_gap + layout.divider_gap
 
-    body_lines = wrap_code_block(draw, lines, body_font, content_width)
-    body_y = divider_y + 16
-    body_max_height = max(0, footer_y - 20 - body_y)
+    draw_multiline_lines(
+        draw,
+        layout.content_left,
+        command_y,
+        command_lines,
+        command_font,
+        layout.content_line_spacing,
+        TEXT,
+        prompt_color=PROMPT,
+    )
+    draw.line(
+        (layout.content_left, divider_y, layout.content_right, divider_y),
+        fill=DIVIDER,
+        width=1,
+    )
+    draw.rounded_rectangle(
+        response_rect,
+        radius=layout.response_radius,
+        fill=SURFACE,
+        outline=OUTLINE,
+        width=1,
+    )
+
+    body_max_height = max(
+        0,
+        response_height - (layout.response_padding_y * 2),
+    )
     body_lines = fit_lines_to_height(
         body_lines,
         body_max_height,
         body_line_height,
-        line_spacing,
+        layout.content_line_spacing,
     )
+    body_y = response_rect[1] + layout.response_padding_y
     draw_multiline_lines(
         draw,
-        content_left,
+        layout.content_left,
         body_y,
         body_lines,
         body_font,
-        line_spacing,
+        layout.content_line_spacing,
         TEXT,
     )
 
     draw.line(
-        (content_left, footer_y - 16, content_right, footer_y - 16),
-        fill="#223047",
+        (
+            layout.content_left,
+            footer_y - layout.divider_gap,
+            layout.content_right,
+            footer_y - layout.divider_gap,
+        ),
+        fill=DIVIDER,
         width=1,
     )
     draw_multiline_lines(
         draw,
-        content_left,
+        layout.content_left,
         footer_y,
         caption_lines,
         caption_font,
-        10,
+        layout.caption_spacing,
         ACCENT,
     )
     return image
