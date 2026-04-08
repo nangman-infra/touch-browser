@@ -7,7 +7,6 @@ use crate::{
     normalization::{
         claim_mentions_version_or_release, contains_token_sequence, is_version_like_token,
         normalize_text, numeric_tokens, token_overlap_ratio, tokenize_significant, tokens_match,
-        ClaimAnalysisInput,
     },
 };
 
@@ -24,7 +23,9 @@ pub(crate) struct ScoringContext {
 
 pub(crate) fn score_candidates<'a>(
     blocks: &'a [SnapshotBlock],
-    analysis: &ClaimAnalysisInput,
+    normalized_claim: &str,
+    claim_tokens: &[String],
+    claim_numeric_tokens: &[String],
     scoring_context: &ScoringContext,
 ) -> Vec<ScoredCandidate<'a>> {
     let mut scored = blocks
@@ -35,9 +36,9 @@ pub(crate) fn score_candidates<'a>(
                 blocks,
                 index,
                 block,
-                &analysis.normalized_claim,
-                &analysis.claim_tokens,
-                &analysis.claim_numeric_tokens,
+                normalized_claim,
+                claim_tokens,
+                claim_numeric_tokens,
                 scoring_context,
             )
         })
@@ -50,6 +51,30 @@ pub(crate) fn score_candidates<'a>(
             .unwrap_or(std::cmp::Ordering::Equal)
     });
     scored
+}
+
+pub(crate) fn document_prefers_cross_lingual_matching(blocks: &[SnapshotBlock]) -> bool {
+    let mut latin = 0usize;
+    let mut cjk = 0usize;
+
+    for block in blocks.iter().filter(|block| {
+        matches!(
+            block.role,
+            SnapshotBlockRole::Content
+                | SnapshotBlockRole::Supporting
+                | SnapshotBlockRole::Metadata
+        )
+    }) {
+        for character in block.text.chars() {
+            if character.is_ascii_alphabetic() {
+                latin += 1;
+            } else if is_cjk_character(character) {
+                cjk += 1;
+            }
+        }
+    }
+
+    latin >= 48 && latin >= cjk.saturating_mul(3).max(12)
 }
 
 pub(crate) fn build_scoring_context(
@@ -551,6 +576,17 @@ fn kind_score_bonus(kind: &SnapshotBlockKind) -> f64 {
         SnapshotBlockKind::Input => 0.06,
         SnapshotBlockKind::Button => 0.01,
     }
+}
+
+fn is_cjk_character(character: char) -> bool {
+    matches!(
+        character as u32,
+        0x3040..=0x30ff
+            | 0x3400..=0x4dbf
+            | 0x4e00..=0x9fff
+            | 0xac00..=0xd7af
+            | 0xf900..=0xfaff
+    )
 }
 
 fn ui_control_bonus(

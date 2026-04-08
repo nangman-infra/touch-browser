@@ -175,17 +175,18 @@ pub(crate) fn no_top_support_resolution<'a>(
 }
 
 pub(crate) fn effective_support_score(
-    claim: &ClaimRequest,
     analysis: &ClaimAnalysisInput,
+    claim_tokens: &[String],
+    claim_anchor_tokens: &[String],
     top_support: &[ScoredCandidate<'_>],
     blocks: &[SnapshotBlock],
     scoring_context: &ScoringContext,
     best_score: f64,
 ) -> f64 {
     let aggregated_score = aggregate_support_score(
-        claim,
         &analysis.normalized_claim,
-        &analysis.claim_tokens,
+        claim_tokens,
+        claim_anchor_tokens,
         &analysis.claim_numeric_tokens,
         top_support,
         blocks,
@@ -196,7 +197,7 @@ pub(crate) fn effective_support_score(
 
 pub(crate) fn guarded_resolution<'a>(
     claim: &ClaimRequest,
-    analysis: &ClaimAnalysisInput,
+    claim_tokens: &[String],
     top_support: &[ScoredCandidate<'a>],
     checked_refs: &[String],
     assessment: &GuardAssessment,
@@ -216,7 +217,7 @@ pub(crate) fn guarded_resolution<'a>(
     }
 
     if effective_score >= support_threshold && assessment.guard_failures.is_empty() {
-        if button_claim_requires_more_browsing(&analysis.claim_tokens, top_support) {
+        if button_claim_requires_more_browsing(claim_tokens, top_support) {
             return Some(ClaimResolution {
                 verdict: EvidenceClaimVerdict::NeedsMoreBrowsing,
                 support: top_support.to_vec(),
@@ -281,8 +282,12 @@ pub(crate) fn supported_resolution<'a>(
 pub(crate) fn support_acceptance_threshold(
     top_support: &[ScoredCandidate<'_>],
     assessment: &GuardAssessment,
+    uses_cross_lingual_matching: bool,
 ) -> f64 {
     if !assessment.guard_failures.is_empty() || top_support.len() < 2 {
+        if uses_cross_lingual_matching {
+            return 0.40;
+        }
         return 0.52;
     }
 
@@ -290,7 +295,11 @@ pub(crate) fn support_acceptance_threshold(
         .iter()
         .filter(|candidate| is_narrative_aggregate_block(candidate.block))
         .count();
-    if narrative_support_count >= 2 {
+    if uses_cross_lingual_matching && narrative_support_count >= 2 {
+        0.38
+    } else if uses_cross_lingual_matching {
+        0.40
+    } else if narrative_support_count >= 2 {
         0.46
     } else {
         0.52

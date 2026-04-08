@@ -6,23 +6,30 @@ use crate::ClaimRequest;
 
 pub(crate) struct ClaimAnalysisInput {
     pub(crate) claim_tokens: Vec<String>,
+    pub(crate) claim_cross_lingual_tokens: Vec<String>,
     pub(crate) claim_sequence_tokens: Vec<String>,
     pub(crate) claim_numeric_tokens: Vec<String>,
     pub(crate) claim_anchor_tokens: Vec<String>,
+    pub(crate) claim_cross_lingual_anchor_tokens: Vec<String>,
     pub(crate) claim_qualifier_tokens: Vec<String>,
     pub(crate) normalized_claim: String,
+    pub(crate) claim_contains_cjk: bool,
 }
 
 pub(crate) fn build_claim_analysis_input(claim: &ClaimRequest) -> ClaimAnalysisInput {
     let normalized_claim = normalize_text(&claim.statement);
     let claim_sequence_tokens = split_normalized_tokens(&normalized_claim);
     let claim_tokens = tokenize_significant(&claim.statement);
+    let claim_cross_lingual_tokens = tokenize_cross_lingual_search(&claim.statement);
     ClaimAnalysisInput {
+        claim_cross_lingual_tokens: claim_cross_lingual_tokens.clone(),
         claim_sequence_tokens,
         claim_numeric_tokens: numeric_tokens(&claim.statement),
         claim_anchor_tokens: anchor_tokens(&claim_tokens),
+        claim_cross_lingual_anchor_tokens: anchor_tokens(&claim_cross_lingual_tokens),
         claim_qualifier_tokens: qualifier_tokens(&claim.statement),
         normalized_claim,
+        claim_contains_cjk: claim.statement.chars().any(is_cjk_character),
         claim_tokens,
     }
 }
@@ -114,19 +121,42 @@ pub(crate) fn tokenize_all(text: &str) -> Vec<String> {
         .collect()
 }
 
+pub(crate) fn tokenize_cross_lingual_search(text: &str) -> Vec<String> {
+    split_normalized_tokens(&normalize_text(text))
+        .into_iter()
+        .flat_map(cross_lingual_search_variants)
+        .filter(|token| is_significant_token(token))
+        .collect::<BTreeSet<_>>()
+        .into_iter()
+        .collect()
+}
+
 pub(crate) fn normalize_text(text: &str) -> String {
     let normalized_source = normalize_chinese_variants(text);
     let mut normalized = String::with_capacity(text.len());
+    let mut previous_kind = CharacterKind::Separator;
 
     for character in normalized_source
         .chars()
         .flat_map(|character| character.to_lowercase())
     {
-        if character.is_alphanumeric() || is_cjk_character(character) {
+        let current_kind = classify_character(character);
+        if matches!(
+            (previous_kind, current_kind),
+            (CharacterKind::AsciiAlnum, CharacterKind::Cjk)
+                | (CharacterKind::Cjk, CharacterKind::AsciiAlnum)
+        ) && !normalized.ends_with(' ')
+        {
+            normalized.push(' ');
+        }
+
+        if matches!(current_kind, CharacterKind::AsciiAlnum | CharacterKind::Cjk) {
             normalized.push(character);
         } else {
             normalized.push(' ');
         }
+
+        previous_kind = current_kind;
     }
 
     normalized.split_whitespace().collect::<Vec<_>>().join(" ")
@@ -294,6 +324,28 @@ fn expand_semantic_tokens(token: &str, significant_only: bool) -> Vec<String> {
     expanded.into_iter().collect()
 }
 
+fn cross_lingual_search_variants(token: String) -> Vec<String> {
+    let mut expanded = BTreeSet::new();
+    let stemmed = stem_token(&token);
+
+    if !contains_cjk(&token) {
+        if !stemmed.is_empty() {
+            expanded.insert(stemmed);
+        }
+        return expanded.into_iter().collect();
+    }
+
+    for gloss in cross_lingual_glosses(&token) {
+        expanded.insert(gloss.to_string());
+        let gloss_stem = stem_token(gloss);
+        if !gloss_stem.is_empty() {
+            expanded.insert(gloss_stem);
+        }
+    }
+
+    expanded.into_iter().collect()
+}
+
 fn contains_cjk(text: &str) -> bool {
     text.chars().any(is_cjk_character)
 }
@@ -324,6 +376,23 @@ fn is_hangul_character(character: char) -> bool {
     matches!(character as u32, 0xac00..=0xd7af)
 }
 
+#[derive(Clone, Copy, PartialEq, Eq)]
+enum CharacterKind {
+    AsciiAlnum,
+    Cjk,
+    Separator,
+}
+
+fn classify_character(character: char) -> CharacterKind {
+    if is_cjk_character(character) {
+        CharacterKind::Cjk
+    } else if character.is_ascii_alphanumeric() {
+        CharacterKind::AsciiAlnum
+    } else {
+        CharacterKind::Separator
+    }
+}
+
 fn cjk_ngrams(token: &str, width: usize) -> Vec<String> {
     let characters = token.chars().collect::<Vec<_>>();
     if characters.len() < width {
@@ -333,6 +402,101 @@ fn cjk_ngrams(token: &str, width: usize) -> Vec<String> {
     (0..=characters.len() - width)
         .map(|index| characters[index..index + width].iter().collect::<String>())
         .collect()
+}
+
+fn cross_lingual_glosses(token: &str) -> &'static [&'static str] {
+    if token.starts_with("제공") {
+        return &["provides"];
+    }
+    if token.starts_with("지원") {
+        return &["supports"];
+    }
+    if token.starts_with("인터페이스") {
+        return &["interface"];
+    }
+    if token.starts_with("네트워크") {
+        return &["network"];
+    }
+    if token.starts_with("요청") {
+        return &["request", "fetching"];
+    }
+    if token.starts_with("리소스") {
+        return &["resources"];
+    }
+    if token.starts_with("가져오") {
+        return &["fetching"];
+    }
+    if token.starts_with("사용") {
+        return &["used"];
+    }
+    if token.starts_with("문서") {
+        return &["documentation"];
+    }
+    if token.starts_with("검색") {
+        return &["search"];
+    }
+    if token.starts_with("추출") {
+        return &["extract"];
+    }
+    if token.starts_with("세션") {
+        return &["session"];
+    }
+    if token.starts_with("증거") || token.starts_with("근거") {
+        return &["evidence"];
+    }
+    if token.starts_with("언어") {
+        return &["language"];
+    }
+    if token.starts_with("컴파일") {
+        return &["compiled"];
+    }
+    if token.starts_with("인터프리") || token.starts_with("해석") {
+        return &["interpreted"];
+    }
+    if token.contains("提供") {
+        return &["provides"];
+    }
+    if token.contains("支持") {
+        return &["supports"];
+    }
+    if token.contains("接口") {
+        return &["interface"];
+    }
+    if token.contains("网络") {
+        return &["network"];
+    }
+    if token.contains("请求") {
+        return &["request", "fetching"];
+    }
+    if token.contains("资源") {
+        return &["resources"];
+    }
+    if token.contains("获取") || token.contains("抓取") {
+        return &["fetching"];
+    }
+    if token.contains("文档") {
+        return &["documentation"];
+    }
+    if token.contains("搜索") {
+        return &["search"];
+    }
+    if token.contains("提取") {
+        return &["extract"];
+    }
+    if token.contains("证据") || token.contains("依据") {
+        return &["evidence"];
+    }
+    if token.contains("语言") {
+        return &["language"];
+    }
+    if token.contains("编译") {
+        return &["compiled"];
+    }
+    if token.contains("解释") {
+        return &["interpreted"];
+    }
+
+    &[]
 }
 
 const STOP_WORDS: &[&str] = &[

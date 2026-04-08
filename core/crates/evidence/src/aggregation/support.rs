@@ -3,33 +3,29 @@ use std::collections::{BTreeMap, BTreeSet};
 use touch_browser_contracts::SnapshotBlock;
 
 use crate::{
-    normalization::{
-        anchor_tokens, normalize_text, token_overlap_ratio, tokenize_significant, tokens_match,
-    },
+    normalization::{normalize_text, token_overlap_ratio, tokenize_significant, tokens_match},
     scoring::{
         block_search_text, claim_token_weight, exact_match_bonus, is_narrative_aggregate_block,
         nearest_heading_context, numeric_overlap_ratio, primary_heading_context,
         weighted_token_overlap_ratio, ScoredCandidate, ScoringContext,
     },
-    ClaimRequest,
 };
 
 pub(super) fn aggregate_support_score(
-    claim: &ClaimRequest,
     normalized_claim: &str,
     claim_tokens: &[String],
+    claim_anchor_tokens: &[String],
     claim_numeric_tokens: &[String],
     top_support: &[ScoredCandidate<'_>],
     blocks: &[SnapshotBlock],
     scoring_context: &ScoringContext,
 ) -> f64 {
-    let claim_anchor_tokens = anchor_tokens(&tokenize_significant(&claim.statement));
     let narrative_support_count = top_support
         .iter()
         .filter(|candidate| is_narrative_aggregate_block(candidate.block))
         .count();
     let relevant_primary_heading = primary_heading_context(blocks)
-        .filter(|heading| primary_heading_supports_claim(heading, &claim_anchor_tokens));
+        .filter(|heading| primary_heading_supports_claim(heading, claim_anchor_tokens));
 
     if narrative_support_count < 2
         && !(narrative_support_count >= 1 && relevant_primary_heading.is_some())
@@ -56,7 +52,7 @@ pub(super) fn aggregate_support_score(
     let numeric_overlap = numeric_overlap_ratio(claim_numeric_tokens, &aggregated_text);
     let title_bonus = relevant_primary_heading.map(|_| 0.04).unwrap_or(0.0);
     let distributed_support_bonus =
-        distributed_support_bonus(&claim.statement, top_support, scoring_context);
+        distributed_support_bonus(claim_anchor_tokens, top_support, scoring_context);
     let multi_block_context_bonus =
         multi_block_context_bonus(narrative_support_count, relevant_primary_heading.is_some());
     let support_density_bonus = support_density_bonus(top_support, narrative_support_count);
@@ -129,15 +125,13 @@ fn append_candidate_support_text(
 }
 
 fn distributed_support_bonus(
-    claim_text: &str,
+    claim_anchor_tokens: &[String],
     top_support: &[ScoredCandidate<'_>],
     scoring_context: &ScoringContext,
 ) -> f64 {
     if top_support.len() < 2 {
         return 0.0;
     }
-
-    let claim_anchor_tokens = anchor_tokens(&tokenize_significant(claim_text));
     if claim_anchor_tokens.len() < 2 {
         return 0.0;
     }
@@ -168,7 +162,7 @@ fn distributed_support_bonus(
     }
 
     let coverage = weighted_anchor_coverage(
-        &claim_anchor_tokens,
+        claim_anchor_tokens,
         &covered_anchor_tokens,
         &scoring_context.claim_token_weights,
     );

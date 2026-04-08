@@ -10,7 +10,10 @@ use crate::{
         supported_resolution, top_support_candidates,
     },
     normalization::{build_claim_analysis_input, claim_is_low_signal_noise},
-    scoring::{build_scoring_context, score_candidates, ScoredCandidate},
+    scoring::{
+        build_scoring_context, document_prefers_cross_lingual_matching, score_candidates,
+        ScoredCandidate,
+    },
     ClaimRequest,
 };
 
@@ -44,8 +47,15 @@ pub(crate) fn analyze_claim<'a>(
             ),
         };
     }
-    let scoring_context = build_scoring_context(blocks, &analysis.claim_tokens);
-    let scored = score_candidates(blocks, &analysis, &scoring_context);
+    let matching_profile = matching_profile_for_document(blocks, &analysis);
+    let scoring_context = build_scoring_context(blocks, matching_profile.claim_tokens);
+    let scored = score_candidates(
+        blocks,
+        &analysis.normalized_claim,
+        matching_profile.claim_tokens,
+        &analysis.claim_numeric_tokens,
+        &scoring_context,
+    );
     let checked_refs = checked_refs(&scored);
     let contradictory_support = contradictory_support(&scored);
 
@@ -72,22 +82,27 @@ pub(crate) fn analyze_claim<'a>(
         claim,
         &top_support,
         blocks,
-        &analysis.claim_anchor_tokens,
+        matching_profile.claim_anchor_tokens,
         &analysis.claim_qualifier_tokens,
     );
     let effective_score = effective_support_score(
-        claim,
         &analysis,
+        matching_profile.claim_tokens,
+        matching_profile.claim_anchor_tokens,
         &top_support,
         blocks,
         &scoring_context,
         best_score,
     );
-    let support_threshold = support_acceptance_threshold(&top_support, &assessment);
+    let support_threshold = support_acceptance_threshold(
+        &top_support,
+        &assessment,
+        matching_profile.uses_cross_lingual_matching,
+    );
 
     if let Some(resolution) = guarded_resolution(
         claim,
-        &analysis,
+        matching_profile.claim_tokens,
         &top_support,
         &checked_refs,
         &assessment,
@@ -98,6 +113,34 @@ pub(crate) fn analyze_claim<'a>(
     }
 
     supported_resolution(best_score, top_support, checked_refs)
+}
+
+struct MatchingProfile<'a> {
+    claim_tokens: &'a [String],
+    claim_anchor_tokens: &'a [String],
+    uses_cross_lingual_matching: bool,
+}
+
+fn matching_profile_for_document<'a>(
+    blocks: &[SnapshotBlock],
+    analysis: &'a crate::normalization::ClaimAnalysisInput,
+) -> MatchingProfile<'a> {
+    if analysis.claim_contains_cjk
+        && !analysis.claim_cross_lingual_tokens.is_empty()
+        && document_prefers_cross_lingual_matching(blocks)
+    {
+        MatchingProfile {
+            claim_tokens: &analysis.claim_cross_lingual_tokens,
+            claim_anchor_tokens: &analysis.claim_cross_lingual_anchor_tokens,
+            uses_cross_lingual_matching: true,
+        }
+    } else {
+        MatchingProfile {
+            claim_tokens: &analysis.claim_tokens,
+            claim_anchor_tokens: &analysis.claim_anchor_tokens,
+            uses_cross_lingual_matching: false,
+        }
+    }
 }
 
 #[cfg(test)]
@@ -251,5 +294,36 @@ mod tests {
             }),
             "expected predicate guard failure for generic supertype support"
         );
+    }
+
+    #[test]
+    fn analyzer_supports_korean_claims_against_english_evidence_with_cross_lingual_tokens() {
+        let snapshot = simple_snapshot(
+            "The Fetch API provides an interface for fetching resources, including across the network.",
+        );
+
+        let resolution = analyze_claim(
+            &ClaimRequest::new(
+                "c1",
+                "Fetch API는 네트워크 요청을 위한 인터페이스를 제공한다.",
+            ),
+            &snapshot.blocks,
+        );
+
+        assert_eq!(resolution.verdict, EvidenceClaimVerdict::EvidenceSupported);
+    }
+
+    #[test]
+    fn analyzer_supports_chinese_claims_against_english_evidence_with_cross_lingual_tokens() {
+        let snapshot = simple_snapshot(
+            "The Fetch API provides an interface for fetching resources, including across the network.",
+        );
+
+        let resolution = analyze_claim(
+            &ClaimRequest::new("c1", "Fetch API 提供了用于网络请求的接口。"),
+            &snapshot.blocks,
+        );
+
+        assert_eq!(resolution.verdict, EvidenceClaimVerdict::EvidenceSupported);
     }
 }
