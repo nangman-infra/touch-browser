@@ -62,5 +62,5 @@ fn main() {
 }
 
 #[cfg(test)]
-#[path = "interface/cli_tests/mod.rs"]
+#[path = "interface/cli_tests.rs"]
 mod tests;
