@@ -405,99 +405,70 @@ fn cjk_ngrams(token: &str, width: usize) -> Vec<String> {
 }
 
 fn cross_lingual_glosses(token: &str) -> &'static [&'static str] {
-    if token.starts_with("제공") {
-        return &["provides"];
-    }
-    if token.starts_with("지원") {
-        return &["supports"];
-    }
-    if token.starts_with("인터페이스") {
-        return &["interface"];
-    }
-    if token.starts_with("네트워크") {
-        return &["network"];
-    }
-    if token.starts_with("요청") {
-        return &["request", "fetching"];
-    }
-    if token.starts_with("리소스") {
-        return &["resources"];
-    }
-    if token.starts_with("가져오") {
-        return &["fetching"];
-    }
-    if token.starts_with("사용") {
-        return &["used"];
-    }
-    if token.starts_with("문서") {
-        return &["documentation"];
-    }
-    if token.starts_with("검색") {
-        return &["search"];
-    }
-    if token.starts_with("추출") {
-        return &["extract"];
-    }
-    if token.starts_with("세션") {
-        return &["session"];
-    }
-    if token.starts_with("증거") || token.starts_with("근거") {
-        return &["evidence"];
-    }
-    if token.starts_with("언어") {
-        return &["language"];
-    }
-    if token.starts_with("컴파일") {
-        return &["compiled"];
-    }
-    if token.starts_with("인터프리") || token.starts_with("해석") {
-        return &["interpreted"];
-    }
-    if token.contains("提供") {
-        return &["provides"];
-    }
-    if token.contains("支持") {
-        return &["supports"];
-    }
-    if token.contains("接口") {
-        return &["interface"];
-    }
-    if token.contains("网络") {
-        return &["network"];
-    }
-    if token.contains("请求") {
-        return &["request", "fetching"];
-    }
-    if token.contains("资源") {
-        return &["resources"];
-    }
-    if token.contains("获取") || token.contains("抓取") {
-        return &["fetching"];
-    }
-    if token.contains("文档") {
-        return &["documentation"];
-    }
-    if token.contains("搜索") {
-        return &["search"];
-    }
-    if token.contains("提取") {
-        return &["extract"];
-    }
-    if token.contains("证据") || token.contains("依据") {
-        return &["evidence"];
-    }
-    if token.contains("语言") {
-        return &["language"];
-    }
-    if token.contains("编译") {
-        return &["compiled"];
-    }
-    if token.contains("解释") {
-        return &["interpreted"];
-    }
-
-    &[]
+    lookup_gloss_by_prefix(token, KOREAN_GLOSS_RULES)
+        .or_else(|| lookup_gloss_by_prefix(token, KOREAN_ALT_PREFIX_RULES))
+        .or_else(|| lookup_gloss_by_contains(token, CHINESE_GLOSS_RULES))
+        .or_else(|| lookup_gloss_by_contains(token, CHINESE_ALT_CONTAINS_RULES))
+        .unwrap_or(&[])
 }
+
+type GlossRule = (&'static str, &'static [&'static str]);
+
+fn lookup_gloss_by_prefix(token: &str, rules: &[GlossRule]) -> Option<&'static [&'static str]> {
+    rules
+        .iter()
+        .find_map(|(pattern, glosses)| token.starts_with(pattern).then_some(*glosses))
+}
+
+fn lookup_gloss_by_contains(token: &str, rules: &[GlossRule]) -> Option<&'static [&'static str]> {
+    rules
+        .iter()
+        .find_map(|(pattern, glosses)| token.contains(pattern).then_some(*glosses))
+}
+
+const KOREAN_GLOSS_RULES: &[GlossRule] = &[
+    ("제공", &["provides"]),
+    ("지원", &["supports"]),
+    ("인터페이스", &["interface"]),
+    ("네트워크", &["network"]),
+    ("요청", &["request", "fetching"]),
+    ("리소스", &["resources"]),
+    ("가져오", &["fetching"]),
+    ("사용", &["used"]),
+    ("문서", &["documentation"]),
+    ("검색", &["search"]),
+    ("추출", &["extract"]),
+    ("세션", &["session"]),
+    ("언어", &["language"]),
+    ("컴파일", &["compiled"]),
+];
+
+const KOREAN_ALT_PREFIX_RULES: &[GlossRule] = &[
+    ("증거", &["evidence"]),
+    ("근거", &["evidence"]),
+    ("인터프리", &["interpreted"]),
+    ("해석", &["interpreted"]),
+];
+
+const CHINESE_GLOSS_RULES: &[GlossRule] = &[
+    ("提供", &["provides"]),
+    ("支持", &["supports"]),
+    ("接口", &["interface"]),
+    ("网络", &["network"]),
+    ("请求", &["request", "fetching"]),
+    ("资源", &["resources"]),
+    ("获取", &["fetching"]),
+    ("抓取", &["fetching"]),
+    ("文档", &["documentation"]),
+    ("搜索", &["search"]),
+    ("提取", &["extract"]),
+    ("语言", &["language"]),
+    ("编译", &["compiled"]),
+    ("解释", &["interpreted"]),
+];
+
+const CHINESE_ALT_CONTAINS_RULES: &[GlossRule] =
+    &[("证据", &["evidence"]), ("依据", &["evidence"])];
 
 const STOP_WORDS: &[&str] = &[
     "the", "and", "for", "with", "that", "this", "from", "into", "your", "must", "now", "are",
