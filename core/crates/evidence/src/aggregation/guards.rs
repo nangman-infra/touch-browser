@@ -71,6 +71,19 @@ enum StatusProfile {
     Deprecated,
 }
 
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+enum PredicatePolarity {
+    None,
+    Positive,
+    Negative,
+}
+
+struct PredicateOpposition {
+    label: &'static str,
+    positive: &'static [&'static str],
+    negative: &'static [&'static str],
+}
+
 impl StatusProfile {
     fn requires_explicit_support(self) -> bool {
         matches!(
@@ -127,6 +140,16 @@ pub(super) fn assess_support_guards(
         &mut contradiction_reason,
         &mut guard_failures,
         status_guard_check(&claim.statement, &aggregated_all_tokens),
+    );
+    apply_guard_check(
+        &mut contradiction_reason,
+        &mut guard_failures,
+        predicate_guard_check(
+            &claim.statement,
+            &aggregated_all_tokens,
+            blocks,
+            claim_anchor_tokens,
+        ),
     );
     apply_guard_check(
         &mut contradiction_reason,
@@ -426,6 +449,74 @@ fn negation_guard_check(normalized_claim: &str, normalized_support: &str) -> Gua
     }
 }
 
+fn predicate_guard_check(
+    claim_text: &str,
+    aggregated_all_tokens: &[String],
+    blocks: &[SnapshotBlock],
+    claim_anchor_tokens: &[String],
+) -> GuardCheck {
+    let claim_tokens = tokenize_all(claim_text);
+
+    for opposition in PREDICATE_OPPOSITIONS {
+        let claim_polarity = detect_predicate_polarity(&claim_tokens, opposition);
+        if claim_polarity == PredicatePolarity::None {
+            continue;
+        }
+
+        let support_polarity = detect_predicate_polarity(aggregated_all_tokens, opposition);
+        if predicate_polarities_conflict(claim_polarity, support_polarity) {
+            return GuardCheck {
+                contradiction_reason: Some(UnsupportedClaimReason::PredicateMismatch),
+                failure: Some(EvidenceGuardFailure {
+                    kind: EvidenceGuardKind::Predicate,
+                    detail: format!(
+                        "Claim predicate `{}` conflicts with support predicate evidence.",
+                        opposition.label
+                    ),
+                }),
+            };
+        }
+
+        if support_polarity == claim_polarity {
+            continue;
+        }
+
+        if document_contains_opposite_predicate(
+            blocks,
+            claim_anchor_tokens,
+            claim_polarity,
+            opposition,
+        ) {
+            return GuardCheck {
+                contradiction_reason: Some(UnsupportedClaimReason::PredicateMismatch),
+                failure: Some(EvidenceGuardFailure {
+                    kind: EvidenceGuardKind::Predicate,
+                    detail: format!(
+                        "Document evidence contains the opposite `{}` predicate for the same subject.",
+                        opposition.label
+                    ),
+                }),
+            };
+        }
+
+        return GuardCheck {
+            contradiction_reason: None,
+            failure: Some(EvidenceGuardFailure {
+                kind: EvidenceGuardKind::Predicate,
+                detail: format!(
+                    "The claim requires explicit `{}` evidence, but the retrieved support only matches broader context.",
+                    opposition.label
+                ),
+            }),
+        };
+    }
+
+    GuardCheck {
+        contradiction_reason: None,
+        failure: None,
+    }
+}
+
 fn required_anchor_coverage(anchor_count: usize) -> f64 {
     match anchor_count {
         0 => 0.0,
@@ -548,6 +639,62 @@ fn status_profiles_contradict(claim: StatusProfile, support: StatusProfile) -> b
     )
 }
 
+fn detect_predicate_polarity(
+    tokens: &[String],
+    opposition: &PredicateOpposition,
+) -> PredicatePolarity {
+    let has_positive = tokens
+        .iter()
+        .any(|token| opposition.positive.contains(&token.as_str()));
+    let has_negative = tokens
+        .iter()
+        .any(|token| opposition.negative.contains(&token.as_str()));
+
+    match (has_positive, has_negative) {
+        (true, false) => PredicatePolarity::Positive,
+        (false, true) => PredicatePolarity::Negative,
+        _ => PredicatePolarity::None,
+    }
+}
+
+fn predicate_polarities_conflict(claim: PredicatePolarity, support: PredicatePolarity) -> bool {
+    matches!(
+        (claim, support),
+        (PredicatePolarity::Positive, PredicatePolarity::Negative)
+            | (PredicatePolarity::Negative, PredicatePolarity::Positive)
+    )
+}
+
+fn document_contains_opposite_predicate(
+    blocks: &[SnapshotBlock],
+    claim_anchor_tokens: &[String],
+    claim_polarity: PredicatePolarity,
+    opposition: &PredicateOpposition,
+) -> bool {
+    let required_anchor_overlap = if claim_anchor_tokens.is_empty() {
+        0.0
+    } else {
+        0.5
+    };
+
+    blocks.iter().any(|block| {
+        let search_text = block_search_text(block);
+        let block_tokens = tokenize_all(&search_text);
+        let block_polarity = detect_predicate_polarity(&block_tokens, opposition);
+        if !predicate_polarities_conflict(claim_polarity, block_polarity) {
+            return false;
+        }
+
+        if claim_anchor_tokens.is_empty() {
+            return true;
+        }
+
+        let block_significant_tokens = tokenize_significant(&search_text);
+        token_overlap_ratio(claim_anchor_tokens, &block_significant_tokens)
+            >= required_anchor_overlap
+    })
+}
+
 fn next_action_hint_for_failures(failures: &[EvidenceGuardFailure]) -> Option<String> {
     if failures.iter().any(|failure| {
         matches!(
@@ -568,6 +715,11 @@ fn next_action_hint_for_failures(failures: &[EvidenceGuardFailure]) -> Option<St
         .any(|failure| matches!(failure.kind, EvidenceGuardKind::Status))
     {
         Some("Browse the release notes or feature status page before answering.".to_string())
+    } else if failures
+        .iter()
+        .any(|failure| matches!(failure.kind, EvidenceGuardKind::Predicate))
+    {
+        Some("Browse a source sentence that explicitly states the property you are claiming before answering.".to_string())
     } else if failures.is_empty() {
         None
     } else {
@@ -585,3 +737,8 @@ const PREVIEW_STATUS_TOKENS: &[&str] = &["preview", "beta", "alpha", "experiment
 const GA_STATUS_TOKENS: &[&str] = &["launched", "generally", "ga"];
 const DEPRECATED_STATUS_TOKENS: &[&str] =
     &["deprecated", "legacy", "retired", "sunset", "unsupported"];
+const PREDICATE_OPPOSITIONS: &[PredicateOpposition] = &[PredicateOpposition {
+    label: "execution-model",
+    positive: &["compiled", "compile", "compil"],
+    negative: &["interpreted", "interpret"],
+}];

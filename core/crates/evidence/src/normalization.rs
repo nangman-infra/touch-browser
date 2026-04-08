@@ -6,6 +6,7 @@ use crate::ClaimRequest;
 
 pub(crate) struct ClaimAnalysisInput {
     pub(crate) claim_tokens: Vec<String>,
+    pub(crate) claim_sequence_tokens: Vec<String>,
     pub(crate) claim_numeric_tokens: Vec<String>,
     pub(crate) claim_anchor_tokens: Vec<String>,
     pub(crate) claim_qualifier_tokens: Vec<String>,
@@ -13,12 +14,15 @@ pub(crate) struct ClaimAnalysisInput {
 }
 
 pub(crate) fn build_claim_analysis_input(claim: &ClaimRequest) -> ClaimAnalysisInput {
+    let normalized_claim = normalize_text(&claim.statement);
+    let claim_sequence_tokens = split_normalized_tokens(&normalized_claim);
     let claim_tokens = tokenize_significant(&claim.statement);
     ClaimAnalysisInput {
+        claim_sequence_tokens,
         claim_numeric_tokens: numeric_tokens(&claim.statement),
         claim_anchor_tokens: anchor_tokens(&claim_tokens),
         claim_qualifier_tokens: qualifier_tokens(&claim.statement),
-        normalized_claim: normalize_text(&claim.statement),
+        normalized_claim,
         claim_tokens,
     }
 }
@@ -31,7 +35,7 @@ pub(crate) fn claim_is_low_signal_noise(statement: &str, claim_tokens: &[String]
 
     let significant_tokens = claim_tokens
         .iter()
-        .filter(|token| token.len() >= 2)
+        .filter(|token| token.chars().count() >= 2)
         .collect::<Vec<_>>();
     if significant_tokens.len() < 18 {
         return false;
@@ -52,8 +56,14 @@ pub(crate) fn claim_is_low_signal_noise(statement: &str, claim_tokens: &[String]
         })
         .max()
         .unwrap_or(0);
+    let max_consecutive_repetition = max_consecutive_repetition(claim_tokens);
+    let anchor_density =
+        anchor_tokens(claim_tokens).len() as f64 / significant_tokens.len().max(1) as f64;
 
-    unique_ratio <= 0.45 || max_repetition >= 8
+    unique_ratio <= 0.45
+        || max_repetition >= 8
+        || max_consecutive_repetition >= 6
+        || (significant_tokens.len() >= 24 && anchor_density <= 0.22)
 }
 
 pub(crate) fn token_overlap_ratio(claim_tokens: &[String], block_tokens: &[String]) -> f64 {
@@ -243,6 +253,25 @@ fn split_normalized_tokens(normalized: &str) -> Vec<String> {
         .split_whitespace()
         .map(ToString::to_string)
         .collect::<Vec<_>>()
+}
+
+fn max_consecutive_repetition(tokens: &[String]) -> usize {
+    let mut max_run = 0usize;
+    let mut current_run = 0usize;
+    let mut previous: Option<&str> = None;
+
+    for token in tokens {
+        let token = token.as_str();
+        if previous == Some(token) {
+            current_run += 1;
+        } else {
+            current_run = 1;
+            previous = Some(token);
+        }
+        max_run = max_run.max(current_run);
+    }
+
+    max_run
 }
 
 fn expand_semantic_tokens(token: &str, significant_only: bool) -> Vec<String> {

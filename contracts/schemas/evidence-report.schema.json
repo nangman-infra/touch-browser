@@ -144,6 +144,7 @@
               "scope-mismatch",
               "status-mismatch",
               "negation-mismatch",
+              "predicate-mismatch",
               "needs-more-browsing"
             ]
           },
@@ -170,6 +171,7 @@
                     "scope",
                     "status",
                     "negation",
+                    "predicate",
                     "anchor-coverage",
                     "qualifier-coverage"
                   ]

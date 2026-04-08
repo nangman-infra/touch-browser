@@ -56,7 +56,15 @@ fn layout_zone_for_dom_segment(segment: &str) -> Option<LayoutZone> {
     if segment_matches_zone(&normalized, "footer")
         || segment_has_any_marker(
             &marker_tokens,
-            &["contentinfo", "site-footer", "page-footer"],
+            &[
+                "contentinfo",
+                "site-footer",
+                "page-footer",
+                "article-footer",
+                "article-footer--inner",
+                "last-modified",
+                "contributors",
+            ],
         )
         || segment_has_marker_prefix(&marker_tokens, "footer-")
     {
@@ -125,6 +133,8 @@ fn layout_zone_for_dom_segment(segment: &str) -> Option<LayoutZone> {
                 "docs-content",
                 "doc-content",
                 "docs-page",
+                "reference-layout--body",
+                "content-section",
                 "mdx-content",
                 "markdown",
                 "article-content",

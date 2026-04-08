@@ -66,6 +66,17 @@ pub(crate) fn semantic_zone(node: &NodeRef, tag: &str) -> &'static str {
         "nav"
     } else if has_ancestor_marker(node, &["sidebar", "side-panel", "mw-panel"]) {
         "aside"
+    } else if has_ancestor_marker(
+        node,
+        &[
+            "article-footer",
+            "article-footer__inner",
+            "article-footer--inner",
+            "last-modified",
+            "contributors",
+        ],
+    ) {
+        "footer"
     } else if has_ancestor_tag(node, &["main"])
         || has_ancestor_role(node, "main")
         || has_ancestor_marker(
@@ -77,6 +88,9 @@ pub(crate) fn semantic_zone(node: &NodeRef, tag: &str) -> &'static str {
                 "article-body",
                 "main-content",
                 "vector-body",
+                "reference-layout__body",
+                "reference-layout--body",
+                "content-section",
             ],
         )
     {

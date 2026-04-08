@@ -169,6 +169,7 @@ pub enum EvidenceGuardKind {
     Scope,
     Status,
     Negation,
+    Predicate,
     AnchorCoverage,
     QualifierCoverage,
 }
@@ -194,6 +195,7 @@ pub enum UnsupportedClaimReason {
     ScopeMismatch,
     StatusMismatch,
     NegationMismatch,
+    PredicateMismatch,
     NeedsMoreBrowsing,
 }
 

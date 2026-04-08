@@ -108,7 +108,7 @@ fn app_title_fallback_compact(snapshot: &SnapshotDocument) -> Option<String> {
         .map(|title| format!("h1 {title}"))
 }
 
-fn preferred_main_content_markers() -> [&'static str; 6] {
+fn preferred_main_content_markers() -> [&'static str; 8] {
     [
         "article",
         "role=article",
@@ -116,6 +116,19 @@ fn preferred_main_content_markers() -> [&'static str; 6] {
         "entry-content",
         "readme",
         "article-content",
+        "reference-layout--body",
+        "content-section",
+    ]
+}
+
+fn excluded_main_content_markers() -> [&'static str; 6] {
+    [
+        "article-footer",
+        "article-footer--inner",
+        "feedback",
+        "contributors",
+        "last-modified",
+        "report-a-problem",
     ]
 }
 
@@ -126,6 +139,12 @@ fn block_matches_preferred_main_content(block: &SnapshotBlock) -> bool {
         .as_deref()
         .unwrap_or_default()
         .to_ascii_lowercase();
+    if excluded_main_content_markers()
+        .iter()
+        .any(|marker| dom_path.contains(marker))
+    {
+        return false;
+    }
     preferred_main_content_markers()
         .iter()
         .any(|marker| dom_path.contains(marker))
@@ -564,7 +583,10 @@ mod tests {
                     stable_ref: "rmain:text:summary".to_string(),
                     role: SnapshotBlockRole::Content,
                     text: "As described in RFC 2606 and RFC 6761, example domains are reserved for documentation.".to_string(),
-                    attributes: BTreeMap::from([("zone".to_string(), json!("main"))]),
+                    attributes: BTreeMap::from([
+                        ("zone".to_string(), json!("main")),
+                        ("level".to_string(), json!(2)),
+                    ]),
                     evidence: SnapshotEvidence {
                         source_url: "https://www.iana.org/help/example-domains".to_string(),
                         source_type: SourceType::Http,
@@ -1055,7 +1077,10 @@ mod tests {
                     stable_ref: "rmain:button:start-scraping".to_string(),
                     role: SnapshotBlockRole::FormControl,
                     text: "Start scraping".to_string(),
-                    attributes: BTreeMap::from([("zone".to_string(), json!("main"))]),
+                    attributes: BTreeMap::from([
+                        ("zone".to_string(), json!("main")),
+                        ("level".to_string(), json!(2)),
+                    ]),
                     evidence: SnapshotEvidence {
                         source_url: "https://firecrawl.dev/playground".to_string(),
                         source_type: SourceType::Playwright,
@@ -1289,6 +1314,116 @@ mod tests {
         assert!(compact.contains("reference implementation"));
         assert!(!compact.contains("Sponsor CPython development"));
         assert!(!compact.contains("Last commit"));
+    }
+
+    #[test]
+    fn main_read_view_prefers_mdn_reference_body_over_article_footer_feedback() {
+        let snapshot = SnapshotDocument {
+            version: CONTRACT_VERSION.to_string(),
+            stable_ref_version: STABLE_REF_VERSION.to_string(),
+            source: SnapshotSource {
+                source_url: "https://developer.mozilla.org/en-US/docs/Web/API/Fetch_API"
+                    .to_string(),
+                source_type: SourceType::Playwright,
+                title: Some("Fetch API - Web APIs | MDN".to_string()),
+            },
+            budget: SnapshotBudget {
+                requested_tokens: 512,
+                estimated_tokens: 72,
+                emitted_tokens: 72,
+                truncated: false,
+            },
+            blocks: vec![
+                SnapshotBlock {
+                    version: CONTRACT_VERSION.to_string(),
+                    id: "b1".to_string(),
+                    kind: SnapshotBlockKind::Heading,
+                    stable_ref: "rmain:heading:concepts-and-usage".to_string(),
+                    role: SnapshotBlockRole::Content,
+                    text: "Concepts and usage".to_string(),
+                    attributes: BTreeMap::from([("zone".to_string(), json!("main"))]),
+                    evidence: SnapshotEvidence {
+                        source_url: "https://developer.mozilla.org/en-US/docs/Web/API/Fetch_API"
+                            .to_string(),
+                        source_type: SourceType::Playwright,
+                        dom_path_hint: Some(
+                            "html > body > main#content > div.layout__body.reference-layout__body > section.content-section > h2.heading"
+                                .to_string(),
+                        ),
+                        byte_range_start: None,
+                        byte_range_end: None,
+                    },
+                },
+                SnapshotBlock {
+                    version: CONTRACT_VERSION.to_string(),
+                    id: "b2".to_string(),
+                    kind: SnapshotBlockKind::Text,
+                    stable_ref: "rmain:text:fetch-api-provides-interface".to_string(),
+                    role: SnapshotBlockRole::Content,
+                    text: "The Fetch API provides an interface for fetching resources."
+                        .to_string(),
+                    attributes: BTreeMap::from([("zone".to_string(), json!("main"))]),
+                    evidence: SnapshotEvidence {
+                        source_url: "https://developer.mozilla.org/en-US/docs/Web/API/Fetch_API"
+                            .to_string(),
+                        source_type: SourceType::Playwright,
+                        dom_path_hint: Some(
+                            "html > body > main#content > div.layout__body.reference-layout__body > section.content-section > p"
+                                .to_string(),
+                        ),
+                        byte_range_start: None,
+                        byte_range_end: None,
+                    },
+                },
+                SnapshotBlock {
+                    version: CONTRACT_VERSION.to_string(),
+                    id: "b3".to_string(),
+                    kind: SnapshotBlockKind::Heading,
+                    stable_ref: "rmain:heading:feedback".to_string(),
+                    role: SnapshotBlockRole::Content,
+                    text: "Help improve MDN".to_string(),
+                    attributes: BTreeMap::from([("zone".to_string(), json!("main"))]),
+                    evidence: SnapshotEvidence {
+                        source_url: "https://developer.mozilla.org/en-US/docs/Web/API/Fetch_API"
+                            .to_string(),
+                        source_type: SourceType::Playwright,
+                        dom_path_hint: Some(
+                            "html > body > main#content > section.content-section.article-footer > h2#feedback"
+                                .to_string(),
+                        ),
+                        byte_range_start: None,
+                        byte_range_end: None,
+                    },
+                },
+                SnapshotBlock {
+                    version: CONTRACT_VERSION.to_string(),
+                    id: "b4".to_string(),
+                    kind: SnapshotBlockKind::Text,
+                    stable_ref: "rmain:text:last-modified".to_string(),
+                    role: SnapshotBlockRole::Content,
+                    text: "This page was last modified on Jan 8, 2026 by MDN contributors."
+                        .to_string(),
+                    attributes: BTreeMap::from([("zone".to_string(), json!("main"))]),
+                    evidence: SnapshotEvidence {
+                        source_url: "https://developer.mozilla.org/en-US/docs/Web/API/Fetch_API"
+                            .to_string(),
+                        source_type: SourceType::Playwright,
+                        dom_path_hint: Some(
+                            "html > body > main#content > section.content-section.article-footer > p.article-footer__last-modified"
+                                .to_string(),
+                        ),
+                        byte_range_start: None,
+                        byte_range_end: None,
+                    },
+                },
+            ],
+        };
+
+        let markdown = render_main_read_view_markdown(&snapshot);
+        assert!(markdown.contains("# Concepts and usage"));
+        assert!(markdown.contains("provides an interface for fetching resources"));
+        assert!(!markdown.contains("Help improve MDN"));
+        assert!(!markdown.contains("last modified"));
     }
 
     #[test]

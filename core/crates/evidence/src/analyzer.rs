@@ -30,7 +30,7 @@ pub(crate) fn analyze_claim<'a>(
     blocks: &'a [SnapshotBlock],
 ) -> ClaimResolution<'a> {
     let analysis = build_claim_analysis_input(claim);
-    if claim_is_low_signal_noise(&claim.statement, &analysis.claim_tokens) {
+    if claim_is_low_signal_noise(&claim.statement, &analysis.claim_sequence_tokens) {
         return ClaimResolution {
             verdict: EvidenceClaimVerdict::InsufficientEvidence,
             support: Vec::new(),
@@ -103,8 +103,9 @@ pub(crate) fn analyze_claim<'a>(
 #[cfg(test)]
 mod tests {
     use touch_browser_contracts::{
-        SnapshotBlock, SnapshotBlockKind, SnapshotBlockRole, SnapshotDocument, SnapshotEvidence,
-        SnapshotSource, SourceRisk, SourceType, UnsupportedClaimReason,
+        EvidenceClaimVerdict, SnapshotBlock, SnapshotBlockKind, SnapshotBlockRole,
+        SnapshotDocument, SnapshotEvidence, SnapshotSource, SourceRisk, SourceType,
+        UnsupportedClaimReason,
     };
 
     use super::analyze_claim;
@@ -158,6 +159,13 @@ mod tests {
             Some(UnsupportedClaimReason::InsufficientConfidence)
         );
         assert!(resolution.support.is_empty());
+        assert!(
+            resolution
+                .next_action_hint
+                .as_deref()
+                .is_some_and(|hint| hint.contains("Rewrite the claim")),
+            "expected low-signal claim to return rewrite guidance"
+        );
     }
 
     #[test]
@@ -175,5 +183,73 @@ mod tests {
 
         assert_eq!(report.supported_claims.len(), 1);
         assert!(report.unsupported_claims.is_empty());
+    }
+
+    #[test]
+    fn analyzer_contradicts_execution_model_claims_when_document_states_the_opposite() {
+        let mut snapshot = simple_snapshot(
+            "Python is an interpreted high-level general-purpose programming language.",
+        );
+        snapshot.blocks.push(SnapshotBlock {
+            version: "1.0.0".to_string(),
+            id: "b2".to_string(),
+            kind: SnapshotBlockKind::List,
+            stable_ref: "rmain:list:python-implementations".to_string(),
+            role: SnapshotBlockRole::Content,
+            text: "- CPython - PyPy - Jython".to_string(),
+            attributes: Default::default(),
+            evidence: SnapshotEvidence {
+                source_url: "https://example.com".to_string(),
+                source_type: SourceType::Http,
+                dom_path_hint: Some("html > body > main > ul".to_string()),
+                byte_range_start: None,
+                byte_range_end: None,
+            },
+        });
+
+        let resolution = analyze_claim(
+            &ClaimRequest::new("c1", "Python is a compiled language."),
+            &snapshot.blocks,
+        );
+
+        assert_eq!(resolution.verdict, EvidenceClaimVerdict::Contradicted);
+        assert_eq!(
+            resolution.reason,
+            Some(UnsupportedClaimReason::PredicateMismatch)
+        );
+    }
+
+    #[test]
+    fn analyzer_does_not_support_generic_supertype_blocks_for_execution_model_claims() {
+        let mut snapshot = simple_snapshot("Python is a programming language.");
+        snapshot.blocks.push(SnapshotBlock {
+            version: "1.0.0".to_string(),
+            id: "b2".to_string(),
+            kind: SnapshotBlockKind::List,
+            stable_ref: "rmain:list:python-libraries".to_string(),
+            role: SnapshotBlockRole::Content,
+            text: "- NumPy - pandas - Django".to_string(),
+            attributes: Default::default(),
+            evidence: SnapshotEvidence {
+                source_url: "https://example.com".to_string(),
+                source_type: SourceType::Http,
+                dom_path_hint: Some("html > body > main > ul".to_string()),
+                byte_range_start: None,
+                byte_range_end: None,
+            },
+        });
+
+        let resolution = analyze_claim(
+            &ClaimRequest::new("c1", "Python is a compiled language."),
+            &snapshot.blocks,
+        );
+
+        assert_ne!(resolution.verdict, EvidenceClaimVerdict::EvidenceSupported);
+        assert!(
+            resolution.guard_failures.iter().any(|failure| {
+                failure.kind == touch_browser_contracts::EvidenceGuardKind::Predicate
+            }),
+            "expected predicate guard failure for generic supertype support"
+        );
     }
 }
