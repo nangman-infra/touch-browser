@@ -1,4 +1,5 @@
 import { settleAfterAction } from "../action-helpers.js";
+import { readProbeFallback } from "../error-tolerance.js";
 import { findExpandLocator } from "../locator-scoring.js";
 import { normalizeWhitespace } from "../shared.js";
 import type { JsonRpcRequest, JsonRpcResponse } from "../types.js";
@@ -36,9 +37,11 @@ export async function handleExpand(
       }
 
       const clickedText = normalizeWhitespace(
-        (await payload.locatedTarget
-          .textContent()
-          .catch(() => payload.resolvedTarget)) ?? payload.resolvedTarget,
+        (await readProbeFallback(
+          payload.locatedTarget.textContent(),
+          payload.resolvedTarget,
+          "handleExpand clickedText",
+        )) ?? payload.resolvedTarget,
       );
       await payload.locatedTarget.click();
       await settleAfterAction(page);

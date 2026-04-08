@@ -247,7 +247,7 @@ async function runMcpCall<T>(
   method: string,
   params: Record<string, unknown>,
 ): Promise<T> {
-  const child = spawnShellCommand("node scripts/touch-browser-mcp-bridge.mjs", {
+  const child = spawnShellCommand("node integrations/mcp/bridge/index.mjs", {
     cwd: repoRoot,
     stdio: ["pipe", "pipe", "pipe"],
   });

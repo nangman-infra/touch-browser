@@ -12,6 +12,11 @@ import path from "node:path";
 import { type BrowserContext, type Page, chromium } from "playwright";
 
 import {
+  ignoreCleanupFailure,
+  ignoreNavigationSettleFailure,
+  readProbeFallback,
+} from "./error-tolerance.js";
+import {
   hasSearchIdentityMarker,
   installSearchIdentity,
   searchIdentityPersistentOptions,
@@ -106,8 +111,9 @@ export async function withPage<T>(
         await closeContextQuietly(context);
       }
     } finally {
-      await rm(tempContextDir, { recursive: true, force: true }).catch(
-        () => {},
+      await ignoreCleanupFailure(
+        rm(tempContextDir, { recursive: true, force: true }),
+        "withPage temp search profile cleanup",
       );
     }
   }
@@ -141,10 +147,11 @@ export async function capturePageState(page: Page): Promise<BrowserPageState> {
     try {
       const title = await page.title();
       const visibleText = normalizeWhitespace(
-        await page
-          .locator("body")
-          .innerText()
-          .catch(() => ""),
+        await readProbeFallback(
+          page.locator("body").innerText(),
+          "",
+          "capturePageState body text",
+        ),
       );
       const linkCount = await page.locator("a").count();
       const buttonCount = await page.locator("button").count();
@@ -173,13 +180,18 @@ export async function capturePageState(page: Page): Promise<BrowserPageState> {
         throw error;
       }
 
-      await page
-        .waitForLoadState("domcontentloaded", { timeout: 1000 })
-        .catch(() => {});
-      await page
-        .waitForLoadState("networkidle", { timeout: 1000 })
-        .catch(() => {});
-      await page.waitForTimeout(150).catch(() => {});
+      await ignoreNavigationSettleFailure(
+        page.waitForLoadState("domcontentloaded", { timeout: 1000 }),
+        "capturePageState domcontentloaded retry",
+      );
+      await ignoreNavigationSettleFailure(
+        page.waitForLoadState("networkidle", { timeout: 1000 }),
+        "capturePageState networkidle retry",
+      );
+      await ignoreNavigationSettleFailure(
+        page.waitForTimeout(150),
+        "capturePageState retry backoff",
+      );
     }
   }
 
@@ -203,8 +215,12 @@ async function readLinks(
   ) {
     const locator = page.locator("a").nth(index);
     const [text, href] = await Promise.all([
-      locator.textContent().catch(() => ""),
-      locator.getAttribute("href").catch(() => null),
+      readProbeFallback(locator.textContent(), "", `readLinks text ${index}`),
+      readProbeFallback(
+        locator.getAttribute("href"),
+        null,
+        `readLinks href ${index}`,
+      ),
     ]);
     links.push({
       text: normalizeWhitespace(text ?? ""),
@@ -358,7 +374,7 @@ function isAlreadyExistsError(error: unknown): boolean {
 }
 
 async function closeContextQuietly(context: BrowserContext): Promise<void> {
-  await context.close().catch(() => {});
+  await ignoreCleanupFailure(context.close(), "closeContextQuietly context");
 }
 
 function delay(ms: number): Promise<void> {
@@ -390,14 +406,16 @@ async function loadPageSource(
       timeout: PAGE_NAVIGATION_TIMEOUT_MS,
     });
     if (source.searchIdentity) {
-      await page
-        .waitForLoadState("networkidle", {
+      await ignoreNavigationSettleFailure(
+        page.waitForLoadState("networkidle", {
           timeout: SEARCH_PROFILE_POST_LOAD_IDLE_MS,
-        })
-        .catch(() => {});
-      await page
-        .waitForTimeout(SEARCH_PROFILE_POST_LOAD_WAIT_MS)
-        .catch(() => {});
+        }),
+        "loadPageSource search profile networkidle",
+      );
+      await ignoreNavigationSettleFailure(
+        page.waitForTimeout(SEARCH_PROFILE_POST_LOAD_WAIT_MS),
+        "loadPageSource search profile settle wait",
+      );
     }
   }
 }

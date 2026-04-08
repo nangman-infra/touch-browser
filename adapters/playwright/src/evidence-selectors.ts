@@ -1,6 +1,10 @@
 import type { Locator, Page } from "playwright";
 
 import { settleAfterAction } from "./action-helpers.js";
+import {
+  ignoreOptionalActionFailure,
+  readProbeFallback,
+} from "./error-tolerance.js";
 import { normalizeWhitespace } from "./shared.js";
 import {
   EVIDENCE_SELECTOR_KEYWORDS,
@@ -100,7 +104,11 @@ async function describeEvidenceSelectorCandidates(
 ): Promise<readonly EvidenceSelectorCandidate[]> {
   const candidates: EvidenceSelectorCandidate[] = [];
   const selectorLocator = page.locator(selector);
-  const candidateCount = await selectorLocator.count().catch(() => 0);
+  const candidateCount = await readProbeFallback(
+    selectorLocator.count(),
+    0,
+    `describeEvidenceSelectorCandidates count ${selector}`,
+  );
 
   for (let index = 0; index < candidateCount; index += 1) {
     const locator = selectorLocator.nth(index);
@@ -109,7 +117,11 @@ async function describeEvidenceSelectorCandidates(
       index,
       descriptor,
       cacheKey: descriptor.toLowerCase(),
-      popupId: await locator.getAttribute("aria-controls").catch(() => null),
+      popupId: await readProbeFallback(
+        locator.getAttribute("aria-controls"),
+        null,
+        `describeEvidenceSelectorCandidates popupId ${selector}:${index}`,
+      ),
     });
   }
 
@@ -117,14 +129,21 @@ async function describeEvidenceSelectorCandidates(
 }
 
 async function isLocatorVisible(locator: Locator): Promise<boolean> {
-  return locator.isVisible().catch(() => false);
+  return await readProbeFallback(
+    locator.isVisible(),
+    false,
+    "isLocatorVisible",
+  );
 }
 
 async function openEvidenceSelectorAndCapturePopup(
   page: Page,
   target: EvidenceSelectorTarget,
 ): Promise<EvidencePopupSnapshot | undefined> {
-  await target.locator.click().catch(() => {});
+  await ignoreOptionalActionFailure(
+    target.locator.click(),
+    `openEvidenceSelectorAndCapturePopup click ${target.descriptor}`,
+  );
   await settleAfterAction(page);
   const popupSnapshot = await captureEvidencePopupSnapshot(
     page,
@@ -140,8 +159,8 @@ async function captureEvidencePopupSnapshot(
   popupId: string,
   descriptor: string,
 ): Promise<EvidencePopupSnapshot | undefined> {
-  const popupHtml = await popupLocator(page, popupId)
-    .evaluate((popup) => {
+  const popupHtml = await readProbeFallback(
+    popupLocator(page, popupId).evaluate((popup) => {
       if (!(popup instanceof HTMLElement)) {
         return undefined;
       }
@@ -155,8 +174,10 @@ async function captureEvidencePopupSnapshot(
         styleNode.remove();
       }
       return clone.outerHTML;
-    })
-    .catch(() => undefined);
+    }),
+    undefined,
+    `captureEvidencePopupSnapshot ${popupId}`,
+  );
 
   if (!popupHtml) {
     return undefined;
@@ -170,19 +191,39 @@ async function captureEvidencePopupSnapshot(
 }
 
 async function closeEvidencePopup(page: Page, popupId: string): Promise<void> {
-  await page.keyboard.press("Escape").catch(() => {});
-  await page.waitForTimeout(100).catch(() => {});
+  await ignoreOptionalActionFailure(
+    page.keyboard.press("Escape"),
+    `closeEvidencePopup escape ${popupId}`,
+  );
+  await ignoreOptionalActionFailure(
+    page.waitForTimeout(100),
+    `closeEvidencePopup wait after escape ${popupId}`,
+  );
   const popup = popupLocator(page, popupId);
   const [popupStillVisible, hiddenAttribute, ariaHidden, dataState] =
     await Promise.all([
-      popup.isVisible().catch(() => false),
-      popup.getAttribute("hidden").catch(() => null),
-      popup.getAttribute("aria-hidden").catch(() => null),
-      popup
-        .evaluate((node) =>
+      readProbeFallback(
+        popup.isVisible(),
+        false,
+        `closeEvidencePopup visible ${popupId}`,
+      ),
+      readProbeFallback(
+        popup.getAttribute("hidden"),
+        null,
+        `closeEvidencePopup hidden ${popupId}`,
+      ),
+      readProbeFallback(
+        popup.getAttribute("aria-hidden"),
+        null,
+        `closeEvidencePopup aria-hidden ${popupId}`,
+      ),
+      readProbeFallback(
+        popup.evaluate((node) =>
           node instanceof HTMLElement ? (node.dataset.state ?? null) : null,
-        )
-        .catch(() => null),
+        ),
+        null,
+        `closeEvidencePopup data-state ${popupId}`,
+      ),
     ]);
   const popupStillOpen =
     popupStillVisible &&
@@ -191,8 +232,14 @@ async function closeEvidencePopup(page: Page, popupId: string): Promise<void> {
     dataState !== "closed";
 
   if (popupStillOpen) {
-    await page.mouse.click(8, 8).catch(() => {});
-    await page.waitForTimeout(100).catch(() => {});
+    await ignoreOptionalActionFailure(
+      page.mouse.click(8, 8),
+      `closeEvidencePopup outside click ${popupId}`,
+    );
+    await ignoreOptionalActionFailure(
+      page.waitForTimeout(100),
+      `closeEvidencePopup wait after outside click ${popupId}`,
+    );
   }
 }
 
@@ -204,8 +251,8 @@ async function injectEvidencePopupSnapshots(
     return;
   }
 
-  await page
-    .evaluate((entries) => {
+  await ignoreOptionalActionFailure(
+    page.evaluate((entries) => {
       for (const entry of entries) {
         if (document.getElementById(entry.id)) {
           continue;
@@ -228,8 +275,9 @@ async function injectEvidencePopupSnapshots(
         element.style.position = "static";
         document.body.appendChild(element);
       }
-    }, popupSnapshots)
-    .catch(() => {});
+    }, popupSnapshots),
+    "injectEvidencePopupSnapshots append snapshots",
+  );
 }
 
 function popupLocator(page: Page, popupId: string): Locator {
@@ -238,9 +286,17 @@ function popupLocator(page: Page, popupId: string): Locator {
 
 async function selectorDescriptor(locator: Locator): Promise<string> {
   const [text, ariaLabel, name] = await Promise.all([
-    locator.textContent().catch(() => ""),
-    locator.getAttribute("aria-label").catch(() => null),
-    locator.getAttribute("name").catch(() => null),
+    readProbeFallback(locator.textContent(), "", "selectorDescriptor text"),
+    readProbeFallback(
+      locator.getAttribute("aria-label"),
+      null,
+      "selectorDescriptor aria-label",
+    ),
+    readProbeFallback(
+      locator.getAttribute("name"),
+      null,
+      "selectorDescriptor name",
+    ),
   ]);
 
   return normalizeWhitespace([text, ariaLabel, name].filter(Boolean).join(" "));

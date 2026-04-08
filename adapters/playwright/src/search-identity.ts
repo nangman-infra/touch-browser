@@ -215,6 +215,9 @@ export async function searchIdentityPersistentOptions(
     return {};
   }
 
+  // Search identity is intentionally scoped to search discovery flows.
+  // It stabilizes browser-exposed identity hints for result-page capture and
+  // is not used as a general stealth layer for arbitrary browsing sessions.
   const { executablePath, userAgent } =
     await resolveSearchIdentityProfile(source);
   return {

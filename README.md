@@ -94,14 +94,21 @@ Minimal MCP bridge setup from the repository root:
   "mcpServers": {
     "touch-browser": {
       "command": "node",
-      "args": ["scripts/touch-browser-mcp-bridge.mjs"]
+      "args": ["integrations/mcp/bridge/index.mjs"]
     }
   }
 }
 ```
 
 The bridge starts `touch-browser serve` underneath and exposes tools like `tb_search`, `tb_search_open_top`, `tb_open`, `tb_read_view`, `tb_extract`, `tb_tab_open`, and `tb_session_synthesize`.
+Use `TOUCH_BROWSER_SERVE_COMMAND` if you want the bridge to launch a built binary instead of the default `cargo run -q -p touch-browser-cli -- serve`.
 `tb_read_view` accepts `mainOnly`, `tb_extract` accepts `verifierCommand`, and `tb_search` returns ranked results plus `nextActionHints` with `actor`, `canAutoRun`, and `headedRequired`.
+
+Search capture note:
+
+- search identity stabilization is only applied to search-specific browser flows
+- it reduces browser-exposed automation markers enough to keep search result pages readable
+- it is not presented as a general stealth automation layer for arbitrary browsing, auth, or write flows
 
 ## Docs And Proof
 

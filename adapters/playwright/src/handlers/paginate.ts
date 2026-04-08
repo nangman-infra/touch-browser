@@ -8,6 +8,7 @@ import {
   capturePageState,
   withPage,
 } from "../browser-runtime.js";
+import { readProbeFallback } from "../error-tolerance.js";
 import { findFirstLocator } from "../locator-scoring.js";
 import { asBoolean, asNumber, asString, failure, success } from "../rpc.js";
 import { normalizeWhitespace } from "../shared.js";
@@ -56,7 +57,11 @@ export async function handlePaginate(
         }
 
         const clickedText = normalizeWhitespace(
-          (await locator.textContent().catch(() => direction)) ?? direction,
+          (await readProbeFallback(
+            locator.textContent(),
+            direction,
+            `handlePaginate clickedText ${direction}`,
+          )) ?? direction,
         );
         await locator.click();
         await settleAfterAction(page);

@@ -11,7 +11,8 @@ This document defines the thin MCP bridge that sits on top of `touch-browser ser
 
 Provided file:
 
-- [touch-browser-mcp-bridge.mjs](../scripts/touch-browser-mcp-bridge.mjs)
+- [integrations/mcp/bridge/index.mjs](../integrations/mcp/bridge/index.mjs)
+- compatibility launcher: [touch-browser-mcp-bridge.mjs](../scripts/touch-browser-mcp-bridge.mjs)
 
 Run:
 
@@ -24,7 +25,7 @@ Minimal setup:
   "mcpServers": {
     "touch-browser": {
       "command": "node",
-      "args": ["scripts/touch-browser-mcp-bridge.mjs"]
+      "args": ["integrations/mcp/bridge/index.mjs"]
     }
   }
 }
@@ -104,4 +105,5 @@ Relevant tool inputs:
 - search responses also carry `status`, `statusDetail`, and structured `nextActionHints.actor/canAutoRun/headedRequired`, so an MCP client can decide whether to open ranked tabs, re-run headed for a CAPTCHA, or hand the step back to a human
 - interactive tools only make sense inside allowlisted daemon sessions and still require risk acknowledgement when challenge, MFA, auth, or high-risk-write signals appear
 - the bridge starts `touch-browser serve` as an internal child process and injects `TOUCH_BROWSER_TELEMETRY_SURFACE=mcp`
+- set `TOUCH_BROWSER_SERVE_COMMAND` to override the child-process command with a built binary or wrapper
 - use `verifierCommand` to let a second-pass judge adjudicate the final verdict without replacing the base evidence collector

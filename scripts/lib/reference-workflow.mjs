@@ -1,7 +1,7 @@
 import { repoRoot } from "./live-sample-server.mjs";
 import { createMcpClient } from "./mcp-client.mjs";
 
-const bridgeCommand = "node scripts/touch-browser-mcp-bridge.mjs";
+const bridgeCommand = "node integrations/mcp/bridge/index.mjs";
 
 export function createWorkflowClient({ name, version = "0.1.0" }) {
   return createMcpClient({

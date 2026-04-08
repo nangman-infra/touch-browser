@@ -1,5 +1,6 @@
 import type { Locator, Page } from "playwright";
 
+import { readProbeFallback } from "./error-tolerance.js";
 import { normalizeWhitespace } from "./shared.js";
 import type {
   CandidateDescriptor,
@@ -13,7 +14,11 @@ export async function findFirstLocator(
 ): Promise<ReturnType<Page["locator"]> | undefined> {
   for (const selector of selectors) {
     const locator = page.locator(selector).first();
-    const count = await locator.count().catch(() => 0);
+    const count = await readProbeFallback(
+      locator.count(),
+      0,
+      `findFirstLocator count ${selector}`,
+    );
     if (count > 0) {
       return locator;
     }
@@ -131,7 +136,11 @@ async function describeCandidate(
   locator: Locator,
   domIndex: number,
 ): Promise<CandidateDescriptor | undefined> {
-  const isVisible = await locator.isVisible().catch(() => false);
+  const isVisible = await readProbeFallback(
+    locator.isVisible(),
+    false,
+    `describeCandidate visible ${domIndex}`,
+  );
   if (!isVisible) {
     return undefined;
   }
@@ -148,13 +157,23 @@ async function describeCandidate(
     value,
     ariaLabel,
   ] = await Promise.all([
-    locator.textContent().catch(() => ""),
-    locator.getAttribute("href").catch(() => null),
-    locator
-      .evaluate((element) => element.tagName.toLowerCase())
-      .catch(() => ""),
-    locator
-      .evaluate((element) => {
+    readProbeFallback(
+      locator.textContent(),
+      "",
+      `describeCandidate text ${domIndex}`,
+    ),
+    readProbeFallback(
+      locator.getAttribute("href"),
+      null,
+      `describeCandidate href ${domIndex}`,
+    ),
+    readProbeFallback(
+      locator.evaluate((element) => element.tagName.toLowerCase()),
+      "",
+      `describeCandidate tagName ${domIndex}`,
+    ),
+    readProbeFallback(
+      locator.evaluate((element) => {
         const parts: string[] = [];
         let current: Element | null = element;
         while (current) {
@@ -162,10 +181,12 @@ async function describeCandidate(
           current = current.parentElement;
         }
         return parts.join(" > ");
-      })
-      .catch(() => ""),
-    locator
-      .evaluate((element) => {
+      }),
+      "",
+      `describeCandidate fullPath ${domIndex}`,
+    ),
+    readProbeFallback(
+      locator.evaluate((element) => {
         const parts: string[] = [];
         let current: Element | null = element.parentElement;
         while (current) {
@@ -173,13 +194,35 @@ async function describeCandidate(
           current = current.parentElement;
         }
         return parts.join(" > ");
-      })
-      .catch(() => ""),
-    locator.getAttribute("name").catch(() => null),
-    locator.getAttribute("type").catch(() => null),
-    locator.getAttribute("placeholder").catch(() => null),
-    locator.inputValue().catch(() => ""),
-    locator.getAttribute("aria-label").catch(() => null),
+      }),
+      "",
+      `describeCandidate parentPath ${domIndex}`,
+    ),
+    readProbeFallback(
+      locator.getAttribute("name"),
+      null,
+      `describeCandidate name ${domIndex}`,
+    ),
+    readProbeFallback(
+      locator.getAttribute("type"),
+      null,
+      `describeCandidate type ${domIndex}`,
+    ),
+    readProbeFallback(
+      locator.getAttribute("placeholder"),
+      null,
+      `describeCandidate placeholder ${domIndex}`,
+    ),
+    readProbeFallback(
+      locator.inputValue(),
+      "",
+      `describeCandidate value ${domIndex}`,
+    ),
+    readProbeFallback(
+      locator.getAttribute("aria-label"),
+      null,
+      `describeCandidate aria-label ${domIndex}`,
+    ),
   ]);
 
   const normalizedText = normalizeWhitespace(text ?? "");

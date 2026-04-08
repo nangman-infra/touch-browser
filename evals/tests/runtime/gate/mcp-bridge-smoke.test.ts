@@ -31,13 +31,10 @@ describe("mcp bridge smoke", () => {
   });
 
   it("exposes touch-browser tools over MCP stdio", async () => {
-    const child = spawnShellCommand(
-      "node scripts/touch-browser-mcp-bridge.mjs",
-      {
-        cwd: repoRoot,
-        stdio: ["pipe", "pipe", "pipe"],
-      },
-    ) as ChildProcessWithoutNullStreams;
+    const child = spawnShellCommand("node integrations/mcp/bridge/index.mjs", {
+      cwd: repoRoot,
+      stdio: ["pipe", "pipe", "pipe"],
+    }) as ChildProcessWithoutNullStreams;
     clients.push(child);
 
     const call = createRpcCaller(child);
@@ -148,13 +145,10 @@ describe("mcp bridge smoke", () => {
   }, 20_000);
 
   it("returns MCP protocol errors on stdout without polluting stderr", async () => {
-    const child = spawnShellCommand(
-      "node scripts/touch-browser-mcp-bridge.mjs",
-      {
-        cwd: repoRoot,
-        stdio: ["pipe", "pipe", "pipe"],
-      },
-    ) as ChildProcessWithoutNullStreams;
+    const child = spawnShellCommand("node integrations/mcp/bridge/index.mjs", {
+      cwd: repoRoot,
+      stdio: ["pipe", "pipe", "pipe"],
+    }) as ChildProcessWithoutNullStreams;
     clients.push(child);
 
     const call = createRpcCaller(child);

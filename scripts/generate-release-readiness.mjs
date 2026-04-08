@@ -54,6 +54,7 @@ async function main() {
     "doc/PUBLIC_REFERENCE_WORKFLOW_SPEC.md",
   ];
   const requiredScripts = [
+    "integrations/mcp/bridge/index.mjs",
     "scripts/bootstrap-local.sh",
     "scripts/pilot-healthcheck.mjs",
     "scripts/touch-browser-mcp-bridge.mjs",

@@ -36,7 +36,7 @@
 | Eval | Supporting Subdomain | `evals` | regression benchmark, adversarial benchmark, harness |
 | CLI Application | Application / Transport | `core/crates/cli` | orchestration, interface, ports and adapters |
 | Playwright Adapter | External Adapter | `adapters/playwright` | browser execution, dynamic page action bridge |
-| MCP Bridge | External Integration | `scripts/touch-browser-mcp-bridge.mjs` | remote agent bridge over stdio JSON-RPC |
+| MCP Bridge | External Integration | `integrations/mcp/bridge/index.mjs` | remote agent bridge over stdio JSON-RPC |
 | External Web | External System | outside repository | live websites, search engines, hostile pages |
 
 ## 4. Context Relationships

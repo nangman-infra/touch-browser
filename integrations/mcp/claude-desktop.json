@@ -2,7 +2,7 @@
   "mcpServers": {
     "touch-browser": {
       "command": "node",
-      "args": ["scripts/touch-browser-mcp-bridge.mjs"],
+      "args": ["integrations/mcp/bridge/index.mjs"],
       "cwd": "."
     }
   }

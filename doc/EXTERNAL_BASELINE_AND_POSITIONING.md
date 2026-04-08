@@ -75,6 +75,12 @@ It combines four layers in one self-hosted runtime:
 | Tool protocol integration | `serve` + MCP bridge + typed outputs | easier to embed into agent systems without inventing a custom protocol |
 | Browser control | policy, allowlists, checkpoint/approve, replay, session synthesis | interaction stays auditable and review-gated instead of becoming a black box |
 
+Search capture is intentionally narrower than general-purpose stealth automation:
+
+- the search path can stabilize browser-exposed identity hints when public search result pages degrade under default automation fingerprints
+- that stabilization is scoped to search discovery flows
+- it is not positioned as a general bypass layer for arbitrary browsing, authentication, or write surfaces
+
 ## 4. What the current repository artifacts prove
 
 Current generated artifacts show the following:

@@ -53,7 +53,7 @@
     "quality:sonar-coverage": "pnpm run test:adapter:sonar && node scripts/normalize-sonar-lcov.mjs sonar-reports/adapters-playwright/lcov.info adapters/playwright",
     "adapter:playwright": "pnpm exec tsx adapters/playwright/src/index.ts",
     "evals:smoke": "pnpm exec tsx evals/src/index.ts",
-    "mcp:bridge": "node scripts/touch-browser-mcp-bridge.mjs",
+    "mcp:bridge": "node integrations/mcp/bridge/index.mjs",
     "verifier:example": "node scripts/example-verifier.mjs",
     "demo:gif": "python3 demo/generate-terminal-demo.py",
     "bootstrap:local": "bash scripts/bootstrap-local.sh",

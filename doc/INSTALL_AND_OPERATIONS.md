@@ -72,7 +72,7 @@ cargo run -q -p touch-browser-cli -- serve
 MCP bridge:
 
 ```bash
-node scripts/touch-browser-mcp-bridge.mjs
+node integrations/mcp/bridge/index.mjs
 ```
 
 Self-hosted pilot package:
@@ -111,6 +111,7 @@ pnpm run pilot:real-user-research
   - check network access and remote site availability
 - MCP bridge failure:
   - verify `cargo run -q -p touch-browser-cli -- serve` works on its own
+  - set `TOUCH_BROWSER_SERVE_COMMAND="target/debug/touch-browser serve"` if you want the bridge to use a built binary
 - verifier hook failure:
   - run the verifier command directly and confirm it returns JSON with an `outcomes` array
   - start with `node scripts/example-verifier.mjs` and replace it only after your own verifier returns the same shape

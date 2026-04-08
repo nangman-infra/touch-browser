@@ -1,6 +1,11 @@
 import type { Locator, Page } from "playwright";
 
 import {
+  ignoreNavigationSettleFailure,
+  ignoreOptionalActionFailure,
+  readProbeFallback,
+} from "./error-tolerance.js";
+import {
   ACTION_SETTLE_EXTRA_WAIT_MS,
   ACTION_SETTLE_IDLE_TIMEOUT_MS,
   ACTION_SETTLE_TIMEOUT_MS,
@@ -11,12 +16,16 @@ export async function fillTargetLocator(
   locator: Locator,
   value: string,
 ): Promise<void> {
-  const tagName = await locator
-    .evaluate((element) => element.tagName.toLowerCase())
-    .catch(() => "");
-  const isContentEditable = await locator
-    .evaluate((element) => element.hasAttribute("contenteditable"))
-    .catch(() => false);
+  const tagName = await readProbeFallback(
+    locator.evaluate((element) => element.tagName.toLowerCase()),
+    "",
+    "fillTargetLocator tagName",
+  );
+  const isContentEditable = await readProbeFallback(
+    locator.evaluate((element) => element.hasAttribute("contenteditable")),
+    false,
+    "fillTargetLocator contenteditable",
+  );
 
   if (tagName === "input" || tagName === "textarea") {
     await locator.fill(value);
@@ -30,14 +39,22 @@ export async function fillTargetLocator(
     throw new Error("Target input does not support typing.");
   }
 
-  await locator.dispatchEvent("input").catch(() => {});
-  await locator.dispatchEvent("change").catch(() => {});
+  await ignoreOptionalActionFailure(
+    locator.dispatchEvent("input"),
+    "fillTargetLocator input event",
+  );
+  await ignoreOptionalActionFailure(
+    locator.dispatchEvent("change"),
+    "fillTargetLocator change event",
+  );
 }
 
 export async function submitTargetLocator(locator: Locator): Promise<void> {
-  const tagName = await locator
-    .evaluate((element) => element.tagName.toLowerCase())
-    .catch(() => "");
+  const tagName = await readProbeFallback(
+    locator.evaluate((element) => element.tagName.toLowerCase()),
+    "",
+    "submitTargetLocator tagName",
+  );
 
   if (tagName === "form") {
     await locator
@@ -117,13 +134,20 @@ export function prevPaginationSelectors(): string[] {
 }
 
 export async function settleAfterAction(page: Page): Promise<void> {
-  await page
-    .waitForLoadState("domcontentloaded", {
+  await ignoreNavigationSettleFailure(
+    page.waitForLoadState("domcontentloaded", {
       timeout: ACTION_SETTLE_TIMEOUT_MS,
-    })
-    .catch(() => {});
-  await page
-    .waitForLoadState("networkidle", { timeout: ACTION_SETTLE_IDLE_TIMEOUT_MS })
-    .catch(() => {});
-  await page.waitForTimeout(ACTION_SETTLE_EXTRA_WAIT_MS).catch(() => {});
+    }),
+    "settleAfterAction domcontentloaded",
+  );
+  await ignoreNavigationSettleFailure(
+    page.waitForLoadState("networkidle", {
+      timeout: ACTION_SETTLE_IDLE_TIMEOUT_MS,
+    }),
+    "settleAfterAction networkidle",
+  );
+  await ignoreNavigationSettleFailure(
+    page.waitForTimeout(ACTION_SETTLE_EXTRA_WAIT_MS),
+    "settleAfterAction extra wait",
+  );
 }
