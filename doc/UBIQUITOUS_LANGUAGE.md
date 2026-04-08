@@ -40,10 +40,10 @@
 
 | Term | Meaning | Allowed Location |
 | --- | --- | --- |
-| Compact View | 빠른 훑어보기용 압축 표현 | `/Volumes/WD/Developments/touch-browser/core/crates/cli/src/application/presentation_support.rs` |
-| Read View | 읽기 최적화 markdown 표현 | `/Volumes/WD/Developments/touch-browser/core/crates/cli/src/application/presentation_support.rs` |
-| Navigation View | navigation noise를 분리한 compact/read 표현 | `/Volumes/WD/Developments/touch-browser/core/crates/cli/src/application/presentation_support.rs` |
-| Session Synthesis Markdown | 세션 합성 결과의 human-readable markdown | `/Volumes/WD/Developments/touch-browser/core/crates/cli/src/application/presentation_support.rs` |
+| Compact View | 빠른 훑어보기용 압축 표현 | `core/crates/cli/src/application/presentation_support.rs` |
+| Read View | 읽기 최적화 markdown 표현 | `core/crates/cli/src/application/presentation_support.rs` |
+| Navigation View | navigation noise를 분리한 compact/read 표현 | `core/crates/cli/src/application/presentation_support.rs` |
+| Session Synthesis Markdown | 세션 합성 결과의 human-readable markdown | `core/crates/cli/src/application/presentation_support.rs` |
 
 고정 규칙:
 

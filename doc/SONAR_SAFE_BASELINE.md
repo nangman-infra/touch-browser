@@ -27,7 +27,7 @@ duplication 및 maintainability 규칙의 구조적 예외에 한정합니다.
 
 ## 3. SAFE Issue Rules
 
-### 3.1 `rust:S107` on `/Volumes/WD/Developments/touch-browser/core/crates/cli/src/application/ports.rs`
+### 3.1 `rust:S107` on `core/crates/cli/src/application/ports.rs`
 
 사유:
 
@@ -39,7 +39,7 @@ SAFE 결론:
 
 - `rust:S107`은 이 파일에서 SAFE입니다.
 
-### 3.2 `rust:S3776` on `/Volumes/WD/Developments/touch-browser/core/crates/cli/src/interface/serve_runtime/session_handlers.rs`
+### 3.2 `rust:S3776` on `core/crates/cli/src/interface/serve_runtime/session_handlers.rs`
 
 사유:
 
@@ -51,7 +51,7 @@ SAFE 결론:
 
 - 이 orchestration function의 complexity 경고는 SAFE입니다.
 
-### 3.3 `rust:S3776` on `/Volumes/WD/Developments/touch-browser/core/crates/cli/src/application/policy_support.rs`
+### 3.3 `rust:S3776` on `core/crates/cli/src/application/policy_support.rs`
 
 사유:
 
@@ -62,7 +62,7 @@ SAFE 결론:
 
 - provider hint decision table complexity는 SAFE입니다.
 
-### 3.4 `rust:S3776` on `/Volumes/WD/Developments/touch-browser/core/crates/cli/src/application/search_support.rs`
+### 3.4 `rust:S3776` on `core/crates/cli/src/application/search_support.rs`
 
 사유:
 
@@ -73,7 +73,7 @@ SAFE 결론:
 
 - URL normalization decision table complexity는 SAFE입니다.
 
-### 3.5 `rust:S3776` on `/Volumes/WD/Developments/touch-browser/core/crates/cli/src/application/session_reporting.rs`
+### 3.5 `rust:S3776` on `core/crates/cli/src/application/session_reporting.rs`
 
 사유:
 
@@ -88,10 +88,10 @@ SAFE 결론:
 
 대상:
 
-- `/Volumes/WD/Developments/touch-browser/core/crates/cli/src/infrastructure/app_ports.rs`
-- `/Volumes/WD/Developments/touch-browser/core/crates/cli/src/infrastructure/browser_runtime.rs`
-- `/Volumes/WD/Developments/touch-browser/core/crates/cli/src/main.rs`
-- `/Volumes/WD/Developments/touch-browser/core/crates/cli/src/application/search_support.rs`
+- `core/crates/cli/src/infrastructure/app_ports.rs`
+- `core/crates/cli/src/infrastructure/browser_runtime.rs`
+- `core/crates/cli/src/main.rs`
+- `core/crates/cli/src/application/search_support.rs`
 
 사유:
 
@@ -107,11 +107,11 @@ SAFE 결론:
 
 다음 파일은 duplication metric에서 제외합니다.
 
-- `/Volumes/WD/Developments/touch-browser/core/crates/cli/src/interface/browser_session_parser.rs`
-- `/Volumes/WD/Developments/touch-browser/core/crates/cli/src/application/browser_session_actions.rs`
-- `/Volumes/WD/Developments/touch-browser/core/crates/cli/src/interface/search_command_parser.rs`
-- `/Volumes/WD/Developments/touch-browser/core/crates/cli/src/infrastructure/browser_models.rs`
-- `/Volumes/WD/Developments/touch-browser/core/crates/cli/src/interface/session_command_parser.rs`
+- `core/crates/cli/src/interface/browser_session_parser.rs`
+- `core/crates/cli/src/application/browser_session_actions.rs`
+- `core/crates/cli/src/interface/search_command_parser.rs`
+- `core/crates/cli/src/infrastructure/browser_models.rs`
+- `core/crates/cli/src/interface/session_command_parser.rs`
 
 사유:
 

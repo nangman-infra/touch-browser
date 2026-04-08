@@ -28,29 +28,23 @@ def main() -> None:
     compact = run_cli(
         [
             "compact-view",
-            "https://docs.aws.amazon.com/lambda/latest/dg/welcome.html",
-            "--allow-domain",
-            "docs.aws.amazon.com",
+            "https://www.iana.org/help/example-domains",
         ]
     )
     read_view = run_cli(
         [
             "read-view",
-            "https://docs.aws.amazon.com/lambda/latest/dg/gettingstarted-limits.html",
+            "https://www.iana.org/help/example-domains",
             "--main-only",
-            "--allow-domain",
-            "docs.aws.amazon.com",
         ],
         raw=True,
     )
     extract = run_cli(
         [
             "extract",
-            "https://docs.aws.amazon.com/lambda/latest/dg/gettingstarted-limits.html",
-            "--allow-domain",
-            "docs.aws.amazon.com",
+            "https://www.iana.org/help/example-domains",
             "--claim",
-            "The maximum timeout for a Lambda function is 15 minutes.",
+            "As described in RFC 2606 and RFC 6761, a number of domains such as example.com and example.org are maintained for documentation purposes.",
             "--verifier-command",
             "node scripts/example-verifier.mjs",
         ]
@@ -62,9 +56,10 @@ def main() -> None:
     citation = extract_json["evidenceSupportedClaims"][0]["citation"]["url"]
 
     read_lines = [
-        "# Lambda quotas",
+        "# Example Domains",
         "",
-        find_first_line(read_view, "Function timeout:") or "Function timeout: 900 seconds (15 minutes).",
+        find_first_line(read_view, "As described in RFC 2606")
+        or "As described in RFC 2606 and RFC 6761, example domains are maintained for documentation purposes.",
     ]
     compact_lines = [
         "{",
@@ -85,21 +80,21 @@ def main() -> None:
     frames = [
         render_terminal_frame(
             "touch-browser",
-            "touch-browser compact-view https://docs.aws.amazon.com/lambda/latest/dg/welcome.html --allow-domain docs.aws.amazon.com",
+            "touch-browser compact-view https://www.iana.org/help/example-domains",
             compact_lines,
-            "Step 1: low-token routing surface decides where to browse next.",
+            "Step 1: compact-view keeps the routing surface small for an agent loop.",
         ),
         render_terminal_frame(
             "touch-browser",
-            "touch-browser read-view https://docs.aws.amazon.com/lambda/latest/dg/gettingstarted-limits.html --main-only --allow-domain docs.aws.amazon.com",
+            "touch-browser read-view https://www.iana.org/help/example-domains --main-only",
             read_lines,
-            "Step 2: readable markdown confirms the exact source sentence.",
+            "Step 2: read-view turns the same page into reviewable Markdown.",
         ),
         render_terminal_frame(
             "touch-browser",
-            "touch-browser extract https://docs.aws.amazon.com/lambda/latest/dg/gettingstarted-limits.html --allow-domain docs.aws.amazon.com --claim \"The maximum timeout for a Lambda function is 15 minutes.\" --verifier-command 'node scripts/example-verifier.mjs'",
+            "touch-browser extract https://www.iana.org/help/example-domains --claim \"As described in RFC 2606 and RFC 6761, a number of domains such as example.com and example.org are maintained for documentation purposes.\" --verifier-command 'node scripts/example-verifier.mjs'",
             extract_lines,
-            "Step 3: final claim outcome carries evidence, verification, and citation.",
+            "Step 3: extract returns evidence, verifier output, and a source citation.",
         ),
     ]
 

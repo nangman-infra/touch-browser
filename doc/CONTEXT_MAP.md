@@ -26,17 +26,17 @@
 
 | Context | Type | Primary Location | Responsibility |
 | --- | --- | --- | --- |
-| Contracts | Published Language | `/Volumes/WD/Developments/touch-browser/contracts` and `/Volumes/WD/Developments/touch-browser/core/crates/contracts` | schema, shared DTO, serialization contract |
-| Observation | Core Domain | `/Volumes/WD/Developments/touch-browser/core/crates/observation` | DOM normalization, stable ref, token-budgeted snapshot |
-| Evidence | Core Domain | `/Volumes/WD/Developments/touch-browser/core/crates/evidence` | claim-evidence linking, citation, contradiction handling |
-| Memory | Core Domain | `/Volumes/WD/Developments/touch-browser/core/crates/memory` | session memory, compaction, replay-oriented summaries |
-| Policy | Core Domain | `/Volumes/WD/Developments/touch-browser/core/crates/policy` | trust boundary, approval, risk classification |
-| Action VM | Core Domain | `/Volumes/WD/Developments/touch-browser/core/crates/action-vm` | typed action execution surface, failure taxonomy |
-| Acquisition | Supporting Subdomain | `/Volumes/WD/Developments/touch-browser/core/crates/acquisition` | fetch, redirect, cache, content acquisition |
-| Eval | Supporting Subdomain | `/Volumes/WD/Developments/touch-browser/evals` | regression benchmark, adversarial benchmark, harness |
-| CLI Application | Application / Transport | `/Volumes/WD/Developments/touch-browser/core/crates/cli` | orchestration, interface, ports and adapters |
-| Playwright Adapter | External Adapter | `/Volumes/WD/Developments/touch-browser/adapters/playwright` | browser execution, dynamic page action bridge |
-| MCP Bridge | External Integration | `/Volumes/WD/Developments/touch-browser/scripts/touch-browser-mcp-bridge.mjs` | remote agent bridge over stdio JSON-RPC |
+| Contracts | Published Language | `contracts` and `core/crates/contracts` | schema, shared DTO, serialization contract |
+| Observation | Core Domain | `core/crates/observation` | DOM normalization, stable ref, token-budgeted snapshot |
+| Evidence | Core Domain | `core/crates/evidence` | claim-evidence linking, citation, contradiction handling |
+| Memory | Core Domain | `core/crates/memory` | session memory, compaction, replay-oriented summaries |
+| Policy | Core Domain | `core/crates/policy` | trust boundary, approval, risk classification |
+| Action VM | Core Domain | `core/crates/action-vm` | typed action execution surface, failure taxonomy |
+| Acquisition | Supporting Subdomain | `core/crates/acquisition` | fetch, redirect, cache, content acquisition |
+| Eval | Supporting Subdomain | `evals` | regression benchmark, adversarial benchmark, harness |
+| CLI Application | Application / Transport | `core/crates/cli` | orchestration, interface, ports and adapters |
+| Playwright Adapter | External Adapter | `adapters/playwright` | browser execution, dynamic page action bridge |
+| MCP Bridge | External Integration | `scripts/touch-browser-mcp-bridge.mjs` | remote agent bridge over stdio JSON-RPC |
 | External Web | External System | outside repository | live websites, search engines, hostile pages |
 
 ## 4. Context Relationships

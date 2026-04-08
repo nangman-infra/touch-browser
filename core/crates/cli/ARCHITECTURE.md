@@ -9,7 +9,7 @@
 
 ### interface
 
-- 위치: `/Volumes/WD/Developments/touch-browser/core/crates/cli/src/interface`
+- 위치: `core/crates/cli/src/interface`
 - 책임:
   - CLI 인자 파싱
   - serve JSON-RPC params 파싱
@@ -21,7 +21,7 @@
 
 ### application
 
-- 위치: `/Volumes/WD/Developments/touch-browser/core/crates/cli/src/application`
+- 위치: `core/crates/cli/src/application`
 - 책임:
   - 검색, 세션, 브라우저 상호작용 유스케이스 실행
   - 정책 검사와 runtime orchestration
@@ -35,7 +35,7 @@
 
 ### infrastructure
 
-- 위치: `/Volumes/WD/Developments/touch-browser/core/crates/cli/src/infrastructure`
+- 위치: `core/crates/cli/src/infrastructure`
 - 책임:
   - 세션 저장/복원
   - Playwright adapter 호출
