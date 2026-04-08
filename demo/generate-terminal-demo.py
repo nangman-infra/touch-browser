@@ -6,6 +6,7 @@ import json
 import shutil
 import subprocess
 from pathlib import Path
+from urllib.parse import urlparse
 
 from PIL import Image, ImageDraw, ImageFont
 
@@ -105,17 +106,15 @@ def main() -> None:
         f'  "query": "{search["query"]}",',
         f'  "status": "{search["search"]["status"]}",',
         f'  "topDomain": "{top_result["domain"]}",',
-        f'  "topTitle": "{truncate(top_result["title"], 56)}",',
         f'  "nextAction": "{search["search"]["nextActionHints"][0]["action"]}"',
         "}",
     ]
     second_open_lines = [
         "{",
         f'  "title": "{second_title}",',
-        f'  "sessionFile": "{session_file}",',
         f'  "snapshots": {len(session_state["snapshotIds"])},',
         f'  "visitedCount": {len(session_state["visitedUrls"])},',
-        f'  "currentUrl": "{truncate(session_state["currentUrl"], 54)}"',
+        f'  "currentHost": "{urlparse(session_state["currentUrl"]).netloc}"',
         "}",
     ]
     extract_lines = [
@@ -123,7 +122,6 @@ def main() -> None:
         f'  "verdict": "{outcome.get("verdict", "unknown")}",',
         f'  "supportScore": {extract_json["evidenceSupportedClaims"][0].get("supportScore", 0)},',
         f'  "sourceLabel": "{extract_json["evidenceSupportedClaims"][0]["citation"]["sourceLabel"]}",',
-        f'  "citation": "{truncate(extract_json["evidenceSupportedClaims"][0]["citation"]["url"], 58)}"',
         "}",
     ]
 
@@ -193,17 +191,17 @@ def render_terminal_frame(title: str, command: str, lines: list[str], caption: s
     image = Image.new("RGB", (WIDTH, HEIGHT), BACKGROUND)
     draw = ImageDraw.Draw(image)
 
-    title_font = load_font(36)
+    title_font = load_font(38)
     badge_font = load_font(16)
-    body_font = load_font(24)
-    caption_font = load_font(22)
+    body_font = load_font(28)
+    caption_font = load_font(24)
 
     panel_rect = (48, 56, WIDTH - 48, HEIGHT - 56)
     title_bar_bottom = panel_rect[1] + 52
     content_left = panel_rect[0] + 32
     content_right = panel_rect[2] - 32
     content_width = content_right - content_left
-    line_spacing = 13
+    line_spacing = 14
     body_line_height = line_height(draw, body_font)
     caption_line_height = line_height(draw, caption_font)
 
@@ -268,7 +266,7 @@ def render_terminal_frame(title: str, command: str, lines: list[str], caption: s
     footer_height = block_height(
         len(caption_lines),
         caption_line_height,
-        8,
+        10,
     )
     footer_y = panel_rect[3] - 24 - footer_height
 
@@ -302,7 +300,7 @@ def render_terminal_frame(title: str, command: str, lines: list[str], caption: s
         footer_y,
         caption_lines,
         caption_font,
-        8,
+        10,
         ACCENT,
     )
     return image
