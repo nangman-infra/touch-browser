@@ -1,14 +1,14 @@
-use std::collections::{BTreeMap, BTreeSet};
+use std::collections::BTreeMap;
 
 use serde::{Deserialize, Serialize};
 use serde_json::{json, to_value, Value};
 use thiserror::Error;
 use touch_browser_acquisition::AcquisitionEngine;
 use touch_browser_contracts::{
-    ActionCommand, ActionName, PolicyProfile, ReplayTranscript, ReplayTranscriptEntry, RiskClass,
-    SessionMode, SessionState, SessionStatus, SessionSynthesisClaim, SessionSynthesisClaimStatus,
-    SessionSynthesisReport, SnapshotDocument, SourceRisk, SourceType, TranscriptKind,
-    TranscriptPayloadType, CONTRACT_VERSION,
+    ActionCommand, ActionName, PolicyProfile, ReplayTranscript, RiskClass, SessionMode,
+    SessionState, SessionStatus, SessionSynthesisClaimStatus, SessionSynthesisReport,
+    SnapshotDocument, SourceRisk, SourceType, TranscriptKind, TranscriptPayloadType,
+    CONTRACT_VERSION,
 };
 use touch_browser_evidence::{ClaimRequest, EvidenceExtractor, EvidenceInput};
 use touch_browser_memory::{
@@ -18,6 +18,12 @@ use touch_browser_memory::{
 use touch_browser_observation::{
     recommend_requested_tokens, ObservationCompiler, ObservationInput,
 };
+
+mod session_claims;
+mod session_journal;
+
+use session_claims::aggregate_session_claims;
+use session_journal::{append_snapshot, record_command, record_observation, record_system};
 
 pub fn runtime_banner() -> &'static str {
     "touch-browser-runtime ready"
@@ -214,7 +220,7 @@ impl ReadOnlyRuntime {
         target_url: &str,
         timestamp: &str,
     ) -> Result<SnapshotDocument, RuntimeError> {
-        self.record_command(
+        record_command(
             session,
             timestamp,
             ActionCommand {
@@ -229,7 +235,7 @@ impl ReadOnlyRuntime {
         )?;
 
         let (snapshot, source_risk, source_label) = self.load_snapshot(catalog, target_url)?;
-        self.append_snapshot(
+        append_snapshot(
             session,
             timestamp,
             snapshot.clone(),
@@ -250,7 +256,7 @@ impl ReadOnlyRuntime {
         source_label: Option<String>,
         timestamp: &str,
     ) -> Result<SnapshotDocument, RuntimeError> {
-        self.record_command(
+        record_command(
             session,
             timestamp,
             ActionCommand {
@@ -267,7 +273,7 @@ impl ReadOnlyRuntime {
         let acquired = acquisition
             .fetch(target_url)
             .map_err(RuntimeError::Acquisition)?;
-        self.record_observation(
+        record_observation(
             session,
             timestamp,
             TranscriptPayloadType::AcquisitionRecord,
@@ -285,7 +291,7 @@ impl ReadOnlyRuntime {
             ))
             .map_err(RuntimeError::Observation)?;
 
-        self.append_snapshot(
+        append_snapshot(
             session,
             timestamp,
             snapshot.clone(),
@@ -304,7 +310,7 @@ impl ReadOnlyRuntime {
         source_label: Option<String>,
         timestamp: &str,
     ) -> Result<SnapshotDocument, RuntimeError> {
-        self.record_command(
+        record_command(
             session,
             timestamp,
             ActionCommand {
@@ -318,7 +324,7 @@ impl ReadOnlyRuntime {
             },
         )?;
 
-        self.append_snapshot(
+        append_snapshot(
             session,
             timestamp,
             snapshot.clone(),
@@ -333,7 +339,7 @@ impl ReadOnlyRuntime {
         session: &mut ReadOnlySession,
         timestamp: &str,
     ) -> Result<SnapshotDocument, RuntimeError> {
-        self.record_command(
+        record_command(
             session,
             timestamp,
             ActionCommand {
@@ -352,13 +358,13 @@ impl ReadOnlyRuntime {
             .ok_or(RuntimeError::NoCurrentSnapshot)?
             .snapshot
             .clone();
-        self.record_observation(
+        record_observation(
             session,
             timestamp,
             TranscriptPayloadType::SnapshotDocument,
             to_value(&snapshot)?,
         )?;
-        self.record_observation(
+        record_observation(
             session,
             timestamp,
             TranscriptPayloadType::SessionState,
@@ -374,7 +380,7 @@ impl ReadOnlyRuntime {
         target_ref: &str,
         timestamp: &str,
     ) -> Result<SnapshotDocument, RuntimeError> {
-        self.record_command(
+        record_command(
             session,
             timestamp,
             ActionCommand {
@@ -409,7 +415,7 @@ impl ReadOnlyRuntime {
             .ok_or_else(|| RuntimeError::UnresolvedLink(href.to_string()))?;
         let (snapshot, source_risk, source_label) =
             self.load_snapshot(catalog, &resolved.source_url)?;
-        self.append_snapshot(
+        append_snapshot(
             session,
             timestamp,
             snapshot.clone(),
@@ -434,7 +440,7 @@ impl ReadOnlyRuntime {
                 })
             })
             .collect::<Vec<_>>();
-        self.record_command(
+        record_command(
             session,
             timestamp,
             ActionCommand {
@@ -472,7 +478,7 @@ impl ReadOnlyRuntime {
             snapshot_id: current_snapshot.snapshot_id.clone(),
             report: report.clone(),
         });
-        self.record_observation(
+        record_observation(
             session,
             timestamp,
             TranscriptPayloadType::EvidenceReport,
@@ -487,7 +493,7 @@ impl ReadOnlyRuntime {
         );
         session.state.working_set_refs = compacted.kept_refs;
         session.state.updated_at = timestamp.to_string();
-        self.record_observation(
+        record_observation(
             session,
             timestamp,
             TranscriptPayloadType::SessionState,
@@ -503,7 +509,7 @@ impl ReadOnlyRuntime {
         input: DiffInput,
         timestamp: &str,
     ) -> Result<SnapshotDiff, RuntimeError> {
-        self.record_command(
+        record_command(
             session,
             timestamp,
             ActionCommand {
@@ -534,7 +540,7 @@ impl ReadOnlyRuntime {
             &to_snapshot.snapshot_id,
             &to_snapshot.snapshot,
         );
-        self.record_system(session, timestamp, json!({ "diff": diff }))?;
+        record_system(session, timestamp, json!({ "diff": diff }))?;
         Ok(diff)
     }
 
@@ -544,7 +550,7 @@ impl ReadOnlyRuntime {
         input: CompactInput,
         timestamp: &str,
     ) -> Result<CompactionResult, RuntimeError> {
-        self.record_command(
+        record_command(
             session,
             timestamp,
             ActionCommand {
@@ -569,7 +575,7 @@ impl ReadOnlyRuntime {
         );
         session.state.working_set_refs = compacted.kept_refs.clone();
         session.state.updated_at = timestamp.to_string();
-        self.record_observation(
+        record_observation(
             session,
             timestamp,
             TranscriptPayloadType::SessionState,
@@ -729,114 +735,6 @@ impl ReadOnlyRuntime {
             document.source_label.clone(),
         ))
     }
-
-    fn append_snapshot(
-        &self,
-        session: &mut ReadOnlySession,
-        timestamp: &str,
-        snapshot: SnapshotDocument,
-        source_risk: SourceRisk,
-        source_label: Option<String>,
-    ) -> Result<(), RuntimeError> {
-        let snapshot_id = format!(
-            "snap_{}_{}",
-            session
-                .state
-                .session_id
-                .strip_prefix('s')
-                .unwrap_or(session.state.session_id.as_str()),
-            session.snapshots.len() + 1
-        );
-        session.snapshots.push(SessionSnapshotRecord {
-            snapshot_id: snapshot_id.clone(),
-            snapshot: snapshot.clone(),
-            source_risk,
-            source_label,
-        });
-        session.state.status = SessionStatus::Active;
-        session.state.current_url = Some(snapshot.source.source_url.clone());
-        session.state.updated_at = timestamp.to_string();
-        if !session
-            .state
-            .visited_urls
-            .iter()
-            .any(|url| url == &snapshot.source.source_url)
-        {
-            session
-                .state
-                .visited_urls
-                .push(snapshot.source.source_url.clone());
-        }
-        session.state.snapshot_ids.push(snapshot_id);
-        session.state.working_set_refs =
-            compact_working_set(&snapshot, None, &session.state.working_set_refs, 6).kept_refs;
-        self.record_observation(
-            session,
-            timestamp,
-            TranscriptPayloadType::SnapshotDocument,
-            to_value(&snapshot)?,
-        )?;
-        self.record_observation(
-            session,
-            timestamp,
-            TranscriptPayloadType::SessionState,
-            to_value(&session.state)?,
-        )?;
-        Ok(())
-    }
-
-    fn record_command(
-        &self,
-        session: &mut ReadOnlySession,
-        timestamp: &str,
-        command: ActionCommand,
-    ) -> Result<(), RuntimeError> {
-        let payload = to_value(command)?;
-        let seq = session.transcript.entries.len() + 1;
-        session.transcript.entries.push(ReplayTranscriptEntry {
-            seq,
-            timestamp: timestamp.to_string(),
-            kind: TranscriptKind::Command,
-            payload_type: TranscriptPayloadType::ActionCommand,
-            payload,
-        });
-        Ok(())
-    }
-
-    fn record_observation(
-        &self,
-        session: &mut ReadOnlySession,
-        timestamp: &str,
-        payload_type: TranscriptPayloadType,
-        payload: Value,
-    ) -> Result<(), RuntimeError> {
-        let seq = session.transcript.entries.len() + 1;
-        session.transcript.entries.push(ReplayTranscriptEntry {
-            seq,
-            timestamp: timestamp.to_string(),
-            kind: TranscriptKind::Observation,
-            payload_type,
-            payload,
-        });
-        Ok(())
-    }
-
-    fn record_system(
-        &self,
-        session: &mut ReadOnlySession,
-        timestamp: &str,
-        payload: Value,
-    ) -> Result<(), RuntimeError> {
-        let seq = session.transcript.entries.len() + 1;
-        session.transcript.entries.push(ReplayTranscriptEntry {
-            seq,
-            timestamp: timestamp.to_string(),
-            kind: TranscriptKind::System,
-            payload_type: TranscriptPayloadType::JsonRpc,
-            payload,
-        });
-        Ok(())
-    }
 }
 
 fn parse_claim_inputs(input: Option<&Value>) -> Result<Vec<ClaimInput>, RuntimeError> {
@@ -845,143 +743,6 @@ fn parse_claim_inputs(input: Option<&Value>) -> Result<Vec<ClaimInput>, RuntimeE
         .cloned()
         .ok_or(RuntimeError::ReplayMissingInput)?;
     serde_json::from_value(claims_value).map_err(RuntimeError::Serde)
-}
-
-#[derive(Debug, Clone)]
-struct AggregateClaim {
-    claim_id: String,
-    statement: String,
-    status: SessionSynthesisClaimStatus,
-    snapshot_ids: BTreeSet<String>,
-    support_refs: BTreeSet<String>,
-    citations: Vec<touch_browser_contracts::EvidenceCitation>,
-    citation_keys: BTreeSet<String>,
-}
-
-fn aggregate_session_claims(session: &ReadOnlySession) -> Vec<SessionSynthesisClaim> {
-    let mut aggregates = BTreeMap::<String, AggregateClaim>::new();
-
-    for evidence_record in &session.evidence_reports {
-        for supported_claim in &evidence_record.report.supported_claims {
-            let aggregate = ensure_aggregate(
-                &mut aggregates,
-                &supported_claim.claim_id,
-                &supported_claim.statement,
-                SessionSynthesisClaimStatus::EvidenceSupported,
-            );
-            record_snapshot_id(aggregate, &evidence_record.snapshot_id);
-            record_support_refs(aggregate, &supported_claim.support);
-            record_citation(aggregate, &supported_claim.citation);
-        }
-
-        for unsupported_claim in &evidence_record.report.contradicted_claims {
-            let aggregate = ensure_aggregate(
-                &mut aggregates,
-                &unsupported_claim.claim_id,
-                &unsupported_claim.statement,
-                SessionSynthesisClaimStatus::Contradicted,
-            );
-            update_claim_status(aggregate, SessionSynthesisClaimStatus::Contradicted);
-            record_snapshot_id(aggregate, &evidence_record.snapshot_id);
-            record_support_refs(aggregate, &unsupported_claim.checked_block_refs);
-        }
-
-        for unsupported_claim in &evidence_record.report.unsupported_claims {
-            let aggregate = ensure_aggregate(
-                &mut aggregates,
-                &unsupported_claim.claim_id,
-                &unsupported_claim.statement,
-                SessionSynthesisClaimStatus::InsufficientEvidence,
-            );
-            update_claim_status(aggregate, SessionSynthesisClaimStatus::InsufficientEvidence);
-            record_snapshot_id(aggregate, &evidence_record.snapshot_id);
-            record_support_refs(aggregate, &unsupported_claim.checked_block_refs);
-        }
-
-        for unsupported_claim in &evidence_record.report.needs_more_browsing_claims {
-            let aggregate = ensure_aggregate(
-                &mut aggregates,
-                &unsupported_claim.claim_id,
-                &unsupported_claim.statement,
-                SessionSynthesisClaimStatus::NeedsMoreBrowsing,
-            );
-            update_claim_status(aggregate, SessionSynthesisClaimStatus::NeedsMoreBrowsing);
-            record_snapshot_id(aggregate, &evidence_record.snapshot_id);
-            record_support_refs(aggregate, &unsupported_claim.checked_block_refs);
-        }
-    }
-
-    aggregates
-        .into_values()
-        .map(|aggregate| SessionSynthesisClaim {
-            version: CONTRACT_VERSION.to_string(),
-            claim_id: aggregate.claim_id,
-            statement: aggregate.statement,
-            status: aggregate.status,
-            snapshot_ids: aggregate.snapshot_ids.into_iter().collect(),
-            support_refs: aggregate.support_refs.into_iter().collect(),
-            citations: aggregate.citations,
-        })
-        .collect()
-}
-
-fn ensure_aggregate<'a>(
-    aggregates: &'a mut BTreeMap<String, AggregateClaim>,
-    claim_id: &str,
-    statement: &str,
-    default_status: SessionSynthesisClaimStatus,
-) -> &'a mut AggregateClaim {
-    let key = claim_id.to_string();
-    let aggregate = aggregates.entry(key).or_insert_with(|| AggregateClaim {
-        claim_id: claim_id.to_string(),
-        statement: statement.to_string(),
-        status: default_status,
-        snapshot_ids: BTreeSet::new(),
-        support_refs: BTreeSet::new(),
-        citations: Vec::new(),
-        citation_keys: BTreeSet::new(),
-    });
-    if aggregate.statement.trim().is_empty() {
-        aggregate.statement = statement.to_string();
-    }
-    aggregate
-}
-
-fn update_claim_status(aggregate: &mut AggregateClaim, next_status: SessionSynthesisClaimStatus) {
-    if claim_status_priority(next_status.clone()) > claim_status_priority(aggregate.status.clone())
-    {
-        aggregate.status = next_status;
-    }
-}
-
-fn record_snapshot_id(aggregate: &mut AggregateClaim, snapshot_id: &str) {
-    aggregate.snapshot_ids.insert(snapshot_id.to_string());
-}
-
-fn record_support_refs(aggregate: &mut AggregateClaim, support_refs: &[String]) {
-    aggregate.support_refs.extend(support_refs.iter().cloned());
-}
-
-fn record_citation(
-    aggregate: &mut AggregateClaim,
-    citation: &touch_browser_contracts::EvidenceCitation,
-) {
-    let citation_key = format!(
-        "{}|{}|{:?}|{:?}",
-        citation.url, citation.retrieved_at, citation.source_type, citation.source_risk
-    );
-    if aggregate.citation_keys.insert(citation_key) {
-        aggregate.citations.push(citation.clone());
-    }
-}
-
-fn claim_status_priority(status: SessionSynthesisClaimStatus) -> usize {
-    match status {
-        SessionSynthesisClaimStatus::InsufficientEvidence => 0,
-        SessionSynthesisClaimStatus::NeedsMoreBrowsing => 1,
-        SessionSynthesisClaimStatus::EvidenceSupported => 2,
-        SessionSynthesisClaimStatus::Contradicted => 3,
-    }
 }
 
 #[derive(Debug, Error)]
