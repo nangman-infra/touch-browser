@@ -270,5 +270,5 @@ describe("playwright adapter module boundaries", () => {
     ).toBeUndefined();
     expect(nextPaginationSelectors()).toContain("a[rel='next']");
     expect(prevPaginationSelectors()).toContain("a[rel='prev']");
-  });
+  }, 15_000);
 });

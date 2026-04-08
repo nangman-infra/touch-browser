@@ -2,7 +2,7 @@ use std::{
     fs,
     io::Cursor,
     net::TcpListener,
-    path::PathBuf,
+    path::{Path, PathBuf},
     sync::{
         atomic::{AtomicBool, Ordering},
         Arc,
@@ -11,7 +11,7 @@ use std::{
     time::{SystemTime, UNIX_EPOCH},
 };
 
-use serde_json::json;
+use serde_json::{json, Value};
 use tiny_http::{Header, Response as TinyResponse, Server, StatusCode};
 use touch_browser_contracts::{
     ActionName, ReplayTranscript, ReplayTranscriptEntry, RiskClass, SearchReport, SearchResultItem,
@@ -26,8 +26,8 @@ use crate::{
     },
     browser_context_dir_for_session_file, build_browser_cli_session, build_cli_error_payload,
     command_usage, dispatch, load_browser_cli_session, parse_command, preprocess_cli_args,
-    repo_root, save_browser_cli_session, AckRisk, ApproveOptions, CliCommand, CliError,
-    ClickOptions, ExpandOptions, ExtractOptions, FollowOptions, ObservationCompiler,
+    repo_root, save_browser_cli_session, AckRisk, ApproveOptions, BrowserCliSession, CliCommand,
+    CliError, ClickOptions, ExpandOptions, ExtractOptions, FollowOptions, ObservationCompiler,
     ObservationInput, OutputFormat, PaginateOptions, PaginationDirection, PersistedBrowserState,
     PolicyProfile, ReadViewOutput, SearchActionActor, SearchEngine, SearchOpenResultOptions,
     SearchOpenTopOptions, SearchOptions, SearchReportStatus, SessionExtractOptions,
@@ -42,6 +42,85 @@ fn temp_session_path(name: &str) -> PathBuf {
         .expect("time should be monotonic")
         .as_nanos();
     std::env::temp_dir().join(format!("touch-browser-{name}-{nanos}.json"))
+}
+
+fn open_browser_fixture_session(session_file: &Path, target: &str) -> Value {
+    dispatch(CliCommand::Open(TargetOptions {
+        target: target.to_string(),
+        budget: DEFAULT_REQUESTED_TOKENS,
+        source_risk: None,
+        source_label: None,
+        allowlisted_domains: vec!["research".to_string()],
+        browser: true,
+        headed: false,
+        main_only: false,
+        session_file: Some(session_file.to_path_buf()),
+    }))
+    .expect("browser-backed open should persist session")
+}
+
+fn close_browser_fixture_session(session_file: PathBuf) {
+    dispatch(CliCommand::SessionClose(SessionFileOptions {
+        session_file,
+    }))
+    .expect("session close should succeed");
+}
+
+fn browser_session_block_ref(output: &Value, kind: &str, text_contains: Option<&str>) -> String {
+    output["output"]["blocks"]
+        .as_array()
+        .expect("blocks should exist")
+        .iter()
+        .find(|block| {
+            if block["kind"] != kind {
+                return false;
+            }
+
+            text_contains.is_none_or(|needle| {
+                block["text"]
+                    .as_str()
+                    .expect("block text should exist")
+                    .contains(needle)
+            })
+        })
+        .and_then(|block| block["ref"].as_str())
+        .expect("matching block ref should exist")
+        .to_string()
+}
+
+fn load_search_browser_session(session_file: &Path, target: &str) -> BrowserCliSession {
+    open_browser_fixture_session(session_file, target);
+    let mut persisted =
+        load_browser_cli_session(session_file).expect("session should load after open");
+    if let Some(context_dir) = persisted.browser_context_dir.as_ref() {
+        let context_path = PathBuf::from(context_dir);
+        if context_path.exists() {
+            fs::remove_dir_all(context_path).expect("managed context dir should clean up");
+        }
+    }
+    persisted.browser_context_dir = None;
+    persisted
+}
+
+fn fixture_search_report(
+    result_count: usize,
+    results: Vec<SearchResultItem>,
+    recommended_result_ranks: Vec<usize>,
+) -> SearchReport {
+    SearchReport {
+        version: "1.0.0".to_string(),
+        generated_at: DEFAULT_OPENED_AT.to_string(),
+        engine: SearchEngine::Google,
+        query: "browser pagination".to_string(),
+        search_url: "https://www.google.com/search?q=browser+pagination".to_string(),
+        final_url: "https://www.google.com/search?q=browser+pagination".to_string(),
+        status: SearchReportStatus::Ready,
+        status_detail: None,
+        result_count,
+        results,
+        recommended_result_ranks,
+        next_action_hints: Vec::new(),
+    }
 }
 
 #[test]
@@ -991,39 +1070,13 @@ fn marks_google_sorry_pages_as_search_challenges() {
 #[test]
 fn search_open_result_preserves_latest_search_state() {
     let session_file = temp_session_path("search-open-result-preserve");
-    dispatch(CliCommand::Open(TargetOptions {
-        target: "fixture://research/navigation/browser-pagination".to_string(),
-        budget: DEFAULT_REQUESTED_TOKENS,
-        source_risk: None,
-        source_label: None,
-        allowlisted_domains: Vec::new(),
-        browser: true,
-        headed: false,
-        main_only: false,
-        session_file: Some(session_file.clone()),
-    }))
-    .expect("browser-backed open should persist session");
-
-    let mut persisted =
-        load_browser_cli_session(&session_file).expect("session should load after open");
-    if let Some(context_dir) = persisted.browser_context_dir.as_ref() {
-        let context_path = PathBuf::from(context_dir);
-        if context_path.exists() {
-            fs::remove_dir_all(context_path).expect("managed context dir should clean up");
-        }
-    }
-    persisted.browser_context_dir = None;
-    persisted.latest_search = Some(SearchReport {
-        version: "1.0.0".to_string(),
-        generated_at: DEFAULT_OPENED_AT.to_string(),
-        engine: SearchEngine::Google,
-        query: "browser pagination".to_string(),
-        search_url: "https://www.google.com/search?q=browser+pagination".to_string(),
-        final_url: "https://www.google.com/search?q=browser+pagination".to_string(),
-        status: SearchReportStatus::Ready,
-        status_detail: None,
-        result_count: 1,
-        results: vec![SearchResultItem {
+    let mut persisted = load_search_browser_session(
+        &session_file,
+        "fixture://research/navigation/browser-pagination",
+    );
+    persisted.latest_search = Some(fixture_search_report(
+        1,
+        vec![SearchResultItem {
             rank: 1,
             title: "Browser Pagination".to_string(),
             url: "fixture://research/navigation/browser-pagination".to_string(),
@@ -1034,9 +1087,8 @@ fn search_open_result_preserves_latest_search_state() {
             selection_score: Some(1.0),
             recommended_surface: Some("read-view".to_string()),
         }],
-        recommended_result_ranks: vec![1],
-        next_action_hints: Vec::new(),
-    });
+        vec![1],
+    ));
     save_browser_cli_session(&session_file, &persisted)
         .expect("session should save with search state");
 
@@ -1071,39 +1123,13 @@ fn search_open_result_preserves_latest_search_state() {
 #[test]
 fn search_open_result_can_prefer_official_candidates() {
     let session_file = temp_session_path("search-open-result-prefer-official");
-    dispatch(CliCommand::Open(TargetOptions {
-        target: "fixture://research/navigation/browser-pagination".to_string(),
-        budget: DEFAULT_REQUESTED_TOKENS,
-        source_risk: None,
-        source_label: None,
-        allowlisted_domains: Vec::new(),
-        browser: true,
-        headed: false,
-        main_only: false,
-        session_file: Some(session_file.clone()),
-    }))
-    .expect("browser-backed open should persist session");
-
-    let mut persisted =
-        load_browser_cli_session(&session_file).expect("session should load after open");
-    if let Some(context_dir) = persisted.browser_context_dir.as_ref() {
-        let context_path = PathBuf::from(context_dir);
-        if context_path.exists() {
-            fs::remove_dir_all(context_path).expect("managed context dir should clean up");
-        }
-    }
-    persisted.browser_context_dir = None;
-    persisted.latest_search = Some(SearchReport {
-        version: "1.0.0".to_string(),
-        generated_at: DEFAULT_OPENED_AT.to_string(),
-        engine: SearchEngine::Google,
-        query: "browser pagination".to_string(),
-        search_url: "https://www.google.com/search?q=browser+pagination".to_string(),
-        final_url: "https://www.google.com/search?q=browser+pagination".to_string(),
-        status: SearchReportStatus::Ready,
-        status_detail: None,
-        result_count: 2,
-        results: vec![
+    let mut persisted = load_search_browser_session(
+        &session_file,
+        "fixture://research/navigation/browser-pagination",
+    );
+    persisted.latest_search = Some(fixture_search_report(
+        2,
+        vec![
             SearchResultItem {
                 rank: 1,
                 title: "Video summary".to_string(),
@@ -1127,9 +1153,8 @@ fn search_open_result_can_prefer_official_candidates() {
                 recommended_surface: Some("extract".to_string()),
             },
         ],
-        recommended_result_ranks: vec![2, 1],
-        next_action_hints: Vec::new(),
-    });
+        vec![2, 1],
+    ));
     save_browser_cli_session(&session_file, &persisted)
         .expect("session should save with search state");
 
@@ -1164,40 +1189,14 @@ fn search_open_top_inherits_external_profile_directory() {
     ));
     fs::create_dir_all(&profile_dir).expect("external profile dir should exist");
 
-    dispatch(CliCommand::Open(TargetOptions {
-        target: "fixture://research/navigation/browser-pagination".to_string(),
-        budget: DEFAULT_REQUESTED_TOKENS,
-        source_risk: None,
-        source_label: None,
-        allowlisted_domains: Vec::new(),
-        browser: true,
-        headed: false,
-        main_only: false,
-        session_file: Some(session_file.clone()),
-    }))
-    .expect("browser-backed open should persist session");
-
-    let mut persisted =
-        load_browser_cli_session(&session_file).expect("session should load after open");
-    if let Some(context_dir) = persisted.browser_context_dir.as_ref() {
-        let context_path = PathBuf::from(context_dir);
-        if context_path.exists() {
-            fs::remove_dir_all(context_path).expect("managed context dir should clean up");
-        }
-    }
-    persisted.browser_context_dir = None;
+    let mut persisted = load_search_browser_session(
+        &session_file,
+        "fixture://research/navigation/browser-pagination",
+    );
     persisted.browser_profile_dir = Some(profile_dir.display().to_string());
-    persisted.latest_search = Some(SearchReport {
-        version: "1.0.0".to_string(),
-        generated_at: DEFAULT_OPENED_AT.to_string(),
-        engine: SearchEngine::Google,
-        query: "browser pagination".to_string(),
-        search_url: "https://www.google.com/search?q=browser+pagination".to_string(),
-        final_url: "https://www.google.com/search?q=browser+pagination".to_string(),
-        status: SearchReportStatus::Ready,
-        status_detail: None,
-        result_count: 1,
-        results: vec![SearchResultItem {
+    persisted.latest_search = Some(fixture_search_report(
+        1,
+        vec![SearchResultItem {
             rank: 1,
             title: "Browser Pagination".to_string(),
             url: "fixture://research/navigation/browser-pagination".to_string(),
@@ -1208,9 +1207,8 @@ fn search_open_top_inherits_external_profile_directory() {
             selection_score: Some(1.0),
             recommended_surface: Some("read-view".to_string()),
         }],
-        recommended_result_ranks: vec![1],
-        next_action_hints: Vec::new(),
-    });
+        vec![1],
+    ));
     save_browser_cli_session(&session_file, &persisted)
         .expect("session should save with external profile");
 
@@ -2403,32 +2401,11 @@ fn missing_session_file_error_includes_path() {
 #[test]
 fn types_into_browser_session_and_marks_session_interactive() {
     let session_file = temp_session_path("session-type");
-    let open_output = dispatch(CliCommand::Open(TargetOptions {
-        target: "fixture://research/navigation/browser-login-form".to_string(),
-        budget: DEFAULT_REQUESTED_TOKENS,
-        source_risk: None,
-        source_label: None,
-        allowlisted_domains: vec!["research".to_string()],
-        browser: true,
-        headed: false,
-        main_only: false,
-        session_file: Some(session_file.clone()),
-    }))
-    .expect("browser-backed open should persist session");
-    let email_ref = open_output["output"]["blocks"]
-        .as_array()
-        .expect("blocks should exist")
-        .iter()
-        .find(|block| {
-            block["kind"] == "input"
-                && block["text"]
-                    .as_str()
-                    .expect("input text should exist")
-                    .contains("agent@example.com")
-        })
-        .and_then(|block| block["ref"].as_str())
-        .expect("email input ref should exist")
-        .to_string();
+    let open_output = open_browser_fixture_session(
+        &session_file,
+        "fixture://research/navigation/browser-login-form",
+    );
+    let email_ref = browser_session_block_ref(&open_output, "input", Some("agent@example.com"));
 
     let type_output = dispatch(CliCommand::Type(TypeOptions {
         session_file: session_file.clone(),
@@ -2456,41 +2433,17 @@ fn types_into_browser_session_and_marks_session_interactive() {
         .expect("visible text should be present")
         .contains("agent@example.com"));
 
-    dispatch(CliCommand::SessionClose(SessionFileOptions {
-        session_file,
-    }))
-    .expect("session close should succeed");
+    close_browser_fixture_session(session_file);
 }
 
 #[test]
 fn rejects_sensitive_type_without_explicit_opt_in() {
     let session_file = temp_session_path("session-type-sensitive");
-    let open_output = dispatch(CliCommand::Open(TargetOptions {
-        target: "fixture://research/navigation/browser-login-form".to_string(),
-        budget: DEFAULT_REQUESTED_TOKENS,
-        source_risk: None,
-        source_label: None,
-        allowlisted_domains: vec!["research".to_string()],
-        browser: true,
-        headed: false,
-        main_only: false,
-        session_file: Some(session_file.clone()),
-    }))
-    .expect("browser-backed open should persist session");
-    let password_ref = open_output["output"]["blocks"]
-        .as_array()
-        .expect("blocks should exist")
-        .iter()
-        .find(|block| {
-            block["kind"] == "input"
-                && block["text"]
-                    .as_str()
-                    .expect("input text should exist")
-                    .contains("password")
-        })
-        .and_then(|block| block["ref"].as_str())
-        .expect("password input ref should exist")
-        .to_string();
+    let open_output = open_browser_fixture_session(
+        &session_file,
+        "fixture://research/navigation/browser-login-form",
+    );
+    let password_ref = browser_session_block_ref(&open_output, "input", Some("password"));
 
     let type_output = dispatch(CliCommand::Type(TypeOptions {
         session_file: session_file.clone(),
@@ -2505,49 +2458,18 @@ fn rejects_sensitive_type_without_explicit_opt_in() {
     assert_eq!(type_output["action"]["status"], "rejected");
     assert_eq!(type_output["action"]["failureKind"], "policy-blocked");
 
-    dispatch(CliCommand::SessionClose(SessionFileOptions {
-        session_file,
-    }))
-    .expect("session close should succeed");
+    close_browser_fixture_session(session_file);
 }
 
 #[test]
 fn clicks_browser_session_button_after_interactive_typing() {
     let session_file = temp_session_path("session-click");
-    let open_output = dispatch(CliCommand::Open(TargetOptions {
-        target: "fixture://research/navigation/browser-login-form".to_string(),
-        budget: DEFAULT_REQUESTED_TOKENS,
-        source_risk: None,
-        source_label: None,
-        allowlisted_domains: vec!["research".to_string()],
-        browser: true,
-        headed: false,
-        main_only: false,
-        session_file: Some(session_file.clone()),
-    }))
-    .expect("browser-backed open should persist session");
-    let email_ref = open_output["output"]["blocks"]
-        .as_array()
-        .expect("blocks should exist")
-        .iter()
-        .find(|block| {
-            block["kind"] == "input"
-                && block["text"]
-                    .as_str()
-                    .expect("input text should exist")
-                    .contains("agent@example.com")
-        })
-        .and_then(|block| block["ref"].as_str())
-        .expect("email input ref should exist")
-        .to_string();
-    let button_ref = open_output["output"]["blocks"]
-        .as_array()
-        .expect("blocks should exist")
-        .iter()
-        .find(|block| block["kind"] == "button")
-        .and_then(|block| block["ref"].as_str())
-        .expect("button ref should exist")
-        .to_string();
+    let open_output = open_browser_fixture_session(
+        &session_file,
+        "fixture://research/navigation/browser-login-form",
+    );
+    let email_ref = browser_session_block_ref(&open_output, "input", Some("agent@example.com"));
+    let button_ref = browser_session_block_ref(&open_output, "button", None);
 
     dispatch(CliCommand::Type(TypeOptions {
         session_file: session_file.clone(),
@@ -2574,49 +2496,18 @@ fn clicks_browser_session_button_after_interactive_typing() {
         .expect("visible text should be present")
         .contains("Signed in draft session ready for review."));
 
-    dispatch(CliCommand::SessionClose(SessionFileOptions {
-        session_file,
-    }))
-    .expect("session close should succeed");
+    close_browser_fixture_session(session_file);
 }
 
 #[test]
 fn submits_browser_session_form_after_interactive_typing() {
     let session_file = temp_session_path("session-submit");
-    let open_output = dispatch(CliCommand::Open(TargetOptions {
-        target: "fixture://research/navigation/browser-login-form".to_string(),
-        budget: DEFAULT_REQUESTED_TOKENS,
-        source_risk: None,
-        source_label: None,
-        allowlisted_domains: vec!["research".to_string()],
-        browser: true,
-        headed: false,
-        main_only: false,
-        session_file: Some(session_file.clone()),
-    }))
-    .expect("browser-backed open should persist session");
-    let email_ref = open_output["output"]["blocks"]
-        .as_array()
-        .expect("blocks should exist")
-        .iter()
-        .find(|block| {
-            block["kind"] == "input"
-                && block["text"]
-                    .as_str()
-                    .expect("input text should exist")
-                    .contains("agent@example.com")
-        })
-        .and_then(|block| block["ref"].as_str())
-        .expect("email input ref should exist")
-        .to_string();
-    let form_ref = open_output["output"]["blocks"]
-        .as_array()
-        .expect("blocks should exist")
-        .iter()
-        .find(|block| block["kind"] == "form")
-        .and_then(|block| block["ref"].as_str())
-        .expect("form ref should exist")
-        .to_string();
+    let open_output = open_browser_fixture_session(
+        &session_file,
+        "fixture://research/navigation/browser-login-form",
+    );
+    let email_ref = browser_session_block_ref(&open_output, "input", Some("agent@example.com"));
+    let form_ref = browser_session_block_ref(&open_output, "form", None);
 
     dispatch(CliCommand::Type(TypeOptions {
         session_file: session_file.clone(),
@@ -2644,43 +2535,18 @@ fn submits_browser_session_form_after_interactive_typing() {
         .expect("visible text should be present")
         .contains("Signed in draft session ready for review."));
 
-    dispatch(CliCommand::SessionClose(SessionFileOptions {
-        session_file,
-    }))
-    .expect("session close should succeed");
+    close_browser_fixture_session(session_file);
 }
 
 #[test]
 fn rejects_mfa_submit_without_ack_and_allows_it_with_ack() {
     let session_file = temp_session_path("session-mfa");
-    let open_output = dispatch(CliCommand::Open(TargetOptions {
-        target: "fixture://research/navigation/browser-mfa-challenge".to_string(),
-        budget: DEFAULT_REQUESTED_TOKENS,
-        source_risk: None,
-        source_label: None,
-        allowlisted_domains: vec!["research".to_string()],
-        browser: true,
-        headed: false,
-        main_only: false,
-        session_file: Some(session_file.clone()),
-    }))
-    .expect("browser-backed open should persist session");
-    let otp_ref = open_output["output"]["blocks"]
-        .as_array()
-        .expect("blocks should exist")
-        .iter()
-        .find(|block| block["kind"] == "input")
-        .and_then(|block| block["ref"].as_str())
-        .expect("otp ref should exist")
-        .to_string();
-    let form_ref = open_output["output"]["blocks"]
-        .as_array()
-        .expect("blocks should exist")
-        .iter()
-        .find(|block| block["kind"] == "form")
-        .and_then(|block| block["ref"].as_str())
-        .expect("form ref should exist")
-        .to_string();
+    let open_output = open_browser_fixture_session(
+        &session_file,
+        "fixture://research/navigation/browser-mfa-challenge",
+    );
+    let otp_ref = browser_session_block_ref(&open_output, "input", None);
+    let form_ref = browser_session_block_ref(&open_output, "form", None);
 
     let blocked = dispatch(CliCommand::Submit(SubmitOptions {
         session_file: session_file.clone(),
@@ -2716,43 +2582,18 @@ fn rejects_mfa_submit_without_ack_and_allows_it_with_ack() {
         .expect("visible text should be present")
         .contains("Verification code accepted for supervised review."));
 
-    dispatch(CliCommand::SessionClose(SessionFileOptions {
-        session_file,
-    }))
-    .expect("session close should succeed");
+    close_browser_fixture_session(session_file);
 }
 
 #[test]
 fn checkpoint_and_approve_enable_supervised_session_without_repeating_ack_flags() {
     let session_file = temp_session_path("session-checkpoint-approve");
-    let open_output = dispatch(CliCommand::Open(TargetOptions {
-        target: "fixture://research/navigation/browser-mfa-challenge".to_string(),
-        budget: DEFAULT_REQUESTED_TOKENS,
-        source_risk: None,
-        source_label: None,
-        allowlisted_domains: vec!["research".to_string()],
-        browser: true,
-        headed: false,
-        main_only: false,
-        session_file: Some(session_file.clone()),
-    }))
-    .expect("browser-backed open should persist session");
-    let otp_ref = open_output["output"]["blocks"]
-        .as_array()
-        .expect("blocks should exist")
-        .iter()
-        .find(|block| block["kind"] == "input")
-        .and_then(|block| block["ref"].as_str())
-        .expect("otp ref should exist")
-        .to_string();
-    let form_ref = open_output["output"]["blocks"]
-        .as_array()
-        .expect("blocks should exist")
-        .iter()
-        .find(|block| block["kind"] == "form")
-        .and_then(|block| block["ref"].as_str())
-        .expect("form ref should exist")
-        .to_string();
+    let open_output = open_browser_fixture_session(
+        &session_file,
+        "fixture://research/navigation/browser-mfa-challenge",
+    );
+    let otp_ref = browser_session_block_ref(&open_output, "input", None);
+    let form_ref = browser_session_block_ref(&open_output, "form", None);
 
     let checkpoint = dispatch(CliCommand::SessionCheckpoint(SessionFileOptions {
         session_file: session_file.clone(),
@@ -2809,35 +2650,17 @@ fn checkpoint_and_approve_enable_supervised_session_without_repeating_ack_flags(
     .expect("approved submit should succeed without inline ack");
     assert_eq!(approved["action"]["status"], "succeeded");
 
-    dispatch(CliCommand::SessionClose(SessionFileOptions {
-        session_file,
-    }))
-    .expect("session close should succeed");
+    close_browser_fixture_session(session_file);
 }
 
 #[test]
 fn rejects_high_risk_submit_without_ack_and_allows_it_with_ack() {
     let session_file = temp_session_path("session-high-risk");
-    let open_output = dispatch(CliCommand::Open(TargetOptions {
-        target: "fixture://research/navigation/browser-high-risk-checkout".to_string(),
-        budget: DEFAULT_REQUESTED_TOKENS,
-        source_risk: None,
-        source_label: None,
-        allowlisted_domains: vec!["research".to_string()],
-        browser: true,
-        headed: false,
-        main_only: false,
-        session_file: Some(session_file.clone()),
-    }))
-    .expect("browser-backed open should persist session");
-    let form_ref = open_output["output"]["blocks"]
-        .as_array()
-        .expect("blocks should exist")
-        .iter()
-        .find(|block| block["kind"] == "form")
-        .and_then(|block| block["ref"].as_str())
-        .expect("form ref should exist")
-        .to_string();
+    let open_output = open_browser_fixture_session(
+        &session_file,
+        "fixture://research/navigation/browser-high-risk-checkout",
+    );
+    let form_ref = browser_session_block_ref(&open_output, "form", None);
 
     let blocked = dispatch(CliCommand::Submit(SubmitOptions {
         session_file: session_file.clone(),

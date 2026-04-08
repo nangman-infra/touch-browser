@@ -183,6 +183,13 @@ struct ContradictionPattern {
     negative: &'static str,
 }
 
+const fn contradiction_pattern(
+    positive: &'static str,
+    negative: &'static str,
+) -> ContradictionPattern {
+    ContradictionPattern { positive, negative }
+}
+
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 enum PolarityState {
     None,
@@ -192,52 +199,16 @@ enum PolarityState {
 }
 
 const CONTRADICTION_PATTERNS: &[ContradictionPattern] = &[
-    ContradictionPattern {
-        positive: "available",
-        negative: "not available",
-    },
-    ContradictionPattern {
-        positive: "available",
-        negative: "unavailable",
-    },
-    ContradictionPattern {
-        positive: "required",
-        negative: "not required",
-    },
-    ContradictionPattern {
-        positive: "allowed",
-        negative: "not allowed",
-    },
-    ContradictionPattern {
-        positive: "supported",
-        negative: "not supported",
-    },
-    ContradictionPattern {
-        positive: "enabled",
-        negative: "not enabled",
-    },
-    ContradictionPattern {
-        positive: "enabled",
-        negative: "disabled",
-    },
-    ContradictionPattern {
-        positive: "synchronous",
-        negative: "asynchronous",
-    },
-    ContradictionPattern {
-        positive: "blocking",
-        negative: "non blocking",
-    },
-    ContradictionPattern {
-        positive: "mutable",
-        negative: "immutable",
-    },
-    ContradictionPattern {
-        positive: "stateful",
-        negative: "stateless",
-    },
-    ContradictionPattern {
-        positive: "encrypted",
-        negative: "unencrypted",
-    },
+    contradiction_pattern("available", "not available"),
+    contradiction_pattern("available", "unavailable"),
+    contradiction_pattern("required", "not required"),
+    contradiction_pattern("allowed", "not allowed"),
+    contradiction_pattern("supported", "not supported"),
+    contradiction_pattern("enabled", "not enabled"),
+    contradiction_pattern("enabled", "disabled"),
+    contradiction_pattern("synchronous", "asynchronous"),
+    contradiction_pattern("blocking", "non blocking"),
+    contradiction_pattern("mutable", "immutable"),
+    contradiction_pattern("stateful", "stateless"),
+    contradiction_pattern("encrypted", "unencrypted"),
 ];

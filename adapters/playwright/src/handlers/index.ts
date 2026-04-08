@@ -1,3 +1,8 @@
+export {
+  buildTargetDescriptor,
+  executeTargetAction,
+  readActionRequestParams,
+} from "./action-execution.js";
 export { handleClick } from "./click.js";
 export { handleExpand } from "./expand.js";
 export { handleFollow } from "./follow.js";
