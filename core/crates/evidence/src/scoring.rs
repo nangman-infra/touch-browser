@@ -8,6 +8,9 @@ use crate::{
         claim_mentions_version_or_release, contains_token_sequence, is_version_like_token,
         normalize_text, numeric_tokens, token_overlap_ratio, tokenize_significant, tokens_match,
     },
+    semantic_matching::{
+        build_semantic_scoring_context, semantic_similarity, SemanticScoringContext,
+    },
 };
 
 #[derive(Clone, Debug)]
@@ -19,6 +22,7 @@ pub(crate) struct ScoredCandidate<'a> {
 
 pub(crate) struct ScoringContext {
     pub(crate) claim_token_weights: BTreeMap<String, f64>,
+    pub(crate) claim_semantic_context: SemanticScoringContext,
 }
 
 pub(crate) fn score_candidates<'a>(
@@ -79,6 +83,7 @@ pub(crate) fn document_prefers_cross_lingual_matching(blocks: &[SnapshotBlock]) 
 
 pub(crate) fn build_scoring_context(
     blocks: &[SnapshotBlock],
+    claim_text: &str,
     claim_tokens: &[String],
 ) -> ScoringContext {
     let block_count = blocks.len().max(1) as f64;
@@ -97,6 +102,7 @@ pub(crate) fn build_scoring_context(
 
     ScoringContext {
         claim_token_weights,
+        claim_semantic_context: build_semantic_scoring_context(claim_text),
     }
 }
 
@@ -333,6 +339,11 @@ fn score_block<'a>(
     let version_noise_penalty =
         version_noise_penalty(claim_tokens, claim_numeric_tokens, &contextual_text);
     let contextual_bonus = (contextual_overlap - lexical_overlap).max(0.0) * 0.10;
+    let semantic_bonus = semantic_similarity_bonus(
+        semantic_similarity(&scoring_context.claim_semantic_context, &contextual_text)
+            .unwrap_or(0.0),
+        lexical_overlap,
+    );
     let contradictory = contradiction_detected(normalized_claim, &contextual_text)
         || contradiction_detected(normalized_claim, &block.text);
     let mut score = (lexical_overlap * 0.40)
@@ -344,7 +355,8 @@ fn score_block<'a>(
         + control_bonus
         + structural_adjustment
         + version_noise_penalty
-        + contextual_bonus;
+        + contextual_bonus
+        + semantic_bonus;
 
     if contradictory && contextual_overlap >= 0.35 {
         score *= 0.6;
@@ -355,6 +367,17 @@ fn score_block<'a>(
         score: score.min(1.0),
         contradictory,
     })
+}
+
+fn semantic_similarity_bonus(semantic_similarity: f64, lexical_overlap: f64) -> f64 {
+    if semantic_similarity <= 0.55 {
+        return 0.0;
+    }
+
+    let semantic_signal = ((semantic_similarity - 0.55) / 0.30).clamp(0.0, 1.0);
+    let lexical_gap = ((0.65 - lexical_overlap) / 0.65).clamp(0.0, 1.0);
+
+    semantic_signal * lexical_gap * 0.12
 }
 
 fn contextual_search_text(blocks: &[SnapshotBlock], index: usize) -> String {

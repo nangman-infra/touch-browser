@@ -48,7 +48,8 @@ pub(crate) fn analyze_claim<'a>(
         };
     }
     let matching_profile = matching_profile_for_document(blocks, &analysis);
-    let scoring_context = build_scoring_context(blocks, matching_profile.claim_tokens);
+    let scoring_context =
+        build_scoring_context(blocks, &claim.statement, matching_profile.claim_tokens);
     let scored = score_candidates(
         blocks,
         &analysis.normalized_claim,
@@ -325,5 +326,84 @@ mod tests {
         );
 
         assert_eq!(resolution.verdict, EvidenceClaimVerdict::EvidenceSupported);
+    }
+
+    #[test]
+    fn analyzer_requires_more_browsing_for_conflicting_threading_model_evidence() {
+        let snapshot = SnapshotDocument {
+            version: "1.0.0".to_string(),
+            stable_ref_version: "1".to_string(),
+            source: SnapshotSource {
+                source_url: "https://example.com/tokio".to_string(),
+                source_type: SourceType::Http,
+                title: Some("Tokio Runtime Modes".to_string()),
+            },
+            budget: touch_browser_contracts::SnapshotBudget {
+                requested_tokens: 512,
+                estimated_tokens: 32,
+                emitted_tokens: 32,
+                truncated: false,
+            },
+            blocks: vec![
+                SnapshotBlock {
+                    version: "1.0.0".to_string(),
+                    id: "b1".to_string(),
+                    kind: SnapshotBlockKind::Text,
+                    stable_ref: "rmain:text:current-thread-runtime".to_string(),
+                    role: SnapshotBlockRole::Content,
+                    text: "Tokio provides a current-thread runtime for lightweight bridging scenarios."
+                        .to_string(),
+                    attributes: Default::default(),
+                    evidence: SnapshotEvidence {
+                        source_url: "https://example.com/tokio".to_string(),
+                        source_type: SourceType::Http,
+                        dom_path_hint: Some("html > body > main > p".to_string()),
+                        byte_range_start: None,
+                        byte_range_end: None,
+                    },
+                },
+                SnapshotBlock {
+                    version: "1.0.0".to_string(),
+                    id: "b2".to_string(),
+                    kind: SnapshotBlockKind::Text,
+                    stable_ref: "rmain:text:multi-thread-runtime".to_string(),
+                    role: SnapshotBlockRole::Content,
+                    text: "Tokio also offers a multi-threaded runtime for concurrent workloads."
+                        .to_string(),
+                    attributes: Default::default(),
+                    evidence: SnapshotEvidence {
+                        source_url: "https://example.com/tokio".to_string(),
+                        source_type: SourceType::Http,
+                        dom_path_hint: Some("html > body > main > p".to_string()),
+                        byte_range_start: None,
+                        byte_range_end: None,
+                    },
+                },
+            ],
+        };
+
+        let resolution = analyze_claim(
+            &ClaimRequest::new("c1", "Tokio is single-threaded."),
+            &snapshot.blocks,
+        );
+
+        assert_ne!(resolution.verdict, EvidenceClaimVerdict::EvidenceSupported);
+        assert!(
+            resolution.reason == Some(UnsupportedClaimReason::PredicateMismatch)
+                || resolution.guard_failures.iter().any(|failure| {
+                    failure.kind == touch_browser_contracts::EvidenceGuardKind::Predicate
+                }),
+            "expected threading-model predicate rejection"
+        );
+
+        let multi_threaded = analyze_claim(
+            &ClaimRequest::new("c2", "Tokio is multi-threaded."),
+            &snapshot.blocks,
+        );
+
+        assert_ne!(
+            multi_threaded.verdict,
+            EvidenceClaimVerdict::EvidenceSupported
+        );
     }
 }

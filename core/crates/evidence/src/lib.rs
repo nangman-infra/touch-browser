@@ -7,6 +7,7 @@ mod contradiction;
 mod normalization;
 mod reporting;
 mod scoring;
+mod semantic_matching;
 
 #[cfg(test)]
 use contradiction::contradiction_detected;

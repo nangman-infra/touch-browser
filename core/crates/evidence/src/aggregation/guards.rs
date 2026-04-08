@@ -463,6 +463,9 @@ fn predicate_guard_check(
             continue;
         }
 
+        let subject_anchor_tokens =
+            predicate_subject_anchor_tokens(claim_anchor_tokens, opposition);
+
         let support_polarity = detect_predicate_polarity(aggregated_all_tokens, opposition);
         if predicate_polarities_conflict(claim_polarity, support_polarity) {
             return GuardCheck {
@@ -477,16 +480,31 @@ fn predicate_guard_check(
             };
         }
 
+        let opposite_predicate_exists = document_contains_opposite_predicate(
+            blocks,
+            &subject_anchor_tokens,
+            claim_polarity,
+            opposition,
+        );
+
         if support_polarity == claim_polarity {
+            if opposite_predicate_exists {
+                return GuardCheck {
+                    contradiction_reason: None,
+                    failure: Some(EvidenceGuardFailure {
+                        kind: EvidenceGuardKind::Predicate,
+                        detail: format!(
+                            "The document contains both sides of `{}` for the same subject, so this claim needs a more specific source.",
+                            opposition.label
+                        ),
+                    }),
+                };
+            }
+
             continue;
         }
 
-        if document_contains_opposite_predicate(
-            blocks,
-            claim_anchor_tokens,
-            claim_polarity,
-            opposition,
-        ) {
+        if opposite_predicate_exists {
             return GuardCheck {
                 contradiction_reason: Some(UnsupportedClaimReason::PredicateMismatch),
                 failure: Some(EvidenceGuardFailure {
@@ -645,16 +663,45 @@ fn detect_predicate_polarity(
 ) -> PredicatePolarity {
     let has_positive = tokens
         .iter()
-        .any(|token| opposition.positive.contains(&token.as_str()));
+        .any(|token| opposition_matches_token(opposition.positive, token));
     let has_negative = tokens
         .iter()
-        .any(|token| opposition.negative.contains(&token.as_str()));
+        .any(|token| opposition_matches_token(opposition.negative, token));
 
     match (has_positive, has_negative) {
         (true, false) => PredicatePolarity::Positive,
         (false, true) => PredicatePolarity::Negative,
         _ => PredicatePolarity::None,
     }
+}
+
+fn predicate_subject_anchor_tokens(
+    claim_anchor_tokens: &[String],
+    opposition: &PredicateOpposition,
+) -> Vec<String> {
+    let filtered = claim_anchor_tokens
+        .iter()
+        .filter(|token| {
+            !opposition_matches_token(opposition.positive, token)
+                && !opposition_matches_token(opposition.negative, token)
+        })
+        .cloned()
+        .collect::<Vec<_>>();
+
+    if filtered.is_empty() {
+        claim_anchor_tokens.to_vec()
+    } else {
+        filtered
+    }
+}
+
+fn opposition_matches_token(opposition_terms: &[&str], token: &str) -> bool {
+    opposition_terms.iter().any(|term| {
+        token == *term
+            || token.starts_with(term)
+            || term.starts_with(token)
+            || token.replace('-', "") == term.replace('-', "")
+    })
 }
 
 fn predicate_polarities_conflict(claim: PredicatePolarity, support: PredicatePolarity) -> bool {
@@ -737,8 +784,25 @@ const PREVIEW_STATUS_TOKENS: &[&str] = &["preview", "beta", "alpha", "experiment
 const GA_STATUS_TOKENS: &[&str] = &["launched", "generally", "ga"];
 const DEPRECATED_STATUS_TOKENS: &[&str] =
     &["deprecated", "legacy", "retired", "sunset", "unsupported"];
-const PREDICATE_OPPOSITIONS: &[PredicateOpposition] = &[PredicateOpposition {
-    label: "execution-model",
-    positive: &["compiled", "compile", "compil"],
-    negative: &["interpreted", "interpret"],
-}];
+const PREDICATE_OPPOSITIONS: &[PredicateOpposition] = &[
+    PredicateOpposition {
+        label: "execution-model",
+        positive: &["compiled", "compile", "compil"],
+        negative: &["interpreted", "interpret"],
+    },
+    PredicateOpposition {
+        label: "threading-model",
+        positive: &[
+            "single-threaded",
+            "singlethreaded",
+            "current-thread",
+            "currentthread",
+        ],
+        negative: &[
+            "multi-threaded",
+            "multithreaded",
+            "multi_thread",
+            "multithread",
+        ],
+    },
+];
