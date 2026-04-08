@@ -7,9 +7,10 @@ use touch_browser_contracts::{
 };
 
 use crate::{
+    analyzer::ClaimResolution,
     normalization::ClaimAnalysisInput,
     scoring::{is_narrative_aggregate_block, round_confidence, ScoredCandidate, ScoringContext},
-    ClaimRequest, ClaimResolution,
+    ClaimRequest,
 };
 
 use guards::{button_claim_requires_more_browsing, should_keep_browsing, GuardAssessment};

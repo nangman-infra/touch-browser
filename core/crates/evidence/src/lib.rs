@@ -1,27 +1,18 @@
 use thiserror::Error;
-use touch_browser_contracts::{
-    EvidenceCitation, EvidenceClaimOutcome, EvidenceClaimVerdict, EvidenceGuardFailure,
-    EvidenceReport, EvidenceSource, SnapshotBlock, SnapshotDocument, SourceRisk,
-    UnsupportedClaimReason, CONTRACT_VERSION,
-};
+use touch_browser_contracts::{EvidenceReport, SnapshotDocument, SourceRisk};
 
 mod aggregation;
+mod analyzer;
 mod contradiction;
 mod normalization;
+mod reporting;
 mod scoring;
 
-use aggregation::{
-    assess_support_guards, checked_refs, contradiction_resolution, contradictory_support,
-    effective_support_score, guarded_resolution, no_candidate_resolution,
-    no_top_support_resolution, non_contradictory_candidates, support_acceptance_threshold,
-    supported_resolution, top_support_candidates,
-};
 #[cfg(test)]
 use contradiction::contradiction_detected;
 #[cfg(test)]
 use normalization::normalize_text;
-use normalization::{build_claim_analysis_input, claim_is_low_signal_noise};
-use scoring::{build_scoring_context, score_candidates, ScoredCandidate};
+use reporting::{build_claim_outcome, build_report};
 
 pub fn crate_status() -> &'static str {
     "evidence ready"
@@ -78,65 +69,13 @@ impl EvidenceExtractor {
             return Err(EvidenceError::NoClaims);
         }
 
-        let mut claim_outcomes = Vec::new();
+        let claim_outcomes = input
+            .claims
+            .iter()
+            .map(|claim| build_claim_outcome(input, claim))
+            .collect();
 
-        for claim in &input.claims {
-            let resolution = analyze_claim(claim, &input.snapshot.blocks);
-            let citation =
-                (resolution.verdict == EvidenceClaimVerdict::EvidenceSupported).then(|| {
-                    EvidenceCitation {
-                        url: input.snapshot.source.source_url.clone(),
-                        retrieved_at: input.generated_at.clone(),
-                        source_type: input.snapshot.source.source_type.clone(),
-                        source_risk: input.source_risk.clone(),
-                        source_label: input
-                            .source_label
-                            .clone()
-                            .or_else(|| input.snapshot.source.title.clone()),
-                    }
-                });
-
-            claim_outcomes.push(EvidenceClaimOutcome {
-                version: CONTRACT_VERSION.to_string(),
-                claim_id: claim.claim_id.clone(),
-                statement: claim.statement.clone(),
-                verdict: resolution.verdict,
-                support: resolution
-                    .support
-                    .iter()
-                    .map(|candidate| candidate.block.id.clone())
-                    .collect(),
-                support_score: resolution.confidence,
-                citation,
-                reason: resolution.reason,
-                checked_block_refs: resolution.checked_refs,
-                guard_failures: resolution.guard_failures,
-                next_action_hint: resolution.next_action_hint,
-                verification_verdict: None,
-            });
-        }
-
-        let mut report = EvidenceReport {
-            version: CONTRACT_VERSION.to_string(),
-            generated_at: input.generated_at.clone(),
-            source: EvidenceSource {
-                source_url: input.snapshot.source.source_url.clone(),
-                source_type: input.snapshot.source.source_type.clone(),
-                source_risk: input.source_risk.clone(),
-                source_label: input
-                    .source_label
-                    .clone()
-                    .or_else(|| input.snapshot.source.title.clone()),
-            },
-            supported_claims: Vec::new(),
-            contradicted_claims: Vec::new(),
-            unsupported_claims: Vec::new(),
-            needs_more_browsing_claims: Vec::new(),
-            claim_outcomes,
-            verification: None,
-        };
-        report.rebuild_claim_buckets();
-        Ok(report)
+        Ok(build_report(input, claim_outcomes))
     }
 }
 
@@ -144,89 +83,6 @@ impl EvidenceExtractor {
 pub enum EvidenceError {
     #[error("evidence extractor requires at least one claim")]
     NoClaims,
-}
-
-#[derive(Debug)]
-struct ClaimResolution<'a> {
-    verdict: EvidenceClaimVerdict,
-    support: Vec<ScoredCandidate<'a>>,
-    confidence: Option<f64>,
-    reason: Option<UnsupportedClaimReason>,
-    checked_refs: Vec<String>,
-    guard_failures: Vec<EvidenceGuardFailure>,
-    next_action_hint: Option<String>,
-}
-
-fn analyze_claim<'a>(claim: &ClaimRequest, blocks: &'a [SnapshotBlock]) -> ClaimResolution<'a> {
-    let analysis = build_claim_analysis_input(claim);
-    if claim_is_low_signal_noise(&claim.statement, &analysis.claim_tokens) {
-        return ClaimResolution {
-            verdict: EvidenceClaimVerdict::InsufficientEvidence,
-            support: Vec::new(),
-            confidence: None,
-            reason: Some(UnsupportedClaimReason::InsufficientConfidence),
-            checked_refs: Vec::new(),
-            guard_failures: Vec::new(),
-            next_action_hint: Some(
-                "Rewrite the claim into a shorter, source-checkable statement before answering."
-                    .to_string(),
-            ),
-        };
-    }
-    let scoring_context = build_scoring_context(blocks, &analysis.claim_tokens);
-    let scored = score_candidates(blocks, &analysis, &scoring_context);
-    let checked_refs = checked_refs(&scored);
-    let contradictory_support = contradictory_support(&scored);
-
-    if let Some(resolution) =
-        contradiction_resolution(claim, &contradictory_support, blocks, &analysis)
-    {
-        return resolution;
-    }
-
-    let contradictory_exists = scored.iter().any(|candidate| candidate.contradictory);
-    let non_contradictory = non_contradictory_candidates(scored);
-
-    let Some(best_candidate) = non_contradictory.first() else {
-        return no_candidate_resolution(contradictory_exists, checked_refs);
-    };
-    let best_score = best_candidate.score;
-    let top_support = top_support_candidates(non_contradictory);
-
-    if top_support.is_empty() {
-        return no_top_support_resolution(contradictory_exists, checked_refs);
-    }
-
-    let assessment = assess_support_guards(
-        claim,
-        &top_support,
-        blocks,
-        &analysis.claim_anchor_tokens,
-        &analysis.claim_qualifier_tokens,
-    );
-    let effective_score = effective_support_score(
-        claim,
-        &analysis,
-        &top_support,
-        blocks,
-        &scoring_context,
-        best_score,
-    );
-    let support_threshold = support_acceptance_threshold(&top_support, &assessment);
-
-    if let Some(resolution) = guarded_resolution(
-        claim,
-        &analysis,
-        &top_support,
-        &checked_refs,
-        &assessment,
-        effective_score,
-        support_threshold,
-    ) {
-        return resolution;
-    }
-
-    supported_resolution(best_score, top_support, checked_refs)
 }
 
 #[cfg(test)]
