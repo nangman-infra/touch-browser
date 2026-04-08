@@ -14,7 +14,7 @@ use touch_browser_contracts::CacheStatus;
 use url::Url;
 
 use super::{
-    AcquisitionConfig, AcquisitionEngine, AcquisitionError, FixtureResource, RobotsPolicy,
+    robots, AcquisitionConfig, AcquisitionEngine, AcquisitionError, FixtureResource, RobotsPolicy,
 };
 
 #[test]
@@ -187,8 +187,7 @@ fn falls_back_to_default_policy_when_robots_fetch_errors() {
     let engine = AcquisitionEngine::new(AcquisitionConfig::default()).expect("engine");
     let url = Url::parse(&format!("http://{address}/final")).expect("url should parse");
 
-    let policy = engine
-        .fetch_robots_policy(&url)
+    let policy = robots::fetch_robots_policy(&engine.config, &url, |next_url| engine.get(next_url))
         .expect("robots fetch failures should fall back to default policy");
 
     assert_eq!(policy, RobotsPolicy::default());

@@ -1,12 +1,19 @@
 use std::{
     collections::{BTreeMap, HashMap},
-    fs,
     path::PathBuf,
-    time::{Duration, SystemTime, UNIX_EPOCH},
+    time::Duration,
 };
 
+mod cache;
+mod robots;
+
+use cache::{load_persistent_cache, store_persistent_cache, CachedDocument};
 use reqwest::blocking::{Client, Response};
 use reqwest::header::{CONTENT_TYPE, LOCATION, USER_AGENT};
+use robots::{
+    fetch_robots_policy, load_persistent_robots_policy, origin_key, store_persistent_robots_policy,
+    RobotsPolicy,
+};
 use serde::{Deserialize, Serialize};
 use thiserror::Error;
 use touch_browser_contracts::{AcquisitionRecord, CacheStatus, SourceType, CONTRACT_VERSION};
@@ -60,30 +67,6 @@ pub struct AcquiredDocument {
     pub body: String,
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
-struct CachedDocument {
-    result: AcquiredDocument,
-}
-
-#[derive(Debug, Clone, Serialize, Deserialize)]
-struct PersistentCachedDocument {
-    cache_key: String,
-    fetched_at_unix_seconds: u64,
-    result: AcquiredDocument,
-}
-
-#[derive(Debug, Clone, Default, Serialize, Deserialize, PartialEq, Eq)]
-struct RobotsPolicy {
-    disallow_rules: Vec<String>,
-}
-
-#[derive(Debug, Clone, Serialize, Deserialize)]
-struct PersistentRobotsPolicy {
-    origin: String,
-    fetched_at_unix_seconds: u64,
-    policy: RobotsPolicy,
-}
-
 pub struct AcquisitionEngine {
     config: AcquisitionConfig,
     client: Client,
@@ -125,7 +108,7 @@ impl AcquisitionEngine {
         }
 
         if persistent_cache_allowed {
-            if let Some(cached) = self.load_persistent_cache(&cache_key) {
+            if let Some(cached) = load_persistent_cache(&self.config, &cache_key) {
                 self.cache.insert(
                     cache_key.clone(),
                     CachedDocument {
@@ -160,113 +143,11 @@ impl AcquisitionEngine {
             },
         );
         if persistent_cache_allowed {
-            let _ = self.store_persistent_cache(&cache_key, &result);
-            let _ = self.store_persistent_cache(&result.record.final_url.clone(), &result);
+            let _ = store_persistent_cache(&self.config, &cache_key, &result);
+            let _ = store_persistent_cache(&self.config, &result.record.final_url.clone(), &result);
         }
 
         Ok(result)
-    }
-
-    fn load_persistent_cache(&self, cache_key: &str) -> Option<AcquiredDocument> {
-        let cache_path = self.persistent_cache_path(cache_key)?;
-        let raw = fs::read(&cache_path).ok()?;
-        let cached: PersistentCachedDocument = serde_json::from_slice(&raw).ok()?;
-        if cached.cache_key != cache_key {
-            return None;
-        }
-        if self.cache_entry_expired(cached.fetched_at_unix_seconds) {
-            let _ = fs::remove_file(cache_path);
-            return None;
-        }
-
-        let mut result = cached.result;
-        result.record.cache_status = CacheStatus::Hit;
-        Some(result)
-    }
-
-    fn store_persistent_cache(
-        &self,
-        cache_key: &str,
-        result: &AcquiredDocument,
-    ) -> Result<(), AcquisitionError> {
-        let Some(cache_path) = self.persistent_cache_path(cache_key) else {
-            return Ok(());
-        };
-        if let Some(parent) = cache_path.parent() {
-            fs::create_dir_all(parent).map_err(AcquisitionError::PersistentCacheIo)?;
-        }
-
-        let cached = PersistentCachedDocument {
-            cache_key: cache_key.to_string(),
-            fetched_at_unix_seconds: current_unix_seconds(),
-            result: result.clone(),
-        };
-        fs::write(
-            cache_path,
-            serde_json::to_vec(&cached).map_err(AcquisitionError::PersistentCacheJson)?,
-        )
-        .map_err(AcquisitionError::PersistentCacheIo)?;
-        Ok(())
-    }
-
-    fn persistent_cache_path(&self, cache_key: &str) -> Option<PathBuf> {
-        let cache_dir = self.config.persistent_cache_dir.as_ref()?;
-        Some(cache_dir.join(format!("{:016x}.json", stable_cache_key_hash(cache_key))))
-    }
-
-    fn robots_cache_path(&self, origin: &str) -> Option<PathBuf> {
-        let cache_dir = self.config.persistent_cache_dir.as_ref()?;
-        Some(
-            cache_dir
-                .join("robots")
-                .join(format!("{:016x}.json", stable_cache_key_hash(origin))),
-        )
-    }
-
-    fn cache_entry_expired(&self, fetched_at_unix_seconds: u64) -> bool {
-        self.config.persistent_cache_ttl.is_zero()
-            || current_unix_seconds().saturating_sub(fetched_at_unix_seconds)
-                > self.config.persistent_cache_ttl.as_secs()
-    }
-
-    fn load_persistent_robots_policy(&self, origin: &str) -> Option<RobotsPolicy> {
-        let cache_path = self.robots_cache_path(origin)?;
-        let raw = fs::read(&cache_path).ok()?;
-        let cached: PersistentRobotsPolicy = serde_json::from_slice(&raw).ok()?;
-        if cached.origin != origin {
-            return None;
-        }
-        if self.cache_entry_expired(cached.fetched_at_unix_seconds) {
-            let _ = fs::remove_file(cache_path);
-            return None;
-        }
-
-        Some(cached.policy)
-    }
-
-    fn store_persistent_robots_policy(
-        &self,
-        origin: &str,
-        policy: &RobotsPolicy,
-    ) -> Result<(), AcquisitionError> {
-        let Some(cache_path) = self.robots_cache_path(origin) else {
-            return Ok(());
-        };
-        if let Some(parent) = cache_path.parent() {
-            fs::create_dir_all(parent).map_err(AcquisitionError::PersistentCacheIo)?;
-        }
-
-        let cached = PersistentRobotsPolicy {
-            origin: origin.to_string(),
-            fetched_at_unix_seconds: current_unix_seconds(),
-            policy: policy.clone(),
-        };
-        fs::write(
-            cache_path,
-            serde_json::to_vec(&cached).map_err(AcquisitionError::PersistentCacheJson)?,
-        )
-        .map_err(AcquisitionError::PersistentCacheIo)?;
-        Ok(())
     }
 
     fn fetch_fixture(&self, url: &str) -> Result<AcquiredDocument, AcquisitionError> {
@@ -357,12 +238,13 @@ impl AcquisitionEngine {
         };
 
         if !self.robots_cache.contains_key(&origin) {
-            let policy = if let Some(cached_policy) = self.load_persistent_robots_policy(&origin) {
-                cached_policy
-            } else {
-                self.fetch_robots_policy(url)?
-            };
-            let _ = self.store_persistent_robots_policy(&origin, &policy);
+            let policy =
+                if let Some(cached_policy) = load_persistent_robots_policy(&self.config, &origin) {
+                    cached_policy
+                } else {
+                    fetch_robots_policy(&self.config, url, |next_url| self.get(next_url))?
+                };
+            let _ = store_persistent_robots_policy(&self.config, &origin, &policy);
             self.robots_cache.insert(origin.clone(), policy);
         }
 
@@ -380,30 +262,6 @@ impl AcquisitionEngine {
         }
 
         Ok(())
-    }
-
-    fn fetch_robots_policy(&self, url: &Url) -> Result<RobotsPolicy, AcquisitionError> {
-        let Some(mut robots_url) = origin_key(url).and_then(|origin| Url::parse(&origin).ok())
-        else {
-            return Ok(RobotsPolicy::default());
-        };
-        robots_url.set_path("/robots.txt");
-        robots_url.set_query(None);
-        robots_url.set_fragment(None);
-
-        let response = match self.get(robots_url.as_str()) {
-            Ok(response) => response,
-            Err(_) => return Ok(RobotsPolicy::default()),
-        };
-        if response.status().is_client_error() || response.status().is_server_error() {
-            return Ok(RobotsPolicy::default());
-        }
-
-        let body = match response.text() {
-            Ok(body) => body,
-            Err(_) => return Ok(RobotsPolicy::default()),
-        };
-        Ok(parse_robots(body.as_str(), self.config.user_agent.as_str()))
     }
 }
 
@@ -437,76 +295,6 @@ fn normalize_cache_key(url: &str) -> Result<String, AcquisitionError> {
     parsed.set_fragment(None);
 
     Ok(parsed.to_string())
-}
-
-fn stable_cache_key_hash(cache_key: &str) -> u64 {
-    const OFFSET_BASIS: u64 = 0xcbf29ce484222325;
-    const PRIME: u64 = 0x0000_0100_0000_01b3;
-
-    let mut hash = OFFSET_BASIS;
-    for byte in cache_key.as_bytes() {
-        hash ^= u64::from(*byte);
-        hash = hash.wrapping_mul(PRIME);
-    }
-    hash
-}
-
-fn current_unix_seconds() -> u64 {
-    SystemTime::now()
-        .duration_since(UNIX_EPOCH)
-        .unwrap_or_else(|_| Duration::from_secs(0))
-        .as_secs()
-}
-
-fn parse_robots(body: &str, user_agent: &str) -> RobotsPolicy {
-    let mut active = false;
-    let mut matched_specific = false;
-    let requested_agent = user_agent.to_ascii_lowercase();
-    let mut disallow_rules = Vec::new();
-
-    for raw_line in body.lines() {
-        let line = raw_line.split('#').next().unwrap_or("").trim();
-        if line.is_empty() {
-            continue;
-        }
-
-        let Some((field, value)) = line.split_once(':') else {
-            continue;
-        };
-        let field = field.trim().to_ascii_lowercase();
-        let value = value.trim();
-
-        if field == "user-agent" {
-            let normalized = value.to_ascii_lowercase();
-            active = normalized == "*" || requested_agent.contains(&normalized);
-            if normalized != "*" && active {
-                matched_specific = true;
-                disallow_rules.clear();
-            }
-            continue;
-        }
-
-        if field == "disallow" && active && (matched_specific || !requested_agent.is_empty()) {
-            disallow_rules.push(value.to_string());
-        }
-    }
-
-    RobotsPolicy { disallow_rules }
-}
-
-fn origin_key(url: &Url) -> Option<String> {
-    url.host_str().map(|_| {
-        let port = url
-            .port_or_known_default()
-            .map(|value| format!(":{value}"))
-            .unwrap_or_default();
-        format!(
-            "{}://{}{}",
-            url.scheme(),
-            url.host_str().unwrap_or_default(),
-            port
-        )
-    })
 }
 
 #[derive(Debug, Error)]
