@@ -193,17 +193,17 @@ def render_terminal_frame(title: str, command: str, lines: list[str], caption: s
     image = Image.new("RGB", (WIDTH, HEIGHT), BACKGROUND)
     draw = ImageDraw.Draw(image)
 
-    title_font = load_font(34)
+    title_font = load_font(36)
     badge_font = load_font(16)
-    body_font = load_font(20)
-    caption_font = load_font(19)
+    body_font = load_font(24)
+    caption_font = load_font(22)
 
     panel_rect = (48, 56, WIDTH - 48, HEIGHT - 56)
     title_bar_bottom = panel_rect[1] + 52
     content_left = panel_rect[0] + 32
     content_right = panel_rect[2] - 32
     content_width = content_right - content_left
-    line_spacing = 11
+    line_spacing = 13
     body_line_height = line_height(draw, body_font)
     caption_line_height = line_height(draw, caption_font)
 
@@ -213,7 +213,7 @@ def render_terminal_frame(title: str, command: str, lines: list[str], caption: s
         radius=24,
         fill="#0b1220",
     )
-    draw.text((content_left, panel_rect[1] + 14), title, fill=TEXT, font=title_font)
+    draw.text((content_left, panel_rect[1] + 12), title, fill=TEXT, font=title_font)
 
     badge_text = "read-view / compact-view / extract"
     badge_padding_x = 14
@@ -238,7 +238,7 @@ def render_terminal_frame(title: str, command: str, lines: list[str], caption: s
 
     command_text = command.removeprefix("$ ").strip()
     command_lines = wrap_command_block(draw, command_text, body_font, content_width)
-    command_y = title_bar_bottom + 26
+    command_y = title_bar_bottom + 22
     draw_multiline_lines(
         draw,
         content_left,
@@ -251,7 +251,7 @@ def render_terminal_frame(title: str, command: str, lines: list[str], caption: s
     )
 
     command_height = block_height(len(command_lines), body_line_height, line_spacing)
-    divider_y = command_y + command_height + 18
+    divider_y = command_y + command_height + 16
     draw.line(
         (content_left, divider_y, content_right, divider_y),
         fill="#223047",
@@ -270,11 +270,11 @@ def render_terminal_frame(title: str, command: str, lines: list[str], caption: s
         caption_line_height,
         8,
     )
-    footer_y = panel_rect[3] - 28 - footer_height
+    footer_y = panel_rect[3] - 24 - footer_height
 
     body_lines = wrap_code_block(draw, lines, body_font, content_width)
-    body_y = divider_y + 20
-    body_max_height = max(0, footer_y - 24 - body_y)
+    body_y = divider_y + 16
+    body_max_height = max(0, footer_y - 20 - body_y)
     body_lines = fit_lines_to_height(
         body_lines,
         body_max_height,
