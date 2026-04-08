@@ -25,7 +25,7 @@ PROMPT = "#38bdf8"
 def main() -> None:
     build_cli()
 
-    session_file = Path("/tmp/tb-demo-broader-session.json")
+    session_file = Path("/tmp/tb-demo.json")
     cleanup_session_file(session_file)
 
     search = json.loads(
@@ -60,6 +60,7 @@ def main() -> None:
             ]
         )
     )
+    session_state = json.loads(session_file.read_text())["session"]["state"]
     session_extract = json.loads(
         run_cli(
             [
@@ -83,7 +84,6 @@ def main() -> None:
     )
 
     top_result = search["search"]["results"][0]
-    open_budget = first_open["output"]["budget"]
     second_title = second_open["output"]["source"]["title"]
     extract_json = session_extract["extract"]["output"]
     outcome = extract_json["claimOutcomes"][0]
@@ -93,8 +93,7 @@ def main() -> None:
         find_first_line(session_synthesis, "- Session ID:")
         or "- Session ID: scliopen001",
         find_first_line(session_synthesis, "- Snapshots:") or "- Snapshots: 2",
-        find_first_line(session_synthesis, "- Visited URLs:")
-        or "- Visited URLs: https://www.iana.org/help/example-domains, https://www.iana.org/domains/reserved",
+        "- Visited URLs: 2",
         "",
         "## Synthesized Notes",
         find_first_line(session_synthesis, "As described in RFC 2606")
@@ -106,33 +105,25 @@ def main() -> None:
         f'  "query": "{search["query"]}",',
         f'  "status": "{search["search"]["status"]}",',
         f'  "topDomain": "{top_result["domain"]}",',
-        f'  "topUrl": "{top_result["url"]}",',
+        f'  "topTitle": "{truncate(top_result["title"], 56)}",',
         f'  "nextAction": "{search["search"]["nextActionHints"][0]["action"]}"',
-        "}",
-    ]
-    first_open_lines = [
-        "{",
-        f'  "title": "{first_open["output"]["source"]["title"]}",',
-        f'  "sourceUrl": "{first_open["output"]["source"]["sourceUrl"]}",',
-        f'  "estimatedTokens": {open_budget["estimatedTokens"]},',
-        f'  "stableRefVersion": "{first_open["output"]["stableRefVersion"]}"',
         "}",
     ]
     second_open_lines = [
         "{",
         f'  "title": "{second_title}",',
         f'  "sessionFile": "{session_file}",',
-        '  "visitedUrls": [',
-        '    "https://www.iana.org/help/example-domains",',
-        '    "https://www.iana.org/domains/reserved"',
-        "  ]",
+        f'  "snapshots": {len(session_state["snapshotIds"])},',
+        f'  "visitedCount": {len(session_state["visitedUrls"])},',
+        f'  "currentUrl": "{truncate(session_state["currentUrl"], 54)}"',
         "}",
     ]
     extract_lines = [
         "{",
         f'  "verdict": "{outcome.get("verdict", "unknown")}",',
         f'  "supportScore": {extract_json["evidenceSupportedClaims"][0].get("supportScore", 0)},',
-        f'  "citation": "{extract_json["evidenceSupportedClaims"][0]["citation"]["url"]}"',
+        f'  "sourceLabel": "{extract_json["evidenceSupportedClaims"][0]["citation"]["sourceLabel"]}",',
+        f'  "citation": "{truncate(extract_json["evidenceSupportedClaims"][0]["citation"]["url"], 58)}"',
         "}",
     ]
 
@@ -145,27 +136,21 @@ def main() -> None:
         ),
         render_terminal_frame(
             "touch-browser",
-            "touch-browser open https://www.iana.org/help/example-domains --browser --session-file /tmp/tb-demo-broader-session.json",
-            first_open_lines,
-            "Step 2: open compiles an audited browser snapshot into a replayable research session.",
-        ),
-        render_terminal_frame(
-            "touch-browser",
-            "touch-browser open https://www.iana.org/domains/reserved --browser --session-file /tmp/tb-demo-broader-session.json",
+            "touch-browser open https://www.iana.org/domains/reserved --browser --session-file /tmp/tb-demo.json",
             second_open_lines,
-            "Step 3: the same session file can accumulate multiple official pages for later synthesis.",
+            "Step 2: the same session file accumulates multiple official pages for later synthesis.",
         ),
         render_terminal_frame(
             "touch-browser",
-            "touch-browser session-extract --session-file /tmp/tb-demo-broader-session.json --claim \"Example domains are maintained for documentation purposes.\"",
+            "touch-browser session-extract --session-file /tmp/tb-demo.json --claim \"Example domains are maintained for documentation purposes.\"",
             extract_lines,
-            "Step 4: session-extract returns a cited verdict from the persisted browser session.",
+            "Step 3: session-extract returns a cited verdict from the persisted browser session.",
         ),
         render_terminal_frame(
             "touch-browser",
-            "touch-browser session-synthesize --session-file /tmp/tb-demo-broader-session.json --format markdown",
+            "touch-browser session-synthesize --session-file /tmp/tb-demo.json --format markdown",
             synthesis_lines,
-            "Step 5: session-synthesize turns the multi-page session into reviewable notes for downstream agents.",
+            "Step 4: session-synthesize turns the multi-page session into reviewable notes for downstream agents.",
         ),
     ]
 
