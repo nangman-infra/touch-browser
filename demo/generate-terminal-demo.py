@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 import json
-import os
+import shutil
 import subprocess
 from pathlib import Path
 
@@ -25,76 +25,147 @@ PROMPT = "#38bdf8"
 def main() -> None:
     build_cli()
 
-    compact = run_cli(
-        [
-            "compact-view",
-            "https://www.iana.org/help/example-domains",
-        ]
+    session_file = Path("/tmp/tb-demo-broader-session.json")
+    cleanup_session_file(session_file)
+
+    search = json.loads(
+        run_cli(
+            [
+                "search",
+                "iana example domains",
+                "--engine",
+                "google",
+            ]
+        )
     )
-    read_view = run_cli(
+    first_open = json.loads(
+        run_cli(
+            [
+                "open",
+                "https://www.iana.org/help/example-domains",
+                "--browser",
+                "--session-file",
+                str(session_file),
+            ]
+        )
+    )
+    second_open = json.loads(
+        run_cli(
+            [
+                "open",
+                "https://www.iana.org/domains/reserved",
+                "--browser",
+                "--session-file",
+                str(session_file),
+            ]
+        )
+    )
+    session_extract = json.loads(
+        run_cli(
+            [
+                "session-extract",
+                "--session-file",
+                str(session_file),
+                "--claim",
+                "Example domains are maintained for documentation purposes.",
+            ]
+        )
+    )
+    session_synthesis = run_cli(
         [
-            "read-view",
-            "https://www.iana.org/help/example-domains",
-            "--main-only",
+            "session-synthesize",
+            "--session-file",
+            str(session_file),
+            "--format",
+            "markdown",
         ],
         raw=True,
     )
-    extract = run_cli(
-        [
-            "extract",
-            "https://www.iana.org/help/example-domains",
-            "--claim",
-            "As described in RFC 2606 and RFC 6761, a number of domains such as example.com and example.org are maintained for documentation purposes.",
-            "--verifier-command",
-            "node scripts/example-verifier.mjs",
-        ]
-    )
 
-    compact_json = json.loads(compact)
-    extract_json = json.loads(extract)["extract"]["output"]
+    top_result = search["search"]["results"][0]
+    open_budget = first_open["output"]["budget"]
+    second_title = second_open["output"]["source"]["title"]
+    extract_json = session_extract["extract"]["output"]
     outcome = extract_json["claimOutcomes"][0]
-    citation = extract_json["evidenceSupportedClaims"][0]["citation"]["url"]
-
-    read_lines = [
-        "# Example Domains",
+    synthesis_lines = [
+        "# Session Synthesis",
         "",
-        find_first_line(read_view, "As described in RFC 2606")
+        find_first_line(session_synthesis, "- Session ID:")
+        or "- Session ID: scliopen001",
+        find_first_line(session_synthesis, "- Snapshots:") or "- Snapshots: 2",
+        find_first_line(session_synthesis, "- Visited URLs:")
+        or "- Visited URLs: https://www.iana.org/help/example-domains, https://www.iana.org/domains/reserved",
+        "",
+        "## Synthesized Notes",
+        find_first_line(session_synthesis, "As described in RFC 2606")
         or "As described in RFC 2606 and RFC 6761, example domains are maintained for documentation purposes.",
     ]
-    compact_lines = [
+
+    search_lines = [
         "{",
-        f'  "approxTokens": {compact_json.get("approxTokens", 0)},',
-        f'  "lineCount": {compact_json.get("lineCount", 0)},',
-        f'  "compactText": "{truncate(compact_json.get("compactText", ""), 86)}"',
+        f'  "query": "{search["query"]}",',
+        f'  "status": "{search["search"]["status"]}",',
+        f'  "topDomain": "{top_result["domain"]}",',
+        f'  "topUrl": "{top_result["url"]}",',
+        f'  "nextAction": "{search["search"]["nextActionHints"][0]["action"]}"',
+        "}",
+    ]
+    first_open_lines = [
+        "{",
+        f'  "title": "{first_open["output"]["source"]["title"]}",',
+        f'  "sourceUrl": "{first_open["output"]["source"]["sourceUrl"]}",',
+        f'  "estimatedTokens": {open_budget["estimatedTokens"]},',
+        f'  "stableRefVersion": "{first_open["output"]["stableRefVersion"]}"',
+        "}",
+    ]
+    second_open_lines = [
+        "{",
+        f'  "title": "{second_title}",',
+        f'  "sessionFile": "{session_file}",',
+        '  "visitedUrls": [',
+        '    "https://www.iana.org/help/example-domains",',
+        '    "https://www.iana.org/domains/reserved"',
+        "  ]",
         "}",
     ]
     extract_lines = [
         "{",
         f'  "verdict": "{outcome.get("verdict", "unknown")}",',
-        f'  "verificationVerdict": "{outcome.get("verificationVerdict", "none")}",',
         f'  "supportScore": {extract_json["evidenceSupportedClaims"][0].get("supportScore", 0)},',
-        f'  "citation": "{citation}"',
+        f'  "citation": "{extract_json["evidenceSupportedClaims"][0]["citation"]["url"]}"',
         "}",
     ]
 
     frames = [
         render_terminal_frame(
             "touch-browser",
-            "touch-browser compact-view https://www.iana.org/help/example-domains",
-            compact_lines,
-            "Step 1: compact-view keeps the routing surface small for an agent loop.",
+            "touch-browser search \"iana example domains\" --engine google",
+            search_lines,
+            "Step 1: search ranks browser-backed candidates and returns the next action the agent can take.",
         ),
         render_terminal_frame(
             "touch-browser",
-            "touch-browser read-view https://www.iana.org/help/example-domains --main-only",
-            read_lines,
-            "Step 2: read-view turns the same page into reviewable Markdown.",
+            "touch-browser open https://www.iana.org/help/example-domains --browser --session-file /tmp/tb-demo-broader-session.json",
+            first_open_lines,
+            "Step 2: open compiles an audited browser snapshot into a replayable research session.",
         ),
         render_terminal_frame(
             "touch-browser",
-            "touch-browser extract https://www.iana.org/help/example-domains --claim \"As described in RFC 2606 and RFC 6761, a number of domains such as example.com and example.org are maintained for documentation purposes.\" --verifier-command 'node scripts/example-verifier.mjs'",
+            "touch-browser open https://www.iana.org/domains/reserved --browser --session-file /tmp/tb-demo-broader-session.json",
+            second_open_lines,
+            "Step 3: the same session file can accumulate multiple official pages for later synthesis.",
+        ),
+        render_terminal_frame(
+            "touch-browser",
+            "touch-browser session-extract --session-file /tmp/tb-demo-broader-session.json --claim \"Example domains are maintained for documentation purposes.\"",
             extract_lines,
-            "Step 3: extract returns evidence, verifier output, and a source citation.",
+            "Step 4: session-extract returns a cited verdict from the persisted browser session.",
+        ),
+        render_terminal_frame(
+            "touch-browser",
+            "touch-browser session-synthesize --session-file /tmp/tb-demo-broader-session.json --format markdown",
+            synthesis_lines,
+            "Step 5: session-synthesize turns the multi-page session into reviewable notes for downstream agents.",
         ),
     ]
 
@@ -123,6 +194,14 @@ def run_cli(args: list[str], raw: bool = False) -> str:
         check=True,
     )
     return result.stdout if raw else result.stdout
+
+
+def cleanup_session_file(path: Path) -> None:
+    if path.exists():
+        path.unlink()
+    context_dir = Path(f"{path}.browser-context")
+    if context_dir.exists():
+        shutil.rmtree(context_dir)
 
 
 def render_terminal_frame(title: str, command: str, lines: list[str], caption: str) -> Image.Image:
@@ -448,11 +527,14 @@ def load_font(size: int) -> ImageFont.FreeTypeFont | ImageFont.ImageFont:
 def save_gif(frames: list[Image.Image], path: Path) -> None:
     path.parent.mkdir(parents=True, exist_ok=True)
     first, *rest = frames
+    durations = [1400] * len(frames)
+    if durations:
+        durations[-1] = 2200
     first.save(
         path,
         save_all=True,
         append_images=rest,
-        duration=[1400, 1600, 2200],
+        duration=durations,
         loop=0,
         optimize=False,
     )
