@@ -34,15 +34,52 @@ pub(crate) use application::search_support::{
     is_search_results_target, resolve_latest_search_session_file,
 };
 pub(crate) use application::session_reporting::verify_action_result_if_requested;
+pub(crate) use infrastructure::browser_models::{
+    BrowserActionSource, BrowserActionTraceEntry, BrowserCliSession, BrowserOrigin,
+    BrowserSessionContext, PersistedBrowserState, PlaywrightClickParams, PlaywrightExpandParams,
+    PlaywrightFollowParams, PlaywrightPaginateParams, PlaywrightSnapshotParams,
+    PlaywrightSubmitParams, PlaywrightTypeParams, PlaywrightTypePrefill,
+};
+pub(crate) use infrastructure::browser_runtime::{
+    browser_context_dir_for_session_file, browser_secret_store_path, build_browser_cli_session,
+    collect_submit_prefill, compile_browser_snapshot, current_browser_action_source,
+    current_snapshot_ref_dom_path_hint, current_snapshot_ref_href, current_snapshot_ref_input_type,
+    current_snapshot_ref_is_sensitive, current_snapshot_ref_name, current_snapshot_ref_tag_name,
+    current_snapshot_ref_text, invoke_playwright_click, invoke_playwright_expand,
+    invoke_playwright_follow, invoke_playwright_paginate, invoke_playwright_snapshot,
+    invoke_playwright_submit, invoke_playwright_type, load_browser_cli_secrets,
+    load_browser_cli_session, mark_browser_session_interactive, next_session_timestamp,
+    open_browser_session, resolved_browser_source_url, save_browser_cli_secrets,
+    save_browser_cli_session, stable_ref_ordinal_hint,
+};
 pub(crate) use infrastructure::fixtures::load_fixture_catalog;
-pub(crate) use infrastructure::{browser_models::*, browser_runtime::*, telemetry::*};
+pub(crate) use infrastructure::telemetry::{
+    log_telemetry_error, log_telemetry_success, telemetry_store, telemetry_surface_label,
+};
 pub(crate) use interface::cli_dispatch::{dispatch, run_serve};
 #[cfg(test)]
 pub(crate) use interface::cli_entry::{command_usage, preprocess_cli_args};
 #[cfg(test)]
 pub(crate) use interface::cli_error::build_cli_error_payload;
 pub(crate) use interface::cli_error::{emit_cli_error, CliError};
-pub(crate) use interface::cli_models::*;
+pub(crate) use interface::cli_models::{
+    AckRisk, ApproveOptions, BrowserActionPayload, BrowserReplayCommandOutput, CheckpointAction,
+    CheckpointApprovalPanel, CheckpointCandidate, CheckpointPlaybook, CheckpointSensitiveTarget,
+    CliCommand, ClickAdapterOutput, ClickOptions, CompactSnapshotOutput, ExpandAdapterOutput,
+    ExpandOptions, ExtractCommandOutput, ExtractOptions, FollowAdapterOutput, FollowOptions,
+    MemorySummaryOutput, OutputFormat, PaginateAdapterOutput, PaginateOptions, PaginationDirection,
+    PolicyCommandOutput, ReadViewOutput, ReplayCommandOutput, SearchCommandOutput,
+    SearchNextCommands, SearchOpenResultCommandOutput, SearchOpenResultOptions,
+    SearchOpenTopCommandOutput, SearchOpenTopItem, SearchOpenTopOptions, SearchOptions,
+    SecretPrefill, SessionApprovalCommandOutput, SessionApprovalValue,
+    SessionCheckpointCommandOutput, SessionCheckpointReport, SessionCloseCommandOutput,
+    SessionCloseResultValue, SessionCommandOutput, SessionExtractCommandOutput,
+    SessionExtractOptions, SessionFileOptions, SessionPolicyCommandOutput,
+    SessionProfileCommandOutput, SessionProfileSetOptions, SessionProfileValue, SessionReadOptions,
+    SessionRefreshOptions, SessionSynthesisCommandOutput, SessionSynthesizeOptions,
+    SubmitAdapterOutput, SubmitOptions, TargetOptions, TelemetryRecentCommandOutput,
+    TelemetryRecentOptions, TelemetrySummaryCommandOutput, TypeAdapterOutput, TypeOptions,
+};
 pub(crate) use interface::cli_support::{is_fixture_target, repo_root, slot_timestamp, usage};
 pub(crate) use interface::command_parser::{
     parse_ack_risk, parse_command, parse_output_format, parse_policy_profile, parse_search_engine,
