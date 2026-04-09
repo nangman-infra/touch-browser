@@ -36,6 +36,13 @@ pub(crate) fn apply_budget(
         &mut selected_indices,
         &mut emitted_tokens,
     );
+    select_main_text_candidates(
+        candidates,
+        budget,
+        main_text_budget(budget),
+        &mut selected_indices,
+        &mut emitted_tokens,
+    );
     select_ranked_candidates(&ranked, budget, &mut selected_indices, &mut emitted_tokens);
 
     candidates
@@ -54,6 +61,14 @@ fn navigation_budget(budget: usize) -> usize {
     }
 }
 
+fn main_text_budget(budget: usize) -> usize {
+    if budget < 48 {
+        0
+    } else {
+        budget.div_ceil(3).max(96).min(budget / 2)
+    }
+}
+
 fn select_navigation_candidates(
     ranked: &[(usize, &CandidateBlock)],
     nav_budget: usize,
@@ -66,12 +81,7 @@ fn select_navigation_candidates(
 
     for (index, candidate) in ranked {
         if !is_navigation_candidate(candidate)
-            || exceeds_budget(
-                *emitted_tokens,
-                candidate.token_cost,
-                nav_budget,
-                selected_indices,
-            )
+            || exceeds_budget(*emitted_tokens, candidate.token_cost, nav_budget)
         {
             continue;
         }
@@ -93,12 +103,7 @@ fn select_ranked_candidates(
 ) {
     for (index, candidate) in ranked {
         if selected_indices.contains(index)
-            || exceeds_budget(
-                *emitted_tokens,
-                candidate.token_cost,
-                budget,
-                selected_indices,
-            )
+            || exceeds_budget(*emitted_tokens, candidate.token_cost, budget)
         {
             continue;
         }
@@ -112,24 +117,58 @@ fn select_ranked_candidates(
     }
 }
 
-fn exceeds_budget(
-    emitted_tokens: usize,
-    token_cost: usize,
+fn select_main_text_candidates(
+    candidates: &[CandidateBlock],
     budget: usize,
-    selected_indices: &BTreeSet<usize>,
-) -> bool {
-    emitted_tokens + token_cost > budget && !selected_indices.is_empty()
+    text_budget: usize,
+    selected_indices: &mut BTreeSet<usize>,
+    emitted_tokens: &mut usize,
+) {
+    if text_budget == 0 {
+        return;
+    }
+
+    let mut text_emitted_tokens = 0usize;
+    for (index, candidate) in candidates.iter().enumerate() {
+        if !is_primary_text_candidate(candidate)
+            || selected_indices.contains(&index)
+            || exceeds_budget(text_emitted_tokens, candidate.token_cost, text_budget)
+            || exceeds_budget(*emitted_tokens, candidate.token_cost, budget)
+        {
+            continue;
+        }
+
+        text_emitted_tokens += candidate.token_cost;
+        *emitted_tokens += candidate.token_cost;
+        selected_indices.insert(index);
+
+        if text_emitted_tokens >= text_budget {
+            break;
+        }
+    }
+}
+
+fn exceeds_budget(emitted_tokens: usize, token_cost: usize, budget: usize) -> bool {
+    emitted_tokens + token_cost > budget && emitted_tokens > 0
 }
 
 fn is_navigation_candidate(candidate: &CandidateBlock) -> bool {
-    matches!(
-        candidate.kind,
-        SnapshotBlockKind::Link | SnapshotBlockKind::Button | SnapshotBlockKind::Input
-    ) || matches!(
-        candidate.role,
-        SnapshotBlockRole::PrimaryNav
-            | SnapshotBlockRole::SecondaryNav
-            | SnapshotBlockRole::Cta
-            | SnapshotBlockRole::FormControl
-    )
+    (candidate.zone != "main"
+        && matches!(
+            candidate.kind,
+            SnapshotBlockKind::Link | SnapshotBlockKind::Button | SnapshotBlockKind::Input
+        ))
+        || matches!(
+            candidate.role,
+            SnapshotBlockRole::PrimaryNav
+                | SnapshotBlockRole::SecondaryNav
+                | SnapshotBlockRole::Cta
+                | SnapshotBlockRole::FormControl
+        )
+}
+
+fn is_primary_text_candidate(candidate: &CandidateBlock) -> bool {
+    candidate.zone == "main"
+        && matches!(candidate.kind, SnapshotBlockKind::Text)
+        && matches!(candidate.role, SnapshotBlockRole::Content)
 }

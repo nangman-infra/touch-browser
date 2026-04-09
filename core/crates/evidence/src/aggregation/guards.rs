@@ -745,6 +745,14 @@ fn numeric_expressions(text: &str) -> Vec<NumericExpression> {
             if !expressions.contains(&expression) {
                 expressions.push(expression);
             }
+        } else if let Some(month_value) = month_number(token) {
+            let expression = NumericExpression {
+                value: month_value.to_string(),
+                unit: Some("month".to_string()),
+            };
+            if !expressions.contains(&expression) {
+                expressions.push(expression);
+            }
         }
     }
 
@@ -760,6 +768,24 @@ fn normalize_unit(token: &str) -> Option<String> {
         "week" | "weeks" => Some("week".to_string()),
         "month" | "months" => Some("month".to_string()),
         "year" | "years" => Some("year".to_string()),
+        _ => None,
+    }
+}
+
+fn month_number(token: &str) -> Option<u8> {
+    match token {
+        "january" | "jan" => Some(1),
+        "february" | "feb" => Some(2),
+        "march" | "mar" => Some(3),
+        "april" | "apr" => Some(4),
+        "may" => Some(5),
+        "june" | "jun" => Some(6),
+        "july" | "jul" => Some(7),
+        "august" | "aug" => Some(8),
+        "september" | "sep" | "sept" => Some(9),
+        "october" | "oct" => Some(10),
+        "november" | "nov" => Some(11),
+        "december" | "dec" => Some(12),
         _ => None,
     }
 }
@@ -1113,3 +1139,22 @@ const PREDICATE_CONTEXT_STOP_WORDS: &[&str] = &[
     "a", "an", "and", "as", "at", "be", "by", "for", "from", "in", "is", "it", "its", "of", "or",
     "the", "to", "with",
 ];
+
+#[cfg(test)]
+mod tests {
+    use super::{numeric_expressions, numeric_expressions_match};
+
+    #[test]
+    fn numeric_expressions_match_korean_numeric_dates_with_english_month_names() {
+        let claim_numeric =
+            numeric_expressions("최초의 유인 달 착륙은 1969년 7월 20일 아폴로 11호였다.");
+        let support_numeric = numeric_expressions(
+            "The missions spanned a 41-month period starting 20 July 1969, beginning with Apollo 11.",
+        );
+
+        assert!(
+            numeric_expressions_match(&claim_numeric, &support_numeric),
+            "expected Korean numeric date tokens to align with English month-name dates"
+        );
+    }
+}

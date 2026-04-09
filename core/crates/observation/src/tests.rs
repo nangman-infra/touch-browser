@@ -259,6 +259,57 @@ fn captures_selectors_as_semantic_option_blocks() {
         .any(|block| block.text.contains("macOS")));
 }
 
+#[test]
+fn keeps_main_intro_text_when_header_links_are_dense() {
+    let compiler = ObservationCompiler;
+    let header_links = (0..80)
+        .map(|index| format!("<a href=\"https://example.com/lang/{index}\">Lang {index}</a>"))
+        .collect::<String>();
+    let html = format!(
+        r#"
+            <html>
+              <body>
+                <header class="language-selector">{header_links}</header>
+                <main>
+                  <h1>Moon landing</h1>
+                  <p>A Moon landing or lunar landing is the arrival of a spacecraft on the Moon.</p>
+                  <p>In 1969, Apollo 11 was the first crewed mission to land on the Moon.</p>
+                  <div class="mw-heading"><h2>Human Moon landings</h2></div>
+                  <table>
+                    <tr><th>Mission</th><th>Date</th></tr>
+                    <tr><td>Apollo 11</td><td>20 July 1969</td></tr>
+                    <tr><td>Apollo 12</td><td>19 November 1969</td></tr>
+                  </table>
+                </main>
+              </body>
+            </html>
+        "#
+    );
+
+    let snapshot = compiler
+        .compile(&ObservationInput::new(
+            "https://en.wikipedia.org/wiki/Moon_landing",
+            SourceType::Http,
+            html,
+            128,
+        ))
+        .expect("compile should work");
+
+    assert!(snapshot.budget.truncated);
+    assert!(snapshot.blocks.iter().any(|block| {
+        block.kind == touch_browser_contracts::SnapshotBlockKind::Text
+            && block
+                .text
+                .contains("A Moon landing or lunar landing is the arrival")
+    }));
+    assert!(snapshot.blocks.iter().any(|block| {
+        block.kind == touch_browser_contracts::SnapshotBlockKind::Text
+            && block
+                .text
+                .contains("Apollo 11 was the first crewed mission")
+    }));
+}
+
 fn repo_root() -> PathBuf {
     PathBuf::from(env!("CARGO_MANIFEST_DIR"))
         .join("../../..")
