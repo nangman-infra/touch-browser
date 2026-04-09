@@ -1,7 +1,8 @@
 use std::collections::BTreeSet;
 
 use touch_browser_contracts::{
-    EvidenceGuardFailure, EvidenceGuardKind, SnapshotBlock, UnsupportedClaimReason,
+    EvidenceGuardFailure, EvidenceGuardKind, SnapshotBlock, SnapshotBlockKind,
+    UnsupportedClaimReason,
 };
 
 use super::support::aggregate_support_text;
@@ -421,6 +422,26 @@ fn numeric_guard_check(
         };
     }
 
+    if !numeric_mismatch_is_hard_contradiction(top_support, claim_numeric.len(), &support_numeric) {
+        return GuardCheck {
+            contradiction_reason: None,
+            failure: Some(EvidenceGuardFailure {
+                kind: EvidenceGuardKind::NumericValue,
+                detail: format!(
+                    "Claim numeric values {:?} do not align with support values {:?}, but the mismatch comes from summary or table-like support rather than an explicit narrative contradiction.",
+                    claim_numeric
+                        .iter()
+                        .map(NumericExpression::render)
+                        .collect::<Vec<_>>(),
+                    support_numeric
+                        .iter()
+                        .map(NumericExpression::render)
+                        .collect::<Vec<_>>()
+                ),
+            }),
+        };
+    }
+
     GuardCheck {
         contradiction_reason: Some(UnsupportedClaimReason::NumericMismatch),
         failure: Some(EvidenceGuardFailure {
@@ -438,6 +459,30 @@ fn numeric_guard_check(
             ),
         }),
     }
+}
+
+fn numeric_mismatch_is_hard_contradiction(
+    top_support: &[ScoredCandidate<'_>],
+    claim_numeric_count: usize,
+    support_numeric: &[NumericExpression],
+) -> bool {
+    if top_support.is_empty() {
+        return false;
+    }
+
+    let has_narrative_text_support = top_support.iter().any(|candidate| {
+        matches!(candidate.block.kind, SnapshotBlockKind::Text)
+            && numeric_expressions(&candidate.text).len() <= claim_numeric_count.saturating_add(3)
+    });
+    let has_tabular_support = top_support.iter().any(|candidate| {
+        matches!(
+            candidate.block.kind,
+            SnapshotBlockKind::Table | SnapshotBlockKind::List
+        )
+    });
+    let support_numeric_is_dense = support_numeric.len() > claim_numeric_count.saturating_add(4);
+
+    has_narrative_text_support && !has_tabular_support && !support_numeric_is_dense
 }
 
 fn claim_contains_raw_version_marker(text: &str) -> bool {

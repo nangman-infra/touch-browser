@@ -340,6 +340,8 @@ fn score_block_candidates<'a>(
             let numeric_overlap = numeric_overlap_ratio(input.claim_numeric_tokens, &search_text);
             let numeric_presence_bonus =
                 numeric_presence_bonus(input.claim_numeric_tokens, &search_text);
+            let numeric_noise_penalty =
+                numeric_noise_penalty(input.claim_numeric_tokens, block, &search_text);
             let kind_bonus = kind_score_bonus(&block.kind);
             let control_bonus = ui_control_bonus(blocks, index, input.claim_tokens, block);
             let structural_adjustment = block_structural_adjustment(block);
@@ -354,6 +356,7 @@ fn score_block_candidates<'a>(
                 + (exact_bonus * 0.16)
                 + (numeric_overlap * 0.08)
                 + numeric_presence_bonus
+                + numeric_noise_penalty
                 + kind_bonus
                 + control_bonus
                 + structural_adjustment
@@ -674,6 +677,33 @@ fn numeric_presence_bonus(claim_numeric_tokens: &[String], block_text: &str) -> 
         0.0
     } else {
         0.06
+    }
+}
+
+fn numeric_noise_penalty(
+    claim_numeric_tokens: &[String],
+    block: &SnapshotBlock,
+    block_text: &str,
+) -> f64 {
+    if claim_numeric_tokens.is_empty() {
+        return 0.0;
+    }
+
+    let block_numeric_tokens = numeric_tokens(block_text);
+    let excess_numeric_tokens = block_numeric_tokens
+        .len()
+        .saturating_sub(claim_numeric_tokens.len().saturating_add(2));
+    if excess_numeric_tokens == 0 {
+        return 0.0;
+    }
+
+    let scale = (excess_numeric_tokens as f64 / 6.0).clamp(0.0, 1.0);
+    match block.kind {
+        SnapshotBlockKind::Table => -0.22 * scale,
+        SnapshotBlockKind::List => -0.16 * scale,
+        SnapshotBlockKind::Metadata => -0.10 * scale,
+        SnapshotBlockKind::Heading => -0.04 * scale,
+        _ => 0.0,
     }
 }
 
