@@ -3,18 +3,10 @@ use super::*;
 #[test]
 fn replays_browser_trace_into_new_browser_session() {
     let session_file = temp_session_path("browser-replay");
-    let open_output = dispatch(CliCommand::Open(TargetOptions {
-        target: "fixture://research/navigation/browser-follow".to_string(),
-        budget: DEFAULT_REQUESTED_TOKENS,
-        source_risk: None,
-        source_label: None,
-        allowlisted_domains: Vec::new(),
-        browser: true,
-        headed: false,
-        main_only: false,
-        session_file: Some(session_file.clone()),
-    }))
-    .expect("browser-backed open should persist session");
+    let open_output = open_browser_session(
+        &session_file,
+        "fixture://research/navigation/browser-follow",
+    );
     let follow_ref = open_output["output"]["blocks"]
         .as_array()
         .expect("blocks should exist")
@@ -55,18 +47,10 @@ fn replays_browser_trace_into_new_browser_session() {
 #[test]
 fn session_close_removes_browser_context_directory() {
     let session_file = temp_session_path("browser-context-cleanup");
-    dispatch(CliCommand::Open(TargetOptions {
-        target: "fixture://research/navigation/browser-follow".to_string(),
-        budget: DEFAULT_REQUESTED_TOKENS,
-        source_risk: None,
-        source_label: None,
-        allowlisted_domains: Vec::new(),
-        browser: true,
-        headed: false,
-        main_only: false,
-        session_file: Some(session_file.clone()),
-    }))
-    .expect("browser-backed open should persist session");
+    open_browser_session(
+        &session_file,
+        "fixture://research/navigation/browser-follow",
+    );
 
     let context_dir = browser_context_dir_for_session_file(&session_file);
     assert!(context_dir.exists(), "browser context dir should exist");
@@ -94,18 +78,10 @@ fn session_close_preserves_external_profile_directory() {
     ));
     fs::create_dir_all(&profile_dir).expect("external profile dir should exist");
 
-    dispatch(CliCommand::Open(TargetOptions {
-        target: "fixture://research/navigation/browser-follow".to_string(),
-        budget: DEFAULT_REQUESTED_TOKENS,
-        source_risk: None,
-        source_label: None,
-        allowlisted_domains: Vec::new(),
-        browser: true,
-        headed: false,
-        main_only: false,
-        session_file: Some(session_file.clone()),
-    }))
-    .expect("browser-backed open should persist session");
+    open_browser_session(
+        &session_file,
+        "fixture://research/navigation/browser-follow",
+    );
 
     let mut persisted =
         load_browser_cli_session(&session_file).expect("session should load after open");
@@ -138,31 +114,9 @@ fn browser_open_appends_existing_session_history() {
     let server = CliTestServer::start();
     let session_file = temp_session_path("browser-open-append-history");
 
-    dispatch(CliCommand::Open(TargetOptions {
-        target: server.url("/static"),
-        budget: DEFAULT_REQUESTED_TOKENS,
-        source_risk: None,
-        source_label: None,
-        allowlisted_domains: Vec::new(),
-        browser: true,
-        headed: false,
-        main_only: false,
-        session_file: Some(session_file.clone()),
-    }))
-    .expect("first browser-backed open should persist session");
+    open_browser_session(&session_file, server.url("/static"));
 
-    dispatch(CliCommand::Open(TargetOptions {
-        target: server.url("/docs-shell"),
-        budget: DEFAULT_REQUESTED_TOKENS,
-        source_risk: None,
-        source_label: None,
-        allowlisted_domains: Vec::new(),
-        browser: true,
-        headed: false,
-        main_only: false,
-        session_file: Some(session_file.clone()),
-    }))
-    .expect("second browser-backed open should append session");
+    open_browser_session(&session_file, server.url("/docs-shell"));
 
     let persisted =
         load_browser_cli_session(&session_file).expect("session should load after two opens");
@@ -184,18 +138,7 @@ fn browser_session_outputs_strip_markup_and_extract_selector_availability() {
     let server = CliTestServer::start();
     let session_file = temp_session_path("polluted-selector-session");
 
-    dispatch(CliCommand::Open(TargetOptions {
-        target: server.url("/polluted-selector"),
-        budget: DEFAULT_REQUESTED_TOKENS,
-        source_risk: None,
-        source_label: None,
-        allowlisted_domains: Vec::new(),
-        browser: true,
-        headed: false,
-        main_only: false,
-        session_file: Some(session_file.clone()),
-    }))
-    .expect("browser-backed open should persist session");
+    open_browser_session(&session_file, server.url("/polluted-selector"));
 
     let compact = dispatch(CliCommand::SessionCompact(SessionFileOptions {
         session_file: session_file.clone(),

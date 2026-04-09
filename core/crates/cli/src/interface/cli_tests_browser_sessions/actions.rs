@@ -3,18 +3,10 @@ use super::*;
 #[test]
 fn persists_browser_session_and_reads_current_snapshot() {
     let session_file = temp_session_path("session-open");
-    let output = dispatch(CliCommand::Open(TargetOptions {
-        target: "fixture://research/navigation/browser-pagination".to_string(),
-        budget: DEFAULT_REQUESTED_TOKENS,
-        source_risk: None,
-        source_label: None,
-        allowlisted_domains: Vec::new(),
-        browser: true,
-        headed: false,
-        main_only: false,
-        session_file: Some(session_file.clone()),
-    }))
-    .expect("browser-backed open should persist session");
+    let output = open_browser_session(
+        &session_file,
+        "fixture://research/navigation/browser-pagination",
+    );
 
     assert_eq!(output["status"], "succeeded");
     assert!(session_file.exists());
@@ -36,18 +28,10 @@ fn persists_browser_session_and_reads_current_snapshot() {
 #[test]
 fn refreshes_browser_session_from_current_live_state() {
     let session_file = temp_session_path("session-refresh");
-    dispatch(CliCommand::Open(TargetOptions {
-        target: "fixture://research/navigation/browser-follow".to_string(),
-        budget: DEFAULT_REQUESTED_TOKENS,
-        source_risk: None,
-        source_label: None,
-        allowlisted_domains: Vec::new(),
-        browser: true,
-        headed: false,
-        main_only: false,
-        session_file: Some(session_file.clone()),
-    }))
-    .expect("browser-backed open should persist session");
+    open_browser_session(
+        &session_file,
+        "fixture://research/navigation/browser-follow",
+    );
 
     let refreshed = dispatch(CliCommand::SessionRefresh(SessionRefreshOptions {
         session_file: session_file.clone(),
@@ -64,18 +48,10 @@ fn refreshes_browser_session_from_current_live_state() {
 #[test]
 fn paginates_browser_session_and_updates_snapshot() {
     let session_file = temp_session_path("session-paginate");
-    dispatch(CliCommand::Open(TargetOptions {
-        target: "fixture://research/navigation/browser-pagination".to_string(),
-        budget: DEFAULT_REQUESTED_TOKENS,
-        source_risk: None,
-        source_label: None,
-        allowlisted_domains: Vec::new(),
-        browser: true,
-        headed: false,
-        main_only: false,
-        session_file: Some(session_file.clone()),
-    }))
-    .expect("browser-backed open should persist session");
+    open_browser_session(
+        &session_file,
+        "fixture://research/navigation/browser-pagination",
+    );
 
     let output = dispatch(CliCommand::Paginate(PaginateOptions {
         session_file: session_file.clone(),
@@ -98,18 +74,10 @@ fn paginates_browser_session_and_updates_snapshot() {
 #[test]
 fn preserves_browser_dom_state_across_paginate_actions() {
     let session_file = temp_session_path("session-paginate-twice");
-    dispatch(CliCommand::Open(TargetOptions {
-        target: "fixture://research/navigation/browser-pagination".to_string(),
-        budget: DEFAULT_REQUESTED_TOKENS,
-        source_risk: None,
-        source_label: None,
-        allowlisted_domains: Vec::new(),
-        browser: true,
-        headed: false,
-        main_only: false,
-        session_file: Some(session_file.clone()),
-    }))
-    .expect("browser-backed open should persist session");
+    open_browser_session(
+        &session_file,
+        "fixture://research/navigation/browser-pagination",
+    );
 
     dispatch(CliCommand::Paginate(PaginateOptions {
         session_file: session_file.clone(),
@@ -138,18 +106,10 @@ fn preserves_browser_dom_state_across_paginate_actions() {
 #[test]
 fn follows_browser_session_and_can_extract_from_persisted_state() {
     let session_file = temp_session_path("session-follow");
-    let open_output = dispatch(CliCommand::Open(TargetOptions {
-        target: "fixture://research/navigation/browser-follow".to_string(),
-        budget: DEFAULT_REQUESTED_TOKENS,
-        source_risk: None,
-        source_label: None,
-        allowlisted_domains: Vec::new(),
-        browser: true,
-        headed: false,
-        main_only: false,
-        session_file: Some(session_file.clone()),
-    }))
-    .expect("browser-backed open should persist session");
+    let open_output = open_browser_session(
+        &session_file,
+        "fixture://research/navigation/browser-follow",
+    );
     let follow_ref = open_output["output"]["blocks"]
         .as_array()
         .expect("blocks should exist")
@@ -199,18 +159,11 @@ fn follows_browser_session_and_can_extract_from_persisted_state() {
 #[test]
 fn preserves_requested_budget_across_browser_follow_actions() {
     let session_file = temp_session_path("session-follow-budget");
-    let open_output = dispatch(CliCommand::Open(TargetOptions {
-        target: "fixture://research/navigation/browser-follow".to_string(),
-        budget: 64,
-        source_risk: None,
-        source_label: None,
-        allowlisted_domains: Vec::new(),
-        browser: true,
-        headed: false,
-        main_only: false,
-        session_file: Some(session_file.clone()),
-    }))
-    .expect("browser-backed open should persist session");
+    let open_output = open_browser_session_with_budget(
+        &session_file,
+        "fixture://research/navigation/browser-follow",
+        64,
+    );
     let follow_ref = open_output["output"]["blocks"]
         .as_array()
         .expect("blocks should exist")

@@ -23,6 +23,29 @@ pub(super) fn open_browser_fixture_session(session_file: &Path, target: &str) ->
     .expect("browser-backed open should persist session")
 }
 
+pub(super) fn open_browser_session(session_file: &Path, target: impl Into<String>) -> Value {
+    open_browser_session_with_budget(session_file, target, DEFAULT_REQUESTED_TOKENS)
+}
+
+pub(super) fn open_browser_session_with_budget(
+    session_file: &Path,
+    target: impl Into<String>,
+    budget: usize,
+) -> Value {
+    dispatch(CliCommand::Open(TargetOptions {
+        target: target.into(),
+        budget,
+        source_risk: None,
+        source_label: None,
+        allowlisted_domains: Vec::new(),
+        browser: true,
+        headed: false,
+        main_only: false,
+        session_file: Some(session_file.to_path_buf()),
+    }))
+    .expect("browser-backed open should persist session")
+}
+
 pub(super) fn close_browser_fixture_session(session_file: PathBuf) {
     dispatch(CliCommand::SessionClose(SessionFileOptions {
         session_file,
