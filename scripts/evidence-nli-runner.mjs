@@ -82,23 +82,17 @@ function parseArgs(args) {
     modelId: null,
   };
 
-  let cursor = 0;
-  while (cursor < args.length) {
-    const value = args[cursor];
+  const remainingArgs = [...args];
+  while (remainingArgs.length > 0) {
+    const value = remainingArgs.shift();
     if (value === "--warmup") {
       options.warmup = true;
-      cursor += 1;
     } else if (value === "--allow-download") {
       options.allowDownload = true;
-      cursor += 1;
     } else if (value === "--model-root") {
-      options.modelRoot = args[cursor + 1] ?? null;
-      cursor += 2;
+      options.modelRoot = remainingArgs.shift() ?? null;
     } else if (value === "--model-id") {
-      options.modelId = args[cursor + 1] ?? null;
-      cursor += 2;
-    } else {
-      cursor += 1;
+      options.modelId = remainingArgs.shift() ?? null;
     }
   }
 
