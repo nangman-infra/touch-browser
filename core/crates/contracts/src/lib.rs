@@ -157,7 +157,7 @@ pub struct EvidenceBlock {
     pub statement: String,
     pub support: Vec<String>,
     #[serde(rename = "supportScore", alias = "confidence")]
-    pub confidence: f64,
+    pub support_score: f64,
     pub citation: EvidenceCitation,
 }
 
@@ -291,7 +291,7 @@ impl EvidenceClaimOutcome {
             claim_id: self.claim_id.clone(),
             statement: self.statement.clone(),
             support: self.support.clone(),
-            confidence: self.support_score.unwrap_or(0.0),
+            support_score: self.support_score.unwrap_or(0.0),
             citation: self.citation.clone().unwrap_or(EvidenceCitation {
                 url: String::new(),
                 retrieved_at: String::new(),
@@ -344,6 +344,70 @@ impl EvidenceReport {
             .filter(|claim| claim.verdict == EvidenceClaimVerdict::NeedsMoreBrowsing)
             .filter_map(EvidenceClaimOutcome::as_issue_claim)
             .collect();
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::{
+        EvidenceBlock, EvidenceCitation, RiskClass, SourceRisk, SourceType, CONTRACT_VERSION,
+    };
+
+    #[test]
+    fn evidence_block_accepts_legacy_confidence_field_but_serializes_support_score() {
+        let block: EvidenceBlock = serde_json::from_value(serde_json::json!({
+            "version": CONTRACT_VERSION,
+            "claimId": "c1",
+            "statement": "Example",
+            "support": ["b1"],
+            "confidence": 0.91,
+            "citation": {
+                "url": "https://example.com",
+                "retrievedAt": "2026-03-14T00:00:00+09:00",
+                "sourceType": "http",
+                "sourceRisk": "low"
+            }
+        }))
+        .expect("legacy confidence payload should deserialize");
+
+        assert_eq!(block.support_score, 0.91);
+
+        let serialized = serde_json::to_value(&block).expect("serialize evidence block");
+        assert_eq!(serialized["supportScore"], serde_json::json!(0.91));
+        assert!(serialized.get("confidence").is_none());
+    }
+
+    #[test]
+    fn risk_class_maps_legacy_medium_alias_to_high() {
+        let risk: RiskClass = serde_json::from_value(serde_json::json!("medium"))
+            .expect("legacy medium should deserialize");
+        assert_eq!(risk, RiskClass::High);
+        assert_eq!(
+            serde_json::to_value(RiskClass::High).expect("serialize risk"),
+            serde_json::json!("high")
+        );
+    }
+
+    #[test]
+    fn evidence_block_support_score_round_trips() {
+        let block = EvidenceBlock {
+            version: CONTRACT_VERSION.to_string(),
+            claim_id: "c1".to_string(),
+            statement: "Example".to_string(),
+            support: vec!["b1".to_string()],
+            support_score: 0.88,
+            citation: EvidenceCitation {
+                url: "https://example.com".to_string(),
+                retrieved_at: "2026-03-14T00:00:00+09:00".to_string(),
+                source_type: SourceType::Http,
+                source_risk: SourceRisk::Low,
+                source_label: None,
+            },
+        };
+        let value = serde_json::to_value(&block).expect("serialize");
+        let round_trip: EvidenceBlock =
+            serde_json::from_value(value).expect("round trip should succeed");
+        assert_eq!(round_trip.support_score, 0.88);
     }
 }
 
@@ -476,7 +540,7 @@ pub enum ActionName {
 #[serde(rename_all = "lowercase")]
 pub enum RiskClass {
     Low,
-    Medium,
+    #[serde(alias = "medium")]
     High,
     Blocked,
 }

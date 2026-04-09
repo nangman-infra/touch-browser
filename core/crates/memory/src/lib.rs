@@ -326,7 +326,7 @@ mod tests {
                 claim_id: "c1".to_string(),
                 statement: "Pricing exists.".to_string(),
                 support: vec!["b4".to_string()],
-                confidence: 0.9,
+                support_score: 0.9,
                 citation: EvidenceCitation {
                     url: "fixture://test".to_string(),
                     retrieved_at: "2026-03-14T00:00:00+09:00".to_string(),
@@ -382,7 +382,7 @@ mod tests {
                 claim_id: "c1".to_string(),
                 statement: "The Starter plan costs $29 per month.".to_string(),
                 support: vec!["b4".to_string()],
-                confidence: 0.9,
+                support_score: 0.9,
                 citation: EvidenceCitation {
                     url: "fixture://test".to_string(),
                     retrieved_at: "2026-03-14T00:00:00+09:00".to_string(),

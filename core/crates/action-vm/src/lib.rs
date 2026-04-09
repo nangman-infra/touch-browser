@@ -442,7 +442,7 @@ mod tests {
                 action: ActionName::Click,
                 target_ref: Some("rmain:link:test".to_string()),
                 target_url: None,
-                risk_class: RiskClass::Medium,
+                risk_class: RiskClass::High,
                 reason: "Blocked click".to_string(),
                 input: None,
             },

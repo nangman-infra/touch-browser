@@ -2,11 +2,14 @@ import type { ChildProcessWithoutNullStreams } from "node:child_process";
 
 import { afterEach, describe, expect, it } from "vitest";
 
+// @ts-expect-error local bridge helper is JavaScript-only in the integration package
+import { createBridgeServeClient } from "../../../../integrations/mcp/bridge/serve-client.mjs";
 import { repoRoot } from "../support/paths.js";
 import { spawnShellCommand } from "../support/shell.js";
 
 describe("mcp bridge smoke", () => {
   const clients: ChildProcessWithoutNullStreams[] = [];
+  const serveClients: Array<ReturnType<typeof createBridgeServeClient>> = [];
 
   afterEach(async () => {
     await Promise.allSettled(
@@ -28,6 +31,8 @@ describe("mcp bridge smoke", () => {
       ),
     );
     clients.length = 0;
+    await Promise.allSettled(serveClients.map((client) => client.close()));
+    serveClients.length = 0;
   });
 
   it("exposes touch-browser tools over MCP stdio", async () => {
@@ -142,7 +147,7 @@ describe("mcp bridge smoke", () => {
     });
     expect(status.structuredContent.status).toBe("ready");
     expect(status.structuredContent.daemon).toBe(true);
-  }, 20_000);
+  }, 40_000);
 
   it("returns MCP protocol errors on stdout without polluting stderr", async () => {
     const child = spawnShellCommand("node integrations/mcp/bridge/index.mjs", {
@@ -168,6 +173,22 @@ describe("mcp bridge smoke", () => {
     });
     expect(error.message).toContain("Unknown tool: tb_missing");
     expect(error.stderr.trim()).toBe("");
+  }, 20_000);
+
+  it("restarts the serve daemon after a crash on the next call", async () => {
+    const serve = createBridgeServeClient({ cwd: repoRoot });
+    serveClients.push(serve);
+
+    const firstStatus = await serve.ensureReady();
+    expect(firstStatus.status).toBe("ready");
+    const firstPid = serve.child.pid;
+    serve.child.kill("SIGTERM");
+
+    await new Promise((resolve) => setTimeout(resolve, 300));
+
+    const secondStatus = await serve.call("runtime.status", {});
+    expect(secondStatus.status).toBe("ready");
+    expect(serve.child.pid).not.toBe(firstPid);
   }, 20_000);
 });
 

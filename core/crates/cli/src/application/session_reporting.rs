@@ -110,7 +110,7 @@ fn synthesize_claim_outcomes_from_report(report: &EvidenceReport) -> Vec<Evidenc
             statement: claim.statement.clone(),
             verdict: EvidenceClaimVerdict::EvidenceSupported,
             support: claim.support.clone(),
-            support_score: Some(claim.confidence),
+            support_score: Some(claim.support_score),
             citation: Some(claim.citation.clone()),
             reason: None,
             checked_block_refs: Vec::new(),

@@ -69,7 +69,9 @@ pub struct AcquiredDocument {
 
 pub struct AcquisitionEngine {
     config: AcquisitionConfig,
-    client: Client,
+    rustls_client: Client,
+    rustls_http1_client: Client,
+    native_tls_client: Client,
     fixtures: BTreeMap<String, FixtureResource>,
     cache: HashMap<String, CachedDocument>,
     robots_cache: HashMap<String, RobotsPolicy>,
@@ -77,16 +79,27 @@ pub struct AcquisitionEngine {
 
 impl AcquisitionEngine {
     pub fn new(config: AcquisitionConfig) -> Result<Self, AcquisitionError> {
-        let client = Client::builder()
-            .timeout(config.request_timeout)
-            .connect_timeout(config.request_timeout)
-            .redirect(reqwest::redirect::Policy::none())
-            .build()
-            .map_err(AcquisitionError::Http)?;
+        let rustls_client = build_http_client(&config, HttpTransportProfile::RustlsAdaptive)
+            .map_err(|error| AcquisitionError::TransportBootstrap {
+                transport: HttpTransportProfile::RustlsAdaptive.label().to_string(),
+                error: error.to_string(),
+            })?;
+        let rustls_http1_client = build_http_client(&config, HttpTransportProfile::RustlsHttp1Only)
+            .map_err(|error| AcquisitionError::TransportBootstrap {
+                transport: HttpTransportProfile::RustlsHttp1Only.label().to_string(),
+                error: error.to_string(),
+            })?;
+        let native_tls_client = build_http_client(&config, HttpTransportProfile::NativeTls)
+            .map_err(|error| AcquisitionError::TransportBootstrap {
+                transport: HttpTransportProfile::NativeTls.label().to_string(),
+                error: error.to_string(),
+            })?;
 
         Ok(Self {
             config,
-            client,
+            rustls_client,
+            rustls_http1_client,
+            native_tls_client,
             fixtures: BTreeMap::new(),
             cache: HashMap::new(),
             robots_cache: HashMap::new(),
@@ -225,11 +238,26 @@ impl AcquisitionEngine {
     }
 
     fn get(&self, url: &str) -> Result<Response, AcquisitionError> {
-        self.client
-            .get(url)
-            .header(USER_AGENT, self.config.user_agent.as_str())
-            .send()
-            .map_err(AcquisitionError::Http)
+        let attempts = [
+            HttpTransportProfile::RustlsAdaptive,
+            HttpTransportProfile::RustlsHttp1Only,
+            HttpTransportProfile::NativeTls,
+        ];
+
+        execute_transport_attempts(
+            &attempts,
+            |transport| {
+                self.client_for(transport)
+                    .get(url)
+                    .header(USER_AGENT, self.config.user_agent.as_str())
+                    .send()
+            },
+            should_retry_transport_error,
+        )
+        .map_err(|failures| AcquisitionError::HttpTransportFallback {
+            url: url.to_string(),
+            attempts: format_transport_failures(&failures),
+        })
     }
 
     fn assert_allowed_by_robots(&mut self, url: &Url) -> Result<(), AcquisitionError> {
@@ -262,6 +290,14 @@ impl AcquisitionEngine {
         }
 
         Ok(())
+    }
+
+    fn client_for(&self, transport: HttpTransportProfile) -> &Client {
+        match transport {
+            HttpTransportProfile::RustlsAdaptive => &self.rustls_client,
+            HttpTransportProfile::RustlsHttp1Only => &self.rustls_http1_client,
+            HttpTransportProfile::NativeTls => &self.native_tls_client,
+        }
     }
 }
 
@@ -297,6 +333,91 @@ fn normalize_cache_key(url: &str) -> Result<String, AcquisitionError> {
     Ok(parsed.to_string())
 }
 
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+enum HttpTransportProfile {
+    RustlsAdaptive,
+    RustlsHttp1Only,
+    NativeTls,
+}
+
+impl HttpTransportProfile {
+    fn label(self) -> &'static str {
+        match self {
+            Self::RustlsAdaptive => "rustls",
+            Self::RustlsHttp1Only => "rustls-http1",
+            Self::NativeTls => "native-tls",
+        }
+    }
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+struct TransportFailure {
+    transport: HttpTransportProfile,
+    detail: String,
+}
+
+fn build_http_client(
+    config: &AcquisitionConfig,
+    transport: HttpTransportProfile,
+) -> Result<Client, reqwest::Error> {
+    let builder = Client::builder()
+        .timeout(config.request_timeout)
+        .connect_timeout(config.request_timeout)
+        .redirect(reqwest::redirect::Policy::none());
+
+    let builder = match transport {
+        HttpTransportProfile::RustlsAdaptive => builder.use_rustls_tls(),
+        HttpTransportProfile::RustlsHttp1Only => builder.use_rustls_tls().http1_only(),
+        HttpTransportProfile::NativeTls => builder.use_native_tls(),
+    };
+
+    builder.build()
+}
+
+fn execute_transport_attempts<T, E>(
+    attempts: &[HttpTransportProfile],
+    mut run: impl FnMut(HttpTransportProfile) -> Result<T, E>,
+    should_retry: impl Fn(&E) -> bool,
+) -> Result<T, Vec<TransportFailure>>
+where
+    E: std::fmt::Display,
+{
+    let mut failures = Vec::new();
+
+    for (index, transport) in attempts.iter().copied().enumerate() {
+        match run(transport) {
+            Ok(result) => return Ok(result),
+            Err(error) => {
+                failures.push(TransportFailure {
+                    transport,
+                    detail: error.to_string(),
+                });
+
+                if index + 1 == attempts.len() || !should_retry(&error) {
+                    break;
+                }
+            }
+        }
+    }
+
+    Err(failures)
+}
+
+fn should_retry_transport_error(error: &reqwest::Error) -> bool {
+    error.is_connect()
+        || error.is_timeout()
+        || error.is_request()
+        || error.to_string().contains("error sending request")
+}
+
+fn format_transport_failures(failures: &[TransportFailure]) -> String {
+    failures
+        .iter()
+        .map(|failure| format!("{}: {}", failure.transport.label(), failure.detail))
+        .collect::<Vec<_>>()
+        .join(" | ")
+}
+
 #[derive(Debug, Error)]
 pub enum AcquisitionError {
     #[error("unknown fixture source: {0}")]
@@ -311,6 +432,10 @@ pub enum AcquisitionError {
     MissingRedirectLocation(String),
     #[error("http error: {0}")]
     Http(#[from] reqwest::Error),
+    #[error("http transport bootstrap failed for {transport}: {error}")]
+    TransportBootstrap { transport: String, error: String },
+    #[error("http transport failed for {url}: {attempts}")]
+    HttpTransportFallback { url: String, attempts: String },
     #[error("invalid url: {0}")]
     Url(#[from] url::ParseError),
     #[error("persistent cache I/O error: {0}")]

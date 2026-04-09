@@ -36,7 +36,7 @@
     },
     "riskClass": {
       "type": "string",
-      "enum": ["low", "medium", "high", "blocked"]
+      "enum": ["low", "high", "blocked"]
     },
     "reason": {
       "type": "string",

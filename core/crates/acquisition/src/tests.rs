@@ -232,6 +232,59 @@ fn reuses_persistent_robots_cache_across_engine_instances() {
     let _ = fs::remove_dir_all(cache_dir);
 }
 
+#[test]
+fn transport_attempts_retry_connect_errors_and_include_transport_labels() {
+    let attempts = [
+        super::HttpTransportProfile::RustlsAdaptive,
+        super::HttpTransportProfile::RustlsHttp1Only,
+        super::HttpTransportProfile::NativeTls,
+    ];
+    let mut visited = Vec::new();
+
+    let result = super::execute_transport_attempts(
+        &attempts,
+        |transport| {
+            visited.push(transport.label().to_string());
+            match transport {
+                super::HttpTransportProfile::RustlsAdaptive => Err("error sending request"),
+                super::HttpTransportProfile::RustlsHttp1Only => Err("connection reset"),
+                super::HttpTransportProfile::NativeTls => Ok("ok"),
+            }
+        },
+        |error| error.contains("request") || error.contains("connection"),
+    )
+    .expect("native tls fallback should succeed");
+
+    assert_eq!(result, "ok");
+    assert_eq!(visited, vec!["rustls", "rustls-http1", "native-tls"]);
+}
+
+#[test]
+fn transport_attempts_stop_after_non_retryable_error() {
+    let attempts = [
+        super::HttpTransportProfile::RustlsAdaptive,
+        super::HttpTransportProfile::RustlsHttp1Only,
+        super::HttpTransportProfile::NativeTls,
+    ];
+    let mut visited = Vec::new();
+
+    let failures = super::execute_transport_attempts(
+        &attempts,
+        |transport| {
+            visited.push(transport.label().to_string());
+            Err::<&'static str, &'static str>("unsupported content type")
+        },
+        |error| error.contains("connection"),
+    )
+    .expect_err("non-retryable errors should stop immediately");
+
+    assert_eq!(visited, vec!["rustls"]);
+    assert_eq!(
+        super::format_transport_failures(&failures),
+        "rustls: unsupported content type"
+    );
+}
+
 struct TestServer {
     base_url: String,
     stop_flag: Arc<AtomicBool>,

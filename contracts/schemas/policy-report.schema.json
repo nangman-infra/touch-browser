@@ -16,7 +16,7 @@
     },
     "riskClass": {
       "type": "string",
-      "enum": ["low", "medium", "high", "blocked"]
+      "enum": ["low", "high", "blocked"]
     },
     "blockedRefs": {
       "type": "array",
