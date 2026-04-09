@@ -19,8 +19,12 @@ Bootstrap:
 bash scripts/bootstrap-local.sh
 ```
 
-`bootstrap-local.sh` also installs the default semantic matching model under `~/.touch-browser/models/evidence/fasttext/cc.en.300.bin`.
-Use `TOUCH_BROWSER_EVIDENCE_FASTTEXT_MODEL_PATH` only when you need to override the default model path.
+`bootstrap-local.sh` also installs the default semantic models under:
+- `~/.touch-browser/models/evidence/fasttext/cc.en.300.bin`
+- `~/.touch-browser/models/evidence/nli`
+
+Use `TOUCH_BROWSER_EVIDENCE_FASTTEXT_MODEL_PATH` or `TOUCH_BROWSER_EVIDENCE_NLI_MODEL_PATH`
+only when you need to override the default model locations.
 
 Manual setup:
 

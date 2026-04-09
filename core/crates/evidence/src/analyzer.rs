@@ -14,6 +14,7 @@ use crate::{
         build_scoring_context, document_prefers_cross_lingual_matching, score_candidates,
         ScoredCandidate,
     },
+    semantic_matching::rerank_candidates_with_nli,
     ClaimRequest,
 };
 
@@ -50,7 +51,7 @@ pub(crate) fn analyze_claim<'a>(
     let matching_profile = matching_profile_for_document(blocks, &analysis);
     let scoring_context =
         build_scoring_context(blocks, &claim.statement, matching_profile.claim_tokens);
-    let scored = score_candidates(
+    let mut scored = score_candidates(
         blocks,
         &analysis.normalized_claim,
         matching_profile.claim_tokens,
@@ -58,6 +59,7 @@ pub(crate) fn analyze_claim<'a>(
         &analysis.claim_numeric_tokens,
         &scoring_context,
     );
+    rerank_candidates_with_nli(&claim.statement, &mut scored);
     let checked_refs = checked_refs(&scored);
     let contradictory_support = contradictory_support(&scored);
     let contradictory_exists = scored.iter().any(|candidate| candidate.contradictory);
