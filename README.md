@@ -48,10 +48,10 @@ cargo run -q -p touch-browser-cli -- extract https://www.iana.org/help/example-d
 If you already built the binary, replace `cargo run -q -p touch-browser-cli --` with `touch-browser`.
 
 `bootstrap-local.sh` installs the default semantic models under:
-- `~/.touch-browser/models/evidence/fasttext/cc.en.300.bin`
+- `~/.touch-browser/models/evidence/embedding`
 - `~/.touch-browser/models/evidence/nli`
 
-Use `TOUCH_BROWSER_EVIDENCE_FASTTEXT_MODEL_PATH` or `TOUCH_BROWSER_EVIDENCE_NLI_MODEL_PATH`
+Use `TOUCH_BROWSER_EVIDENCE_EMBEDDING_MODEL_PATH` or `TOUCH_BROWSER_EVIDENCE_NLI_MODEL_PATH`
 only when you need to override those default locations.
 
 ## What It Solves

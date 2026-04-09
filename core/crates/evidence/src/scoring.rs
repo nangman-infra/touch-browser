@@ -9,9 +9,6 @@ use crate::{
         claim_mentions_version_or_release, contains_token_sequence, is_version_like_token,
         normalize_text, numeric_tokens, token_overlap_ratio, tokenize_significant, tokens_match,
     },
-    semantic_matching::{
-        build_semantic_scoring_context, semantic_similarity, SemanticScoringContext,
-    },
 };
 
 #[derive(Clone, Debug)]
@@ -20,13 +17,13 @@ pub(crate) struct ScoredCandidate<'a> {
     pub(crate) candidate_index: usize,
     pub(crate) text: String,
     pub(crate) score: f64,
+    pub(crate) lexical_overlap: f64,
     pub(crate) contradictory: bool,
     pub(crate) exact_support: bool,
 }
 
 pub(crate) struct ScoringContext {
     pub(crate) claim_token_weights: BTreeMap<String, f64>,
-    pub(crate) claim_semantic_context: SemanticScoringContext,
 }
 
 struct CandidateScoringInput<'a> {
@@ -93,7 +90,6 @@ pub(crate) fn document_prefers_cross_lingual_matching(blocks: &[SnapshotBlock]) 
 
 pub(crate) fn build_scoring_context(
     blocks: &[SnapshotBlock],
-    claim_text: &str,
     claim_tokens: &[String],
 ) -> ScoringContext {
     let block_count = blocks.len().max(1) as f64;
@@ -112,7 +108,6 @@ pub(crate) fn build_scoring_context(
 
     ScoringContext {
         claim_token_weights,
-        claim_semantic_context: build_semantic_scoring_context(claim_text),
     }
 }
 
@@ -353,11 +348,6 @@ fn score_block_candidates<'a>(
             let version_noise_penalty =
                 version_noise_penalty(input.claim_tokens, input.claim_numeric_tokens, &search_text);
             let contextual_bonus = (contextual_overlap - lexical_overlap).max(0.0) * 0.10;
-            let semantic_bonus = semantic_similarity_bonus(
-                semantic_similarity(&input.scoring_context.claim_semantic_context, &search_text)
-                    .unwrap_or(0.0),
-                lexical_overlap,
-            );
             let contradictory = contradiction_detected(input.normalized_claim, &search_text);
             let mut score = (lexical_overlap * 0.40)
                 + (contextual_overlap * 0.26)
@@ -369,8 +359,7 @@ fn score_block_candidates<'a>(
                 + structural_adjustment
                 + qualifier_adjustment
                 + version_noise_penalty
-                + contextual_bonus
-                + semantic_bonus;
+                + contextual_bonus;
 
             if contradictory && contextual_overlap >= 0.35 {
                 score *= 0.6;
@@ -381,6 +370,7 @@ fn score_block_candidates<'a>(
                 candidate_index: candidate.index,
                 text: search_text,
                 score: score.min(1.0),
+                lexical_overlap,
                 contradictory,
                 exact_support: exact_bonus >= 0.70,
             })
@@ -452,15 +442,15 @@ fn qualifier_profiles_conflict(claim: QualifierPresence, support: QualifierPrese
         || (claim.has_minimum && (support.has_default || support.has_maximum))
 }
 
-fn semantic_similarity_bonus(semantic_similarity: f64, lexical_overlap: f64) -> f64 {
-    if semantic_similarity <= 0.55 {
+pub(crate) fn semantic_similarity_bonus(semantic_similarity: f64, lexical_overlap: f64) -> f64 {
+    if lexical_overlap <= 0.08 || semantic_similarity <= 0.68 {
         return 0.0;
     }
 
-    let semantic_signal = ((semantic_similarity - 0.55) / 0.30).clamp(0.0, 1.0);
-    let lexical_gap = ((0.65 - lexical_overlap) / 0.65).clamp(0.0, 1.0);
+    let semantic_signal = ((semantic_similarity - 0.68) / 0.22).clamp(0.0, 1.0);
+    let lexical_gap = ((0.55 - lexical_overlap) / 0.55).clamp(0.0, 1.0);
 
-    semantic_signal * lexical_gap * 0.12
+    semantic_signal * lexical_gap * 0.10
 }
 
 fn contextual_search_text(blocks: &[SnapshotBlock], index: usize, primary_text: &str) -> String {

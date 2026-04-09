@@ -421,6 +421,7 @@ mod tests {
             candidate_index: 0,
             text: "support block".to_string(),
             score,
+            lexical_overlap: score,
             contradictory: false,
             exact_support,
         }

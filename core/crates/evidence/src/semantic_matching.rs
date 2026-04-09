@@ -3,24 +3,19 @@ use std::{
     io::Write,
     path::{Path, PathBuf},
     process::{Command, Stdio},
-    sync::OnceLock,
 };
 
-use fasttext::FastText;
 use serde::{Deserialize, Serialize};
 
-use crate::scoring::ScoredCandidate;
+use crate::scoring::{semantic_similarity_bonus, ScoredCandidate};
 
+const DEFAULT_EMBEDDING_MODEL_ID: &str = "Xenova/multilingual-e5-small";
 const DEFAULT_NLI_MODEL_ID: &str = "Xenova/nli-deberta-v3-xsmall";
+const SEMANTIC_RERANK_LIMIT: usize = 12;
 const NLI_RERANK_LIMIT: usize = 5;
 const STRONG_NLI_ENTAILMENT: f64 = 0.82;
 const STRONG_NLI_CONTRADICTION: f64 = 0.94;
 const STRONG_NLI_MARGIN: f64 = 0.20;
-
-#[derive(Default)]
-pub(crate) struct SemanticScoringContext {
-    claim_vector: Option<Vec<f32>>,
-}
 
 #[derive(Debug, Clone, Copy, PartialEq, Deserialize)]
 pub(crate) struct NliScore {
@@ -29,26 +24,54 @@ pub(crate) struct NliScore {
     pub(crate) neutral: f64,
 }
 
-pub(crate) fn build_semantic_scoring_context(claim_text: &str) -> SemanticScoringContext {
-    let claim_vector = active_backend()
-        .and_then(|backend| backend.sentence_vector(claim_text).ok())
-        .filter(|vector| !vector_is_zero(vector));
+pub(crate) fn rerank_candidates_with_semantic(
+    claim_text: &str,
+    candidates: &mut [ScoredCandidate<'_>],
+) {
+    let rerank_count = candidates.len().min(SEMANTIC_RERANK_LIMIT);
+    if rerank_count == 0 {
+        return;
+    }
 
-    SemanticScoringContext { claim_vector }
-}
+    let Some(model_root) = resolved_embedding_model_root() else {
+        return;
+    };
 
-pub(crate) fn semantic_similarity(
-    context: &SemanticScoringContext,
-    candidate_text: &str,
-) -> Option<f64> {
-    let claim_vector = context.claim_vector.as_ref()?;
-    let backend = active_backend()?;
-    let candidate_vector = backend
-        .sentence_vector(candidate_text)
-        .ok()
-        .filter(|vector| !vector_is_zero(vector))?;
+    let Some(runner_command) = embedding_runner_command() else {
+        return;
+    };
+    let model_id = embedding_model_id();
+    let Some(embeddings) = run_embedding_batch_with_backend(
+        &embedding_request_texts(claim_text, candidates, rerank_count),
+        &model_root,
+        &runner_command,
+        &model_id,
+    ) else {
+        return;
+    };
+    if embeddings.len() != rerank_count + 1 {
+        return;
+    }
 
-    cosine_similarity(claim_vector, &candidate_vector)
+    let claim_vector = &embeddings[0];
+    if vector_is_zero(claim_vector) {
+        return;
+    }
+
+    for (candidate, candidate_vector) in candidates
+        .iter_mut()
+        .take(rerank_count)
+        .zip(embeddings.iter().skip(1))
+    {
+        let Some(semantic_similarity) = cosine_similarity(claim_vector, candidate_vector) else {
+            continue;
+        };
+        let semantic_bonus =
+            semantic_similarity_bonus(semantic_similarity, candidate.lexical_overlap);
+        candidate.score = (candidate.score + semantic_bonus).min(1.0);
+    }
+
+    sort_candidates_by_score(candidates);
 }
 
 pub(crate) fn rerank_candidates_with_nli(claim_text: &str, candidates: &mut [ScoredCandidate<'_>]) {
@@ -60,12 +83,22 @@ pub(crate) fn rerank_candidates_with_nli(claim_text: &str, candidates: &mut [Sco
     let Some(model_root) = resolved_nli_model_root() else {
         return;
     };
+    let Some(runner_command) = nli_runner_command() else {
+        return;
+    };
+    let model_id = nli_model_id();
     let candidate_texts = candidates
         .iter()
         .take(rerank_count)
         .map(|candidate| candidate.text.clone())
         .collect::<Vec<_>>();
-    let Some(results) = run_nli_batch(claim_text, &candidate_texts, &model_root) else {
+    let Some(results) = run_nli_batch_with_backend(
+        claim_text,
+        &candidate_texts,
+        &model_root,
+        &runner_command,
+        &model_id,
+    ) else {
         return;
     };
 
@@ -73,6 +106,10 @@ pub(crate) fn rerank_candidates_with_nli(claim_text: &str, candidates: &mut [Sco
         apply_nli_reranking(candidate, nli);
     }
 
+    sort_candidates_by_score(candidates);
+}
+
+fn sort_candidates_by_score(candidates: &mut [ScoredCandidate<'_>]) {
     candidates.sort_by(|left, right| {
         right
             .score
@@ -81,58 +118,52 @@ pub(crate) fn rerank_candidates_with_nli(claim_text: &str, candidates: &mut [Sco
     });
 }
 
-fn active_backend() -> Option<&'static FastTextBackend> {
-    match backend_state() {
-        SemanticBackendState::FastText(backend) => Some(backend),
-        SemanticBackendState::Disabled | SemanticBackendState::Unavailable => None,
+fn resolved_embedding_model_root() -> Option<PathBuf> {
+    if let Some(model_path) = env::var_os("TOUCH_BROWSER_EVIDENCE_EMBEDDING_MODEL_PATH") {
+        let model_root = PathBuf::from(model_path);
+        return model_root.is_dir().then_some(model_root);
     }
+
+    let home = env::var_os("HOME").map(PathBuf::from)?;
+    let default_root = default_embedding_model_root_from_home(&home);
+    default_root
+        .join(".ready.json")
+        .is_file()
+        .then_some(default_root)
 }
 
-fn backend_state() -> &'static SemanticBackendState {
-    static BACKEND: OnceLock<SemanticBackendState> = OnceLock::new();
-
-    BACKEND.get_or_init(load_backend_from_env)
+fn default_embedding_model_root_from_home(home: &Path) -> PathBuf {
+    home.join(".touch-browser/models/evidence/embedding")
 }
 
-fn load_backend_from_env() -> SemanticBackendState {
-    if let Some(model_path) = env::var_os("TOUCH_BROWSER_EVIDENCE_FASTTEXT_MODEL_PATH") {
-        let model_path = PathBuf::from(model_path);
-        if !model_path.is_file() {
-            return SemanticBackendState::Unavailable;
+fn embedding_model_id() -> String {
+    env::var("TOUCH_BROWSER_EVIDENCE_EMBEDDING_MODEL_ID")
+        .ok()
+        .filter(|value| !value.trim().is_empty())
+        .unwrap_or_else(|| DEFAULT_EMBEDDING_MODEL_ID.to_string())
+}
+
+fn embedding_runner_command() -> Option<String> {
+    if let Ok(command) = env::var("TOUCH_BROWSER_EVIDENCE_EMBEDDING_RUNNER") {
+        if !command.trim().is_empty() {
+            return Some(command);
         }
-
-        return match FastTextBackend::load(&model_path) {
-            Ok(backend) => SemanticBackendState::FastText(backend),
-            Err(_) => SemanticBackendState::Unavailable,
-        };
     }
 
-    let Some(model_path) = default_model_candidates()
-        .into_iter()
-        .find(|candidate| candidate.is_file())
-    else {
-        return SemanticBackendState::Disabled;
-    };
+    default_embedding_runner_script().map(|path| format!("node {}", shell_escape(&path)))
+}
 
-    match FastTextBackend::load(&model_path) {
-        Ok(backend) => SemanticBackendState::FastText(backend),
-        Err(_) => SemanticBackendState::Unavailable,
+fn default_embedding_runner_script() -> Option<PathBuf> {
+    let current_dir_script = std::env::current_dir()
+        .ok()
+        .map(|dir| dir.join("scripts/evidence-embedding-runner.mjs"));
+    if let Some(path) = current_dir_script.filter(|path| path.is_file()) {
+        return Some(path);
     }
-}
 
-fn default_model_candidates() -> Vec<PathBuf> {
-    let Some(home) = env::var_os("HOME").map(PathBuf::from) else {
-        return Vec::new();
-    };
-
-    default_model_candidates_from_home(&home)
-}
-
-fn default_model_candidates_from_home(home: &Path) -> Vec<PathBuf> {
-    vec![
-        home.join(".touch-browser/models/evidence/fasttext/cc.en.300.bin"),
-        home.join(".touch-browser/models/evidence/fasttext.bin"),
-    ]
+    let build_path = PathBuf::from(env!("CARGO_MANIFEST_DIR"))
+        .join("../../../scripts/evidence-embedding-runner.mjs");
+    build_path.is_file().then_some(build_path)
 }
 
 fn resolved_nli_model_root() -> Option<PathBuf> {
@@ -192,14 +223,59 @@ fn repo_root_for_runner() -> PathBuf {
         .unwrap_or_else(|| PathBuf::from("."))
 }
 
-fn run_nli_batch(
+fn embedding_request_texts(
+    claim_text: &str,
+    candidates: &[ScoredCandidate<'_>],
+    rerank_count: usize,
+) -> Vec<String> {
+    let mut texts = Vec::with_capacity(rerank_count + 1);
+    texts.push(prefix_query_text(claim_text));
+    texts.extend(
+        candidates
+            .iter()
+            .take(rerank_count)
+            .map(|candidate| prefix_passage_text(&candidate.text)),
+    );
+    texts
+}
+
+fn run_embedding_batch_with_backend(
+    texts: &[String],
+    model_root: &Path,
+    runner_command: &str,
+    model_id: &str,
+) -> Option<Vec<Vec<f32>>> {
+    let request = EmbeddingBatchRequest {
+        model_id: model_id.to_string(),
+        texts: texts.to_vec(),
+    };
+    let request_body = serde_json::to_vec(&request).ok()?;
+
+    let output = run_json_runner(
+        runner_command,
+        &[
+            ("TOUCH_BROWSER_EVIDENCE_EMBEDDING_MODEL_PATH", model_root),
+            (
+                "TOUCH_BROWSER_EVIDENCE_EMBEDDING_MODEL_ID",
+                Path::new(model_id),
+            ),
+        ],
+        &request_body,
+    )?;
+
+    let response: EmbeddingBatchResponse = serde_json::from_slice(&output).ok()?;
+    Some(response.embeddings)
+}
+
+fn run_nli_batch_with_backend(
     claim_text: &str,
     candidate_texts: &[String],
     model_root: &Path,
+    runner_command: &str,
+    model_id: &str,
 ) -> Option<Vec<NliScore>> {
-    let runner_command = nli_runner_command()?;
     let request = NliBatchRequest {
-        model_id: nli_model_id(),
+        model_id: model_id.to_string(),
         pairs: candidate_texts
             .iter()
             .map(|candidate_text| NliPairRequest {
@@ -210,20 +286,41 @@ fn run_nli_batch(
     };
     let request_body = serde_json::to_vec(&request).ok()?;
 
-    let mut child = Command::new("sh")
-        .args(["-lc", &runner_command])
+    let output = run_json_runner(
+        runner_command,
+        &[
+            ("TOUCH_BROWSER_EVIDENCE_NLI_MODEL_PATH", model_root),
+            ("TOUCH_BROWSER_EVIDENCE_NLI_MODEL_ID", Path::new(model_id)),
+        ],
+        &request_body,
+    )?;
+
+    let response: NliBatchResponse = serde_json::from_slice(&output).ok()?;
+    Some(response.results)
+}
+
+fn run_json_runner(
+    runner_command: &str,
+    envs: &[(&str, &Path)],
+    request_body: &[u8],
+) -> Option<Vec<u8>> {
+    let mut command = Command::new("sh");
+    command
+        .args(["-lc", runner_command])
         .current_dir(repo_root_for_runner())
-        .env("TOUCH_BROWSER_EVIDENCE_NLI_MODEL_PATH", model_root)
-        .env("TOUCH_BROWSER_EVIDENCE_NLI_MODEL_ID", &request.model_id)
         .stdin(Stdio::piped())
         .stdout(Stdio::piped())
-        .stderr(Stdio::piped())
-        .spawn()
-        .ok()?;
+        .stderr(Stdio::piped());
+
+    for (key, value) in envs {
+        command.env(key, value);
+    }
+
+    let mut child = command.spawn().ok()?;
 
     {
         let stdin = child.stdin.as_mut()?;
-        stdin.write_all(&request_body).ok()?;
+        stdin.write_all(request_body).ok()?;
     }
     let _ = child.stdin.take();
 
@@ -232,8 +329,7 @@ fn run_nli_batch(
         return None;
     }
 
-    let response: NliBatchResponse = serde_json::from_slice(&output.stdout).ok()?;
-    Some(response.results)
+    Some(output.stdout)
 }
 
 fn apply_nli_reranking(candidate: &mut ScoredCandidate<'_>, nli: &NliScore) {
@@ -252,6 +348,14 @@ fn apply_nli_reranking(candidate: &mut ScoredCandidate<'_>, nli: &NliScore) {
         candidate.score = (candidate.score + 0.18).min(1.0);
         candidate.exact_support = true;
     }
+}
+
+fn prefix_query_text(text: &str) -> String {
+    format!("query: {}", text.trim())
+}
+
+fn prefix_passage_text(text: &str) -> String {
+    format!("passage: {}", text.trim())
 }
 
 fn shell_escape(path: &Path) -> String {
@@ -284,14 +388,17 @@ fn vector_is_zero(vector: &[f32]) -> bool {
     vector.iter().all(|value| value.abs() <= f32::EPSILON)
 }
 
-enum SemanticBackendState {
-    Disabled,
-    Unavailable,
-    FastText(FastTextBackend),
+#[derive(Debug, Serialize)]
+#[serde(rename_all = "camelCase")]
+struct EmbeddingBatchRequest {
+    model_id: String,
+    texts: Vec<String>,
 }
 
-struct FastTextBackend {
-    model: FastText,
+#[derive(Debug, Deserialize)]
+#[serde(rename_all = "camelCase")]
+struct EmbeddingBatchResponse {
+    embeddings: Vec<Vec<f32>>,
 }
 
 #[derive(Debug, Serialize)]
@@ -314,43 +421,24 @@ struct NliBatchResponse {
     results: Vec<NliScore>,
 }
 
-impl FastTextBackend {
-    fn load(model_path: &Path) -> Result<Self, String> {
-        let Some(model_path) = model_path.to_str() else {
-            return Err(format!(
-                "fastText model path `{}` is not valid UTF-8.",
-                model_path.display()
-            ));
-        };
-
-        let mut model = FastText::new();
-        model.load_model(model_path)?;
-        Ok(Self { model })
-    }
-
-    fn sentence_vector(&self, text: &str) -> Result<Vec<f32>, String> {
-        self.model.get_sentence_vector(text)
-    }
-}
-
 #[cfg(test)]
 mod tests {
     use std::{
-        env, fs,
+        fs,
         path::{Path, PathBuf},
         time::{SystemTime, UNIX_EPOCH},
     };
 
-    use fasttext::{Args, FastText, ModelName};
     use touch_browser_contracts::{
         SnapshotBlock, SnapshotBlockKind, SnapshotBlockRole, SnapshotEvidence, SourceType,
     };
 
     use super::{
-        apply_nli_reranking, cosine_similarity, default_model_candidates_from_home, run_nli_batch,
-        vector_is_zero, FastTextBackend, NliScore,
+        apply_nli_reranking, cosine_similarity, default_embedding_model_root_from_home,
+        embedding_request_texts, run_embedding_batch_with_backend, run_nli_batch_with_backend,
+        vector_is_zero, NliScore,
     };
-    use crate::scoring::ScoredCandidate;
+    use crate::scoring::{semantic_similarity_bonus, ScoredCandidate};
 
     #[test]
     fn cosine_similarity_requires_non_zero_vectors() {
@@ -361,62 +449,71 @@ mod tests {
     }
 
     #[test]
-    fn fasttext_backend_scores_same_domain_paraphrases_similarly() {
-        let model = train_test_model(
-            "domains-docs",
-            &[
-                "domains are maintained for documentation purposes docs kept for examples",
-                "documentation examples use reserved domains for docs",
-                "reserved domains are kept for documentation and examples",
-                "domains kept for docs are useful in documentation",
-            ],
-        );
-        let backend = FastTextBackend { model };
+    fn default_embedding_root_resolves_under_touch_browser_home() {
+        let home = Path::new("/tmp/touch-browser-home");
 
-        let paraphrase_similarity = cosine_similarity(
-            &backend
-                .sentence_vector("domains are kept for docs")
-                .expect("claim vector"),
-            &backend
-                .sentence_vector("domains are maintained for documentation purposes")
-                .expect("support vector"),
-        )
-        .expect("cosine similarity");
-
-        let unrelated_similarity = cosine_similarity(
-            &backend
-                .sentence_vector("domains are kept for docs")
-                .expect("claim vector"),
-            &backend
-                .sentence_vector("tokio runtime spawns many tasks")
-                .expect("support vector"),
-        )
-        .expect("cosine similarity");
-
-        assert!(
-            paraphrase_similarity > unrelated_similarity,
-            "expected paraphrase similarity {} to exceed unrelated similarity {}",
-            paraphrase_similarity,
-            unrelated_similarity
+        assert_eq!(
+            default_embedding_model_root_from_home(home),
+            PathBuf::from("/tmp/touch-browser-home/.touch-browser/models/evidence/embedding")
         );
     }
 
     #[test]
-    fn default_model_candidates_resolve_under_touch_browser_home() {
-        let home = Path::new("/tmp/touch-browser-home");
-        let candidates = default_model_candidates_from_home(home);
+    fn semantic_reranking_boosts_more_similar_candidate() {
+        let temp_dir = temporary_directory("embedding-rerank");
+        let model_root = temp_dir.join("model-root");
+        fs::create_dir_all(&model_root).expect("model root should exist");
+        let script_path = temp_dir.join("mock-embedding-runner.mjs");
+        fs::write(
+            &script_path,
+            r#"
+let body = '';
+process.stdin.setEncoding('utf8');
+process.stdin.on('data', (chunk) => (body += chunk));
+process.stdin.on('end', () => {
+  const request = JSON.parse(body);
+  const embeddings = request.texts.map((text, index) => {
+    if (index === 0) return [1, 0, 0];
+    if (text.includes('documentation')) return [0.98, 0.01, 0];
+    return [0.2, 0.9, 0];
+  });
+  process.stdout.write(JSON.stringify({ embeddings }));
+});
+"#,
+        )
+        .expect("mock runner should write");
 
-        assert_eq!(
-            candidates,
-            vec![
-                PathBuf::from(
-                    "/tmp/touch-browser-home/.touch-browser/models/evidence/fasttext/cc.en.300.bin"
-                ),
-                PathBuf::from(
-                    "/tmp/touch-browser-home/.touch-browser/models/evidence/fasttext.bin"
-                ),
-            ]
-        );
+        let runner_command = format!("node {}", script_path.display());
+
+        let mut candidates = vec![
+            scored_candidate("b1", "domains are maintained for documentation", 0.34, 0.18),
+            scored_candidate("b2", "tokio spawns asynchronous tasks", 0.35, 0.18),
+        ];
+        let embeddings = run_embedding_batch_with_backend(
+            &embedding_request_texts("도메인은 문서화 목적으로 유지된다", &candidates, 2),
+            &model_root,
+            &runner_command,
+            "test-embedding-model",
+        )
+        .expect("embedding batch should succeed");
+        assert_eq!(embeddings.len(), 3);
+        let claim_vector = &embeddings[0];
+        for (candidate, vector) in candidates.iter_mut().zip(embeddings.iter().skip(1)) {
+            let semantic_similarity =
+                cosine_similarity(claim_vector, vector).expect("cosine similarity");
+            let semantic_bonus =
+                semantic_similarity_bonus(semantic_similarity, candidate.lexical_overlap);
+            candidate.score = (candidate.score + semantic_bonus).min(1.0);
+        }
+        candidates.sort_by(|left, right| {
+            right
+                .score
+                .partial_cmp(&left.score)
+                .unwrap_or(std::cmp::Ordering::Equal)
+        });
+
+        assert_eq!(candidates[0].block.id, "b1");
+        assert!(candidates[0].score > candidates[1].score);
     }
 
     #[test]
@@ -424,6 +521,7 @@ mod tests {
         let mut candidate = scored_candidate(
             "b1",
             "domains are maintained for documentation purposes",
+            0.41,
             0.41,
         );
 
@@ -443,7 +541,7 @@ mod tests {
 
     #[test]
     fn nli_reranking_marks_strong_contradiction_candidates() {
-        let mut candidate = scored_candidate("b1", "the default value is 3 seconds", 0.52);
+        let mut candidate = scored_candidate("b1", "the default value is 3 seconds", 0.52, 0.30);
 
         apply_nli_reranking(
             &mut candidate,
@@ -455,6 +553,41 @@ mod tests {
         );
 
         assert!(candidate.contradictory);
+    }
+
+    #[test]
+    fn run_embedding_batch_reads_json_response_from_mock_runner() {
+        let temp_dir = temporary_directory("embedding-runner");
+        let model_root = temp_dir.join("model-root");
+        fs::create_dir_all(&model_root).expect("model root should exist");
+        let script_path = temp_dir.join("mock-embedding-runner.mjs");
+        fs::write(
+            &script_path,
+            r#"
+let body = '';
+process.stdin.setEncoding('utf8');
+process.stdin.on('data', (chunk) => (body += chunk));
+process.stdin.on('end', () => {
+  const request = JSON.parse(body);
+  process.stdout.write(JSON.stringify({
+    embeddings: request.texts.map((_text, index) => [index, 1, 0])
+  }));
+});
+"#,
+        )
+        .expect("mock runner should write");
+
+        let results = run_embedding_batch_with_backend(
+            &["query: one".to_string(), "passage: two".to_string()],
+            &model_root,
+            &format!("node {}", script_path.display()),
+            "test-embedding-model",
+        )
+        .expect("embedding batch should succeed");
+
+        assert_eq!(results.len(), 2);
+        assert_eq!(results[0], vec![0.0, 1.0, 0.0]);
+        assert_eq!(results[1], vec![1.0, 1.0, 0.0]);
     }
 
     #[test]
@@ -483,58 +616,18 @@ process.stdin.on('end', () => {
         )
         .expect("mock runner should write");
 
-        let previous_runner = env::var("TOUCH_BROWSER_EVIDENCE_NLI_RUNNER").ok();
-        env::set_var(
-            "TOUCH_BROWSER_EVIDENCE_NLI_RUNNER",
-            format!("node {}", script_path.display()),
-        );
-
-        let results = run_nli_batch(
+        let results = run_nli_batch_with_backend(
             "claim text",
             &["first".to_string(), "second".to_string()],
             &model_root,
+            &format!("node {}", script_path.display()),
+            "test-nli-model",
         )
         .expect("nli batch should succeed");
-
-        if let Some(previous_runner) = previous_runner {
-            env::set_var("TOUCH_BROWSER_EVIDENCE_NLI_RUNNER", previous_runner);
-        } else {
-            env::remove_var("TOUCH_BROWSER_EVIDENCE_NLI_RUNNER");
-        }
 
         assert_eq!(results.len(), 2);
         assert!(results[0].contradiction > 0.9);
         assert!(results[1].entailment > 0.8);
-    }
-
-    fn train_test_model(name: &str, corpus_lines: &[&str]) -> FastText {
-        let temp_dir = temporary_directory(name);
-        let corpus_path = temp_dir.join("corpus.txt");
-        let output_base = temp_dir.join("model");
-        fs::write(&corpus_path, corpus_lines.join("\n")).expect("test corpus should write");
-
-        let mut args = Args::new();
-        args.set_input(corpus_path.to_str().expect("corpus path utf8"))
-            .expect("set input");
-        args.set_output(output_base.to_str().expect("output path utf8"))
-            .expect("set output");
-        args.set_model(ModelName::SG);
-        args.set_epoch(80);
-        args.set_lr(0.15);
-        args.set_dim(32);
-        args.set_thread(1);
-        args.set_min_count(1);
-        args.set_word_ngrams(2);
-        args.set_bucket(10_000);
-        args.set_minn(2);
-        args.set_maxn(4);
-        args.set_verbose(0);
-
-        let mut model = FastText::new();
-        model
-            .train(&args)
-            .expect("fastText test model should train");
-        model
     }
 
     fn temporary_directory(name: &str) -> PathBuf {
@@ -547,7 +640,12 @@ process.stdin.on('end', () => {
         directory
     }
 
-    fn scored_candidate<'a>(id: &str, text: &str, score: f64) -> ScoredCandidate<'a> {
+    fn scored_candidate<'a>(
+        id: &str,
+        text: &str,
+        score: f64,
+        lexical_overlap: f64,
+    ) -> ScoredCandidate<'a> {
         let block = Box::leak(Box::new(SnapshotBlock {
             version: "1.0.0".to_string(),
             id: id.to_string(),
@@ -570,6 +668,7 @@ process.stdin.on('end', () => {
             candidate_index: 0,
             text: text.to_string(),
             score,
+            lexical_overlap,
             contradictory: false,
             exact_support: false,
         }

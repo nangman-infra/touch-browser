@@ -167,15 +167,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "cfasttext-sys"
-version = "0.7.8"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "982185af4edba23861639c25e46b36e077d2d60e553c20d1341c9fbf17fdb369"
-dependencies = [
- "cc",
-]
-
-[[package]]
 name = "cfg-if"
 version = "1.0.4"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -331,15 +322,6 @@ name = "fastrand"
 version = "2.4.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "a043dc74da1e37d6afe657061213aa6f425f855399a11d3463c6ecccc4dfda1f"
-
-[[package]]
-name = "fasttext"
-version = "0.7.8"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "fd26f3978ff7b22e594af9026912da644237fd7d360889d0c5a6ac8ec4f940c8"
-dependencies = [
- "cfasttext-sys",
-]
 
 [[package]]
 name = "ferrous-opencc"
@@ -1945,7 +1927,6 @@ dependencies = [
 name = "touch-browser-evidence"
 version = "0.1.0"
 dependencies = [
- "fasttext",
  "ferrous-opencc",
  "serde",
  "serde_json",
