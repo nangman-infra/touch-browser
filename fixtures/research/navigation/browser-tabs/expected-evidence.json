@@ -65,6 +65,26 @@
         "sourceRisk": "low",
         "sourceLabel": "Browser tabs navigation"
       },
+      "supportSnippets": [
+        {
+          "blockId": "b3",
+          "stableRef": "rmain:text:browser-tabs-highlights-overview-policies-and-lo",
+          "snippet": "Browser Tabs highlights overview, policies, and logs as the main navigation targets p 84 main"
+        },
+        {
+          "blockId": "b4",
+          "stableRef": "rmain:list:overview-tab-policies-tab-logs-tab",
+          "snippet": "- Overview tab - Policies tab - Logs tab 3 ul 40 main list items"
+        },
+        {
+          "blockId": "b2",
+          "stableRef": "rmain:heading:browser-tabs",
+          "snippet": "Browser Tabs 1 h1 12 main"
+        }
+      ],
+      "confidenceBand": "high",
+      "reviewRecommended": false,
+      "verdictExplanation": "Matched direct support in 3 page block(s). Review the attached snippets before reusing the claim.",
       "checkedBlockRefs": [
         "rmain:text:browser-tabs-highlights-overview-policies-and-lo",
         "rmain:list:overview-tab-policies-tab-logs-tab",
@@ -85,6 +105,26 @@
         "sourceRisk": "low",
         "sourceLabel": "Browser tabs navigation"
       },
+      "supportSnippets": [
+        {
+          "blockId": "b4",
+          "stableRef": "rmain:list:overview-tab-policies-tab-logs-tab",
+          "snippet": "- Overview tab - Policies tab - Logs tab 3 ul 40 main list items"
+        },
+        {
+          "blockId": "b3",
+          "stableRef": "rmain:text:browser-tabs-highlights-overview-policies-and-lo",
+          "snippet": "Browser Tabs highlights overview, policies, and logs as the main navigation targets p 84 main"
+        },
+        {
+          "blockId": "b2",
+          "stableRef": "rmain:heading:browser-tabs",
+          "snippet": "Browser Tabs 1 h1 12 main"
+        }
+      ],
+      "confidenceBand": "high",
+      "reviewRecommended": false,
+      "verdictExplanation": "Matched direct support in 3 page block(s). Review the attached snippets before reusing the claim.",
       "checkedBlockRefs": [
         "rmain:list:overview-tab-policies-tab-logs-tab",
         "rmain:text:browser-tabs-highlights-overview-policies-and-lo",
@@ -97,6 +137,8 @@
       "statement": "The page includes a payment checkout flow.",
       "verdict": "insufficient-evidence",
       "reason": "insufficient-support-score",
+      "reviewRecommended": true,
+      "verdictExplanation": "The page did not surface strong enough support for this claim yet.",
       "checkedBlockRefs": [
         "rmain:list:overview-tab-policies-tab-logs-tab",
         "rmain:text:browser-tabs-highlights-overview-policies-and-lo",

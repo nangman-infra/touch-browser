@@ -65,6 +65,26 @@
         "sourceRisk": "low",
         "sourceLabel": "Browser-backed duplicate follow disambiguation"
       },
+      "supportSnippets": [
+        {
+          "blockId": "b3",
+          "stableRef": "rmain:text:follow-content",
+          "snippet": "Select the correct Open docs link to continue the research flow p 64 main"
+        },
+        {
+          "blockId": "b4",
+          "stableRef": "rmain:heading:legacy-docs",
+          "snippet": "Legacy docs 2 h2 11 main"
+        },
+        {
+          "blockId": "b2",
+          "stableRef": "rmain:heading:browser-follow-duplicate",
+          "snippet": "Browser Follow Duplicate 1 h1 24 main"
+        }
+      ],
+      "confidenceBand": "medium",
+      "reviewRecommended": false,
+      "verdictExplanation": "Matched plausible support in 3 page block(s). Review the attached snippets if the claim is high impact.",
       "checkedBlockRefs": [
         "rmain:text:follow-content",
         "rmain:heading:legacy-docs",
@@ -85,6 +105,16 @@
         "sourceRisk": "low",
         "sourceLabel": "Browser-backed duplicate follow disambiguation"
       },
+      "supportSnippets": [
+        {
+          "blockId": "b6",
+          "stableRef": "rmain:heading:current-docs",
+          "snippet": "Current docs 2 h2 12 main"
+        }
+      ],
+      "confidenceBand": "high",
+      "reviewRecommended": false,
+      "verdictExplanation": "Matched direct support in 1 page block(s). Review the attached snippets before reusing the claim.",
       "checkedBlockRefs": [
         "rmain:heading:current-docs",
         "rmain:text:follow-content",
@@ -97,6 +127,8 @@
       "statement": "The page contains a pricing calculator.",
       "verdict": "insufficient-evidence",
       "reason": "insufficient-support-score",
+      "reviewRecommended": true,
+      "verdictExplanation": "The page did not surface strong enough support for this claim yet.",
       "checkedBlockRefs": [
         "rmain:text:follow-content",
         "rmain:heading:browser-follow-duplicate",

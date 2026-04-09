@@ -65,6 +65,26 @@
         "sourceRisk": "low",
         "sourceLabel": "Static docs troubleshooting page"
       },
+      "supportSnippets": [
+        {
+          "blockId": "b6",
+          "stableRef": "rmain:text:if-stable-refs-go-stale-after-a-page-change-capt",
+          "snippet": "If stable refs go stale after a page change, capture a new semantic snapshot before acting again p 97 main"
+        },
+        {
+          "blockId": "b7",
+          "stableRef": "rmain:text:memory-compaction-keeps-the-working-set-bounded-",
+          "snippet": "Memory compaction keeps the working set bounded during long research sessions p 78 main"
+        },
+        {
+          "blockId": "b5",
+          "stableRef": "rmain:heading:troubleshooting",
+          "snippet": "Troubleshooting 1 h1 15 main"
+        }
+      ],
+      "confidenceBand": "high",
+      "reviewRecommended": false,
+      "verdictExplanation": "Matched direct support in 3 page block(s). Review the attached snippets before reusing the claim.",
       "checkedBlockRefs": [
         "rmain:text:if-stable-refs-go-stale-after-a-page-change-capt",
         "rmain:text:memory-compaction-keeps-the-working-set-bounded-",
@@ -85,6 +105,26 @@
         "sourceRisk": "low",
         "sourceLabel": "Static docs troubleshooting page"
       },
+      "supportSnippets": [
+        {
+          "blockId": "b7",
+          "stableRef": "rmain:text:memory-compaction-keeps-the-working-set-bounded-",
+          "snippet": "Memory compaction keeps the working set bounded during long research sessions p 78 main"
+        },
+        {
+          "blockId": "b8",
+          "stableRef": "rmain:list:1-open-the-current-page-2-read-the-latest-snapsh",
+          "snippet": "1 1. Open the current page. 2. Read the latest snapshot. 3. Re-run replay if the issue must be reproduced deterministically. 3 ordered ol 122 main list items"
+        },
+        {
+          "blockId": "b6",
+          "stableRef": "rmain:text:if-stable-refs-go-stale-after-a-page-change-capt",
+          "snippet": "If stable refs go stale after a page change, capture a new semantic snapshot before acting again p 97 main"
+        }
+      ],
+      "confidenceBand": "high",
+      "reviewRecommended": false,
+      "verdictExplanation": "Matched direct support in 3 page block(s). Review the attached snippets before reusing the claim.",
       "checkedBlockRefs": [
         "rmain:text:memory-compaction-keeps-the-working-set-bounded-",
         "rmain:list:1-open-the-current-page-2-read-the-latest-snapsh",
@@ -97,6 +137,8 @@
       "statement": "The troubleshooting guide documents a checkout recovery flow.",
       "verdict": "insufficient-evidence",
       "reason": "insufficient-support-score",
+      "reviewRecommended": true,
+      "verdictExplanation": "The page did not surface strong enough support for this claim yet.",
       "checkedBlockRefs": [
         "rmain:list:1-open-the-current-page-2-read-the-latest-snapsh",
         "rmain:text:if-stable-refs-go-stale-after-a-page-change-capt",

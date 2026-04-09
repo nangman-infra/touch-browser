@@ -65,6 +65,26 @@
         "sourceRisk": "low",
         "sourceLabel": "Navigation tab overview page"
       },
+      "supportSnippets": [
+        {
+          "blockId": "b8",
+          "stableRef": "rmain:text:researchers-often-open-the-architecture-tab-firs",
+          "snippet": "Researchers often open the Architecture tab first p 50 main"
+        },
+        {
+          "blockId": "b3",
+          "stableRef": "rmain:text:the-runtime-can-scan-documentation-tabs-before-o",
+          "snippet": "The runtime can scan documentation tabs before opening a deeper page p 69 main"
+        },
+        {
+          "blockId": "b4",
+          "stableRef": "rmain:list:architecture-benchmarks-policy",
+          "snippet": "- Architecture - Benchmarks - Policy 3 ul 36 main list items"
+        }
+      ],
+      "confidenceBand": "high",
+      "reviewRecommended": false,
+      "verdictExplanation": "Matched direct support in 3 page block(s). Review the attached snippets before reusing the claim.",
       "checkedBlockRefs": [
         "rmain:text:researchers-often-open-the-architecture-tab-firs",
         "rmain:text:the-runtime-can-scan-documentation-tabs-before-o",
@@ -85,6 +105,26 @@
         "sourceRisk": "low",
         "sourceLabel": "Navigation tab overview page"
       },
+      "supportSnippets": [
+        {
+          "blockId": "b4",
+          "stableRef": "rmain:list:architecture-benchmarks-policy",
+          "snippet": "- Architecture - Benchmarks - Policy 3 ul 36 main list items"
+        },
+        {
+          "blockId": "b3",
+          "stableRef": "rmain:text:the-runtime-can-scan-documentation-tabs-before-o",
+          "snippet": "The runtime can scan documentation tabs before opening a deeper page p 69 main"
+        },
+        {
+          "blockId": "b8",
+          "stableRef": "rmain:text:researchers-often-open-the-architecture-tab-firs",
+          "snippet": "Researchers often open the Architecture tab first p 50 main"
+        }
+      ],
+      "confidenceBand": "high",
+      "reviewRecommended": false,
+      "verdictExplanation": "Matched direct support in 3 page block(s). Review the attached snippets before reusing the claim.",
       "checkedBlockRefs": [
         "rmain:list:architecture-benchmarks-policy",
         "rmain:text:the-runtime-can-scan-documentation-tabs-before-o",
@@ -97,6 +137,8 @@
       "statement": "The page contains a payment form.",
       "verdict": "insufficient-evidence",
       "reason": "insufficient-support-score",
+      "reviewRecommended": true,
+      "verdictExplanation": "The page did not surface strong enough support for this claim yet.",
       "checkedBlockRefs": [
         "rmain:list:architecture-benchmarks-policy",
         "rmain:text:the-runtime-can-scan-documentation-tabs-before-o",

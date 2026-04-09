@@ -72,6 +72,26 @@
         "sourceRisk": "low",
         "sourceLabel": "Static docs cache strategy page"
       },
+      "supportSnippets": [
+        {
+          "blockId": "b3",
+          "stableRef": "rmain:text:the-acquisition-layer-stores-both-requested-urls",
+          "snippet": "The acquisition layer stores both requested URLs and final redirected URLs as cache aliases p 92 main"
+        },
+        {
+          "blockId": "b4",
+          "stableRef": "rmain:list:reject-unsupported-content-types-before-snapshot",
+          "snippet": "- Reject unsupported content types before snapshot compilation - Reject unsupported content types before snapshot compilation. - Reuse cache hits to avoid repeated network fetches. 2 ul 117 main list items"
+        },
+        {
+          "blockId": "b2",
+          "stableRef": "rmain:heading:cache-strategy",
+          "snippet": "Cache Strategy 1 h1 14 main"
+        }
+      ],
+      "confidenceBand": "high",
+      "reviewRecommended": false,
+      "verdictExplanation": "Matched direct support in 3 page block(s). Review the attached snippets before reusing the claim.",
       "checkedBlockRefs": [
         "rmain:text:the-acquisition-layer-stores-both-requested-urls",
         "rmain:list:reject-unsupported-content-types-before-snapshot",
@@ -92,6 +112,26 @@
         "sourceRisk": "low",
         "sourceLabel": "Static docs cache strategy page"
       },
+      "supportSnippets": [
+        {
+          "blockId": "b4",
+          "stableRef": "rmain:list:reject-unsupported-content-types-before-snapshot",
+          "snippet": "- Reject unsupported content types before snapshot compilation - Reject unsupported content types before snapshot compilation. - Reuse cache hits to avoid repeated network fetches. 2 ul 117 main list items"
+        },
+        {
+          "blockId": "b3",
+          "stableRef": "rmain:text:the-acquisition-layer-stores-both-requested-urls",
+          "snippet": "The acquisition layer stores both requested URLs and final redirected URLs as cache aliases p 92 main"
+        },
+        {
+          "blockId": "b5",
+          "stableRef": "rmain:text:the-current-cli-does-not-depend-on-a-long-lived-",
+          "snippet": "The current CLI does not depend on a long-lived browser daemon p 63 main"
+        }
+      ],
+      "confidenceBand": "medium",
+      "reviewRecommended": false,
+      "verdictExplanation": "Matched plausible support in 3 page block(s). Review the attached snippets if the claim is high impact.",
       "checkedBlockRefs": [
         "rmain:list:reject-unsupported-content-types-before-snapshot",
         "rmain:text:the-acquisition-layer-stores-both-requested-urls",
@@ -104,7 +144,16 @@
       "statement": "The runtime requires a permanent browser daemon to read static pages.",
       "verdict": "insufficient-evidence",
       "support": ["b5"],
+      "supportSnippets": [
+        {
+          "blockId": "b5",
+          "stableRef": "rmain:text:the-current-cli-does-not-depend-on-a-long-lived-",
+          "snippet": "The current CLI does not depend on a long-lived browser daemon p 63 main"
+        }
+      ],
       "reason": "insufficient-support-score",
+      "reviewRecommended": true,
+      "verdictExplanation": "The page did not surface strong enough support for this claim yet.",
       "checkedBlockRefs": [
         "rmain:text:the-current-cli-does-not-depend-on-a-long-lived-",
         "rmain:list:reject-unsupported-content-types-before-snapshot",

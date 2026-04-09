@@ -107,6 +107,28 @@
             "minimum": 0,
             "maximum": 1
           },
+          "supportSnippets": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "additionalProperties": false,
+              "required": ["blockId", "stableRef", "snippet"],
+              "properties": {
+                "blockId": {
+                  "type": "string",
+                  "pattern": "^b[0-9]+$"
+                },
+                "stableRef": {
+                  "type": "string",
+                  "pattern": "^r[a-zA-Z0-9:_-]+$"
+                },
+                "snippet": {
+                  "type": "string",
+                  "minLength": 1
+                }
+              }
+            }
+          },
           "citation": {
             "type": "object",
             "additionalProperties": false,
@@ -147,6 +169,17 @@
               "predicate-mismatch",
               "needs-more-browsing"
             ]
+          },
+          "confidenceBand": {
+            "type": "string",
+            "enum": ["high", "medium", "review"]
+          },
+          "reviewRecommended": {
+            "type": "boolean"
+          },
+          "verdictExplanation": {
+            "type": "string",
+            "minLength": 1
           },
           "checkedBlockRefs": {
             "type": "array",

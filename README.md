@@ -111,6 +111,18 @@ The bridge starts `touch-browser serve` underneath and exposes tools like `tb_se
 Use `TOUCH_BROWSER_SERVE_COMMAND` if you want the bridge to launch a built binary instead of the default `cargo run -q -p touch-browser-cli -- serve`.
 `tb_read_view` accepts `mainOnly`, `tb_extract` accepts `verifierCommand`, and `tb_search` returns ranked results plus `nextActionHints` with `actor`, `canAutoRun`, and `headedRequired`.
 
+Core serve methods map to MCP tools like this:
+
+| serve JSON-RPC | MCP tool |
+|---|---|
+| `runtime.open` | `tb_open` |
+| `runtime.readView` | `tb_read_view` |
+| `runtime.extract` | `tb_extract` |
+| `runtime.search` | `tb_search` |
+| `runtime.search.openTop` | `tb_search_open_top` |
+| `runtime.session.open` | `tb_tab_open` |
+| `runtime.session.synthesize` | `tb_session_synthesize` |
+
 Search capture note:
 
 - search identity stabilization is only applied to search-specific browser flows

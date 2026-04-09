@@ -23,6 +23,16 @@ fn is_help_flag(value: &str) -> bool {
     matches!(value, "--help" | "-h")
 }
 
+fn emit_read_view_quality_notice(output: &Value) {
+    let quality = output.get("mainContentQuality").and_then(Value::as_str);
+    let hint = output.get("mainContentHint").and_then(Value::as_str);
+    if matches!(quality, Some("uncertain" | "poor")) {
+        if let Some(hint) = hint {
+            eprintln!("touch-browser note: {hint}");
+        }
+    }
+}
+
 pub(crate) fn preprocess_cli_args(raw_args: Vec<String>) -> ProcessedCliArgs {
     let mut json_errors = false;
     let mut args = Vec::with_capacity(raw_args.len());
@@ -134,6 +144,7 @@ pub(crate) fn run_cli(raw_args: Vec<String>) -> i32 {
                 serde_json::to_string_pretty(&output).expect("cli output should serialize")
             ),
             CliStdoutMode::ReadMarkdown => {
+                emit_read_view_quality_notice(&output);
                 println!("{}", required_output_string(&output, "markdownText")?)
             }
             CliStdoutMode::SynthesisMarkdown => {

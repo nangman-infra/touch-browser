@@ -65,6 +65,26 @@
         "sourceRisk": "low",
         "sourceLabel": "Citation contracts"
       },
+      "supportSnippets": [
+        {
+          "blockId": "b3",
+          "stableRef": "rmain:text:citation-contracts-require-supported-claims-to-c",
+          "snippet": "Citation Contracts require supported claims to carry a source URL and retrieved timestamp p 90 main"
+        },
+        {
+          "blockId": "b4",
+          "stableRef": "rmain:list:support-refs-point-to-stable-snapshot-blocks-uns",
+          "snippet": "- Support refs point to stable snapshot blocks - Support refs point to stable snapshot blocks. - Unsupported claims keep checked refs for audit. 2 ul 97 main list items"
+        },
+        {
+          "blockId": "b2",
+          "stableRef": "rmain:heading:citation-contracts",
+          "snippet": "Citation Contracts 1 h1 18 main"
+        }
+      ],
+      "confidenceBand": "high",
+      "reviewRecommended": false,
+      "verdictExplanation": "Matched direct support in 3 page block(s). Review the attached snippets before reusing the claim.",
       "checkedBlockRefs": [
         "rmain:text:citation-contracts-require-supported-claims-to-c",
         "rmain:list:support-refs-point-to-stable-snapshot-blocks-uns",
@@ -85,6 +105,21 @@
         "sourceRisk": "low",
         "sourceLabel": "Citation contracts"
       },
+      "supportSnippets": [
+        {
+          "blockId": "b4",
+          "stableRef": "rmain:list:support-refs-point-to-stable-snapshot-blocks-uns",
+          "snippet": "- Support refs point to stable snapshot blocks - Support refs point to stable snapshot blocks. - Unsupported claims keep checked refs for audit. 2 ul 97 main list items"
+        },
+        {
+          "blockId": "b3",
+          "stableRef": "rmain:text:citation-contracts-require-supported-claims-to-c",
+          "snippet": "Citation Contracts require supported claims to carry a source URL and retrieved timestamp p 90 main"
+        }
+      ],
+      "confidenceBand": "high",
+      "reviewRecommended": false,
+      "verdictExplanation": "Matched direct support in 2 page block(s). Review the attached snippets before reusing the claim.",
       "checkedBlockRefs": [
         "rmain:list:support-refs-point-to-stable-snapshot-blocks-uns",
         "rmain:text:citation-contracts-require-supported-claims-to-c",
@@ -97,7 +132,26 @@
       "statement": "Citation Contracts require screenshot uploads.",
       "verdict": "insufficient-evidence",
       "support": ["b3", "b4", "b2"],
+      "supportSnippets": [
+        {
+          "blockId": "b3",
+          "stableRef": "rmain:text:citation-contracts-require-supported-claims-to-c",
+          "snippet": "Citation Contracts require supported claims to carry a source URL and retrieved timestamp p 90 main"
+        },
+        {
+          "blockId": "b4",
+          "stableRef": "rmain:list:support-refs-point-to-stable-snapshot-blocks-uns",
+          "snippet": "- Support refs point to stable snapshot blocks - Support refs point to stable snapshot blocks. - Unsupported claims keep checked refs for audit. 2 ul 97 main list items"
+        },
+        {
+          "blockId": "b2",
+          "stableRef": "rmain:heading:citation-contracts",
+          "snippet": "Citation Contracts 1 h1 18 main"
+        }
+      ],
       "reason": "insufficient-support-score",
+      "reviewRecommended": true,
+      "verdictExplanation": "The page did not surface strong enough support for this claim yet.",
       "checkedBlockRefs": [
         "rmain:text:citation-contracts-require-supported-claims-to-c",
         "rmain:list:support-refs-point-to-stable-snapshot-blocks-uns",

@@ -65,6 +65,26 @@
         "sourceRisk": "low",
         "sourceLabel": "Release hub navigation"
       },
+      "supportSnippets": [
+        {
+          "blockId": "b3",
+          "stableRef": "rmain:text:release-hub-groups-stable-beta-and-archived-rele",
+          "snippet": "Release Hub groups stable, beta, and archived release tracks p 61 main"
+        },
+        {
+          "blockId": "b4",
+          "stableRef": "rmain:list:stable-track-beta-track-archived-track",
+          "snippet": "- Stable track - Beta track - Archived track 3 ul 44 main list items"
+        },
+        {
+          "blockId": "b2",
+          "stableRef": "rmain:heading:release-hub",
+          "snippet": "Release Hub 1 h1 11 main"
+        }
+      ],
+      "confidenceBand": "high",
+      "reviewRecommended": false,
+      "verdictExplanation": "Matched direct support in 3 page block(s). Review the attached snippets before reusing the claim.",
       "checkedBlockRefs": [
         "rmain:text:release-hub-groups-stable-beta-and-archived-rele",
         "rmain:list:stable-track-beta-track-archived-track",
@@ -85,6 +105,26 @@
         "sourceRisk": "low",
         "sourceLabel": "Release hub navigation"
       },
+      "supportSnippets": [
+        {
+          "blockId": "b4",
+          "stableRef": "rmain:list:stable-track-beta-track-archived-track",
+          "snippet": "- Stable track - Beta track - Archived track 3 ul 44 main list items"
+        },
+        {
+          "blockId": "b3",
+          "stableRef": "rmain:text:release-hub-groups-stable-beta-and-archived-rele",
+          "snippet": "Release Hub groups stable, beta, and archived release tracks p 61 main"
+        },
+        {
+          "blockId": "b2",
+          "stableRef": "rmain:heading:release-hub",
+          "snippet": "Release Hub 1 h1 11 main"
+        }
+      ],
+      "confidenceBand": "high",
+      "reviewRecommended": false,
+      "verdictExplanation": "Matched direct support in 3 page block(s). Review the attached snippets before reusing the claim.",
       "checkedBlockRefs": [
         "rmain:list:stable-track-beta-track-archived-track",
         "rmain:text:release-hub-groups-stable-beta-and-archived-rele",
@@ -97,6 +137,8 @@
       "statement": "The release hub contains a credential reset form.",
       "verdict": "insufficient-evidence",
       "reason": "insufficient-support-score",
+      "reviewRecommended": true,
+      "verdictExplanation": "The page did not surface strong enough support for this claim yet.",
       "checkedBlockRefs": [
         "rmain:text:release-hub-groups-stable-beta-and-archived-rele",
         "rmain:list:stable-track-beta-track-archived-track",

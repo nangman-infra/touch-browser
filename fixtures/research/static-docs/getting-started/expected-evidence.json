@@ -65,6 +65,26 @@
         "sourceRisk": "low",
         "sourceLabel": "Static docs getting started page"
       },
+      "supportSnippets": [
+        {
+          "blockId": "b6",
+          "stableRef": "rmain:text:touch-browser-compiles-web-pages-into-semantic-s",
+          "snippet": "Touch Browser compiles web pages into semantic state for research agents p 73 main"
+        },
+        {
+          "blockId": "b5",
+          "stableRef": "rmain:heading:getting-started",
+          "snippet": "Getting Started 1 h1 15 main"
+        },
+        {
+          "blockId": "b7",
+          "stableRef": "rmain:heading:quickstart",
+          "snippet": "Quickstart 2 h2 10 main"
+        }
+      ],
+      "confidenceBand": "high",
+      "reviewRecommended": false,
+      "verdictExplanation": "Matched direct support in 3 page block(s). Review the attached snippets before reusing the claim.",
       "checkedBlockRefs": [
         "rmain:text:touch-browser-compiles-web-pages-into-semantic-s",
         "rmain:heading:getting-started",
@@ -85,6 +105,26 @@
         "sourceRisk": "low",
         "sourceLabel": "Static docs getting started page"
       },
+      "supportSnippets": [
+        {
+          "blockId": "b8",
+          "stableRef": "rmain:list:1-install-the-runtime-2-open-a-research-url-3-ca",
+          "snippet": "1 1. Install the runtime. 2. Open a research URL. 3. Capture a semantic snapshot. 3 ordered ol 79 main list items"
+        },
+        {
+          "blockId": "b7",
+          "stableRef": "rmain:heading:quickstart",
+          "snippet": "Quickstart 2 h2 10 main"
+        },
+        {
+          "blockId": "b6",
+          "stableRef": "rmain:text:touch-browser-compiles-web-pages-into-semantic-s",
+          "snippet": "Touch Browser compiles web pages into semantic state for research agents p 73 main"
+        }
+      ],
+      "confidenceBand": "high",
+      "reviewRecommended": false,
+      "verdictExplanation": "Matched direct support in 3 page block(s). Review the attached snippets before reusing the claim.",
       "checkedBlockRefs": [
         "rmain:list:1-install-the-runtime-2-open-a-research-url-3-ca",
         "rmain:heading:quickstart",
@@ -97,6 +137,8 @@
       "statement": "Touch Browser includes a built-in checkout flow.",
       "verdict": "insufficient-evidence",
       "reason": "insufficient-support-score",
+      "reviewRecommended": true,
+      "verdictExplanation": "The page did not surface strong enough support for this claim yet.",
       "checkedBlockRefs": [
         "rmain:list:1-install-the-runtime-2-open-a-research-url-3-ca",
         "rmain:text:touch-browser-compiles-web-pages-into-semantic-s",

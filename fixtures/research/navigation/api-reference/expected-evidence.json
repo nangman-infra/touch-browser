@@ -73,6 +73,26 @@
         "sourceRisk": "low",
         "sourceLabel": "Navigation-heavy API reference page"
       },
+      "supportSnippets": [
+        {
+          "blockId": "b6",
+          "stableRef": "rmain:text:the-runtime-exposes-open-snapshot-extract-diff-c",
+          "snippet": "The runtime exposes open, snapshot, extract, diff, compact, and replay commands p 80 main"
+        },
+        {
+          "blockId": "b7",
+          "stableRef": "rmain:heading:snapshot",
+          "snippet": "Snapshot 2 h2 8 main"
+        },
+        {
+          "blockId": "b5",
+          "stableRef": "rmain:heading:overview",
+          "snippet": "API Reference 1 h1 13 main"
+        }
+      ],
+      "confidenceBand": "high",
+      "reviewRecommended": false,
+      "verdictExplanation": "Matched direct support in 3 page block(s). Review the attached snippets before reusing the claim.",
       "checkedBlockRefs": [
         "rmain:text:the-runtime-exposes-open-snapshot-extract-diff-c",
         "rmain:heading:snapshot",
@@ -93,6 +113,26 @@
         "sourceRisk": "low",
         "sourceLabel": "Navigation-heavy API reference page"
       },
+      "supportSnippets": [
+        {
+          "blockId": "b8",
+          "stableRef": "rmain:text:snapshot-responses-include-stable-refs-and-evide",
+          "snippet": "Snapshot responses include stable refs and evidence metadata p 61 main"
+        },
+        {
+          "blockId": "b9",
+          "stableRef": "rmain:heading:evidence",
+          "snippet": "Evidence 2 h2 8 main"
+        },
+        {
+          "blockId": "b7",
+          "stableRef": "rmain:heading:snapshot",
+          "snippet": "Snapshot 2 h2 8 main"
+        }
+      ],
+      "confidenceBand": "high",
+      "reviewRecommended": false,
+      "verdictExplanation": "Matched direct support in 3 page block(s). Review the attached snippets before reusing the claim.",
       "checkedBlockRefs": [
         "rmain:text:snapshot-responses-include-stable-refs-and-evide",
         "rmain:heading:evidence",
@@ -105,7 +145,26 @@
       "statement": "The API reference documents a purchase command.",
       "verdict": "needs-more-browsing",
       "support": ["b5", "b6", "b7"],
+      "supportSnippets": [
+        {
+          "blockId": "b5",
+          "stableRef": "rmain:heading:overview",
+          "snippet": "API Reference 1 h1 13 main"
+        },
+        {
+          "blockId": "b6",
+          "stableRef": "rmain:text:the-runtime-exposes-open-snapshot-extract-diff-c",
+          "snippet": "The runtime exposes open, snapshot, extract, diff, compact, and replay commands p 80 main"
+        },
+        {
+          "blockId": "b7",
+          "stableRef": "rmain:heading:snapshot",
+          "snippet": "Snapshot 2 h2 8 main"
+        }
+      ],
       "reason": "needs-more-browsing",
+      "reviewRecommended": true,
+      "verdictExplanation": "Browse a more specific source page before answering.",
       "checkedBlockRefs": [
         "rmain:heading:overview",
         "rmain:text:the-runtime-exposes-open-snapshot-extract-diff-c",

@@ -73,6 +73,26 @@
         "sourceRisk": "low",
         "sourceLabel": "Pricing matrix summary"
       },
+      "supportSnippets": [
+        {
+          "blockId": "b3",
+          "stableRef": "rmain:text:pricing-matrix-lists-research-at-49-per-month-an",
+          "snippet": "Pricing Matrix lists Research at $49 per month and Enterprise as custom p 72 main"
+        },
+        {
+          "blockId": "b4",
+          "stableRef": "rmain:table:tier-price-notes-research-49-5-seats-enterprise-",
+          "snippet": "Research | $49 | 5 seats Tier | Price | Notes 3 3 table 81 main"
+        },
+        {
+          "blockId": "b2",
+          "stableRef": "rmain:heading:pricing-matrix",
+          "snippet": "Pricing Matrix 1 h1 14 main"
+        }
+      ],
+      "confidenceBand": "high",
+      "reviewRecommended": false,
+      "verdictExplanation": "Matched direct support in 3 page block(s). Review the attached snippets before reusing the claim.",
       "checkedBlockRefs": [
         "rmain:text:pricing-matrix-lists-research-at-49-per-month-an",
         "rmain:table:tier-price-notes-research-49-5-seats-enterprise-",
@@ -93,6 +113,26 @@
         "sourceRisk": "low",
         "sourceLabel": "Pricing matrix summary"
       },
+      "supportSnippets": [
+        {
+          "blockId": "b4",
+          "stableRef": "rmain:table:tier-price-notes-research-49-5-seats-enterprise-",
+          "snippet": "Enterprise | Custom | Contact sales Tier | Price | Notes 3 3 table 81 main"
+        },
+        {
+          "blockId": "b3",
+          "stableRef": "rmain:text:pricing-matrix-lists-research-at-49-per-month-an",
+          "snippet": "Pricing Matrix lists Research at $49 per month and Enterprise as custom p 72 main"
+        },
+        {
+          "blockId": "b2",
+          "stableRef": "rmain:heading:pricing-matrix",
+          "snippet": "Pricing Matrix 1 h1 14 main"
+        }
+      ],
+      "confidenceBand": "high",
+      "reviewRecommended": false,
+      "verdictExplanation": "Matched direct support in 3 page block(s). Review the attached snippets before reusing the claim.",
       "checkedBlockRefs": [
         "rmain:table:tier-price-notes-research-49-5-seats-enterprise-",
         "rmain:text:pricing-matrix-lists-research-at-49-per-month-an",
@@ -105,7 +145,21 @@
       "statement": "The pricing matrix offers a free GPU tier.",
       "verdict": "needs-more-browsing",
       "support": ["b4", "b3"],
+      "supportSnippets": [
+        {
+          "blockId": "b4",
+          "stableRef": "rmain:table:tier-price-notes-research-49-5-seats-enterprise-",
+          "snippet": "Tier | Price | Notes 3 3 table 81 main"
+        },
+        {
+          "blockId": "b3",
+          "stableRef": "rmain:text:pricing-matrix-lists-research-at-49-per-month-an",
+          "snippet": "Pricing Matrix lists Research at $49 per month and Enterprise as custom p 72 main"
+        }
+      ],
       "reason": "needs-more-browsing",
+      "reviewRecommended": true,
+      "verdictExplanation": "Browse a more specific source page before answering.",
       "checkedBlockRefs": [
         "rmain:table:tier-price-notes-research-49-5-seats-enterprise-",
         "rmain:text:pricing-matrix-lists-research-at-49-per-month-an",

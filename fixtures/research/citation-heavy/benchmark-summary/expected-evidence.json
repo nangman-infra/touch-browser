@@ -76,6 +76,26 @@
         "sourceRisk": "low",
         "sourceLabel": "Citation-heavy benchmark summary page"
       },
+      "supportSnippets": [
+        {
+          "blockId": "b4",
+          "stableRef": "rmain:table:suite-recall-citation-precision-core-research-95",
+          "snippet": "Core research | 95% | 97% Suite | Recall | Citation Precision 3 3 table 88 main"
+        },
+        {
+          "blockId": "b5",
+          "stableRef": "rmain:text:core-research-kept-citation-precision-above-the-",
+          "snippet": "Core research kept citation precision above the go threshold p 61 main"
+        },
+        {
+          "blockId": "b3",
+          "stableRef": "rmain:text:the-internal-benchmark-compares-semantic-snapsho",
+          "snippet": "The internal benchmark compares semantic snapshot quality across research tasks p 80 main"
+        }
+      ],
+      "confidenceBand": "high",
+      "reviewRecommended": false,
+      "verdictExplanation": "Matched direct support in 3 page block(s). Review the attached snippets before reusing the claim.",
       "checkedBlockRefs": [
         "rmain:table:suite-recall-citation-precision-core-research-95",
         "rmain:text:core-research-kept-citation-precision-above-the-",
@@ -96,6 +116,26 @@
         "sourceRisk": "low",
         "sourceLabel": "Citation-heavy benchmark summary page"
       },
+      "supportSnippets": [
+        {
+          "blockId": "b4",
+          "stableRef": "rmain:table:suite-recall-citation-precision-core-research-95",
+          "snippet": "Hostile review | 91% | 99% Suite | Recall | Citation Precision 3 3 table 88 main"
+        },
+        {
+          "blockId": "b3",
+          "stableRef": "rmain:text:the-internal-benchmark-compares-semantic-snapsho",
+          "snippet": "The internal benchmark compares semantic snapshot quality across research tasks p 80 main"
+        },
+        {
+          "blockId": "b5",
+          "stableRef": "rmain:text:core-research-kept-citation-precision-above-the-",
+          "snippet": "Core research kept citation precision above the go threshold p 61 main"
+        }
+      ],
+      "confidenceBand": "medium",
+      "reviewRecommended": false,
+      "verdictExplanation": "Matched plausible support in 3 page block(s). Review the attached snippets if the claim is high impact.",
       "checkedBlockRefs": [
         "rmain:table:suite-recall-citation-precision-core-research-95",
         "rmain:text:the-internal-benchmark-compares-semantic-snapsho",
@@ -108,7 +148,16 @@
       "statement": "The benchmark announces a native mobile SDK launch.",
       "verdict": "insufficient-evidence",
       "support": ["b4"],
+      "supportSnippets": [
+        {
+          "blockId": "b4",
+          "stableRef": "rmain:table:suite-recall-citation-precision-core-research-95",
+          "snippet": "Suite | Recall | Citation Precision 3 3 table 88 main"
+        }
+      ],
       "reason": "insufficient-support-score",
+      "reviewRecommended": true,
+      "verdictExplanation": "The page did not surface strong enough support for this claim yet.",
       "checkedBlockRefs": [
         "rmain:table:suite-recall-citation-precision-core-research-95",
         "rmain:text:the-internal-benchmark-compares-semantic-snapsho",

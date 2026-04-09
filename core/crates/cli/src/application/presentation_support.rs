@@ -274,13 +274,8 @@ impl MainContentQuality {
 
 pub(crate) fn assess_main_read_view_quality(
     snapshot: &SnapshotDocument,
-    main_only: bool,
     markdown_text: &str,
 ) -> Option<(MainContentQuality, String)> {
-    if !main_only {
-        return None;
-    }
-
     let has_heading = snapshot
         .blocks
         .iter()

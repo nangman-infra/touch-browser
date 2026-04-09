@@ -73,6 +73,26 @@
         "sourceRisk": "low",
         "sourceLabel": "Deployment notes summary"
       },
+      "supportSnippets": [
+        {
+          "blockId": "b3",
+          "stableRef": "rmain:text:deployment-notes-record-that-blue-green-rollouts",
+          "snippet": "Deployment notes record that blue-green rollouts cut recovery time to 8 minutes p 80 main"
+        },
+        {
+          "blockId": "b4",
+          "stableRef": "rmain:table:stage-recovery-mode-rollback-8-minutes-automatic",
+          "snippet": "Rollback | 8 minutes | Automatic Stage | Recovery | Mode 3 3 table 91 main"
+        },
+        {
+          "blockId": "b2",
+          "stableRef": "rmain:heading:deployment-notes",
+          "snippet": "Deployment Notes 1 h1 16 main"
+        }
+      ],
+      "confidenceBand": "high",
+      "reviewRecommended": false,
+      "verdictExplanation": "Matched direct support in 3 page block(s). Review the attached snippets before reusing the claim.",
       "checkedBlockRefs": [
         "rmain:text:deployment-notes-record-that-blue-green-rollouts",
         "rmain:table:stage-recovery-mode-rollback-8-minutes-automatic",
@@ -93,6 +113,26 @@
         "sourceRisk": "low",
         "sourceLabel": "Deployment notes summary"
       },
+      "supportSnippets": [
+        {
+          "blockId": "b4",
+          "stableRef": "rmain:table:stage-recovery-mode-rollback-8-minutes-automatic",
+          "snippet": "Rollback | 8 minutes | Automatic Stage | Recovery | Mode 3 3 table 91 main"
+        },
+        {
+          "blockId": "b3",
+          "stableRef": "rmain:text:deployment-notes-record-that-blue-green-rollouts",
+          "snippet": "Deployment notes record that blue-green rollouts cut recovery time to 8 minutes p 80 main"
+        },
+        {
+          "blockId": "b2",
+          "stableRef": "rmain:heading:deployment-notes",
+          "snippet": "Deployment Notes 1 h1 16 main"
+        }
+      ],
+      "confidenceBand": "high",
+      "reviewRecommended": false,
+      "verdictExplanation": "Matched direct support in 3 page block(s). Review the attached snippets before reusing the claim.",
       "checkedBlockRefs": [
         "rmain:table:stage-recovery-mode-rollback-8-minutes-automatic",
         "rmain:text:deployment-notes-record-that-blue-green-rollouts",
@@ -105,7 +145,21 @@
       "statement": "The deployment notes include a billing calculator.",
       "verdict": "needs-more-browsing",
       "support": ["b4", "b3"],
+      "supportSnippets": [
+        {
+          "blockId": "b4",
+          "stableRef": "rmain:table:stage-recovery-mode-rollback-8-minutes-automatic",
+          "snippet": "Stage | Recovery | Mode 3 3 table 91 main"
+        },
+        {
+          "blockId": "b3",
+          "stableRef": "rmain:text:deployment-notes-record-that-blue-green-rollouts",
+          "snippet": "Deployment notes record that blue-green rollouts cut recovery time to 8 minutes p 80 main"
+        }
+      ],
       "reason": "needs-more-browsing",
+      "reviewRecommended": true,
+      "verdictExplanation": "Browse a more specific source page before answering.",
       "checkedBlockRefs": [
         "rmain:table:stage-recovery-mode-rollback-8-minutes-automatic",
         "rmain:text:deployment-notes-record-that-blue-green-rollouts",

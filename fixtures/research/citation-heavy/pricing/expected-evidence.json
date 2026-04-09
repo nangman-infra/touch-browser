@@ -65,6 +65,26 @@
         "sourceRisk": "low",
         "sourceLabel": "Citation-heavy pricing page"
       },
+      "supportSnippets": [
+        {
+          "blockId": "b4",
+          "stableRef": "rmain:table:plan-monthly-price-snapshots-starter-29-10-000-t",
+          "snippet": "Starter | $29 | 10,000 Plan | Monthly Price | Snapshots 3 3 table 77 main"
+        },
+        {
+          "blockId": "b3",
+          "stableRef": "rmain:text:touch-browser-offers-starter-and-team-plans-bill",
+          "snippet": "Touch Browser offers Starter and Team plans billed monthly p 59 main"
+        },
+        {
+          "blockId": "b5",
+          "stableRef": "rmain:text:all-plans-include-citation-ready-evidence-blocks",
+          "snippet": "All plans include citation-ready evidence blocks p 49 main"
+        }
+      ],
+      "confidenceBand": "high",
+      "reviewRecommended": false,
+      "verdictExplanation": "Matched direct support in 3 page block(s). Review the attached snippets before reusing the claim.",
       "checkedBlockRefs": [
         "rmain:table:plan-monthly-price-snapshots-starter-29-10-000-t",
         "rmain:text:touch-browser-offers-starter-and-team-plans-bill",
@@ -85,6 +105,21 @@
         "sourceRisk": "low",
         "sourceLabel": "Citation-heavy pricing page"
       },
+      "supportSnippets": [
+        {
+          "blockId": "b5",
+          "stableRef": "rmain:text:all-plans-include-citation-ready-evidence-blocks",
+          "snippet": "All plans include citation-ready evidence blocks p 49 main"
+        },
+        {
+          "blockId": "b4",
+          "stableRef": "rmain:table:plan-monthly-price-snapshots-starter-29-10-000-t",
+          "snippet": "Plan | Monthly Price | Snapshots 3 3 table 77 main"
+        }
+      ],
+      "confidenceBand": "high",
+      "reviewRecommended": false,
+      "verdictExplanation": "Matched direct support in 2 page block(s). Review the attached snippets before reusing the claim.",
       "checkedBlockRefs": [
         "rmain:text:all-plans-include-citation-ready-evidence-blocks",
         "rmain:table:plan-monthly-price-snapshots-starter-29-10-000-t",
@@ -97,6 +132,8 @@
       "statement": "There is an Enterprise plan.",
       "verdict": "insufficient-evidence",
       "reason": "insufficient-support-score",
+      "reviewRecommended": true,
+      "verdictExplanation": "The page did not surface strong enough support for this claim yet.",
       "checkedBlockRefs": [
         "rmain:table:plan-monthly-price-snapshots-starter-29-10-000-t",
         "rmain:text:touch-browser-offers-starter-and-team-plans-bill",

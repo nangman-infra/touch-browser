@@ -1,6 +1,7 @@
 use std::collections::BTreeSet;
 use touch_browser_contracts::{
-    EvidenceCitation, EvidenceClaimOutcome, EvidenceClaimVerdict, EvidenceReport, EvidenceSource,
+    EvidenceCitation, EvidenceClaimOutcome, EvidenceClaimVerdict, EvidenceConfidenceBand,
+    EvidenceReport, EvidenceSource, EvidenceSupportSnippet, UnsupportedClaimReason,
     CONTRACT_VERSION,
 };
 
@@ -11,6 +12,24 @@ pub(crate) fn build_claim_outcome(
     claim: &ClaimRequest,
 ) -> EvidenceClaimOutcome {
     let resolution = analyze_claim(claim, &input.snapshot.blocks);
+    let support_snippets = build_support_snippets(&resolution.support);
+    let confidence_band = resolution.confidence.map(confidence_band_for_score);
+    let review_recommended = matches!(confidence_band, Some(EvidenceConfidenceBand::Review))
+        || matches!(
+            resolution.verdict,
+            EvidenceClaimVerdict::NeedsMoreBrowsing | EvidenceClaimVerdict::InsufficientEvidence
+        );
+    let verdict_explanation = Some(build_verdict_explanation(
+        resolution.verdict.clone(),
+        confidence_band.clone(),
+        resolution.reason.clone(),
+        &support_snippets,
+        resolution
+            .guard_failures
+            .first()
+            .map(|failure| failure.detail.as_str()),
+        resolution.next_action_hint.as_deref(),
+    ));
     let citation =
         (resolution.verdict == EvidenceClaimVerdict::EvidenceSupported).then(|| EvidenceCitation {
             url: input.snapshot.source.source_url.clone(),
@@ -41,11 +60,106 @@ pub(crate) fn build_claim_outcome(
             .collect(),
         support_score: resolution.confidence,
         citation,
+        support_snippets,
         reason: resolution.reason,
+        confidence_band,
+        review_recommended,
+        verdict_explanation,
         checked_block_refs: resolution.checked_refs,
         guard_failures: resolution.guard_failures,
         next_action_hint: resolution.next_action_hint,
         verification_verdict: None,
+    }
+}
+
+fn build_support_snippets(
+    support: &[crate::scoring::ScoredCandidate<'_>],
+) -> Vec<EvidenceSupportSnippet> {
+    let mut seen = BTreeSet::new();
+    support
+        .iter()
+        .filter(|candidate| seen.insert(candidate.block.id.clone()))
+        .map(|candidate| EvidenceSupportSnippet {
+            block_id: candidate.block.id.clone(),
+            stable_ref: candidate.block.stable_ref.clone(),
+            snippet: truncate_snippet(&candidate.text),
+        })
+        .collect()
+}
+
+fn truncate_snippet(text: &str) -> String {
+    let collapsed = text.split_whitespace().collect::<Vec<_>>().join(" ");
+    let mut snippet = String::new();
+    for character in collapsed.chars() {
+        if snippet.chars().count() >= 220 {
+            snippet.push_str("...");
+            return snippet;
+        }
+        snippet.push(character);
+    }
+    snippet
+}
+
+fn confidence_band_for_score(score: f64) -> EvidenceConfidenceBand {
+    if score >= 0.92 {
+        EvidenceConfidenceBand::High
+    } else if score >= 0.82 {
+        EvidenceConfidenceBand::Medium
+    } else {
+        EvidenceConfidenceBand::Review
+    }
+}
+
+fn build_verdict_explanation(
+    verdict: EvidenceClaimVerdict,
+    confidence_band: Option<EvidenceConfidenceBand>,
+    reason: Option<UnsupportedClaimReason>,
+    support_snippets: &[EvidenceSupportSnippet],
+    first_guard_detail: Option<&str>,
+    next_action_hint: Option<&str>,
+) -> String {
+    match verdict {
+        EvidenceClaimVerdict::EvidenceSupported => match confidence_band {
+            Some(EvidenceConfidenceBand::High) => format!(
+                "Matched direct support in {} page block(s). Review the attached snippets before reusing the claim.",
+                support_snippets.len().max(1)
+            ),
+            Some(EvidenceConfidenceBand::Medium) => format!(
+                "Matched plausible support in {} page block(s). Review the attached snippets if the claim is high impact.",
+                support_snippets.len().max(1)
+            ),
+            Some(EvidenceConfidenceBand::Review) => format!(
+                "Support is present but still borderline across {} page block(s). Review the attached snippets before reusing the claim.",
+                support_snippets.len().max(1)
+            ),
+            None => "Matched support from the current page. Review the attached snippets before reusing the claim.".to_string(),
+        },
+        EvidenceClaimVerdict::Contradicted => first_guard_detail
+            .map(|detail| format!("Retrieved evidence conflicts with the claim: {detail}"))
+            .unwrap_or_else(|| {
+                "Retrieved evidence conflicts with the claim on the current page.".to_string()
+            }),
+        EvidenceClaimVerdict::NeedsMoreBrowsing => next_action_hint
+            .map(str::to_string)
+            .or_else(|| {
+                first_guard_detail.map(|detail| {
+                    format!(
+                        "The current page surfaced mixed or borderline evidence: {detail}"
+                    )
+                })
+            })
+            .unwrap_or_else(|| {
+                "The current page surfaced plausible evidence, but it still needs a more specific source or manual review.".to_string()
+            }),
+        EvidenceClaimVerdict::InsufficientEvidence => match reason {
+            Some(UnsupportedClaimReason::InsufficientConfidence) => {
+                "The page did not surface strong enough support for this claim yet.".to_string()
+            }
+            Some(UnsupportedClaimReason::NoSupportingBlock) => {
+                "The page did not surface a direct support block for this claim.".to_string()
+            }
+            _ => "The page did not surface enough direct evidence for this claim.".to_string(),
+        },
     }
 }
 
@@ -79,8 +193,8 @@ pub(crate) fn build_report(
 #[cfg(test)]
 mod tests {
     use touch_browser_contracts::{
-        SnapshotBlock, SnapshotBlockKind, SnapshotBlockRole, SnapshotBudget, SnapshotDocument,
-        SnapshotEvidence, SnapshotSource, SourceRisk, SourceType,
+        EvidenceConfidenceBand, SnapshotBlock, SnapshotBlockKind, SnapshotBlockRole,
+        SnapshotBudget, SnapshotDocument, SnapshotEvidence, SnapshotSource, SourceRisk, SourceType,
     };
 
     use super::{build_claim_outcome, build_report};
@@ -141,6 +255,17 @@ mod tests {
                 .expect("supported claim should include citation")
                 .url,
             "https://example.com/docs"
+        );
+        assert_eq!(outcome.confidence_band, Some(EvidenceConfidenceBand::High));
+        assert!(!outcome.review_recommended);
+        assert_eq!(outcome.support_snippets.len(), 1);
+        assert_eq!(outcome.support_snippets[0].block_id, "b1");
+        assert!(
+            outcome
+                .verdict_explanation
+                .as_deref()
+                .is_some_and(|explanation| explanation.contains("Matched direct support")),
+            "supported claim should expose a human-readable explanation"
         );
     }
 

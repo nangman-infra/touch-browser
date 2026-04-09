@@ -234,6 +234,22 @@ pub enum EvidenceClaimVerdict {
     NeedsMoreBrowsing,
 }
 
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
+#[serde(rename_all = "kebab-case")]
+pub enum EvidenceConfidenceBand {
+    High,
+    Medium,
+    Review,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
+#[serde(rename_all = "camelCase")]
+pub struct EvidenceSupportSnippet {
+    pub block_id: String,
+    pub stable_ref: String,
+    pub snippet: String,
+}
+
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
 #[serde(rename_all = "camelCase")]
 pub struct EvidenceClaimOutcome {
@@ -248,8 +264,16 @@ pub struct EvidenceClaimOutcome {
     pub support_score: Option<f64>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub citation: Option<EvidenceCitation>,
+    #[serde(skip_serializing_if = "Vec::is_empty", default)]
+    pub support_snippets: Vec<EvidenceSupportSnippet>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub reason: Option<UnsupportedClaimReason>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub confidence_band: Option<EvidenceConfidenceBand>,
+    #[serde(default)]
+    pub review_recommended: bool,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub verdict_explanation: Option<String>,
     #[serde(skip_serializing_if = "Vec::is_empty", default)]
     pub checked_block_refs: Vec<String>,
     #[serde(skip_serializing_if = "Vec::is_empty", default)]
@@ -350,7 +374,9 @@ impl EvidenceReport {
 #[cfg(test)]
 mod tests {
     use super::{
-        EvidenceBlock, EvidenceCitation, RiskClass, SourceRisk, SourceType, CONTRACT_VERSION,
+        EvidenceBlock, EvidenceCitation, EvidenceClaimOutcome, EvidenceClaimVerdict,
+        EvidenceConfidenceBand, EvidenceSupportSnippet, RiskClass, SourceRisk, SourceType,
+        CONTRACT_VERSION,
     };
 
     #[test]
@@ -408,6 +434,45 @@ mod tests {
         let round_trip: EvidenceBlock =
             serde_json::from_value(value).expect("round trip should succeed");
         assert_eq!(round_trip.support_score, 0.88);
+    }
+
+    #[test]
+    fn evidence_claim_outcome_serializes_support_snippets_and_confidence_band() {
+        let outcome = EvidenceClaimOutcome {
+            version: CONTRACT_VERSION.to_string(),
+            claim_id: "c1".to_string(),
+            statement: "Example".to_string(),
+            verdict: EvidenceClaimVerdict::EvidenceSupported,
+            support: vec!["b1".to_string()],
+            support_score: Some(0.95),
+            citation: None,
+            support_snippets: vec![EvidenceSupportSnippet {
+                block_id: "b1".to_string(),
+                stable_ref: "rmain:text:intro".to_string(),
+                snippet: "Example Docs supports HTTP snapshots.".to_string(),
+            }],
+            reason: None,
+            confidence_band: Some(EvidenceConfidenceBand::High),
+            review_recommended: false,
+            verdict_explanation: Some(
+                "Matched direct support in the page's main content.".to_string(),
+            ),
+            checked_block_refs: vec!["rmain:text:intro".to_string()],
+            guard_failures: Vec::new(),
+            next_action_hint: None,
+            verification_verdict: None,
+        };
+
+        let value = serde_json::to_value(&outcome).expect("serialize outcome");
+        assert_eq!(value["confidenceBand"], serde_json::json!("high"));
+        assert_eq!(
+            value["supportSnippets"][0]["blockId"],
+            serde_json::json!("b1")
+        );
+        assert_eq!(
+            value["verdictExplanation"],
+            serde_json::json!("Matched direct support in the page's main content.")
+        );
     }
 }
 

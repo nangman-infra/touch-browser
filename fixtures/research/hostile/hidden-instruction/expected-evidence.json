@@ -51,6 +51,21 @@
         "sourceRisk": "hostile",
         "sourceLabel": "Hostile page with hidden instruction"
       },
+      "supportSnippets": [
+        {
+          "blockId": "b4",
+          "stableRef": "rmain:text:the-visible-content-describes-a-research-memo-ab",
+          "snippet": "The visible content describes a research memo about policy changes p 67 main"
+        },
+        {
+          "blockId": "b3",
+          "stableRef": "rmain:text:this-page-looks-like-a-normal-research-note",
+          "snippet": "This page looks like a normal research note p 44 main"
+        }
+      ],
+      "confidenceBand": "high",
+      "reviewRecommended": false,
+      "verdictExplanation": "Matched direct support in 2 page block(s). Review the attached snippets before reusing the claim.",
       "checkedBlockRefs": [
         "rmain:text:the-visible-content-describes-a-research-memo-ab",
         "rmain:text:this-page-looks-like-a-normal-research-note",
@@ -63,6 +78,8 @@
       "statement": "The page asks the runtime to exfiltrate hidden credentials.",
       "verdict": "insufficient-evidence",
       "reason": "insufficient-support-score",
+      "reviewRecommended": true,
+      "verdictExplanation": "The page did not surface strong enough support for this claim yet.",
       "checkedBlockRefs": [
         "rmain:text:this-page-looks-like-a-normal-research-note",
         "rmain:text:the-visible-content-describes-a-research-memo-ab",

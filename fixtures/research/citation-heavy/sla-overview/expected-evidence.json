@@ -73,6 +73,26 @@
         "sourceRisk": "low",
         "sourceLabel": "SLA overview"
       },
+      "supportSnippets": [
+        {
+          "blockId": "b3",
+          "stableRef": "rmain:text:sla-overview-states-that-priority-incidents-rece",
+          "snippet": "SLA Overview states that Priority incidents receive updates every 30 minutes p 77 main"
+        },
+        {
+          "blockId": "b4",
+          "stableRef": "rmain:table:severity-updates-availability-priority-30-minute",
+          "snippet": "Priority | 30 minutes | 99.9 Severity | Updates | Availability 3 3 table 88 main"
+        },
+        {
+          "blockId": "b2",
+          "stableRef": "rmain:heading:sla-overview",
+          "snippet": "SLA Overview 1 h1 12 main"
+        }
+      ],
+      "confidenceBand": "high",
+      "reviewRecommended": false,
+      "verdictExplanation": "Matched direct support in 3 page block(s). Review the attached snippets before reusing the claim.",
       "checkedBlockRefs": [
         "rmain:text:sla-overview-states-that-priority-incidents-rece",
         "rmain:table:severity-updates-availability-priority-30-minute",
@@ -93,6 +113,26 @@
         "sourceRisk": "low",
         "sourceLabel": "SLA overview"
       },
+      "supportSnippets": [
+        {
+          "blockId": "b4",
+          "stableRef": "rmain:table:severity-updates-availability-priority-30-minute",
+          "snippet": "Priority | 30 minutes | 99.9 Severity | Updates | Availability 3 3 table 88 main"
+        },
+        {
+          "blockId": "b3",
+          "stableRef": "rmain:text:sla-overview-states-that-priority-incidents-rece",
+          "snippet": "SLA Overview states that Priority incidents receive updates every 30 minutes p 77 main"
+        },
+        {
+          "blockId": "b2",
+          "stableRef": "rmain:heading:sla-overview",
+          "snippet": "SLA Overview 1 h1 12 main"
+        }
+      ],
+      "confidenceBand": "high",
+      "reviewRecommended": false,
+      "verdictExplanation": "Matched direct support in 3 page block(s). Review the attached snippets before reusing the claim.",
       "checkedBlockRefs": [
         "rmain:table:severity-updates-availability-priority-30-minute",
         "rmain:text:sla-overview-states-that-priority-incidents-rece",
@@ -105,7 +145,21 @@
       "statement": "The SLA overview includes a payroll form.",
       "verdict": "needs-more-browsing",
       "support": ["b4", "b3"],
+      "supportSnippets": [
+        {
+          "blockId": "b4",
+          "stableRef": "rmain:table:severity-updates-availability-priority-30-minute",
+          "snippet": "Severity | Updates | Availability 3 3 table 88 main"
+        },
+        {
+          "blockId": "b3",
+          "stableRef": "rmain:text:sla-overview-states-that-priority-incidents-rece",
+          "snippet": "SLA Overview states that Priority incidents receive updates every 30 minutes p 77 main"
+        }
+      ],
       "reason": "needs-more-browsing",
+      "reviewRecommended": true,
+      "verdictExplanation": "Browse a more specific source page before answering.",
       "checkedBlockRefs": [
         "rmain:table:severity-updates-availability-priority-30-minute",
         "rmain:text:sla-overview-states-that-priority-incidents-rece",

@@ -567,22 +567,27 @@ impl ReadViewOutput {
         session_file: Option<String>,
         main_only: bool,
     ) -> Self {
+        let preferred_markdown = render_main_read_view_markdown(snapshot);
         let markdown_text = if main_only {
-            let preferred_markdown = render_main_read_view_markdown(snapshot);
             if preferred_markdown.is_empty() {
                 render_read_view_markdown(snapshot)
             } else {
-                preferred_markdown
+                preferred_markdown.clone()
             }
         } else {
             render_read_view_markdown(snapshot)
+        };
+        let quality_markdown = if preferred_markdown.is_empty() {
+            markdown_text.clone()
+        } else {
+            preferred_markdown
         };
         let line_count = markdown_text.lines().count();
         let char_count = markdown_text.chars().count();
         let approx_tokens = char_count.div_ceil(4).max(1);
         let ref_index = compact_ref_index(snapshot);
         let (main_content_quality, main_content_hint) =
-            assess_main_read_view_quality(snapshot, main_only, &markdown_text)
+            assess_main_read_view_quality(snapshot, &quality_markdown)
                 .map(|(quality, hint)| (Some(quality.as_str().to_string()), Some(hint)))
                 .unwrap_or((None, None));
 

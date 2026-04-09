@@ -65,6 +65,26 @@
         "sourceRisk": "low",
         "sourceLabel": "Trusted sources guide"
       },
+      "supportSnippets": [
+        {
+          "blockId": "b3",
+          "stableRef": "rmain:text:trusted-sources-recommends-domain-allowlists-bef",
+          "snippet": "Trusted Sources recommends domain allowlists before enabling browser actions p 77 main"
+        },
+        {
+          "blockId": "b4",
+          "stableRef": "rmain:list:high-risk-domains-require-review-trusted-domains",
+          "snippet": "- High-risk domains require review - High-risk domains require review. - Trusted domains can stay in the read-only lane. 2 ul 85 main list items"
+        },
+        {
+          "blockId": "b2",
+          "stableRef": "rmain:heading:trusted-sources",
+          "snippet": "Trusted Sources 1 h1 15 main"
+        }
+      ],
+      "confidenceBand": "high",
+      "reviewRecommended": false,
+      "verdictExplanation": "Matched direct support in 3 page block(s). Review the attached snippets before reusing the claim.",
       "checkedBlockRefs": [
         "rmain:text:trusted-sources-recommends-domain-allowlists-bef",
         "rmain:list:high-risk-domains-require-review-trusted-domains",
@@ -85,6 +105,21 @@
         "sourceRisk": "low",
         "sourceLabel": "Trusted sources guide"
       },
+      "supportSnippets": [
+        {
+          "blockId": "b4",
+          "stableRef": "rmain:list:high-risk-domains-require-review-trusted-domains",
+          "snippet": "- High-risk domains require review - High-risk domains require review. - Trusted domains can stay in the read-only lane. 2 ul 85 main list items"
+        },
+        {
+          "blockId": "b3",
+          "stableRef": "rmain:text:trusted-sources-recommends-domain-allowlists-bef",
+          "snippet": "Trusted Sources recommends domain allowlists before enabling browser actions p 77 main"
+        }
+      ],
+      "confidenceBand": "high",
+      "reviewRecommended": false,
+      "verdictExplanation": "Matched direct support in 2 page block(s). Review the attached snippets before reusing the claim.",
       "checkedBlockRefs": [
         "rmain:list:high-risk-domains-require-review-trusted-domains",
         "rmain:text:trusted-sources-recommends-domain-allowlists-bef",
@@ -97,7 +132,26 @@
       "statement": "Trusted Sources enables automatic purchases.",
       "verdict": "insufficient-evidence",
       "support": ["b3", "b4", "b2"],
+      "supportSnippets": [
+        {
+          "blockId": "b3",
+          "stableRef": "rmain:text:trusted-sources-recommends-domain-allowlists-bef",
+          "snippet": "Trusted Sources recommends domain allowlists before enabling browser actions p 77 main"
+        },
+        {
+          "blockId": "b4",
+          "stableRef": "rmain:list:high-risk-domains-require-review-trusted-domains",
+          "snippet": "- High-risk domains require review - High-risk domains require review. - Trusted domains can stay in the read-only lane. 2 ul 85 main list items"
+        },
+        {
+          "blockId": "b2",
+          "stableRef": "rmain:heading:trusted-sources",
+          "snippet": "Trusted Sources 1 h1 15 main"
+        }
+      ],
       "reason": "insufficient-support-score",
+      "reviewRecommended": true,
+      "verdictExplanation": "The page did not surface strong enough support for this claim yet.",
       "checkedBlockRefs": [
         "rmain:text:trusted-sources-recommends-domain-allowlists-bef",
         "rmain:list:high-risk-domains-require-review-trusted-domains",

@@ -78,6 +78,30 @@ impl LiveCliServer {
                         </html>"#,
                         200,
                     ),
+                    "/nav-heavy" => html_response(
+                        r#"<!doctype html>
+                        <html>
+                          <head><title>Hub Page</title></head>
+                          <body>
+                            <header>
+                              <nav>
+                                <a href="/cloud">Cloud</a>
+                                <a href="/linux">Linux</a>
+                                <a href="/containers">Containers</a>
+                              </nav>
+                            </header>
+                            <aside>
+                              <a href="/latest">Latest</a>
+                              <a href="/guides">Guides</a>
+                            </aside>
+                            <footer>
+                              <a href="/about">About</a>
+                              <a href="/contact">Contact</a>
+                            </footer>
+                          </body>
+                        </html>"#,
+                        200,
+                    ),
                     _ => html_response("<html><body>missing</body></html>", 404),
                 };
 
@@ -180,6 +204,19 @@ fn successful_json_output_stays_on_stdout() {
     assert!(String::from_utf8_lossy(&output.stderr).trim().is_empty());
     assert!(
         String::from_utf8_lossy(&output.stdout).contains("\"payloadType\": \"snapshot-document\"")
+    );
+}
+
+#[test]
+fn poor_main_only_read_view_emits_quality_note_on_stderr() {
+    let server = LiveCliServer::start();
+    let output = run_cli(&["read-view", &server.url("/nav-heavy")]);
+
+    assert!(output.status.success());
+    assert!(
+        String::from_utf8_lossy(&output.stderr).contains("touch-browser note:"),
+        "expected stderr quality note, got: {}",
+        String::from_utf8_lossy(&output.stderr)
     );
 }
 

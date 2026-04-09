@@ -72,6 +72,26 @@
         "sourceRisk": "low",
         "sourceLabel": "Navigation-heavy tutorial index page"
       },
+      "supportSnippets": [
+        {
+          "blockId": "b6",
+          "stableRef": "rmain:text:the-tutorials-index-links-readers-to-cli-policy-",
+          "snippet": "The tutorials index links readers to CLI, Policy, and Replay walkthroughs p 74 main"
+        },
+        {
+          "blockId": "b5",
+          "stableRef": "rmain:heading:tutorial-index",
+          "snippet": "Tutorial Index 1 h1 14 main"
+        },
+        {
+          "blockId": "b7",
+          "stableRef": "rmain:heading:cli",
+          "snippet": "CLI Tutorial 2 h2 12 main"
+        }
+      ],
+      "confidenceBand": "high",
+      "reviewRecommended": false,
+      "verdictExplanation": "Matched direct support in 3 page block(s). Review the attached snippets before reusing the claim.",
       "checkedBlockRefs": [
         "rmain:text:the-tutorials-index-links-readers-to-cli-policy-",
         "rmain:heading:tutorial-index",
@@ -92,6 +112,26 @@
         "sourceRisk": "low",
         "sourceLabel": "Navigation-heavy tutorial index page"
       },
+      "supportSnippets": [
+        {
+          "blockId": "b12",
+          "stableRef": "rmain:text:the-replay-tutorial-demonstrates-how-to-replay-a",
+          "snippet": "The replay tutorial demonstrates how to replay a saved scenario deterministically p 82 main"
+        },
+        {
+          "blockId": "b11",
+          "stableRef": "rmain:heading:replay",
+          "snippet": "Replay Tutorial 2 h2 15 main"
+        },
+        {
+          "blockId": "b8",
+          "stableRef": "rmain:text:the-cli-tutorial-shows-how-to-open-a-fixture-and",
+          "snippet": "The CLI tutorial shows how to open a fixture and inspect a policy report p 73 main"
+        }
+      ],
+      "confidenceBand": "high",
+      "reviewRecommended": false,
+      "verdictExplanation": "Matched direct support in 3 page block(s). Review the attached snippets before reusing the claim.",
       "checkedBlockRefs": [
         "rmain:text:the-replay-tutorial-demonstrates-how-to-replay-a",
         "rmain:heading:replay",
@@ -104,7 +144,16 @@
       "statement": "The tutorials index includes purchase automation lessons.",
       "verdict": "insufficient-evidence",
       "support": ["b6"],
+      "supportSnippets": [
+        {
+          "blockId": "b6",
+          "stableRef": "rmain:text:the-tutorials-index-links-readers-to-cli-policy-",
+          "snippet": "The tutorials index links readers to CLI, Policy, and Replay walkthroughs p 74 main"
+        }
+      ],
       "reason": "insufficient-support-score",
+      "reviewRecommended": true,
+      "verdictExplanation": "The page did not surface strong enough support for this claim yet.",
       "checkedBlockRefs": [
         "rmain:text:the-tutorials-index-links-readers-to-cli-policy-",
         "rmain:heading:tutorial-index",

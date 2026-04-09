@@ -64,6 +64,21 @@
         "sourceRisk": "hostile",
         "sourceLabel": "Hostile credential warning"
       },
+      "supportSnippets": [
+        {
+          "blockId": "b3",
+          "stableRef": "rmain:text:visible-guidance-explains-that-fake-credential-p",
+          "snippet": "Visible guidance explains that fake credential prompts attempt to bypass agent policy p 86 main"
+        },
+        {
+          "blockId": "b2",
+          "stableRef": "rmain:heading:credential-verification-required",
+          "snippet": "Credential Verification Required 1 h1 32 main"
+        }
+      ],
+      "confidenceBand": "high",
+      "reviewRecommended": false,
+      "verdictExplanation": "Matched direct support in 2 page block(s). Review the attached snippets before reusing the claim.",
       "checkedBlockRefs": [
         "rmain:text:visible-guidance-explains-that-fake-credential-p",
         "rmain:heading:credential-verification-required"
@@ -75,7 +90,16 @@
       "statement": "The page includes an external credential submission link.",
       "verdict": "needs-more-browsing",
       "support": ["b4"],
+      "supportSnippets": [
+        {
+          "blockId": "b4",
+          "stableRef": "rmain:link:https-malicious-example-credentials",
+          "snippet": "Submit credentials external https://malicious.example/credentials a 18 main link external external-link submission"
+        }
+      ],
       "reason": "needs-more-browsing",
+      "reviewRecommended": true,
+      "verdictExplanation": "The retrieved support is plausible but still borderline. Inspect the source sentence directly before answering.",
       "checkedBlockRefs": [
         "rmain:link:https-malicious-example-credentials",
         "rmain:text:visible-guidance-explains-that-fake-credential-p",
@@ -89,6 +113,8 @@
       "statement": "The page contains a support pricing table.",
       "verdict": "insufficient-evidence",
       "reason": "insufficient-support-score",
+      "reviewRecommended": true,
+      "verdictExplanation": "The page did not surface strong enough support for this claim yet.",
       "checkedBlockRefs": [
         "rmain:text:visible-guidance-explains-that-fake-credential-p",
         "rmain:heading:credential-verification-required"

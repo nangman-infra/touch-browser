@@ -73,6 +73,26 @@
         "sourceRisk": "low",
         "sourceLabel": "Docs switcher"
       },
+      "supportSnippets": [
+        {
+          "blockId": "b3",
+          "stableRef": "rmain:text:docs-switcher-links-architecture-policy-and-repl",
+          "snippet": "Docs Switcher links architecture, policy, and replay references from one index p 79 main"
+        },
+        {
+          "blockId": "b4",
+          "stableRef": "rmain:list:architecture-reference-policy-reference-replay-r",
+          "snippet": "- Architecture reference - Policy reference - Replay reference 3 ul 62 main list items"
+        },
+        {
+          "blockId": "b2",
+          "stableRef": "rmain:heading:docs-switcher",
+          "snippet": "Docs Switcher 1 h1 13 main"
+        }
+      ],
+      "confidenceBand": "high",
+      "reviewRecommended": false,
+      "verdictExplanation": "Matched direct support in 3 page block(s). Review the attached snippets before reusing the claim.",
       "checkedBlockRefs": [
         "rmain:text:docs-switcher-links-architecture-policy-and-repl",
         "rmain:list:architecture-reference-policy-reference-replay-r",
@@ -93,6 +113,26 @@
         "sourceRisk": "low",
         "sourceLabel": "Docs switcher"
       },
+      "supportSnippets": [
+        {
+          "blockId": "b4",
+          "stableRef": "rmain:list:architecture-reference-policy-reference-replay-r",
+          "snippet": "- Architecture reference - Policy reference - Replay reference 3 ul 62 main list items"
+        },
+        {
+          "blockId": "b7",
+          "stableRef": "rmain:link:replay",
+          "snippet": "Replay reference /replay a 16 main link"
+        },
+        {
+          "blockId": "b3",
+          "stableRef": "rmain:text:docs-switcher-links-architecture-policy-and-repl",
+          "snippet": "Docs Switcher links architecture, policy, and replay references from one index p 79 main"
+        }
+      ],
+      "confidenceBand": "high",
+      "reviewRecommended": false,
+      "verdictExplanation": "Matched direct support in 3 page block(s). Review the attached snippets before reusing the claim.",
       "checkedBlockRefs": [
         "rmain:list:architecture-reference-policy-reference-replay-r",
         "rmain:link:replay",
@@ -105,7 +145,26 @@
       "statement": "The docs switcher submits a purchase form.",
       "verdict": "needs-more-browsing",
       "support": ["b3", "b2", "b4"],
+      "supportSnippets": [
+        {
+          "blockId": "b3",
+          "stableRef": "rmain:text:docs-switcher-links-architecture-policy-and-repl",
+          "snippet": "Docs Switcher links architecture, policy, and replay references from one index p 79 main"
+        },
+        {
+          "blockId": "b2",
+          "stableRef": "rmain:heading:docs-switcher",
+          "snippet": "Docs Switcher 1 h1 13 main"
+        },
+        {
+          "blockId": "b4",
+          "stableRef": "rmain:list:architecture-reference-policy-reference-replay-r",
+          "snippet": "- Architecture reference - Policy reference - Replay reference 3 ul 62 main list items"
+        }
+      ],
       "reason": "needs-more-browsing",
+      "reviewRecommended": true,
+      "verdictExplanation": "Browse a more specific source page before answering.",
       "checkedBlockRefs": [
         "rmain:text:docs-switcher-links-architecture-policy-and-repl",
         "rmain:heading:docs-switcher",

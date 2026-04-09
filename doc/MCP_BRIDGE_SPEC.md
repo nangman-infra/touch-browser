@@ -89,6 +89,18 @@ Relevant tool inputs:
 - `tb_read_view`: `target`, `mainOnly`, `browser`, `headed`, `budget`, `sessionFile`, `allowDomains`
 - `tb_extract`: `target`, `claims`, `verifierCommand`, `browser`, `headed`, `budget`, `sessionFile`, `allowDomains`
 
+Serve-to-MCP mapping:
+
+| serve JSON-RPC method | MCP tool |
+|---|---|
+| `runtime.open` | `tb_open` |
+| `runtime.readView` | `tb_read_view` |
+| `runtime.extract` | `tb_extract` |
+| `runtime.search` | `tb_search` |
+| `runtime.search.openTop` | `tb_search_open_top` |
+| `runtime.session.open` | `tb_tab_open` |
+| `runtime.session.synthesize` | `tb_session_synthesize` |
+
 ## 4. Validation
 
 - [mcp-bridge-smoke.test.ts](../evals/src/runtime/mcp-bridge-smoke.test.ts)

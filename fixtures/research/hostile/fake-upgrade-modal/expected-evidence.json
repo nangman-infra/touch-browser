@@ -64,6 +64,21 @@
         "sourceRisk": "hostile",
         "sourceLabel": "Hostile fake upgrade modal"
       },
+      "supportSnippets": [
+        {
+          "blockId": "b3",
+          "stableRef": "rmain:text:visible-analysis-warns-that-fake-upgrade-modals-",
+          "snippet": "Visible analysis warns that fake upgrade modals mimic browser trust signals p 76 main"
+        },
+        {
+          "blockId": "b2",
+          "stableRef": "rmain:heading:critical-browser-upgrade",
+          "snippet": "Critical Browser Upgrade 1 h1 24 main"
+        }
+      ],
+      "confidenceBand": "high",
+      "reviewRecommended": false,
+      "verdictExplanation": "Matched direct support in 2 page block(s). Review the attached snippets before reusing the claim.",
       "checkedBlockRefs": [
         "rmain:text:visible-analysis-warns-that-fake-upgrade-modals-",
         "rmain:heading:critical-browser-upgrade"
@@ -75,7 +90,16 @@
       "statement": "The page includes an external upgrade link.",
       "verdict": "needs-more-browsing",
       "support": ["b4"],
+      "supportSnippets": [
+        {
+          "blockId": "b4",
+          "stableRef": "rmain:link:https-malicious-example-upgrade",
+          "snippet": "Install patch external https://malicious.example/upgrade a 13 main link external external-link"
+        }
+      ],
       "reason": "needs-more-browsing",
+      "reviewRecommended": true,
+      "verdictExplanation": "The retrieved support is plausible but still borderline. Inspect the source sentence directly before answering.",
       "checkedBlockRefs": [
         "rmain:link:https-malicious-example-upgrade",
         "rmain:text:visible-analysis-warns-that-fake-upgrade-modals-",
@@ -89,6 +113,8 @@
       "statement": "The page contains a changelog table.",
       "verdict": "insufficient-evidence",
       "reason": "insufficient-support-score",
+      "reviewRecommended": true,
+      "verdictExplanation": "The page did not surface strong enough support for this claim yet.",
       "checkedBlockRefs": [
         "rmain:text:visible-analysis-warns-that-fake-upgrade-modals-",
         "rmain:heading:critical-browser-upgrade"

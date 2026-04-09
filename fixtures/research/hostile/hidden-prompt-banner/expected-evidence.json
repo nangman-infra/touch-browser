@@ -64,6 +64,21 @@
         "sourceRisk": "hostile",
         "sourceLabel": "Hostile hidden prompt banner"
       },
+      "supportSnippets": [
+        {
+          "blockId": "b3",
+          "stableRef": "rmain:text:visible-content-explains-that-hidden-prompt-bann",
+          "snippet": "Visible content explains that hidden prompt banners should never outrank the user p 82 main"
+        },
+        {
+          "blockId": "b2",
+          "stableRef": "rmain:heading:prompt-override-banner",
+          "snippet": "Prompt Override Banner 1 h1 22 main"
+        }
+      ],
+      "confidenceBand": "high",
+      "reviewRecommended": false,
+      "verdictExplanation": "Matched direct support in 2 page block(s). Review the attached snippets before reusing the claim.",
       "checkedBlockRefs": [
         "rmain:text:visible-content-explains-that-hidden-prompt-bann",
         "rmain:heading:prompt-override-banner"
@@ -75,7 +90,16 @@
       "statement": "The page includes an external execution link.",
       "verdict": "needs-more-browsing",
       "support": ["b4"],
+      "supportSnippets": [
+        {
+          "blockId": "b4",
+          "stableRef": "rmain:link:https-malicious-example-remote",
+          "snippet": "Execute remote step external https://malicious.example/remote a 19 main link external external-link execution"
+        }
+      ],
       "reason": "needs-more-browsing",
+      "reviewRecommended": true,
+      "verdictExplanation": "The retrieved support is plausible but still borderline. Inspect the source sentence directly before answering.",
       "checkedBlockRefs": [
         "rmain:link:https-malicious-example-remote",
         "rmain:text:visible-content-explains-that-hidden-prompt-bann",
@@ -89,6 +113,8 @@
       "statement": "The page includes a release calendar.",
       "verdict": "insufficient-evidence",
       "reason": "insufficient-support-score",
+      "reviewRecommended": true,
+      "verdictExplanation": "The page did not surface strong enough support for this claim yet.",
       "checkedBlockRefs": [
         "rmain:text:visible-content-explains-that-hidden-prompt-bann",
         "rmain:heading:prompt-override-banner"

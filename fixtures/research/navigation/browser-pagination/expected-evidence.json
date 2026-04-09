@@ -70,6 +70,26 @@
         "sourceRisk": "low",
         "sourceLabel": "Browser-backed pagination seed"
       },
+      "supportSnippets": [
+        {
+          "blockId": "b4",
+          "stableRef": "rmain:text:page-content",
+          "snippet": "Page 1 collects the first batch of release highlights p 54 main"
+        },
+        {
+          "blockId": "b3",
+          "stableRef": "rmain:text:page-label",
+          "snippet": "Page 1 p 6 main"
+        },
+        {
+          "blockId": "b2",
+          "stableRef": "rmain:heading:browser-pagination",
+          "snippet": "Browser Pagination 1 h1 18 main"
+        }
+      ],
+      "confidenceBand": "high",
+      "reviewRecommended": false,
+      "verdictExplanation": "Matched direct support in 3 page block(s). Review the attached snippets before reusing the claim.",
       "checkedBlockRefs": [
         "rmain:text:page-content",
         "rmain:text:page-label",
@@ -82,7 +102,26 @@
       "statement": "Page 1 includes a Next button.",
       "verdict": "needs-more-browsing",
       "support": ["b5", "b3", "b4"],
+      "supportSnippets": [
+        {
+          "blockId": "b5",
+          "stableRef": "rmain:button:next",
+          "snippet": "Next button 4 main button"
+        },
+        {
+          "blockId": "b3",
+          "stableRef": "rmain:text:page-label",
+          "snippet": "Page 1 p 6 main"
+        },
+        {
+          "blockId": "b4",
+          "stableRef": "rmain:text:page-content",
+          "snippet": "Page 1 collects the first batch of release highlights p 54 main"
+        }
+      ],
       "reason": "needs-more-browsing",
+      "reviewRecommended": true,
+      "verdictExplanation": "The current page surfaced plausible evidence, but it still needs a more specific source or manual review.",
       "checkedBlockRefs": [
         "rmain:button:next",
         "rmain:text:page-label",
@@ -95,7 +134,26 @@
       "statement": "Page 1 includes a pricing table.",
       "verdict": "needs-more-browsing",
       "support": ["b3", "b4", "b2"],
+      "supportSnippets": [
+        {
+          "blockId": "b3",
+          "stableRef": "rmain:text:page-label",
+          "snippet": "Page 1 p 6 main"
+        },
+        {
+          "blockId": "b4",
+          "stableRef": "rmain:text:page-content",
+          "snippet": "Page 1 collects the first batch of release highlights p 54 main"
+        },
+        {
+          "blockId": "b2",
+          "stableRef": "rmain:heading:browser-pagination",
+          "snippet": "Browser Pagination 1 h1 18 main"
+        }
+      ],
       "reason": "needs-more-browsing",
+      "reviewRecommended": true,
+      "verdictExplanation": "Browse a more specific source page before answering.",
       "checkedBlockRefs": [
         "rmain:text:page-label",
         "rmain:text:page-content",
