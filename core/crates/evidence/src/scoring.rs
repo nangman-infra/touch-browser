@@ -3,6 +3,7 @@ use std::collections::{BTreeMap, BTreeSet};
 use touch_browser_contracts::{SnapshotBlock, SnapshotBlockKind, SnapshotBlockRole};
 
 use crate::{
+    candidates::block_candidates,
     contradiction::contradiction_detected,
     normalization::{
         claim_mentions_version_or_release, contains_token_sequence, is_version_like_token,
@@ -16,6 +17,8 @@ use crate::{
 #[derive(Clone, Debug)]
 pub(crate) struct ScoredCandidate<'a> {
     pub(crate) block: &'a SnapshotBlock,
+    pub(crate) candidate_index: usize,
+    pub(crate) text: String,
     pub(crate) score: f64,
     pub(crate) contradictory: bool,
     pub(crate) exact_support: bool,
@@ -26,27 +29,33 @@ pub(crate) struct ScoringContext {
     pub(crate) claim_semantic_context: SemanticScoringContext,
 }
 
+struct CandidateScoringInput<'a> {
+    normalized_claim: &'a str,
+    claim_tokens: &'a [String],
+    claim_qualifier_tokens: &'a [String],
+    claim_numeric_tokens: &'a [String],
+    scoring_context: &'a ScoringContext,
+}
+
 pub(crate) fn score_candidates<'a>(
     blocks: &'a [SnapshotBlock],
     normalized_claim: &str,
     claim_tokens: &[String],
+    claim_qualifier_tokens: &[String],
     claim_numeric_tokens: &[String],
     scoring_context: &ScoringContext,
 ) -> Vec<ScoredCandidate<'a>> {
+    let input = CandidateScoringInput {
+        normalized_claim,
+        claim_tokens,
+        claim_qualifier_tokens,
+        claim_numeric_tokens,
+        scoring_context,
+    };
     let mut scored = blocks
         .iter()
         .enumerate()
-        .filter_map(|(index, block)| {
-            score_block(
-                blocks,
-                index,
-                block,
-                normalized_claim,
-                claim_tokens,
-                claim_numeric_tokens,
-                scoring_context,
-            )
-        })
+        .flat_map(|(index, block)| score_block_candidates(blocks, index, block, &input))
         .collect::<Vec<_>>();
 
     scored.sort_by(|left, right| {
@@ -304,71 +313,122 @@ fn claim_token_document_frequency(
     document_frequency
 }
 
-fn score_block<'a>(
+fn score_block_candidates<'a>(
     blocks: &'a [SnapshotBlock],
     index: usize,
     block: &'a SnapshotBlock,
-    normalized_claim: &str,
-    claim_tokens: &[String],
-    claim_numeric_tokens: &[String],
-    scoring_context: &ScoringContext,
-) -> Option<ScoredCandidate<'a>> {
-    let search_text = block_search_text(block);
-    let block_tokens = tokenize_significant(&search_text);
-    if block_tokens.is_empty() {
-        return None;
+    input: &CandidateScoringInput<'_>,
+) -> Vec<ScoredCandidate<'a>> {
+    block_candidates(block)
+        .into_iter()
+        .filter_map(|candidate| {
+            let search_text = candidate_search_text(block, &candidate.text);
+            let candidate_tokens = tokenize_significant(&search_text);
+            if candidate_tokens.is_empty() {
+                return None;
+            }
+
+            let contextual_text = contextual_search_text(blocks, index, &candidate.text);
+            let contextual_tokens = tokenize_significant(&contextual_text);
+            let lexical_overlap = weighted_token_overlap_ratio(
+                input.claim_tokens,
+                &candidate_tokens,
+                &input.scoring_context.claim_token_weights,
+            );
+            let contextual_overlap = weighted_token_overlap_ratio(
+                input.claim_tokens,
+                &contextual_tokens,
+                &input.scoring_context.claim_token_weights,
+            );
+            let exact_bonus =
+                exact_match_bonus(input.normalized_claim, &normalize_text(&search_text));
+            let numeric_overlap = numeric_overlap_ratio(input.claim_numeric_tokens, &search_text);
+            let numeric_presence_bonus =
+                numeric_presence_bonus(input.claim_numeric_tokens, &search_text);
+            let kind_bonus = kind_score_bonus(&block.kind);
+            let control_bonus = ui_control_bonus(blocks, index, input.claim_tokens, block);
+            let structural_adjustment = block_structural_adjustment(block);
+            let qualifier_adjustment =
+                qualifier_alignment_adjustment(input.claim_qualifier_tokens, &search_text);
+            let version_noise_penalty =
+                version_noise_penalty(input.claim_tokens, input.claim_numeric_tokens, &search_text);
+            let contextual_bonus = (contextual_overlap - lexical_overlap).max(0.0) * 0.10;
+            let semantic_bonus = semantic_similarity_bonus(
+                semantic_similarity(&input.scoring_context.claim_semantic_context, &search_text)
+                    .unwrap_or(0.0),
+                lexical_overlap,
+            );
+            let contradictory = contradiction_detected(input.normalized_claim, &search_text);
+            let mut score = (lexical_overlap * 0.40)
+                + (contextual_overlap * 0.26)
+                + (exact_bonus * 0.16)
+                + (numeric_overlap * 0.08)
+                + numeric_presence_bonus
+                + kind_bonus
+                + control_bonus
+                + structural_adjustment
+                + qualifier_adjustment
+                + version_noise_penalty
+                + contextual_bonus
+                + semantic_bonus;
+
+            if contradictory && contextual_overlap >= 0.35 {
+                score *= 0.6;
+            }
+
+            (score > 0.0).then_some(ScoredCandidate {
+                block,
+                candidate_index: candidate.index,
+                text: search_text,
+                score: score.min(1.0),
+                contradictory,
+                exact_support: exact_bonus >= 0.70,
+            })
+        })
+        .collect()
+}
+
+fn qualifier_alignment_adjustment(claim_qualifier_tokens: &[String], support_text: &str) -> f64 {
+    if claim_qualifier_tokens.is_empty() {
+        return 0.0;
     }
 
-    let contextual_text = contextual_search_text(blocks, index);
-    let contextual_tokens = tokenize_significant(&contextual_text);
-    let lexical_overlap = weighted_token_overlap_ratio(
-        claim_tokens,
-        &block_tokens,
-        &scoring_context.claim_token_weights,
-    );
-    let contextual_overlap = weighted_token_overlap_ratio(
-        claim_tokens,
-        &contextual_tokens,
-        &scoring_context.claim_token_weights,
-    );
-    let exact_bonus = exact_match_bonus(normalized_claim, &normalize_text(&contextual_text));
-    let numeric_overlap = numeric_overlap_ratio(claim_numeric_tokens, &contextual_text);
-    let numeric_presence_bonus = numeric_presence_bonus(claim_numeric_tokens, &contextual_text);
-    let kind_bonus = kind_score_bonus(&block.kind);
-    let control_bonus = ui_control_bonus(blocks, index, claim_tokens, block);
-    let structural_adjustment = block_structural_adjustment(block);
-    let version_noise_penalty =
-        version_noise_penalty(claim_tokens, claim_numeric_tokens, &contextual_text);
-    let contextual_bonus = (contextual_overlap - lexical_overlap).max(0.0) * 0.10;
-    let semantic_bonus = semantic_similarity_bonus(
-        semantic_similarity(&scoring_context.claim_semantic_context, &contextual_text)
-            .unwrap_or(0.0),
-        lexical_overlap,
-    );
-    let contradictory = contradiction_detected(normalized_claim, &contextual_text)
-        || contradiction_detected(normalized_claim, &block.text);
-    let mut score = (lexical_overlap * 0.40)
-        + (contextual_overlap * 0.26)
-        + (exact_bonus * 0.16)
-        + (numeric_overlap * 0.08)
-        + numeric_presence_bonus
-        + kind_bonus
-        + control_bonus
-        + structural_adjustment
-        + version_noise_penalty
-        + contextual_bonus
-        + semantic_bonus;
+    let claim_has_default = claim_qualifier_tokens
+        .iter()
+        .any(|token| token == "default");
+    let claim_has_maximum = claim_qualifier_tokens
+        .iter()
+        .any(|token| matches!(token.as_str(), "maximum" | "max"));
+    let claim_has_minimum = claim_qualifier_tokens
+        .iter()
+        .any(|token| matches!(token.as_str(), "minimum" | "min"));
 
-    if contradictory && contextual_overlap >= 0.35 {
-        score *= 0.6;
+    let normalized = normalize_text(support_text);
+    let support_has_default =
+        normalized.contains(" by default ") || normalized.contains(" default ");
+    let support_has_maximum = normalized.contains(" maximum ")
+        || normalized.contains(" max ")
+        || normalized.contains(" up to ")
+        || normalized.contains(" at most ");
+    let support_has_minimum = normalized.contains(" minimum ")
+        || normalized.contains(" min ")
+        || normalized.contains(" at least ");
+
+    if (claim_has_default && support_has_default)
+        || (claim_has_maximum && support_has_maximum)
+        || (claim_has_minimum && support_has_minimum)
+    {
+        return 0.14;
     }
 
-    (score > 0.0).then_some(ScoredCandidate {
-        block,
-        score: score.min(1.0),
-        contradictory,
-        exact_support: exact_bonus >= 0.70,
-    })
+    if (claim_has_default && (support_has_maximum || support_has_minimum))
+        || (claim_has_maximum && (support_has_default || support_has_minimum))
+        || (claim_has_minimum && (support_has_default || support_has_maximum))
+    {
+        return -0.18;
+    }
+
+    0.0
 }
 
 fn semantic_similarity_bonus(semantic_similarity: f64, lexical_overlap: f64) -> f64 {
@@ -382,10 +442,10 @@ fn semantic_similarity_bonus(semantic_similarity: f64, lexical_overlap: f64) -> 
     semantic_signal * lexical_gap * 0.12
 }
 
-fn contextual_search_text(blocks: &[SnapshotBlock], index: usize) -> String {
+fn contextual_search_text(blocks: &[SnapshotBlock], index: usize, primary_text: &str) -> String {
     let block = &blocks[index];
     if !allows_context_expansion(block) {
-        return block_search_text(block);
+        return candidate_search_text(block, primary_text);
     }
 
     let mut seen_blocks = BTreeSet::new();
@@ -398,7 +458,7 @@ fn contextual_search_text(blocks: &[SnapshotBlock], index: usize) -> String {
     }
 
     if seen_blocks.insert(block.id.clone()) {
-        parts.push(block_search_text(block));
+        parts.push(candidate_search_text(block, primary_text));
     }
 
     for neighbor_index in contextual_neighbor_indices(blocks, index) {
@@ -409,6 +469,51 @@ fn contextual_search_text(blocks: &[SnapshotBlock], index: usize) -> String {
     }
 
     parts.join(" ")
+}
+
+fn candidate_search_text(block: &SnapshotBlock, candidate_text: &str) -> String {
+    let mut parts = vec![candidate_text.trim().to_string()];
+
+    if let Some(header_context) = block_header_context(block, candidate_text) {
+        parts.push(header_context);
+    }
+
+    parts.extend(block_search_terms_without_text(block));
+    parts.join(" ")
+}
+
+fn block_search_terms_without_text(block: &SnapshotBlock) -> Vec<String> {
+    let mut parts = Vec::new();
+
+    for (key, value) in &block.attributes {
+        match value {
+            serde_json::Value::String(text) => parts.push(text.clone()),
+            serde_json::Value::Bool(true) => parts.push(key.clone()),
+            serde_json::Value::Number(number) => parts.push(number.to_string()),
+            serde_json::Value::Array(items) => {
+                parts.extend(items.iter().filter_map(search_term_from_attribute_value));
+            }
+            _ => {}
+        }
+    }
+
+    parts.extend(block_semantic_terms(block));
+    parts
+}
+
+fn block_header_context(block: &SnapshotBlock, candidate_text: &str) -> Option<String> {
+    match block.kind {
+        SnapshotBlockKind::Table | SnapshotBlockKind::List => {
+            let header = block
+                .text
+                .lines()
+                .next()
+                .map(str::trim)
+                .filter(|header| !header.is_empty() && *header != candidate_text.trim())?;
+            Some(header.to_string())
+        }
+        _ => None,
+    }
 }
 
 fn allows_context_expansion(block: &SnapshotBlock) -> bool {

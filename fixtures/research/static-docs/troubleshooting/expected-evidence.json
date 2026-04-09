@@ -13,7 +13,7 @@
       "claimId": "c1",
       "statement": "If stable refs go stale after a page change, capture a new semantic snapshot before acting again.",
       "support": ["b6", "b7", "b5"],
-      "supportScore": 0.94,
+      "supportScore": 0.95,
       "citation": {
         "url": "fixture://research/static-docs/troubleshooting",
         "retrievedAt": "2026-03-14T00:00:00+09:00",
@@ -27,7 +27,7 @@
       "claimId": "c2",
       "statement": "Memory compaction keeps the working set bounded during long research sessions.",
       "support": ["b7", "b8", "b6"],
-      "supportScore": 0.94,
+      "supportScore": 0.95,
       "citation": {
         "url": "fixture://research/static-docs/troubleshooting",
         "retrievedAt": "2026-03-14T00:00:00+09:00",
@@ -57,7 +57,7 @@
       "statement": "If stable refs go stale after a page change, capture a new semantic snapshot before acting again.",
       "verdict": "evidence-supported",
       "support": ["b6", "b7", "b5"],
-      "supportScore": 0.94,
+      "supportScore": 0.95,
       "citation": {
         "url": "fixture://research/static-docs/troubleshooting",
         "retrievedAt": "2026-03-14T00:00:00+09:00",
@@ -77,7 +77,7 @@
       "statement": "Memory compaction keeps the working set bounded during long research sessions.",
       "verdict": "evidence-supported",
       "support": ["b7", "b8", "b6"],
-      "supportScore": 0.94,
+      "supportScore": 0.95,
       "citation": {
         "url": "fixture://research/static-docs/troubleshooting",
         "retrievedAt": "2026-03-14T00:00:00+09:00",

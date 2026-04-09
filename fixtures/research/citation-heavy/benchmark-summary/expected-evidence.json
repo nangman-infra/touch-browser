@@ -13,7 +13,7 @@
       "claimId": "c1",
       "statement": "The Core research suite reported citation precision of 97%.",
       "support": ["b4", "b5", "b3"],
-      "supportScore": 0.88,
+      "supportScore": 0.94,
       "citation": {
         "url": "fixture://research/citation-heavy/benchmark-summary",
         "retrievedAt": "2026-03-14T00:00:00+09:00",
@@ -27,7 +27,7 @@
       "claimId": "c2",
       "statement": "The Hostile review suite reported recall of 91%.",
       "support": ["b4", "b3", "b5"],
-      "supportScore": 0.89,
+      "supportScore": 0.91,
       "citation": {
         "url": "fixture://research/citation-heavy/benchmark-summary",
         "retrievedAt": "2026-03-14T00:00:00+09:00",
@@ -68,7 +68,7 @@
       "statement": "The Core research suite reported citation precision of 97%.",
       "verdict": "evidence-supported",
       "support": ["b4", "b5", "b3"],
-      "supportScore": 0.88,
+      "supportScore": 0.94,
       "citation": {
         "url": "fixture://research/citation-heavy/benchmark-summary",
         "retrievedAt": "2026-03-14T00:00:00+09:00",
@@ -88,7 +88,7 @@
       "statement": "The Hostile review suite reported recall of 91%.",
       "verdict": "evidence-supported",
       "support": ["b4", "b3", "b5"],
-      "supportScore": 0.89,
+      "supportScore": 0.91,
       "citation": {
         "url": "fixture://research/citation-heavy/benchmark-summary",
         "retrievedAt": "2026-03-14T00:00:00+09:00",

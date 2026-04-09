@@ -54,27 +54,40 @@ pub(crate) fn analyze_claim<'a>(
         blocks,
         &analysis.normalized_claim,
         matching_profile.claim_tokens,
+        &analysis.claim_qualifier_tokens,
         &analysis.claim_numeric_tokens,
         &scoring_context,
     );
     let checked_refs = checked_refs(&scored);
     let contradictory_support = contradictory_support(&scored);
-
-    if let Some(resolution) =
-        contradiction_resolution(claim, &contradictory_support, blocks, &analysis)
-    {
-        return resolution;
-    }
-
     let contradictory_exists = scored.iter().any(|candidate| candidate.contradictory);
     let non_contradictory = non_contradictory_candidates(scored);
+    let best_non_contradictory_score = non_contradictory
+        .first()
+        .map(|candidate| candidate.score)
+        .unwrap_or(0.0);
+    let best_contradictory_score = contradictory_support
+        .iter()
+        .map(|candidate| candidate.score)
+        .fold(0.0, f64::max);
 
     let Some(best_candidate) = non_contradictory.first() else {
+        if let Some(resolution) =
+            contradiction_resolution(claim, &contradictory_support, blocks, &analysis)
+        {
+            return resolution;
+        }
         return no_candidate_resolution(contradictory_exists, checked_refs);
     };
+    if best_contradictory_score >= best_non_contradictory_score + 0.02 {
+        if let Some(resolution) =
+            contradiction_resolution(claim, &contradictory_support, blocks, &analysis)
+        {
+            return resolution;
+        }
+    }
     let best_score = best_candidate.score;
     let top_support = top_support_candidates(non_contradictory);
-
     if top_support.is_empty() {
         return no_top_support_resolution(contradictory_exists, checked_refs);
     }
@@ -100,6 +113,16 @@ pub(crate) fn analyze_claim<'a>(
         &assessment,
         matching_profile.uses_cross_lingual_matching,
     );
+    if assessment.contradiction_reason.is_none()
+        && !assessment.guard_failures.is_empty()
+        && !contradictory_support.is_empty()
+    {
+        if let Some(resolution) =
+            contradiction_resolution(claim, &contradictory_support, blocks, &analysis)
+        {
+            return resolution;
+        }
+    }
 
     if let Some(resolution) = guarded_resolution(
         claim,
@@ -116,7 +139,7 @@ pub(crate) fn analyze_claim<'a>(
         return resolution;
     }
 
-    supported_resolution(best_score, top_support, checked_refs)
+    supported_resolution(effective_score, top_support, checked_refs)
 }
 
 struct MatchingProfile<'a> {
@@ -470,5 +493,58 @@ mod tests {
         );
 
         assert_ne!(resolution.verdict, EvidenceClaimVerdict::EvidenceSupported);
+    }
+
+    #[test]
+    fn analyzer_handles_mixed_runtime_sentences_inside_one_block() {
+        let snapshot = SnapshotDocument {
+            version: "1.0.0".to_string(),
+            stable_ref_version: "1".to_string(),
+            source: SnapshotSource {
+                source_url: "https://example.com/tokio".to_string(),
+                source_type: SourceType::Http,
+                title: Some("Tokio Runtime Modes".to_string()),
+            },
+            budget: touch_browser_contracts::SnapshotBudget {
+                requested_tokens: 512,
+                estimated_tokens: 32,
+                emitted_tokens: 32,
+                truncated: false,
+            },
+            blocks: vec![SnapshotBlock {
+                version: "1.0.0".to_string(),
+                id: "b1".to_string(),
+                kind: SnapshotBlockKind::Text,
+                stable_ref: "rmain:text:runtime-modes".to_string(),
+                role: SnapshotBlockRole::Content,
+                text: "Tokio provides a current-thread runtime for lightweight bridging scenarios, but it also offers a multi-threaded runtime for concurrent workloads.".to_string(),
+                attributes: Default::default(),
+                evidence: SnapshotEvidence {
+                    source_url: "https://example.com/tokio".to_string(),
+                    source_type: SourceType::Http,
+                    dom_path_hint: Some("html > body > main > p".to_string()),
+                    byte_range_start: None,
+                    byte_range_end: None,
+                },
+            }],
+        };
+
+        let single_threaded = analyze_claim(
+            &ClaimRequest::new("c1", "Tokio is single-threaded by default."),
+            &snapshot.blocks,
+        );
+        assert_ne!(
+            single_threaded.verdict,
+            EvidenceClaimVerdict::EvidenceSupported
+        );
+
+        let multi_threaded = analyze_claim(
+            &ClaimRequest::new("c2", "Tokio is multi-threaded."),
+            &snapshot.blocks,
+        );
+        assert_eq!(
+            multi_threaded.verdict,
+            EvidenceClaimVerdict::EvidenceSupported
+        );
     }
 }

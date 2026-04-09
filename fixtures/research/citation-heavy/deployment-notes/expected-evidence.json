@@ -37,12 +37,13 @@
       }
     }
   ],
-  "insufficientEvidenceClaims": [
+  "insufficientEvidenceClaims": [],
+  "needsMoreBrowsingClaims": [
     {
       "version": "1.0.0",
       "claimId": "c3",
       "statement": "The deployment notes include a billing calculator.",
-      "reason": "insufficient-support-score",
+      "reason": "needs-more-browsing",
       "checkedBlockRefs": [
         "rmain:table:stage-recovery-mode-rollback-8-minutes-automatic",
         "rmain:text:deployment-notes-record-that-blue-green-rollouts",
@@ -102,9 +103,9 @@
       "version": "1.0.0",
       "claimId": "c3",
       "statement": "The deployment notes include a billing calculator.",
-      "verdict": "insufficient-evidence",
+      "verdict": "needs-more-browsing",
       "support": ["b4", "b3"],
-      "reason": "insufficient-support-score",
+      "reason": "needs-more-browsing",
       "checkedBlockRefs": [
         "rmain:table:stage-recovery-mode-rollback-8-minutes-automatic",
         "rmain:text:deployment-notes-record-that-blue-green-rollouts",

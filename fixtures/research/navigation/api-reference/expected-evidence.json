@@ -13,7 +13,7 @@
       "claimId": "c1",
       "statement": "The runtime exposes open, snapshot, extract, diff, compact, and replay commands.",
       "support": ["b6", "b7", "b5"],
-      "supportScore": 0.94,
+      "supportScore": 0.95,
       "citation": {
         "url": "fixture://research/navigation/api-reference",
         "retrievedAt": "2026-03-14T00:00:00+09:00",
@@ -27,7 +27,7 @@
       "claimId": "c2",
       "statement": "Snapshot responses include stable refs and evidence metadata.",
       "support": ["b8", "b9", "b7"],
-      "supportScore": 0.94,
+      "supportScore": 0.95,
       "citation": {
         "url": "fixture://research/navigation/api-reference",
         "retrievedAt": "2026-03-14T00:00:00+09:00",
@@ -65,7 +65,7 @@
       "statement": "The runtime exposes open, snapshot, extract, diff, compact, and replay commands.",
       "verdict": "evidence-supported",
       "support": ["b6", "b7", "b5"],
-      "supportScore": 0.94,
+      "supportScore": 0.95,
       "citation": {
         "url": "fixture://research/navigation/api-reference",
         "retrievedAt": "2026-03-14T00:00:00+09:00",
@@ -85,7 +85,7 @@
       "statement": "Snapshot responses include stable refs and evidence metadata.",
       "verdict": "evidence-supported",
       "support": ["b8", "b9", "b7"],
-      "supportScore": 0.94,
+      "supportScore": 0.95,
       "citation": {
         "url": "fixture://research/navigation/api-reference",
         "retrievedAt": "2026-03-14T00:00:00+09:00",

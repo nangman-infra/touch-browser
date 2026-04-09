@@ -17,11 +17,19 @@ use guards::{button_claim_requires_more_browsing, should_keep_browsing, GuardAss
 use support::aggregate_support_score;
 
 pub(crate) fn checked_refs(scored: &[ScoredCandidate<'_>]) -> Vec<String> {
-    scored
-        .iter()
-        .take(3)
-        .map(|candidate| candidate.block.stable_ref.clone())
-        .collect()
+    let mut seen = std::collections::BTreeSet::new();
+    let mut refs = Vec::new();
+
+    for candidate in scored {
+        if seen.insert(candidate.block.stable_ref.clone()) {
+            refs.push(candidate.block.stable_ref.clone());
+            if refs.len() == 3 {
+                break;
+            }
+        }
+    }
+
+    refs
 }
 
 pub(crate) fn contradictory_support<'a>(
@@ -142,11 +150,38 @@ pub(crate) fn no_candidate_resolution<'a>(
 pub(crate) fn top_support_candidates<'a>(
     non_contradictory: Vec<ScoredCandidate<'a>>,
 ) -> Vec<ScoredCandidate<'a>> {
-    non_contradictory
+    let eligible = non_contradictory
         .into_iter()
         .filter(|candidate| candidate.score >= 0.22)
-        .take(3)
-        .collect()
+        .collect::<Vec<_>>();
+
+    let mut seen_blocks = std::collections::BTreeSet::new();
+    let mut selected = Vec::new();
+
+    for candidate in &eligible {
+        if seen_blocks.insert(candidate.block.id.clone()) {
+            selected.push(candidate.clone());
+            if selected.len() == 3 {
+                return selected;
+            }
+        }
+    }
+
+    let mut seen_candidates = selected
+        .iter()
+        .map(|candidate| (candidate.block.id.clone(), candidate.candidate_index))
+        .collect::<std::collections::BTreeSet<_>>();
+
+    for candidate in eligible {
+        if seen_candidates.insert((candidate.block.id.clone(), candidate.candidate_index)) {
+            selected.push(candidate);
+            if selected.len() == 3 {
+                break;
+            }
+        }
+    }
+
+    selected
 }
 
 pub(crate) fn no_top_support_resolution<'a>(
@@ -273,12 +308,12 @@ pub(crate) fn guarded_resolution<'a>(
 }
 
 pub(crate) fn supported_resolution<'a>(
-    best_score: f64,
+    effective_score: f64,
     top_support: Vec<ScoredCandidate<'a>>,
     checked_refs: Vec<String>,
 ) -> ClaimResolution<'a> {
     let confidence = round_confidence(
-        best_score.max(
+        effective_score.max(
             top_support
                 .iter()
                 .map(|candidate| candidate.score)
@@ -340,7 +375,9 @@ pub(crate) fn support_acceptance_threshold(
     let narrative_support_count = top_support
         .iter()
         .filter(|candidate| is_narrative_aggregate_block(candidate.block))
-        .count();
+        .map(|candidate| candidate.block.id.as_str())
+        .collect::<std::collections::BTreeSet<_>>()
+        .len();
     if uses_cross_lingual_matching && narrative_support_count >= 2 {
         0.38
     } else if uses_cross_lingual_matching {
@@ -381,6 +418,8 @@ mod tests {
 
         ScoredCandidate {
             block,
+            candidate_index: 0,
+            text: "support block".to_string(),
             score,
             contradictory: false,
             exact_support,

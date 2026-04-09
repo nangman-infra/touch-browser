@@ -13,7 +13,7 @@
       "claimId": "c1",
       "statement": "Researchers often open the Architecture tab first.",
       "support": ["b8", "b3", "b4"],
-      "supportScore": 0.94,
+      "supportScore": 0.95,
       "citation": {
         "url": "fixture://research/navigation/tab-overview",
         "retrievedAt": "2026-03-14T00:00:00+09:00",
@@ -27,7 +27,7 @@
       "claimId": "c2",
       "statement": "The page lists Architecture, Benchmarks, and Policy tabs.",
       "support": ["b4", "b3", "b8"],
-      "supportScore": 0.86,
+      "supportScore": 0.95,
       "citation": {
         "url": "fixture://research/navigation/tab-overview",
         "retrievedAt": "2026-03-14T00:00:00+09:00",
@@ -57,7 +57,7 @@
       "statement": "Researchers often open the Architecture tab first.",
       "verdict": "evidence-supported",
       "support": ["b8", "b3", "b4"],
-      "supportScore": 0.94,
+      "supportScore": 0.95,
       "citation": {
         "url": "fixture://research/navigation/tab-overview",
         "retrievedAt": "2026-03-14T00:00:00+09:00",
@@ -77,7 +77,7 @@
       "statement": "The page lists Architecture, Benchmarks, and Policy tabs.",
       "verdict": "evidence-supported",
       "support": ["b4", "b3", "b8"],
-      "supportScore": 0.86,
+      "supportScore": 0.95,
       "citation": {
         "url": "fixture://research/navigation/tab-overview",
         "retrievedAt": "2026-03-14T00:00:00+09:00",

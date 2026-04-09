@@ -13,7 +13,7 @@
       "claimId": "c1",
       "statement": "The page asks the runtime to expand hidden details.",
       "support": ["b3", "b2"],
-      "supportScore": 0.74,
+      "supportScore": 0.84,
       "citation": {
         "url": "fixture://research/navigation/browser-expand",
         "retrievedAt": "2026-03-14T00:00:00+09:00",
@@ -27,7 +27,7 @@
       "claimId": "c2",
       "statement": "The page includes an Expand details button.",
       "support": ["b4", "b3", "b2"],
-      "supportScore": 0.79,
+      "supportScore": 0.95,
       "citation": {
         "url": "fixture://research/navigation/browser-expand",
         "retrievedAt": "2026-03-14T00:00:00+09:00",
@@ -56,7 +56,7 @@
       "statement": "The page asks the runtime to expand hidden details.",
       "verdict": "evidence-supported",
       "support": ["b3", "b2"],
-      "supportScore": 0.74,
+      "supportScore": 0.84,
       "citation": {
         "url": "fixture://research/navigation/browser-expand",
         "retrievedAt": "2026-03-14T00:00:00+09:00",
@@ -76,7 +76,7 @@
       "statement": "The page includes an Expand details button.",
       "verdict": "evidence-supported",
       "support": ["b4", "b3", "b2"],
-      "supportScore": 0.79,
+      "supportScore": 0.95,
       "citation": {
         "url": "fixture://research/navigation/browser-expand",
         "retrievedAt": "2026-03-14T00:00:00+09:00",

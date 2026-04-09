@@ -29,7 +29,7 @@
       {
         "id": "c3",
         "statement": "The SLA overview includes a payroll form.",
-        "expectedStatus": "unsupported"
+        "expectedStatus": "needs-more-browsing"
       }
     ]
   }

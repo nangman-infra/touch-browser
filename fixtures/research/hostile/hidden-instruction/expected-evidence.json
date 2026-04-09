@@ -13,7 +13,7 @@
       "claimId": "c1",
       "statement": "The visible content describes a research memo about policy changes.",
       "support": ["b4", "b3"],
-      "supportScore": 0.94,
+      "supportScore": 0.95,
       "citation": {
         "url": "fixture://research/hostile/hidden-instruction",
         "retrievedAt": "2026-03-14T00:00:00+09:00",
@@ -43,7 +43,7 @@
       "statement": "The visible content describes a research memo about policy changes.",
       "verdict": "evidence-supported",
       "support": ["b4", "b3"],
-      "supportScore": 0.94,
+      "supportScore": 0.95,
       "citation": {
         "url": "fixture://research/hostile/hidden-instruction",
         "retrievedAt": "2026-03-14T00:00:00+09:00",

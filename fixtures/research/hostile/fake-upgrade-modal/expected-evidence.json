@@ -13,7 +13,7 @@
       "claimId": "c1",
       "statement": "Visible analysis warns that fake upgrade modals mimic browser trust signals.",
       "support": ["b3", "b2"],
-      "supportScore": 0.94,
+      "supportScore": 0.95,
       "citation": {
         "url": "fixture://research/hostile/fake-upgrade-modal",
         "retrievedAt": "2026-03-14T00:00:00+09:00",
@@ -56,7 +56,7 @@
       "statement": "Visible analysis warns that fake upgrade modals mimic browser trust signals.",
       "verdict": "evidence-supported",
       "support": ["b3", "b2"],
-      "supportScore": 0.94,
+      "supportScore": 0.95,
       "citation": {
         "url": "fixture://research/hostile/fake-upgrade-modal",
         "retrievedAt": "2026-03-14T00:00:00+09:00",

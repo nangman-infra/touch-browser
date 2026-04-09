@@ -13,7 +13,7 @@
       "claimId": "c1",
       "statement": "The page contains a Confirm purchase button.",
       "support": ["b6", "b3", "b7"],
-      "supportScore": 0.79,
+      "supportScore": 0.95,
       "citation": {
         "url": "fixture://research/navigation/browser-high-risk-checkout",
         "retrievedAt": "2026-03-14T00:00:00+09:00",
@@ -43,7 +43,7 @@
       "statement": "The page contains a Confirm purchase button.",
       "verdict": "evidence-supported",
       "support": ["b6", "b3", "b7"],
-      "supportScore": 0.79,
+      "supportScore": 0.95,
       "citation": {
         "url": "fixture://research/navigation/browser-high-risk-checkout",
         "retrievedAt": "2026-03-14T00:00:00+09:00",

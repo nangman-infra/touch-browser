@@ -13,7 +13,7 @@
       "claimId": "c1",
       "statement": "Docs Switcher links architecture, policy, and replay references from one index.",
       "support": ["b3", "b4", "b2"],
-      "supportScore": 0.94,
+      "supportScore": 0.95,
       "citation": {
         "url": "fixture://research/navigation/docs-switcher",
         "retrievedAt": "2026-03-14T00:00:00+09:00",
@@ -26,7 +26,7 @@
       "version": "1.0.0",
       "claimId": "c2",
       "statement": "Replay reference",
-      "support": ["b4", "b3", "b7"],
+      "support": ["b4", "b7", "b3"],
       "supportScore": 0.95,
       "citation": {
         "url": "fixture://research/navigation/docs-switcher",
@@ -37,12 +37,13 @@
       }
     }
   ],
-  "insufficientEvidenceClaims": [
+  "insufficientEvidenceClaims": [],
+  "needsMoreBrowsingClaims": [
     {
       "version": "1.0.0",
       "claimId": "c3",
       "statement": "The docs switcher submits a purchase form.",
-      "reason": "insufficient-support-score",
+      "reason": "needs-more-browsing",
       "checkedBlockRefs": [
         "rmain:text:docs-switcher-links-architecture-policy-and-repl",
         "rmain:heading:docs-switcher",
@@ -64,7 +65,7 @@
       "statement": "Docs Switcher links architecture, policy, and replay references from one index.",
       "verdict": "evidence-supported",
       "support": ["b3", "b4", "b2"],
-      "supportScore": 0.94,
+      "supportScore": 0.95,
       "citation": {
         "url": "fixture://research/navigation/docs-switcher",
         "retrievedAt": "2026-03-14T00:00:00+09:00",
@@ -83,7 +84,7 @@
       "claimId": "c2",
       "statement": "Replay reference",
       "verdict": "evidence-supported",
-      "support": ["b4", "b3", "b7"],
+      "support": ["b4", "b7", "b3"],
       "supportScore": 0.95,
       "citation": {
         "url": "fixture://research/navigation/docs-switcher",
@@ -94,17 +95,17 @@
       },
       "checkedBlockRefs": [
         "rmain:list:architecture-reference-policy-reference-replay-r",
-        "rmain:text:docs-switcher-links-architecture-policy-and-repl",
-        "rmain:link:replay"
+        "rmain:link:replay",
+        "rmain:text:docs-switcher-links-architecture-policy-and-repl"
       ]
     },
     {
       "version": "1.0.0",
       "claimId": "c3",
       "statement": "The docs switcher submits a purchase form.",
-      "verdict": "insufficient-evidence",
+      "verdict": "needs-more-browsing",
       "support": ["b3", "b2", "b4"],
-      "reason": "insufficient-support-score",
+      "reason": "needs-more-browsing",
       "checkedBlockRefs": [
         "rmain:text:docs-switcher-links-architecture-policy-and-repl",
         "rmain:heading:docs-switcher",

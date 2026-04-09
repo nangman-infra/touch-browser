@@ -1,3 +1,4 @@
+use std::collections::BTreeSet;
 use touch_browser_contracts::{
     EvidenceCitation, EvidenceClaimOutcome, EvidenceClaimVerdict, EvidenceReport, EvidenceSource,
     CONTRACT_VERSION,
@@ -30,7 +31,13 @@ pub(crate) fn build_claim_outcome(
         support: resolution
             .support
             .iter()
-            .map(|candidate| candidate.block.id.clone())
+            .filter_map({
+                let mut seen = BTreeSet::new();
+                move |candidate| {
+                    seen.insert(candidate.block.id.clone())
+                        .then(|| candidate.block.id.clone())
+                }
+            })
             .collect(),
         support_score: resolution.confidence,
         citation,

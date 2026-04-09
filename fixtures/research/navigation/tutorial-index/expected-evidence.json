@@ -13,7 +13,7 @@
       "claimId": "c1",
       "statement": "The tutorials index links readers to CLI, Policy, and Replay walkthroughs.",
       "support": ["b6", "b5", "b7"],
-      "supportScore": 0.94,
+      "supportScore": 0.95,
       "citation": {
         "url": "fixture://research/navigation/tutorial-index",
         "retrievedAt": "2026-03-14T00:00:00+09:00",
@@ -27,7 +27,7 @@
       "claimId": "c2",
       "statement": "The replay tutorial demonstrates how to replay a saved scenario deterministically.",
       "support": ["b12", "b11", "b8"],
-      "supportScore": 0.94,
+      "supportScore": 0.95,
       "citation": {
         "url": "fixture://research/navigation/tutorial-index",
         "retrievedAt": "2026-03-14T00:00:00+09:00",
@@ -64,7 +64,7 @@
       "statement": "The tutorials index links readers to CLI, Policy, and Replay walkthroughs.",
       "verdict": "evidence-supported",
       "support": ["b6", "b5", "b7"],
-      "supportScore": 0.94,
+      "supportScore": 0.95,
       "citation": {
         "url": "fixture://research/navigation/tutorial-index",
         "retrievedAt": "2026-03-14T00:00:00+09:00",
@@ -84,7 +84,7 @@
       "statement": "The replay tutorial demonstrates how to replay a saved scenario deterministically.",
       "verdict": "evidence-supported",
       "support": ["b12", "b11", "b8"],
-      "supportScore": 0.94,
+      "supportScore": 0.95,
       "citation": {
         "url": "fixture://research/navigation/tutorial-index",
         "retrievedAt": "2026-03-14T00:00:00+09:00",

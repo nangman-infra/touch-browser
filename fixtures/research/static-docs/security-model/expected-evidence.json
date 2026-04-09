@@ -13,7 +13,7 @@
       "claimId": "c1",
       "statement": "The runtime separates page content, policy state, and action inputs into distinct channels.",
       "support": ["b6", "b7", "b5"],
-      "supportScore": 0.94,
+      "supportScore": 0.95,
       "citation": {
         "url": "fixture://research/static-docs/security-model",
         "retrievedAt": "2026-03-14T00:00:00+09:00",
@@ -27,7 +27,7 @@
       "claimId": "c2",
       "statement": "Replayable sessions emit audit logs that can be reviewed after each action.",
       "support": ["b7", "b6", "b8"],
-      "supportScore": 0.94,
+      "supportScore": 0.95,
       "citation": {
         "url": "fixture://research/static-docs/security-model",
         "retrievedAt": "2026-03-14T00:00:00+09:00",
@@ -57,7 +57,7 @@
       "statement": "The runtime separates page content, policy state, and action inputs into distinct channels.",
       "verdict": "evidence-supported",
       "support": ["b6", "b7", "b5"],
-      "supportScore": 0.94,
+      "supportScore": 0.95,
       "citation": {
         "url": "fixture://research/static-docs/security-model",
         "retrievedAt": "2026-03-14T00:00:00+09:00",
@@ -77,7 +77,7 @@
       "statement": "Replayable sessions emit audit logs that can be reviewed after each action.",
       "verdict": "evidence-supported",
       "support": ["b7", "b6", "b8"],
-      "supportScore": 0.94,
+      "supportScore": 0.95,
       "citation": {
         "url": "fixture://research/static-docs/security-model",
         "retrievedAt": "2026-03-14T00:00:00+09:00",

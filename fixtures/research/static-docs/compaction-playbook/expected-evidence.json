@@ -13,7 +13,7 @@
       "claimId": "c1",
       "statement": "Compaction Playbook keeps working sets small by promoting supported claims and recent refs.",
       "support": ["b3", "b4", "b2"],
-      "supportScore": 0.94,
+      "supportScore": 0.95,
       "citation": {
         "url": "fixture://research/static-docs/compaction-playbook",
         "retrievedAt": "2026-03-14T00:00:00+09:00",
@@ -57,7 +57,7 @@
       "statement": "Compaction Playbook keeps working sets small by promoting supported claims and recent refs.",
       "verdict": "evidence-supported",
       "support": ["b3", "b4", "b2"],
-      "supportScore": 0.94,
+      "supportScore": 0.95,
       "citation": {
         "url": "fixture://research/static-docs/compaction-playbook",
         "retrievedAt": "2026-03-14T00:00:00+09:00",

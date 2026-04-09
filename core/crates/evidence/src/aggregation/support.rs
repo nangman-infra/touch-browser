@@ -20,10 +20,7 @@ pub(super) fn aggregate_support_score(
     blocks: &[SnapshotBlock],
     scoring_context: &ScoringContext,
 ) -> f64 {
-    let narrative_support_count = top_support
-        .iter()
-        .filter(|candidate| is_narrative_aggregate_block(candidate.block))
-        .count();
+    let narrative_support_count = narrative_support_block_count(top_support);
     let relevant_primary_heading = primary_heading_context(blocks)
         .filter(|heading| primary_heading_supports_claim(heading, claim_anchor_tokens));
 
@@ -120,7 +117,12 @@ fn append_candidate_support_text(
     blocks: &[SnapshotBlock],
     candidate: &ScoredCandidate<'_>,
 ) {
-    append_unique_block_text(seen_blocks, parts, candidate.block);
+    if seen_blocks.insert(format!(
+        "{}#{}",
+        candidate.block.id, candidate.candidate_index
+    )) {
+        parts.push(candidate.text.clone());
+    }
     append_heading_context_text(seen_blocks, parts, blocks, candidate.block);
 }
 
@@ -129,7 +131,7 @@ fn distributed_support_bonus(
     top_support: &[ScoredCandidate<'_>],
     scoring_context: &ScoringContext,
 ) -> f64 {
-    if top_support.len() < 2 {
+    if distinct_support_block_count(top_support) < 2 {
         return 0.0;
     }
     if claim_anchor_tokens.len() < 2 {
@@ -140,7 +142,7 @@ fn distributed_support_bonus(
     let mut supporting_blocks = 0usize;
 
     for candidate in top_support {
-        let block_tokens = tokenize_significant(&block_search_text(candidate.block));
+        let block_tokens = tokenize_significant(&candidate.text);
         let matched = claim_anchor_tokens
             .iter()
             .filter(|claim_token| {
@@ -203,6 +205,23 @@ fn support_density_bonus(
         .sum::<f64>()
         .min(1.0)
         * 0.24
+}
+
+fn narrative_support_block_count(top_support: &[ScoredCandidate<'_>]) -> usize {
+    top_support
+        .iter()
+        .filter(|candidate| is_narrative_aggregate_block(candidate.block))
+        .map(|candidate| candidate.block.id.as_str())
+        .collect::<BTreeSet<_>>()
+        .len()
+}
+
+fn distinct_support_block_count(top_support: &[ScoredCandidate<'_>]) -> usize {
+    top_support
+        .iter()
+        .map(|candidate| candidate.block.id.as_str())
+        .collect::<BTreeSet<_>>()
+        .len()
 }
 
 fn weighted_anchor_coverage(

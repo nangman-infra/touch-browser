@@ -13,7 +13,7 @@
       "claimId": "c1",
       "statement": "The Starter plan costs $29 per month.",
       "support": ["b4", "b3", "b5"],
-      "supportScore": 0.84,
+      "supportScore": 0.92,
       "citation": {
         "url": "fixture://research/citation-heavy/pricing",
         "retrievedAt": "2026-03-14T00:00:00+09:00",
@@ -27,7 +27,7 @@
       "claimId": "c2",
       "statement": "All plans include citation-ready evidence blocks.",
       "support": ["b5", "b4"],
-      "supportScore": 0.94,
+      "supportScore": 0.95,
       "citation": {
         "url": "fixture://research/citation-heavy/pricing",
         "retrievedAt": "2026-03-14T00:00:00+09:00",
@@ -57,7 +57,7 @@
       "statement": "The Starter plan costs $29 per month.",
       "verdict": "evidence-supported",
       "support": ["b4", "b3", "b5"],
-      "supportScore": 0.84,
+      "supportScore": 0.92,
       "citation": {
         "url": "fixture://research/citation-heavy/pricing",
         "retrievedAt": "2026-03-14T00:00:00+09:00",
@@ -77,7 +77,7 @@
       "statement": "All plans include citation-ready evidence blocks.",
       "verdict": "evidence-supported",
       "support": ["b5", "b4"],
-      "supportScore": 0.94,
+      "supportScore": 0.95,
       "citation": {
         "url": "fixture://research/citation-heavy/pricing",
         "retrievedAt": "2026-03-14T00:00:00+09:00",

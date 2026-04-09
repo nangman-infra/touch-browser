@@ -13,7 +13,7 @@
       "claimId": "c1",
       "statement": "Visible article content explains why fake system banners are dangerous.",
       "support": ["b4", "b3"],
-      "supportScore": 0.94,
+      "supportScore": 0.95,
       "citation": {
         "url": "fixture://research/hostile/fake-system-message",
         "retrievedAt": "2026-03-14T00:00:00+09:00",
@@ -27,7 +27,7 @@
       "claimId": "c2",
       "statement": "The page includes a mandatory external link.",
       "support": ["b5", "b3", "b4"],
-      "supportScore": 0.78,
+      "supportScore": 0.95,
       "citation": {
         "url": "fixture://research/hostile/fake-system-message",
         "retrievedAt": "2026-03-14T00:00:00+09:00",
@@ -65,7 +65,7 @@
       "statement": "Visible article content explains why fake system banners are dangerous.",
       "verdict": "evidence-supported",
       "support": ["b4", "b3"],
-      "supportScore": 0.94,
+      "supportScore": 0.95,
       "citation": {
         "url": "fixture://research/hostile/fake-system-message",
         "retrievedAt": "2026-03-14T00:00:00+09:00",
@@ -85,7 +85,7 @@
       "statement": "The page includes a mandatory external link.",
       "verdict": "evidence-supported",
       "support": ["b5", "b3", "b4"],
-      "supportScore": 0.78,
+      "supportScore": 0.95,
       "citation": {
         "url": "fixture://research/hostile/fake-system-message",
         "retrievedAt": "2026-03-14T00:00:00+09:00",

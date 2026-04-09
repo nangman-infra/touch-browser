@@ -13,7 +13,7 @@
       "claimId": "c1",
       "statement": "Touch Browser compiles web pages into semantic state for research agents.",
       "support": ["b6", "b5", "b7"],
-      "supportScore": 0.94,
+      "supportScore": 0.95,
       "citation": {
         "url": "fixture://research/static-docs/getting-started",
         "retrievedAt": "2026-03-14T00:00:00+09:00",
@@ -27,7 +27,7 @@
       "claimId": "c2",
       "statement": "Quickstart includes opening a research URL.",
       "support": ["b8", "b7", "b6"],
-      "supportScore": 0.85,
+      "supportScore": 0.95,
       "citation": {
         "url": "fixture://research/static-docs/getting-started",
         "retrievedAt": "2026-03-14T00:00:00+09:00",
@@ -57,7 +57,7 @@
       "statement": "Touch Browser compiles web pages into semantic state for research agents.",
       "verdict": "evidence-supported",
       "support": ["b6", "b5", "b7"],
-      "supportScore": 0.94,
+      "supportScore": 0.95,
       "citation": {
         "url": "fixture://research/static-docs/getting-started",
         "retrievedAt": "2026-03-14T00:00:00+09:00",
@@ -77,7 +77,7 @@
       "statement": "Quickstart includes opening a research URL.",
       "verdict": "evidence-supported",
       "support": ["b8", "b7", "b6"],
-      "supportScore": 0.85,
+      "supportScore": 0.95,
       "citation": {
         "url": "fixture://research/static-docs/getting-started",
         "retrievedAt": "2026-03-14T00:00:00+09:00",

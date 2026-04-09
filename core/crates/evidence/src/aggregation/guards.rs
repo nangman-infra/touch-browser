@@ -8,7 +8,8 @@ use super::support::aggregate_support_text;
 use crate::{
     contradiction::contradiction_detected,
     normalization::{
-        normalize_text, token_overlap_ratio, tokenize_all, tokenize_significant, tokens_match,
+        claim_mentions_version_or_release, normalize_text, token_overlap_ratio, tokenize_all,
+        tokenize_significant, tokens_match,
     },
     scoring::{block_search_text, ScoredCandidate},
     ClaimRequest,
@@ -78,7 +79,7 @@ enum PredicatePolarity {
     Negative,
 }
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
 enum QualifierProfile {
     Unknown,
     Default,
@@ -132,7 +133,7 @@ pub(super) fn assess_support_guards(
     apply_guard_check(
         &mut contradiction_reason,
         &mut guard_failures,
-        numeric_guard_check(&claim.statement, &aggregated_text),
+        numeric_guard_check(&claim.statement, &aggregated_text, top_support),
     );
     apply_guard_check(
         &mut contradiction_reason,
@@ -147,22 +148,12 @@ pub(super) fn assess_support_guards(
     apply_guard_check(
         &mut contradiction_reason,
         &mut guard_failures,
-        qualifier_guard_check(
-            claim_qualifier_tokens,
-            &aggregated_all_tokens,
-            &claim.statement,
-            &aggregated_text,
-        ),
+        qualifier_guard_check(claim_qualifier_tokens, top_support, &claim.statement),
     );
     apply_guard_check(
         &mut contradiction_reason,
         &mut guard_failures,
-        predicate_guard_check(
-            &claim.statement,
-            &aggregated_all_tokens,
-            blocks,
-            claim_anchor_tokens,
-        ),
+        predicate_guard_check(&claim.statement, top_support, blocks, claim_anchor_tokens),
     );
     apply_guard_check(
         &mut contradiction_reason,
@@ -252,7 +243,7 @@ pub(super) fn should_keep_browsing(
     assessment: &GuardAssessment,
     claim: &ClaimRequest,
 ) -> bool {
-    best_score >= 0.35
+    best_score >= 0.30
         && (!assessment.guard_failures.is_empty()
             || !numeric_expressions(&claim.statement).is_empty()
             || detect_scope_profile(&tokenize_all(&claim.statement)).requires_explicit_support()
@@ -301,14 +292,18 @@ fn anchor_guard_check(claim_anchor_tokens: &[String], aggregated_tokens: &[Strin
 
 fn qualifier_guard_check(
     claim_qualifier_tokens: &[String],
-    aggregated_all_tokens: &[String],
+    top_support: &[ScoredCandidate<'_>],
     claim_text: &str,
-    aggregated_text: &str,
 ) -> GuardCheck {
     let qualifier_coverage = if claim_qualifier_tokens.is_empty() {
         1.0
     } else {
-        token_overlap_ratio(claim_qualifier_tokens, aggregated_all_tokens)
+        top_support
+            .iter()
+            .map(|candidate| {
+                token_overlap_ratio(claim_qualifier_tokens, &tokenize_all(&candidate.text))
+            })
+            .fold(0.0, f64::max)
     };
     if qualifier_coverage < 1.0 {
         return GuardCheck {
@@ -331,17 +326,22 @@ fn qualifier_guard_check(
         };
     }
 
-    let support_qualifier = detect_qualifier_profile(aggregated_text);
-    if support_qualifier == claim_qualifier {
+    let support_qualifiers = top_support
+        .iter()
+        .map(|candidate| detect_qualifier_profile(&candidate.text))
+        .filter(|profile| *profile != QualifierProfile::Unknown)
+        .collect::<BTreeSet<_>>();
+
+    if support_qualifiers.contains(&claim_qualifier) {
         return GuardCheck {
             contradiction_reason: None,
             failure: None,
         };
     }
 
-    if support_qualifier != QualifierProfile::Unknown {
+    if let Some(support_qualifier) = support_qualifiers.iter().next().copied() {
         return GuardCheck {
-            contradiction_reason: Some(UnsupportedClaimReason::PredicateMismatch),
+            contradiction_reason: None,
             failure: Some(EvidenceGuardFailure {
                 kind: EvidenceGuardKind::Predicate,
                 detail: format!(
@@ -365,9 +365,37 @@ fn qualifier_guard_check(
     }
 }
 
-fn numeric_guard_check(claim_text: &str, aggregated_text: &str) -> GuardCheck {
+fn numeric_guard_check(
+    claim_text: &str,
+    aggregated_text: &str,
+    top_support: &[ScoredCandidate<'_>],
+) -> GuardCheck {
+    if claim_mentions_version_or_release(&tokenize_significant(claim_text))
+        || claim_contains_raw_version_marker(claim_text)
+    {
+        return GuardCheck {
+            contradiction_reason: None,
+            failure: None,
+        };
+    }
+
     let claim_numeric = numeric_expressions(claim_text);
-    let support_numeric = numeric_expressions(aggregated_text);
+    let claim_qualifier = detect_qualifier_profile(claim_text);
+    let qualifier_matched_text = if claim_qualifier == QualifierProfile::Unknown {
+        String::new()
+    } else {
+        top_support
+            .iter()
+            .filter(|candidate| detect_qualifier_profile(&candidate.text) == claim_qualifier)
+            .map(|candidate| candidate.text.as_str())
+            .collect::<Vec<_>>()
+            .join(" ")
+    };
+    let support_numeric = if qualifier_matched_text.is_empty() {
+        numeric_expressions(aggregated_text)
+    } else {
+        numeric_expressions(&qualifier_matched_text)
+    };
 
     if claim_numeric.is_empty() {
         return GuardCheck {
@@ -410,6 +438,29 @@ fn numeric_guard_check(claim_text: &str, aggregated_text: &str) -> GuardCheck {
             ),
         }),
     }
+}
+
+fn claim_contains_raw_version_marker(text: &str) -> bool {
+    text.split_whitespace()
+        .map(|token| {
+            token.trim_matches(|character: char| {
+                character == ',' || character == '.' || character == ';' || character == ':'
+            })
+        })
+        .any(raw_token_looks_like_version)
+}
+
+fn raw_token_looks_like_version(token: &str) -> bool {
+    let normalized = token.trim();
+    let candidate = normalized.strip_prefix('v').unwrap_or(normalized);
+    candidate
+        .chars()
+        .filter(|character| *character == '.')
+        .count()
+        >= 1
+        && candidate
+            .chars()
+            .all(|character| character.is_ascii_digit() || character == '.')
 }
 
 fn scope_guard_check(claim_text: &str, aggregated_all_tokens: &[String]) -> GuardCheck {
@@ -501,7 +552,7 @@ fn negation_guard_check(normalized_claim: &str, normalized_support: &str) -> Gua
 
 fn predicate_guard_check(
     claim_text: &str,
-    aggregated_all_tokens: &[String],
+    top_support: &[ScoredCandidate<'_>],
     blocks: &[SnapshotBlock],
     claim_anchor_tokens: &[String],
 ) -> GuardCheck {
@@ -513,32 +564,43 @@ fn predicate_guard_check(
             continue;
         }
 
+        let claim_context_tokens = predicate_context_tokens(
+            &claim_tokens,
+            predicate_terms_for_polarity(opposition, claim_polarity),
+        );
         let subject_anchor_tokens =
             predicate_subject_anchor_tokens(claim_anchor_tokens, opposition);
+        let matching_blocks = top_support
+            .iter()
+            .filter_map(|candidate| {
+                let candidate_tokens = tokenize_all(&candidate.text);
+                let candidate_polarity = detect_predicate_polarity(&candidate_tokens, opposition);
+                if candidate_polarity != claim_polarity {
+                    return None;
+                }
+                if !predicate_context_matches(
+                    &claim_context_tokens,
+                    &candidate_tokens,
+                    predicate_terms_for_polarity(opposition, claim_polarity),
+                ) {
+                    return None;
+                }
+                Some(candidate.block.id.clone())
+            })
+            .collect::<BTreeSet<_>>();
 
-        let support_polarity = detect_predicate_polarity(aggregated_all_tokens, opposition);
-        if predicate_polarities_conflict(claim_polarity, support_polarity) {
-            return GuardCheck {
-                contradiction_reason: Some(UnsupportedClaimReason::PredicateMismatch),
-                failure: Some(EvidenceGuardFailure {
-                    kind: EvidenceGuardKind::Predicate,
-                    detail: format!(
-                        "Claim predicate `{}` conflicts with support predicate evidence.",
-                        opposition.label
-                    ),
-                }),
-            };
-        }
-
-        let opposite_predicate_exists = document_contains_opposite_predicate(
+        let opposite_blocks = document_blocks_with_opposite_predicate(
             blocks,
             &subject_anchor_tokens,
             claim_polarity,
             opposition,
+            &claim_context_tokens,
         );
-
-        if support_polarity == claim_polarity {
-            if opposite_predicate_exists {
+        if !matching_blocks.is_empty() {
+            if opposite_blocks
+                .iter()
+                .any(|block_id| !matching_blocks.contains(block_id))
+            {
                 return GuardCheck {
                     contradiction_reason: None,
                     failure: Some(EvidenceGuardFailure {
@@ -554,7 +616,7 @@ fn predicate_guard_check(
             continue;
         }
 
-        if opposite_predicate_exists {
+        if !opposite_blocks.is_empty() {
             return GuardCheck {
                 contradiction_reason: Some(UnsupportedClaimReason::PredicateMismatch),
                 failure: Some(EvidenceGuardFailure {
@@ -788,7 +850,7 @@ fn opposition_matches_token(opposition_terms: &[&str], token: &str) -> bool {
     opposition_terms.iter().any(|term| {
         token == *term
             || token.starts_with(term)
-            || term.starts_with(token)
+            || (token.len() >= 5 && term.starts_with(token))
             || token.replace('-', "") == term.replace('-', "")
     })
 }
@@ -801,34 +863,99 @@ fn predicate_polarities_conflict(claim: PredicatePolarity, support: PredicatePol
     )
 }
 
-fn document_contains_opposite_predicate(
+fn document_blocks_with_opposite_predicate(
     blocks: &[SnapshotBlock],
     claim_anchor_tokens: &[String],
     claim_polarity: PredicatePolarity,
     opposition: &PredicateOpposition,
-) -> bool {
+    claim_context_tokens: &[String],
+) -> BTreeSet<String> {
     let required_anchor_overlap = if claim_anchor_tokens.is_empty() {
         0.0
     } else {
         0.5
     };
 
-    blocks.iter().any(|block| {
-        let search_text = block_search_text(block);
-        let block_tokens = tokenize_all(&search_text);
-        let block_polarity = detect_predicate_polarity(&block_tokens, opposition);
-        if !predicate_polarities_conflict(claim_polarity, block_polarity) {
-            return false;
+    blocks
+        .iter()
+        .filter_map(|block| {
+            let search_text = block_search_text(block);
+            let block_tokens = tokenize_all(&search_text);
+            let block_polarity = detect_predicate_polarity(&block_tokens, opposition);
+            if !predicate_polarities_conflict(claim_polarity, block_polarity) {
+                return None;
+            }
+            if !predicate_context_matches(
+                claim_context_tokens,
+                &block_tokens,
+                predicate_terms_for_polarity(opposition, opposite_polarity(claim_polarity)),
+            ) {
+                return None;
+            }
+
+            if claim_anchor_tokens.is_empty() {
+                return Some(block.id.clone());
+            }
+
+            let block_significant_tokens = tokenize_significant(&search_text);
+            (token_overlap_ratio(claim_anchor_tokens, &block_significant_tokens)
+                >= required_anchor_overlap)
+                .then(|| block.id.clone())
+        })
+        .collect()
+}
+
+fn opposite_polarity(polarity: PredicatePolarity) -> PredicatePolarity {
+    match polarity {
+        PredicatePolarity::Positive => PredicatePolarity::Negative,
+        PredicatePolarity::Negative => PredicatePolarity::Positive,
+        PredicatePolarity::None => PredicatePolarity::None,
+    }
+}
+
+fn predicate_terms_for_polarity(
+    opposition: &PredicateOpposition,
+    polarity: PredicatePolarity,
+) -> &[&str] {
+    match polarity {
+        PredicatePolarity::Positive => opposition.positive,
+        PredicatePolarity::Negative => opposition.negative,
+        PredicatePolarity::None => &[],
+    }
+}
+
+fn predicate_context_tokens(tokens: &[String], opposition_terms: &[&str]) -> Vec<String> {
+    for (index, token) in tokens.iter().enumerate() {
+        if !opposition_matches_token(opposition_terms, token) {
+            continue;
         }
 
-        if claim_anchor_tokens.is_empty() {
-            return true;
+        let context = tokens[index + 1..]
+            .iter()
+            .filter(|token| !PREDICATE_CONTEXT_STOP_WORDS.contains(&token.as_str()))
+            .take(6)
+            .cloned()
+            .collect::<Vec<_>>();
+        if !context.is_empty() {
+            return context;
         }
+    }
 
-        let block_significant_tokens = tokenize_significant(&search_text);
-        token_overlap_ratio(claim_anchor_tokens, &block_significant_tokens)
-            >= required_anchor_overlap
-    })
+    Vec::new()
+}
+
+fn predicate_context_matches(
+    claim_context_tokens: &[String],
+    support_tokens: &[String],
+    support_predicate_terms: &[&str],
+) -> bool {
+    if claim_context_tokens.is_empty() {
+        return true;
+    }
+
+    let support_context_tokens = predicate_context_tokens(support_tokens, support_predicate_terms);
+    !support_context_tokens.is_empty()
+        && token_overlap_ratio(claim_context_tokens, &support_context_tokens) >= 0.5
 }
 
 fn next_action_hint_for_failures(failures: &[EvidenceGuardFailure]) -> Option<String> {
@@ -905,4 +1032,13 @@ const PREDICATE_OPPOSITIONS: &[PredicateOpposition] = &[
             "multithread",
         ],
     },
+    PredicateOpposition {
+        label: "runtime-behavior",
+        positive: &["synchronous", "blocking"],
+        negative: &["asynchronous", "non-blocking", "nonblocking"],
+    },
+];
+const PREDICATE_CONTEXT_STOP_WORDS: &[&str] = &[
+    "a", "an", "and", "as", "at", "be", "by", "for", "from", "in", "is", "it", "its", "of", "or",
+    "the", "to", "with",
 ];

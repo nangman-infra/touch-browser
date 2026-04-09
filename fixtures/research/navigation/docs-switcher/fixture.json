@@ -29,7 +29,7 @@
       {
         "id": "c3",
         "statement": "The docs switcher submits a purchase form.",
-        "expectedStatus": "unsupported"
+        "expectedStatus": "needs-more-browsing"
       }
     ]
   }

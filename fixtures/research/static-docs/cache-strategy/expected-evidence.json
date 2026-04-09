@@ -13,7 +13,7 @@
       "claimId": "c1",
       "statement": "The acquisition layer stores requested URLs and final redirected URLs as cache aliases.",
       "support": ["b3", "b4", "b2"],
-      "supportScore": 0.92,
+      "supportScore": 0.95,
       "citation": {
         "url": "fixture://research/static-docs/cache-strategy",
         "retrievedAt": "2026-03-14T00:00:00+09:00",
@@ -27,7 +27,7 @@
       "claimId": "c2",
       "statement": "The docs recommend rejecting unsupported content types before snapshot compilation.",
       "support": ["b4", "b3", "b5"],
-      "supportScore": 0.8,
+      "supportScore": 0.87,
       "citation": {
         "url": "fixture://research/static-docs/cache-strategy",
         "retrievedAt": "2026-03-14T00:00:00+09:00",
@@ -64,7 +64,7 @@
       "statement": "The acquisition layer stores requested URLs and final redirected URLs as cache aliases.",
       "verdict": "evidence-supported",
       "support": ["b3", "b4", "b2"],
-      "supportScore": 0.92,
+      "supportScore": 0.95,
       "citation": {
         "url": "fixture://research/static-docs/cache-strategy",
         "retrievedAt": "2026-03-14T00:00:00+09:00",
@@ -84,7 +84,7 @@
       "statement": "The docs recommend rejecting unsupported content types before snapshot compilation.",
       "verdict": "evidence-supported",
       "support": ["b4", "b3", "b5"],
-      "supportScore": 0.8,
+      "supportScore": 0.87,
       "citation": {
         "url": "fixture://research/static-docs/cache-strategy",
         "retrievedAt": "2026-03-14T00:00:00+09:00",
