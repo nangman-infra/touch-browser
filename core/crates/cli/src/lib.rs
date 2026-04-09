@@ -80,7 +80,9 @@ pub(crate) use interface::cli_models::{
     SubmitAdapterOutput, SubmitOptions, TargetOptions, TelemetryRecentCommandOutput,
     TelemetryRecentOptions, TelemetrySummaryCommandOutput, TypeAdapterOutput, TypeOptions,
 };
-pub(crate) use interface::cli_support::{is_fixture_target, repo_root, slot_timestamp, usage};
+pub(crate) use interface::cli_support::{
+    current_timestamp, is_fixture_target, repo_root, slot_timestamp, usage,
+};
 pub(crate) use interface::command_parser::{
     parse_ack_risk, parse_command, parse_output_format, parse_policy_profile, parse_search_engine,
     parse_source_risk,

@@ -258,6 +258,79 @@ mod tests {
     }
 
     #[test]
+    fn analyzer_rejects_thread_usage_claim_from_contrastive_os_thread_language() {
+        let snapshot = SnapshotDocument {
+            version: "1.0.0".to_string(),
+            stable_ref_version: "1".to_string(),
+            source: SnapshotSource {
+                source_url: "https://nodejs.org/en/about".to_string(),
+                source_type: SourceType::Http,
+                title: Some("About Node.js".to_string()),
+            },
+            budget: touch_browser_contracts::SnapshotBudget {
+                requested_tokens: 512,
+                estimated_tokens: 32,
+                emitted_tokens: 32,
+                truncated: false,
+            },
+            blocks: vec![
+                SnapshotBlock {
+                    version: "1.0.0".to_string(),
+                    id: "b1".to_string(),
+                    kind: SnapshotBlockKind::Text,
+                    stable_ref: "rmain:text:contrast".to_string(),
+                    role: SnapshotBlockRole::Content,
+                    text: "This is in contrast to today's more common concurrency model, in which OS threads are employed.".to_string(),
+                    attributes: Default::default(),
+                    evidence: SnapshotEvidence {
+                        source_url: "https://nodejs.org/en/about".to_string(),
+                        source_type: SourceType::Http,
+                        dom_path_hint: Some("html > body > main > p:nth-of-type(1)".to_string()),
+                        byte_range_start: None,
+                        byte_range_end: None,
+                    },
+                },
+                SnapshotBlock {
+                    version: "1.0.0".to_string(),
+                    id: "b2".to_string(),
+                    kind: SnapshotBlockKind::Text,
+                    stable_ref: "rmain:text:threadless".to_string(),
+                    role: SnapshotBlockRole::Content,
+                    text: "Node.js being designed without threads doesn't mean you can't take advantage of multiple cores in your environment."
+                        .to_string(),
+                    attributes: Default::default(),
+                    evidence: SnapshotEvidence {
+                        source_url: "https://nodejs.org/en/about".to_string(),
+                        source_type: SourceType::Http,
+                        dom_path_hint: Some("html > body > main > p:nth-of-type(2)".to_string()),
+                        byte_range_start: None,
+                        byte_range_end: None,
+                    },
+                },
+            ],
+        };
+
+        let report = EvidenceExtractor
+            .extract(&EvidenceInput::new(
+                snapshot,
+                vec![ClaimRequest::new("c1", "Node.js uses OS threads.")],
+                "2026-04-10T00:00:00+09:00",
+                SourceRisk::Low,
+                Some("About Node.js".to_string()),
+            ))
+            .expect("extract should succeed");
+
+        assert!(report.supported_claims.is_empty());
+        assert!(
+            report
+                .contradicted_claims
+                .iter()
+                .any(|claim| claim.claim_id == "c1"),
+            "thread-usage claim should be treated as contradicted when the page explicitly says Node.js is designed without threads"
+        );
+    }
+
+    #[test]
     fn analyzer_contradicts_execution_model_claims_when_document_states_the_opposite() {
         let mut snapshot = simple_snapshot(
             "Python is an interpreted high-level general-purpose programming language.",

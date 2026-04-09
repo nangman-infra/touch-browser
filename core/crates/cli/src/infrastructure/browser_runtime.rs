@@ -11,10 +11,10 @@ use serde_json::{json, Value};
 
 use super::browser_models::*;
 use crate::{
-    is_fixture_target, is_search_results_target, load_fixture_catalog, recommend_requested_tokens,
-    repo_root, slot_timestamp, CliError, ObservationCompiler, ObservationInput, PolicyProfile,
-    ReadOnlyRuntime, ReadOnlySession, RuntimeError, SearchReport, SecretPrefill, SessionMode,
-    SnapshotBlock, SnapshotDocument, SourceRisk, SourceType, CONTRACT_VERSION, DEFAULT_OPENED_AT,
+    current_timestamp, is_fixture_target, is_search_results_target, load_fixture_catalog,
+    recommend_requested_tokens, repo_root, CliError, ObservationCompiler, ObservationInput,
+    PolicyProfile, ReadOnlyRuntime, ReadOnlySession, RuntimeError, SearchReport, SecretPrefill,
+    SessionMode, SnapshotBlock, SnapshotDocument, SourceRisk, SourceType, CONTRACT_VERSION,
 };
 
 #[derive(Debug, Serialize)]
@@ -54,7 +54,7 @@ pub(crate) fn open_browser_session(
     timestamp: &str,
 ) -> Result<BrowserSessionContext, CliError> {
     let runtime = ReadOnlyRuntime::default();
-    let mut session = runtime.start_session(session_id, DEFAULT_OPENED_AT);
+    let mut session = runtime.start_session(session_id, timestamp);
     let observed = browser_document(
         target,
         requested_budget,
@@ -525,7 +525,8 @@ pub(crate) fn mark_browser_session_interactive(persisted: &mut BrowserCliSession
 }
 
 pub(crate) fn next_session_timestamp(session: &ReadOnlySession) -> String {
-    slot_timestamp(session.transcript.entries.len() + 1, 0)
+    let _ = session;
+    current_timestamp()
 }
 
 pub(crate) fn stable_ref_ordinal_hint(target_ref: &str) -> Option<usize> {

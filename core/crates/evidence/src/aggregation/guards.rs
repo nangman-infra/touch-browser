@@ -154,6 +154,11 @@ pub(super) fn assess_support_guards(
     apply_guard_check(
         &mut contradiction_reason,
         &mut guard_failures,
+        thread_usage_guard_check(&claim.statement, top_support, blocks),
+    );
+    apply_guard_check(
+        &mut contradiction_reason,
+        &mut guard_failures,
         predicate_guard_check(&claim.statement, top_support, blocks, claim_anchor_tokens),
     );
     apply_guard_check(
@@ -640,6 +645,47 @@ fn predicate_guard_check(
     }
 }
 
+fn thread_usage_guard_check(
+    claim_text: &str,
+    top_support: &[ScoredCandidate<'_>],
+    blocks: &[SnapshotBlock],
+) -> GuardCheck {
+    let claim_tokens = tokenize_significant(claim_text);
+    if !claim_explicitly_mentions_thread_usage(&claim_tokens) {
+        return GuardCheck {
+            contradiction_reason: None,
+            failure: None,
+        };
+    }
+
+    let subject_tokens = thread_usage_subject_tokens(&claim_tokens);
+    if subject_tokens.is_empty() {
+        return GuardCheck {
+            contradiction_reason: None,
+            failure: None,
+        };
+    }
+
+    let matching_blocks = top_support
+        .iter()
+        .filter(|candidate| {
+            block_explicitly_supports_thread_usage(candidate.block, &subject_tokens)
+        })
+        .map(|candidate| candidate.block.id.clone())
+        .collect::<BTreeSet<_>>();
+    let opposite_blocks = blocks
+        .iter()
+        .filter(|block| block_explicitly_denies_thread_usage(block, &subject_tokens))
+        .map(|block| block.id.clone())
+        .collect::<BTreeSet<_>>();
+
+    predicate_guard_resolution(&THREAD_USAGE_OPPOSITION, &matching_blocks, &opposite_blocks)
+        .unwrap_or(GuardCheck {
+            contradiction_reason: None,
+            failure: None,
+        })
+}
+
 fn claim_predicate_polarity(
     claim_tokens: &[String],
     opposition: &PredicateOpposition,
@@ -725,6 +771,108 @@ fn required_anchor_coverage(anchor_count: usize) -> f64 {
         3 => 2.0 / 3.0,
         _ => 0.6,
     }
+}
+
+fn claim_explicitly_mentions_thread_usage(tokens: &[String]) -> bool {
+    contains_token_from_set(tokens, THREAD_USAGE_POSITIVE_VERBS)
+        && contains_token_from_set(tokens, THREAD_USAGE_OBJECT_TOKENS)
+}
+
+fn thread_usage_subject_tokens(tokens: &[String]) -> Vec<String> {
+    tokens
+        .iter()
+        .filter(|token| {
+            !contains_token(token, THREAD_USAGE_POSITIVE_VERBS)
+                && !contains_token(token, THREAD_USAGE_OBJECT_TOKENS)
+                && !contains_token(token, THREAD_USAGE_CONTEXT_NOISE_TOKENS)
+        })
+        .cloned()
+        .collect::<BTreeSet<_>>()
+        .into_iter()
+        .collect()
+}
+
+fn block_explicitly_supports_thread_usage(
+    block: &SnapshotBlock,
+    subject_tokens: &[String],
+) -> bool {
+    let search_text = block_search_text(block);
+    let tokens = tokenize_all(&search_text);
+    subject_anchor_overlap(&search_text, subject_tokens) >= 0.5
+        && contains_thread_usage_support(&tokens)
+}
+
+fn block_explicitly_denies_thread_usage(block: &SnapshotBlock, subject_tokens: &[String]) -> bool {
+    let search_text = block_search_text(block);
+    let tokens = tokenize_all(&search_text);
+    subject_anchor_overlap(&search_text, subject_tokens) >= 0.5
+        && contains_thread_usage_denial(&tokens)
+}
+
+fn subject_anchor_overlap(block_text: &str, subject_tokens: &[String]) -> f64 {
+    if subject_tokens.is_empty() {
+        return 0.0;
+    }
+
+    token_overlap_ratio(subject_tokens, &tokenize_significant(block_text))
+}
+
+fn contains_thread_usage_support(tokens: &[String]) -> bool {
+    contains_nearby_token_pair(
+        tokens,
+        THREAD_USAGE_POSITIVE_VERBS,
+        THREAD_USAGE_OBJECT_TOKENS,
+        3,
+    )
+}
+
+fn contains_thread_usage_denial(tokens: &[String]) -> bool {
+    contains_token_sequence_from_terms(tokens, &["without", "threads"])
+        || contains_token_sequence_from_terms(tokens, &["without", "thread"])
+        || contains_token_sequence_from_terms(tokens, &["no", "threads"])
+        || contains_token_sequence_from_terms(tokens, &["no", "thread"])
+        || contains_token_sequence_from_terms(tokens, &["designed", "without", "threads"])
+}
+
+fn contains_nearby_token_pair(
+    tokens: &[String],
+    first_terms: &[&str],
+    second_terms: &[&str],
+    max_gap: usize,
+) -> bool {
+    tokens.iter().enumerate().any(|(index, token)| {
+        contains_token(token, first_terms)
+            && tokens
+                .iter()
+                .skip(index + 1)
+                .take(max_gap)
+                .any(|candidate| contains_token(candidate, second_terms))
+    })
+}
+
+fn contains_token_sequence_from_terms(tokens: &[String], phrase: &[&str]) -> bool {
+    if phrase.is_empty() || tokens.len() < phrase.len() {
+        return false;
+    }
+
+    tokens.windows(phrase.len()).any(|window| {
+        window
+            .iter()
+            .zip(phrase.iter())
+            .all(|(token, expected)| tokens_match(token, expected))
+    })
+}
+
+fn contains_token_from_set(tokens: &[String], expected_terms: &[&str]) -> bool {
+    tokens
+        .iter()
+        .any(|token| contains_token(token, expected_terms))
+}
+
+fn contains_token(token: &str, expected_terms: &[&str]) -> bool {
+    expected_terms
+        .iter()
+        .any(|expected| tokens_match(token, expected))
 }
 
 fn numeric_expressions(text: &str) -> Vec<NumericExpression> {
@@ -1108,6 +1256,15 @@ const PREVIEW_STATUS_TOKENS: &[&str] = &["preview", "beta", "alpha", "experiment
 const GA_STATUS_TOKENS: &[&str] = &["launched", "generally", "ga"];
 const DEPRECATED_STATUS_TOKENS: &[&str] =
     &["deprecated", "legacy", "retired", "sunset", "unsupported"];
+const THREAD_USAGE_POSITIVE_VERBS: &[&str] =
+    &["use", "uses", "using", "employ", "employs", "employed"];
+const THREAD_USAGE_OBJECT_TOKENS: &[&str] = &["thread", "threads"];
+const THREAD_USAGE_CONTEXT_NOISE_TOKENS: &[&str] = &["os", "operating", "system"];
+const THREAD_USAGE_OPPOSITION: PredicateOpposition = PredicateOpposition {
+    label: "thread-usage",
+    positive: &["uses threads"],
+    negative: &["without threads"],
+};
 const PREDICATE_OPPOSITIONS: &[PredicateOpposition] = &[
     PredicateOpposition {
         label: "execution-model",

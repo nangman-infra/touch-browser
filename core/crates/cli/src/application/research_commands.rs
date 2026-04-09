@@ -9,17 +9,17 @@ use super::{
     },
 };
 use crate::{
-    current_policy_with_allowlist, fail_action, is_fixture_target, plan_memory_turn, repo_root,
-    slot_timestamp, succeed_action, summarize_turns, verify_action_result_if_requested,
-    ActionCommand, ActionFailureKind, ActionName, ActionResult, ActionStatus, BrowserCliSession,
-    BrowserOrigin, BrowserSessionContext, ClaimInput, CliError, CompactSnapshotOutput,
-    ExtractCommandOutput, ExtractOptions, MemorySummaryOutput, PolicyCommandOutput, ReadViewOutput,
-    ReplayCommandOutput, ReplayTranscript, RiskClass, SearchCommandOutput, SearchEngine,
-    SearchNextCommands, SearchOpenResultCommandOutput, SearchOpenResultOptions,
-    SearchOpenTopCommandOutput, SearchOpenTopItem, SearchOpenTopOptions, SearchOptions,
-    SearchReport, SearchReportStatus, SearchResultItem, SnapshotBlock, SnapshotBlockKind,
-    SnapshotBlockRole, SnapshotDocument, SourceRisk, SourceType, TargetOptions, CONTRACT_VERSION,
-    DEFAULT_OPENED_AT,
+    current_policy_with_allowlist, current_timestamp, fail_action, is_fixture_target,
+    plan_memory_turn, repo_root, slot_timestamp, succeed_action, summarize_turns,
+    verify_action_result_if_requested, ActionCommand, ActionFailureKind, ActionName, ActionResult,
+    ActionStatus, BrowserCliSession, BrowserOrigin, BrowserSessionContext, ClaimInput, CliError,
+    CompactSnapshotOutput, ExtractCommandOutput, ExtractOptions, MemorySummaryOutput,
+    PolicyCommandOutput, ReadViewOutput, ReplayCommandOutput, ReplayTranscript, RiskClass,
+    SearchCommandOutput, SearchEngine, SearchNextCommands, SearchOpenResultCommandOutput,
+    SearchOpenResultOptions, SearchOpenTopCommandOutput, SearchOpenTopItem, SearchOpenTopOptions,
+    SearchOptions, SearchReport, SearchReportStatus, SearchResultItem, SnapshotBlock,
+    SnapshotBlockKind, SnapshotBlockRole, SnapshotDocument, SourceRisk, SourceType, TargetOptions,
+    CONTRACT_VERSION, DEFAULT_OPENED_AT,
 };
 use serde::Serialize;
 
@@ -347,6 +347,7 @@ pub(crate) fn handle_search(
     options: SearchOptions,
 ) -> Result<SearchCommandOutput, CliError> {
     let ports = ctx.ports;
+    let opened_at = current_timestamp();
     let search_url = build_search_url(options.engine, &options.query)?;
     let session_file = resolve_search_session_file(options.session_file.as_ref(), options.engine);
     let browser_profile_dir = options
@@ -373,7 +374,7 @@ pub(crate) fn handle_search(
         browser_context_dir.clone(),
         browser_profile_dir.clone(),
         "sclisearch001",
-        DEFAULT_OPENED_AT,
+        &opened_at,
     )?;
     let report = build_search_report(
         options.engine,
@@ -382,7 +383,7 @@ pub(crate) fn handle_search(
         &context.snapshot,
         &context.browser_state.current_html,
         &context.browser_state.current_url,
-        DEFAULT_OPENED_AT,
+        &opened_at,
     );
 
     ports.session_store.save_session(
@@ -441,6 +442,7 @@ pub(crate) fn handle_search_open_result(
     }
     let (selected, selection_strategy) =
         selected_search_result(&latest_search, options.rank, options.prefer_official)?;
+    let opened_at = current_timestamp();
 
     let context = ports.browser.open_browser_session(
         &selected.url,
@@ -451,7 +453,7 @@ pub(crate) fn handle_search_open_result(
         persisted.browser_context_dir.clone(),
         persisted.browser_profile_dir.clone(),
         "scliopen001",
-        DEFAULT_OPENED_AT,
+        &opened_at,
     )?;
     let refreshed = persist_browser_context(
         ctx,
@@ -556,6 +558,7 @@ pub(crate) fn handle_search_open_top(
         .map(|selected| {
             let result_session_file =
                 derived_search_result_session_file(&search_session_file, selected.rank);
+            let opened_at = current_timestamp();
             let context = ports.browser.open_browser_session(
                 &selected.url,
                 persisted.requested_budget,
@@ -565,7 +568,7 @@ pub(crate) fn handle_search_open_top(
                 persisted.browser_context_dir.clone(),
                 persisted.browser_profile_dir.clone(),
                 "scliopen001",
-                DEFAULT_OPENED_AT,
+                &opened_at,
             )?;
             let refreshed = persist_browser_context(
                 ctx,
@@ -609,6 +612,7 @@ pub(crate) fn handle_open(
     options: TargetOptions,
 ) -> Result<ActionResult, CliError> {
     let ports = ctx.ports;
+    let opened_at = current_timestamp();
     if target_requires_browser_session(&options) {
         return handle_browser_open(ctx, options);
     }
@@ -634,7 +638,7 @@ pub(crate) fn handle_open(
     }
 
     let mut acquisition = ports.acquisition.create_engine()?;
-    let mut session = ctx.runtime.start_session("scliopen001", DEFAULT_OPENED_AT);
+    let mut session = ctx.runtime.start_session("scliopen001", &opened_at);
     let source_risk = options.source_risk.clone().unwrap_or(SourceRisk::Low);
     let snapshot = ctx.runtime.open_live(
         &mut session,
@@ -643,7 +647,7 @@ pub(crate) fn handle_open(
         options.budget,
         source_risk.clone(),
         options.source_label.clone(),
-        DEFAULT_OPENED_AT,
+        &opened_at,
     )?;
     if snapshot_requires_browser_fallback(&snapshot) {
         return handle_browser_open(ctx, browser_fallback_target_options(&options));
@@ -665,6 +669,7 @@ pub(crate) fn handle_browser_open(
     options: TargetOptions,
 ) -> Result<ActionResult, CliError> {
     let ports = ctx.ports;
+    let opened_at = current_timestamp();
     let browser_context_dir = options
         .session_file
         .as_ref()
@@ -683,7 +688,7 @@ pub(crate) fn handle_browser_open(
         browser_context_dir.clone(),
         None,
         "scliopen001",
-        DEFAULT_OPENED_AT,
+        &opened_at,
     )?;
     let persisted = options
         .session_file
@@ -727,6 +732,7 @@ pub(crate) fn handle_compact_view(
 ) -> Result<CompactSnapshotOutput, CliError> {
     let ports = ctx.ports;
     if target_requires_browser_session(&options) {
+        let opened_at = current_timestamp();
         let browser_context_dir = options
             .session_file
             .as_ref()
@@ -745,7 +751,7 @@ pub(crate) fn handle_compact_view(
             browser_context_dir.clone(),
             None,
             "sclicompact001",
-            DEFAULT_OPENED_AT,
+            &opened_at,
         )?;
 
         let persisted = options
@@ -792,9 +798,8 @@ pub(crate) fn handle_compact_view(
     }
 
     let mut acquisition = ports.acquisition.create_engine()?;
-    let mut session = ctx
-        .runtime
-        .start_session("sclicompact001", DEFAULT_OPENED_AT);
+    let opened_at = current_timestamp();
+    let mut session = ctx.runtime.start_session("sclicompact001", &opened_at);
     let snapshot = ctx.runtime.open_live(
         &mut session,
         &mut acquisition,
@@ -802,7 +807,7 @@ pub(crate) fn handle_compact_view(
         options.budget,
         options.source_risk.clone().unwrap_or(SourceRisk::Low),
         options.source_label.clone(),
-        DEFAULT_OPENED_AT,
+        &opened_at,
     )?;
     if snapshot_requires_browser_fallback(&snapshot) {
         return handle_compact_view(ctx, browser_fallback_target_options(&options));
@@ -821,6 +826,7 @@ pub(crate) fn handle_read_view(
 ) -> Result<ReadViewOutput, CliError> {
     let ports = ctx.ports;
     if target_requires_browser_session(&options) {
+        let opened_at = current_timestamp();
         let browser_context_dir = options
             .session_file
             .as_ref()
@@ -839,7 +845,7 @@ pub(crate) fn handle_read_view(
             browser_context_dir.clone(),
             None,
             "scliread001",
-            DEFAULT_OPENED_AT,
+            &opened_at,
         )?;
 
         let persisted = options
@@ -886,7 +892,8 @@ pub(crate) fn handle_read_view(
     }
 
     let mut acquisition = ports.acquisition.create_engine()?;
-    let mut session = ctx.runtime.start_session("scliread001", DEFAULT_OPENED_AT);
+    let opened_at = current_timestamp();
+    let mut session = ctx.runtime.start_session("scliread001", &opened_at);
     let snapshot = ctx.runtime.open_live(
         &mut session,
         &mut acquisition,
@@ -894,7 +901,7 @@ pub(crate) fn handle_read_view(
         options.budget,
         options.source_risk.clone().unwrap_or(SourceRisk::Low),
         options.source_label.clone(),
-        DEFAULT_OPENED_AT,
+        &opened_at,
     )?;
     if snapshot_requires_browser_fallback(&snapshot) {
         return handle_read_view(ctx, browser_fallback_target_options(&options));
@@ -916,6 +923,7 @@ pub(crate) fn handle_extract(
     let claims = claim_inputs_from_statements(&options.claims)?;
 
     if extract_requires_browser_session(&options) {
+        let opened_at = current_timestamp();
         let browser_context_dir = options
             .session_file
             .as_ref()
@@ -934,7 +942,7 @@ pub(crate) fn handle_extract(
             browser_context_dir.clone(),
             None,
             "scliextract001",
-            DEFAULT_OPENED_AT,
+            &opened_at,
         )?;
         let persisted_session = options
             .session_file
@@ -973,7 +981,7 @@ pub(crate) fn handle_extract(
             .as_ref()
             .map(|persisted| persisted.session.clone())
             .unwrap_or_else(|| context.session.clone());
-        let extract_timestamp = slot_timestamp(1, 30);
+        let extract_timestamp = current_timestamp();
         let report = context
             .runtime
             .extract(&mut session, claims.clone(), &extract_timestamp)?;
@@ -1079,9 +1087,8 @@ pub(crate) fn handle_extract(
     }
 
     let mut acquisition = ports.acquisition.create_engine()?;
-    let mut session = ctx
-        .runtime
-        .start_session("scliextract001", DEFAULT_OPENED_AT);
+    let opened_at = current_timestamp();
+    let mut session = ctx.runtime.start_session("scliextract001", &opened_at);
     let source_risk = options.source_risk.clone().unwrap_or(SourceRisk::Low);
 
     let snapshot = ctx.runtime.open_live(
@@ -1091,7 +1098,7 @@ pub(crate) fn handle_extract(
         options.budget,
         source_risk,
         options.source_label.clone(),
-        DEFAULT_OPENED_AT,
+        &opened_at,
     )?;
     if snapshot_requires_browser_fallback(&snapshot) {
         return handle_extract(ctx, browser_fallback_extract_options(&options));
@@ -1106,7 +1113,7 @@ pub(crate) fn handle_extract(
         open_policy.clone(),
     )?;
 
-    let extract_timestamp = slot_timestamp(1, 30);
+    let extract_timestamp = current_timestamp();
     let report = ctx
         .runtime
         .extract(&mut session, claims.clone(), &extract_timestamp)?;
@@ -1147,6 +1154,7 @@ pub(crate) fn handle_policy(
     }
 
     if options.browser {
+        let opened_at = current_timestamp();
         let browser_context_dir = options
             .session_file
             .as_ref()
@@ -1165,7 +1173,7 @@ pub(crate) fn handle_policy(
             browser_context_dir,
             None,
             "sclipolicy001",
-            DEFAULT_OPENED_AT,
+            &opened_at,
         )?;
         let report = current_policy_with_allowlist(
             &context.session,
@@ -1199,9 +1207,8 @@ pub(crate) fn handle_policy(
     }
 
     let mut acquisition = ports.acquisition.create_engine()?;
-    let mut session = ctx
-        .runtime
-        .start_session("sclipolicy001", DEFAULT_OPENED_AT);
+    let opened_at = current_timestamp();
+    let mut session = ctx.runtime.start_session("sclipolicy001", &opened_at);
     let snapshot = ctx.runtime.open_live(
         &mut session,
         &mut acquisition,
@@ -1209,7 +1216,7 @@ pub(crate) fn handle_policy(
         options.budget,
         options.source_risk.clone().unwrap_or(SourceRisk::Low),
         options.source_label.clone(),
-        DEFAULT_OPENED_AT,
+        &opened_at,
     )?;
     if snapshot_requires_browser_fallback(&snapshot) {
         return handle_policy(ctx, browser_fallback_target_options(&options));

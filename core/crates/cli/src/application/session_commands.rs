@@ -5,10 +5,10 @@ use super::{
 };
 use crate::{
     approved_risk_labels, checkpoint_approval_panel, checkpoint_candidates, checkpoint_playbook,
-    checkpoint_provider_hints, current_policy_with_allowlist, is_fixture_target,
+    checkpoint_provider_hints, current_policy_with_allowlist, current_timestamp, is_fixture_target,
     is_search_results_target, policy_profile_label, promoted_policy_profile_for_risks,
     recommend_requested_tokens, recommended_policy_profile, required_ack_risks,
-    resolve_latest_search_session_file, slot_timestamp, succeed_action, telemetry_store,
+    resolve_latest_search_session_file, succeed_action, telemetry_store,
     verify_action_result_if_requested, ActionName, ApproveOptions, BrowserReplayCommandOutput,
     ClaimInput, CliError, ClickOptions, CompactSnapshotOutput, ExpandOptions, FollowOptions,
     OutputFormat, PaginateOptions, PaginationDirection, PersistedBrowserState, ReadViewOutput,
@@ -392,7 +392,7 @@ pub(crate) fn handle_session_synthesize(
         .load_session(&options.session_file)?;
     let report = ctx.runtime.synthesize_session(
         &persisted.session,
-        &slot_timestamp(persisted.session.transcript.entries.len() + 1, 45),
+        &current_timestamp(),
         options.note_limit,
     )?;
     let markdown = (options.format == OutputFormat::Markdown)

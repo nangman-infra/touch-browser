@@ -3,10 +3,24 @@ use std::{
     path::{Path, PathBuf},
 };
 
+use time::{format_description::well_known::Rfc3339, OffsetDateTime, UtcOffset};
+
 pub(crate) fn slot_timestamp(slot: usize, seconds: usize) -> String {
     let hour = slot / 60;
     let minute = slot % 60;
     format!("2026-03-14T{hour:02}:{minute:02}:{seconds:02}+09:00")
+}
+
+pub(crate) fn current_timestamp() -> String {
+    let now = OffsetDateTime::now_utc();
+    if let Ok(offset) = UtcOffset::current_local_offset() {
+        if let Ok(local) = now.to_offset(offset).format(&Rfc3339) {
+            return local;
+        }
+    }
+
+    now.format(&Rfc3339)
+        .expect("utc RFC3339 timestamp should format")
 }
 
 pub(crate) fn is_fixture_target(target: &str) -> bool {

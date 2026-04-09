@@ -335,6 +335,59 @@ fn parses_read_view_command_with_main_only() {
 }
 
 #[test]
+fn parses_read_view_command_when_flag_precedes_target() {
+    let command = parse_command(&[
+        "read-view".to_string(),
+        "--main-only".to_string(),
+        "https://www.iana.org/help/example-domains".to_string(),
+    ])
+    .expect("read-view command should parse when flags precede the target");
+
+    assert_eq!(
+        command,
+        CliCommand::ReadView(TargetOptions {
+            target: "https://www.iana.org/help/example-domains".to_string(),
+            budget: DEFAULT_REQUESTED_TOKENS,
+            source_risk: None,
+            source_label: None,
+            allowlisted_domains: Vec::new(),
+            browser: false,
+            headed: false,
+            main_only: true,
+            session_file: None,
+        })
+    );
+}
+
+#[test]
+fn parses_extract_command_when_flags_precede_target() {
+    let command = parse_command(&[
+        "extract".to_string(),
+        "--browser".to_string(),
+        "fixture://research/citation-heavy/pricing".to_string(),
+        "--claim".to_string(),
+        "The Starter plan costs $29 per month.".to_string(),
+    ])
+    .expect("extract command should parse when flags precede the target");
+
+    assert_eq!(
+        command,
+        CliCommand::Extract(ExtractOptions {
+            target: "fixture://research/citation-heavy/pricing".to_string(),
+            budget: DEFAULT_REQUESTED_TOKENS,
+            source_risk: None,
+            source_label: None,
+            allowlisted_domains: Vec::new(),
+            browser: true,
+            headed: false,
+            session_file: None,
+            claims: vec!["The Starter plan costs $29 per month.".to_string()],
+            verifier_command: None,
+        })
+    );
+}
+
+#[test]
 fn parses_session_read_command_with_main_only() {
     let command = parse_command(&[
         "session-read".to_string(),

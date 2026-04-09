@@ -23,13 +23,9 @@ fn parse_claim_value(args: &[String], index: usize) -> Result<String, CliError> 
 }
 
 pub(crate) fn parse_target_options(args: &[String]) -> Result<TargetOptions, CliError> {
-    let target = args
-        .first()
-        .filter(|value| !value.starts_with("--"))
-        .cloned()
-        .ok_or_else(|| CliError::Usage("A target URL or fixture URI is required.".to_string()))?;
+    let mut target = None;
     let mut options = TargetOptions {
-        target,
+        target: String::new(),
         budget: DEFAULT_REQUESTED_TOKENS,
         source_risk: None,
         source_label: None,
@@ -39,7 +35,7 @@ pub(crate) fn parse_target_options(args: &[String]) -> Result<TargetOptions, Cli
         main_only: false,
         session_file: None,
     };
-    let mut index = 1;
+    let mut index = 0;
 
     while index < args.len() {
         match args[index].as_str() {
@@ -97,25 +93,33 @@ pub(crate) fn parse_target_options(args: &[String]) -> Result<TargetOptions, Cli
                 }
                 index += 2;
             }
-            other => {
+            other if other.starts_with("--") => {
                 return Err(CliError::Usage(format!(
                     "Unknown option `{other}` for target command."
                 )));
             }
+            other => {
+                if target.is_some() {
+                    return Err(CliError::Usage(format!(
+                        "Unexpected extra target argument `{other}`."
+                    )));
+                }
+                target = Some(other.to_string());
+                index += 1;
+            }
         }
     }
+
+    options.target = target
+        .ok_or_else(|| CliError::Usage("A target URL or fixture URI is required.".to_string()))?;
 
     Ok(options)
 }
 
 pub(crate) fn parse_extract_options(args: &[String]) -> Result<ExtractOptions, CliError> {
-    let target = args
-        .first()
-        .filter(|value| !value.starts_with("--"))
-        .cloned()
-        .ok_or_else(|| CliError::Usage("A target URL or fixture URI is required.".to_string()))?;
+    let mut target = None;
     let mut claims = Vec::new();
-    let mut index = 1;
+    let mut index = 0;
     let mut budget = DEFAULT_REQUESTED_TOKENS;
     let mut source_risk = None;
     let mut source_label = None;
@@ -188,10 +192,19 @@ pub(crate) fn parse_extract_options(args: &[String]) -> Result<ExtractOptions, C
                 verifier_command = Some(value.clone());
                 index += 2;
             }
-            other => {
+            other if other.starts_with("--") => {
                 return Err(CliError::Usage(format!(
                     "Unknown option `{other}` for extract command."
                 )));
+            }
+            other => {
+                if target.is_some() {
+                    return Err(CliError::Usage(format!(
+                        "Unexpected extra target argument `{other}`."
+                    )));
+                }
+                target = Some(other.to_string());
+                index += 1;
             }
         }
     }
@@ -203,7 +216,9 @@ pub(crate) fn parse_extract_options(args: &[String]) -> Result<ExtractOptions, C
     }
 
     Ok(ExtractOptions {
-        target,
+        target: target.ok_or_else(|| {
+            CliError::Usage("A target URL or fixture URI is required.".to_string())
+        })?,
         budget,
         source_risk,
         source_label,

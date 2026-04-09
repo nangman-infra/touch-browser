@@ -13,6 +13,7 @@ kuchiki.workspace = true
 serde.workspace = true
 serde_json.workspace = true
 thiserror.workspace = true
+time.workspace = true
 touch-browser-acquisition = { path = "../acquisition" }
 touch-browser-action-vm = { path = "../action-vm" }
 touch-browser-contracts = { path = "../contracts" }
