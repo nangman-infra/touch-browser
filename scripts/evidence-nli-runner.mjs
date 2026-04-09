@@ -82,6 +82,11 @@ function parseArgs(args) {
     modelId: null,
   };
 
+  function takeNextArg(currentIndex) {
+    const nextIndex = currentIndex + 1;
+    return { nextIndex, value: args[nextIndex] ?? null };
+  }
+
   for (let index = 0; index < args.length; index += 1) {
     const value = args[index];
     if (value === "--warmup") {
@@ -89,9 +94,13 @@ function parseArgs(args) {
     } else if (value === "--allow-download") {
       options.allowDownload = true;
     } else if (value === "--model-root") {
-      options.modelRoot = args[++index] ?? null;
+      const nextArg = takeNextArg(index);
+      index = nextArg.nextIndex;
+      options.modelRoot = nextArg.value;
     } else if (value === "--model-id") {
-      options.modelId = args[++index] ?? null;
+      const nextArg = takeNextArg(index);
+      index = nextArg.nextIndex;
+      options.modelId = nextArg.value;
     }
   }
 
