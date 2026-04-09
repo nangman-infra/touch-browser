@@ -559,36 +559,21 @@ fn predicate_guard_check(
     let claim_tokens = tokenize_all(claim_text);
 
     for opposition in PREDICATE_OPPOSITIONS {
-        let claim_polarity = detect_predicate_polarity(&claim_tokens, opposition);
-        if claim_polarity == PredicatePolarity::None {
+        let Some(claim_polarity) = claim_predicate_polarity(&claim_tokens, opposition) else {
             continue;
-        }
-
+        };
         let claim_context_tokens = predicate_context_tokens(
             &claim_tokens,
             predicate_terms_for_polarity(opposition, claim_polarity),
         );
         let subject_anchor_tokens =
             predicate_subject_anchor_tokens(claim_anchor_tokens, opposition);
-        let matching_blocks = top_support
-            .iter()
-            .filter_map(|candidate| {
-                let candidate_tokens = tokenize_all(&candidate.text);
-                let candidate_polarity = detect_predicate_polarity(&candidate_tokens, opposition);
-                if candidate_polarity != claim_polarity {
-                    return None;
-                }
-                if !predicate_context_matches(
-                    &claim_context_tokens,
-                    &candidate_tokens,
-                    predicate_terms_for_polarity(opposition, claim_polarity),
-                ) {
-                    return None;
-                }
-                Some(candidate.block.id.clone())
-            })
-            .collect::<BTreeSet<_>>();
-
+        let matching_blocks = support_blocks_with_matching_predicate(
+            top_support,
+            opposition,
+            claim_polarity,
+            &claim_context_tokens,
+        );
         let opposite_blocks = document_blocks_with_opposite_predicate(
             blocks,
             &subject_anchor_tokens,
@@ -596,55 +581,96 @@ fn predicate_guard_check(
             opposition,
             &claim_context_tokens,
         );
-        if !matching_blocks.is_empty() {
-            if opposite_blocks
-                .iter()
-                .any(|block_id| !matching_blocks.contains(block_id))
-            {
-                return GuardCheck {
-                    contradiction_reason: None,
-                    failure: Some(EvidenceGuardFailure {
-                        kind: EvidenceGuardKind::Predicate,
-                        detail: format!(
-                            "The document contains both sides of `{}` for the same subject, so this claim needs a more specific source.",
-                            opposition.label
-                        ),
-                    }),
-                };
-            }
 
-            continue;
+        if let Some(check) =
+            predicate_guard_resolution(opposition, &matching_blocks, &opposite_blocks)
+        {
+            return check;
         }
-
-        if !opposite_blocks.is_empty() {
-            return GuardCheck {
-                contradiction_reason: Some(UnsupportedClaimReason::PredicateMismatch),
-                failure: Some(EvidenceGuardFailure {
-                    kind: EvidenceGuardKind::Predicate,
-                    detail: format!(
-                        "Document evidence contains the opposite `{}` predicate for the same subject.",
-                        opposition.label
-                    ),
-                }),
-            };
-        }
-
-        return GuardCheck {
-            contradiction_reason: None,
-            failure: Some(EvidenceGuardFailure {
-                kind: EvidenceGuardKind::Predicate,
-                detail: format!(
-                    "The claim requires explicit `{}` evidence, but the retrieved support only matches broader context.",
-                    opposition.label
-                ),
-            }),
-        };
     }
 
     GuardCheck {
         contradiction_reason: None,
         failure: None,
     }
+}
+
+fn claim_predicate_polarity(
+    claim_tokens: &[String],
+    opposition: &PredicateOpposition,
+) -> Option<PredicatePolarity> {
+    let polarity = detect_predicate_polarity(claim_tokens, opposition);
+    (polarity != PredicatePolarity::None).then_some(polarity)
+}
+
+fn support_blocks_with_matching_predicate(
+    top_support: &[ScoredCandidate<'_>],
+    opposition: &PredicateOpposition,
+    claim_polarity: PredicatePolarity,
+    claim_context_tokens: &[String],
+) -> BTreeSet<String> {
+    let predicate_terms = predicate_terms_for_polarity(opposition, claim_polarity);
+    top_support
+        .iter()
+        .filter_map(|candidate| {
+            let candidate_tokens = tokenize_all(&candidate.text);
+            let candidate_polarity = detect_predicate_polarity(&candidate_tokens, opposition);
+            if candidate_polarity != claim_polarity {
+                return None;
+            }
+            if !predicate_context_matches(claim_context_tokens, &candidate_tokens, predicate_terms)
+            {
+                return None;
+            }
+            Some(candidate.block.id.clone())
+        })
+        .collect()
+}
+
+fn predicate_guard_resolution(
+    opposition: &PredicateOpposition,
+    matching_blocks: &BTreeSet<String>,
+    opposite_blocks: &BTreeSet<String>,
+) -> Option<GuardCheck> {
+    if !matching_blocks.is_empty() {
+        let mixed_polarity = opposite_blocks
+            .iter()
+            .any(|block_id| !matching_blocks.contains(block_id));
+        return mixed_polarity.then(|| GuardCheck {
+            contradiction_reason: None,
+            failure: Some(EvidenceGuardFailure {
+                kind: EvidenceGuardKind::Predicate,
+                detail: format!(
+                    "The document contains both sides of `{}` for the same subject, so this claim needs a more specific source.",
+                    opposition.label
+                ),
+            }),
+        });
+    }
+
+    if !opposite_blocks.is_empty() {
+        return Some(GuardCheck {
+            contradiction_reason: Some(UnsupportedClaimReason::PredicateMismatch),
+            failure: Some(EvidenceGuardFailure {
+                kind: EvidenceGuardKind::Predicate,
+                detail: format!(
+                    "Document evidence contains the opposite `{}` predicate for the same subject.",
+                    opposition.label
+                ),
+            }),
+        });
+    }
+
+    Some(GuardCheck {
+        contradiction_reason: None,
+        failure: Some(EvidenceGuardFailure {
+            kind: EvidenceGuardKind::Predicate,
+            detail: format!(
+                "The claim requires explicit `{}` evidence, but the retrieved support only matches broader context.",
+                opposition.label
+            ),
+        }),
+    })
 }
 
 fn required_anchor_coverage(anchor_count: usize) -> f64 {

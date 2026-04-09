@@ -393,42 +393,63 @@ fn qualifier_alignment_adjustment(claim_qualifier_tokens: &[String], support_tex
         return 0.0;
     }
 
-    let claim_has_default = claim_qualifier_tokens
-        .iter()
-        .any(|token| token == "default");
-    let claim_has_maximum = claim_qualifier_tokens
-        .iter()
-        .any(|token| matches!(token.as_str(), "maximum" | "max"));
-    let claim_has_minimum = claim_qualifier_tokens
-        .iter()
-        .any(|token| matches!(token.as_str(), "minimum" | "min"));
+    let claim_qualifiers = qualifier_presence_from_tokens(claim_qualifier_tokens);
+    let support_qualifiers = qualifier_presence_from_text(support_text);
 
-    let normalized = normalize_text(support_text);
-    let support_has_default =
-        normalized.contains(" by default ") || normalized.contains(" default ");
-    let support_has_maximum = normalized.contains(" maximum ")
-        || normalized.contains(" max ")
-        || normalized.contains(" up to ")
-        || normalized.contains(" at most ");
-    let support_has_minimum = normalized.contains(" minimum ")
-        || normalized.contains(" min ")
-        || normalized.contains(" at least ");
-
-    if (claim_has_default && support_has_default)
-        || (claim_has_maximum && support_has_maximum)
-        || (claim_has_minimum && support_has_minimum)
-    {
+    if qualifier_profiles_align(claim_qualifiers, support_qualifiers) {
         return 0.14;
     }
 
-    if (claim_has_default && (support_has_maximum || support_has_minimum))
-        || (claim_has_maximum && (support_has_default || support_has_minimum))
-        || (claim_has_minimum && (support_has_default || support_has_maximum))
-    {
+    if qualifier_profiles_conflict(claim_qualifiers, support_qualifiers) {
         return -0.18;
     }
 
     0.0
+}
+
+#[derive(Clone, Copy)]
+struct QualifierPresence {
+    has_default: bool,
+    has_maximum: bool,
+    has_minimum: bool,
+}
+
+fn qualifier_presence_from_tokens(tokens: &[String]) -> QualifierPresence {
+    QualifierPresence {
+        has_default: tokens.iter().any(|token| token == "default"),
+        has_maximum: tokens
+            .iter()
+            .any(|token| matches!(token.as_str(), "maximum" | "max")),
+        has_minimum: tokens
+            .iter()
+            .any(|token| matches!(token.as_str(), "minimum" | "min")),
+    }
+}
+
+fn qualifier_presence_from_text(support_text: &str) -> QualifierPresence {
+    let normalized = normalize_text(support_text);
+    QualifierPresence {
+        has_default: normalized.contains(" by default ") || normalized.contains(" default "),
+        has_maximum: normalized.contains(" maximum ")
+            || normalized.contains(" max ")
+            || normalized.contains(" up to ")
+            || normalized.contains(" at most "),
+        has_minimum: normalized.contains(" minimum ")
+            || normalized.contains(" min ")
+            || normalized.contains(" at least "),
+    }
+}
+
+fn qualifier_profiles_align(claim: QualifierPresence, support: QualifierPresence) -> bool {
+    (claim.has_default && support.has_default)
+        || (claim.has_maximum && support.has_maximum)
+        || (claim.has_minimum && support.has_minimum)
+}
+
+fn qualifier_profiles_conflict(claim: QualifierPresence, support: QualifierPresence) -> bool {
+    (claim.has_default && (support.has_maximum || support.has_minimum))
+        || (claim.has_maximum && (support.has_default || support.has_minimum))
+        || (claim.has_minimum && (support.has_default || support.has_maximum))
 }
 
 fn semantic_similarity_bonus(semantic_similarity: f64, lexical_overlap: f64) -> f64 {
