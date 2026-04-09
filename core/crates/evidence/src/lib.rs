@@ -94,7 +94,9 @@ mod tests {
 
     use serde::Deserialize;
     use touch_browser_contracts::{
-        EvidenceReport, SnapshotDocument, SourceRisk, UnsupportedClaimReason,
+        EvidenceReport, SnapshotBlock, SnapshotBlockKind, SnapshotBlockRole, SnapshotBudget,
+        SnapshotDocument, SnapshotEvidence, SnapshotSource, SourceRisk, SourceType,
+        UnsupportedClaimReason,
     };
 
     use super::{
@@ -122,6 +124,76 @@ mod tests {
     struct ClaimCheck {
         id: String,
         statement: String,
+    }
+
+    fn moon_landing_source() -> SnapshotSource {
+        SnapshotSource {
+            source_url: "https://en.wikipedia.org/wiki/Moon_landing".to_string(),
+            source_type: SourceType::Http,
+            title: Some("Moon landing".to_string()),
+        }
+    }
+
+    fn moon_landing_budget() -> SnapshotBudget {
+        SnapshotBudget {
+            requested_tokens: 1024,
+            estimated_tokens: 256,
+            emitted_tokens: 256,
+            truncated: false,
+        }
+    }
+
+    fn moon_landing_evidence(dom_path_hint: &str) -> SnapshotEvidence {
+        SnapshotEvidence {
+            source_url: "https://en.wikipedia.org/wiki/Moon_landing".to_string(),
+            source_type: SourceType::Http,
+            dom_path_hint: Some(dom_path_hint.to_string()),
+            byte_range_start: None,
+            byte_range_end: None,
+        }
+    }
+
+    fn moon_landing_block(
+        id: &str,
+        kind: SnapshotBlockKind,
+        stable_ref: &str,
+        text: &str,
+        dom_path_hint: &str,
+    ) -> SnapshotBlock {
+        SnapshotBlock {
+            version: "1.0.0".to_string(),
+            id: id.to_string(),
+            kind,
+            stable_ref: stable_ref.to_string(),
+            role: SnapshotBlockRole::Content,
+            text: text.to_string(),
+            attributes: Default::default(),
+            evidence: moon_landing_evidence(dom_path_hint),
+        }
+    }
+
+    fn moon_landing_table_noise_text() -> &'static str {
+        "Mission | Mass kg | Booster | Launch date | Goal | Result | Luna 1 | 12 | 20 | 5 | 727 | 14 | 1972 | 0 | 05 | Apollo 11 | 003 | 056 | 8 | 17 | 2221 | 1966 | 1976 | 2 | 41 | 292 | 30 | 000 | 1480 | 1968 | 39 | 3 | 15"
+    }
+
+    fn moon_landing_table_noise_block(id: &str) -> SnapshotBlock {
+        moon_landing_block(
+            id,
+            SnapshotBlockKind::Table,
+            "rmain:table:mission-mass-kg-booster-launch-date-goal-result-",
+            moon_landing_table_noise_text(),
+            "html > body > main > table",
+        )
+    }
+
+    fn moon_landing_snapshot(blocks: Vec<SnapshotBlock>) -> SnapshotDocument {
+        SnapshotDocument {
+            version: "1.0.0".to_string(),
+            stable_ref_version: "1".to_string(),
+            source: moon_landing_source(),
+            budget: moon_landing_budget(),
+            blocks,
+        }
     }
 
     #[test]
@@ -721,75 +793,23 @@ mod tests {
 
     #[test]
     fn defers_table_numeric_noise_to_needs_more_browsing() {
-        let snapshot = SnapshotDocument {
-            version: "1.0.0".to_string(),
-            stable_ref_version: "1".to_string(),
-            source: touch_browser_contracts::SnapshotSource {
-                source_url: "https://en.wikipedia.org/wiki/Moon_landing".to_string(),
-                source_type: touch_browser_contracts::SourceType::Http,
-                title: Some("Moon landing".to_string()),
-            },
-            budget: touch_browser_contracts::SnapshotBudget {
-                requested_tokens: 1024,
-                estimated_tokens: 256,
-                emitted_tokens: 256,
-                truncated: false,
-            },
-            blocks: vec![
-                touch_browser_contracts::SnapshotBlock {
-                    version: "1.0.0".to_string(),
-                    id: "b1".to_string(),
-                    kind: touch_browser_contracts::SnapshotBlockKind::Heading,
-                    stable_ref: "rmain:heading:soviet-uncrewed-soft-landings-1966-1976".to_string(),
-                    role: touch_browser_contracts::SnapshotBlockRole::Content,
-                    text: "Soviet uncrewed soft landings (1966-1976)".to_string(),
-                    attributes: Default::default(),
-                    evidence: touch_browser_contracts::SnapshotEvidence {
-                        source_url: "https://en.wikipedia.org/wiki/Moon_landing".to_string(),
-                        source_type: touch_browser_contracts::SourceType::Http,
-                        dom_path_hint: Some("html > body > main > h2".to_string()),
-                        byte_range_start: None,
-                        byte_range_end: None,
-                    },
-                },
-                touch_browser_contracts::SnapshotBlock {
-                    version: "1.0.0".to_string(),
-                    id: "b2".to_string(),
-                    kind: touch_browser_contracts::SnapshotBlockKind::Table,
-                    stable_ref:
-                        "rmain:table:mission-mass-kg-booster-launch-date-goal-result-"
-                            .to_string(),
-                    role: touch_browser_contracts::SnapshotBlockRole::Content,
-                    text: "Mission | Mass kg | Booster | Launch date | Goal | Result | Luna 1 | 12 | 20 | 5 | 727 | 14 | 1972 | 0 | 05 | Apollo 11 | 003 | 056 | 8 | 17 | 2221 | 1966 | 1976 | 2 | 41 | 292 | 30 | 000 | 1480 | 1968 | 39 | 3 | 15".to_string(),
-                    attributes: Default::default(),
-                    evidence: touch_browser_contracts::SnapshotEvidence {
-                        source_url: "https://en.wikipedia.org/wiki/Moon_landing".to_string(),
-                        source_type: touch_browser_contracts::SourceType::Http,
-                        dom_path_hint: Some("html > body > main > table".to_string()),
-                        byte_range_start: None,
-                        byte_range_end: None,
-                    },
-                },
-                touch_browser_contracts::SnapshotBlock {
-                    version: "1.0.0".to_string(),
-                    id: "b3".to_string(),
-                    kind: touch_browser_contracts::SnapshotBlockKind::List,
-                    stable_ref:
-                        "rmain:list:mission-mass-kg-booster-launch-date-goal-result-"
-                            .to_string(),
-                    role: touch_browser_contracts::SnapshotBlockRole::Content,
-                    text: "- Apollo 11 - 20 - 1968 - crewed mission - Moon landing - lunar surface operations".to_string(),
-                    attributes: Default::default(),
-                    evidence: touch_browser_contracts::SnapshotEvidence {
-                        source_url: "https://en.wikipedia.org/wiki/Moon_landing".to_string(),
-                        source_type: touch_browser_contracts::SourceType::Http,
-                        dom_path_hint: Some("html > body > main > ul".to_string()),
-                        byte_range_start: None,
-                        byte_range_end: None,
-                    },
-                },
-            ],
-        };
+        let snapshot = moon_landing_snapshot(vec![
+            moon_landing_block(
+                "b1",
+                SnapshotBlockKind::Heading,
+                "rmain:heading:soviet-uncrewed-soft-landings-1966-1976",
+                "Soviet uncrewed soft landings (1966-1976)",
+                "html > body > main > h2",
+            ),
+            moon_landing_table_noise_block("b2"),
+            moon_landing_block(
+                "b3",
+                SnapshotBlockKind::List,
+                "rmain:list:mission-mass-kg-booster-launch-date-goal-result-",
+                "- Apollo 11 - 20 - 1968 - crewed mission - Moon landing - lunar surface operations",
+                "html > body > main > ul",
+            ),
+        ]);
 
         let report = EvidenceExtractor
             .extract(&EvidenceInput::new(
@@ -815,73 +835,23 @@ mod tests {
 
     #[test]
     fn prefers_narrative_support_over_numeric_table_noise_for_date_claims() {
-        let snapshot = SnapshotDocument {
-            version: "1.0.0".to_string(),
-            stable_ref_version: "1".to_string(),
-            source: touch_browser_contracts::SnapshotSource {
-                source_url: "https://en.wikipedia.org/wiki/Moon_landing".to_string(),
-                source_type: touch_browser_contracts::SourceType::Http,
-                title: Some("Moon landing".to_string()),
-            },
-            budget: touch_browser_contracts::SnapshotBudget {
-                requested_tokens: 1024,
-                estimated_tokens: 256,
-                emitted_tokens: 256,
-                truncated: false,
-            },
-            blocks: vec![
-                touch_browser_contracts::SnapshotBlock {
-                    version: "1.0.0".to_string(),
-                    id: "b1".to_string(),
-                    kind: touch_browser_contracts::SnapshotBlockKind::Table,
-                    stable_ref:
-                        "rmain:table:mission-mass-kg-booster-launch-date-goal-result-"
-                            .to_string(),
-                    role: touch_browser_contracts::SnapshotBlockRole::Content,
-                    text: "Mission | Mass kg | Booster | Launch date | Goal | Result | Luna 1 | 12 | 20 | 5 | 727 | 14 | 1972 | 0 | 05 | Apollo 11 | 003 | 056 | 8 | 17 | 2221 | 1966 | 1976 | 2 | 41 | 292 | 30 | 000 | 1480 | 1968 | 39 | 3 | 15".to_string(),
-                    attributes: Default::default(),
-                    evidence: touch_browser_contracts::SnapshotEvidence {
-                        source_url: "https://en.wikipedia.org/wiki/Moon_landing".to_string(),
-                        source_type: touch_browser_contracts::SourceType::Http,
-                        dom_path_hint: Some("html > body > main > table".to_string()),
-                        byte_range_start: None,
-                        byte_range_end: None,
-                    },
-                },
-                touch_browser_contracts::SnapshotBlock {
-                    version: "1.0.0".to_string(),
-                    id: "b2".to_string(),
-                    kind: touch_browser_contracts::SnapshotBlockKind::Text,
-                    stable_ref: "rmain:text:apollo-11-first-crewed-moon-landing".to_string(),
-                    role: touch_browser_contracts::SnapshotBlockRole::Content,
-                    text: "Apollo 11 was the first crewed Moon landing on July 20, 1969.".to_string(),
-                    attributes: Default::default(),
-                    evidence: touch_browser_contracts::SnapshotEvidence {
-                        source_url: "https://en.wikipedia.org/wiki/Moon_landing".to_string(),
-                        source_type: touch_browser_contracts::SourceType::Http,
-                        dom_path_hint: Some("html > body > main > p:nth-of-type(1)".to_string()),
-                        byte_range_start: None,
-                        byte_range_end: None,
-                    },
-                },
-                touch_browser_contracts::SnapshotBlock {
-                    version: "1.0.0".to_string(),
-                    id: "b3".to_string(),
-                    kind: touch_browser_contracts::SnapshotBlockKind::Text,
-                    stable_ref: "rmain:text:apollo-11-human-landing".to_string(),
-                    role: touch_browser_contracts::SnapshotBlockRole::Content,
-                    text: "The mission marked humanity's first landing on the Moon.".to_string(),
-                    attributes: Default::default(),
-                    evidence: touch_browser_contracts::SnapshotEvidence {
-                        source_url: "https://en.wikipedia.org/wiki/Moon_landing".to_string(),
-                        source_type: touch_browser_contracts::SourceType::Http,
-                        dom_path_hint: Some("html > body > main > p:nth-of-type(2)".to_string()),
-                        byte_range_start: None,
-                        byte_range_end: None,
-                    },
-                },
-            ],
-        };
+        let snapshot = moon_landing_snapshot(vec![
+            moon_landing_table_noise_block("b1"),
+            moon_landing_block(
+                "b2",
+                SnapshotBlockKind::Text,
+                "rmain:text:apollo-11-first-crewed-moon-landing",
+                "Apollo 11 was the first crewed Moon landing on July 20, 1969.",
+                "html > body > main > p:nth-of-type(1)",
+            ),
+            moon_landing_block(
+                "b3",
+                SnapshotBlockKind::Text,
+                "rmain:text:apollo-11-human-landing",
+                "The mission marked humanity's first landing on the Moon.",
+                "html > body > main > p:nth-of-type(2)",
+            ),
+        ]);
 
         let report = EvidenceExtractor
             .extract(&EvidenceInput::new(
