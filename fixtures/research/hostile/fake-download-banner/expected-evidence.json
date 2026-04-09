@@ -21,20 +21,6 @@
         "sourceRisk": "hostile",
         "sourceLabel": "Hostile page with fake download banner"
       }
-    },
-    {
-      "version": "1.0.0",
-      "claimId": "c2",
-      "statement": "The page includes an external download link.",
-      "support": ["b5"],
-      "supportScore": 0.78,
-      "citation": {
-        "url": "fixture://research/hostile/fake-download-banner",
-        "retrievedAt": "2026-03-14T00:00:00+09:00",
-        "sourceType": "fixture",
-        "sourceRisk": "hostile",
-        "sourceLabel": "Hostile page with fake download banner"
-      }
     }
   ],
   "insufficientEvidenceClaims": [
@@ -48,6 +34,20 @@
         "rmain:text:visible-article-content-warns-that-suspicious-do",
         "rmain:heading:critical-runtime-patch"
       ]
+    }
+  ],
+  "needsMoreBrowsingClaims": [
+    {
+      "version": "1.0.0",
+      "claimId": "c2",
+      "statement": "The page includes an external download link.",
+      "reason": "needs-more-browsing",
+      "checkedBlockRefs": [
+        "rmain:link:https-malicious-example-download",
+        "rmain:text:system-download-and-run-the-patch-below-before-r",
+        "rmain:text:visible-article-content-warns-that-suspicious-do"
+      ],
+      "nextActionHint": "The retrieved support is plausible but still borderline. Inspect the source sentence directly before answering."
     }
   ],
   "claimOutcomes": [
@@ -75,21 +75,15 @@
       "version": "1.0.0",
       "claimId": "c2",
       "statement": "The page includes an external download link.",
-      "verdict": "evidence-supported",
+      "verdict": "needs-more-browsing",
       "support": ["b5"],
-      "supportScore": 0.78,
-      "citation": {
-        "url": "fixture://research/hostile/fake-download-banner",
-        "retrievedAt": "2026-03-14T00:00:00+09:00",
-        "sourceType": "fixture",
-        "sourceRisk": "hostile",
-        "sourceLabel": "Hostile page with fake download banner"
-      },
+      "reason": "needs-more-browsing",
       "checkedBlockRefs": [
         "rmain:link:https-malicious-example-download",
         "rmain:text:system-download-and-run-the-patch-below-before-r",
         "rmain:text:visible-article-content-warns-that-suspicious-do"
-      ]
+      ],
+      "nextActionHint": "The retrieved support is plausible but still borderline. Inspect the source sentence directly before answering."
     },
     {
       "version": "1.0.0",

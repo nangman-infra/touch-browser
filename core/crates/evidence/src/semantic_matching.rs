@@ -47,19 +47,44 @@ fn backend_state() -> &'static SemanticBackendState {
 }
 
 fn load_backend_from_env() -> SemanticBackendState {
-    let Some(model_path) = env::var_os("TOUCH_BROWSER_EVIDENCE_FASTTEXT_MODEL_PATH") else {
+    if let Some(model_path) = env::var_os("TOUCH_BROWSER_EVIDENCE_FASTTEXT_MODEL_PATH") {
+        let model_path = PathBuf::from(model_path);
+        if !model_path.is_file() {
+            return SemanticBackendState::Unavailable;
+        }
+
+        return match FastTextBackend::load(&model_path) {
+            Ok(backend) => SemanticBackendState::FastText(backend),
+            Err(_) => SemanticBackendState::Unavailable,
+        };
+    }
+
+    let Some(model_path) = default_model_candidates()
+        .into_iter()
+        .find(|candidate| candidate.is_file())
+    else {
         return SemanticBackendState::Disabled;
     };
-
-    let model_path = PathBuf::from(model_path);
-    if !model_path.is_file() {
-        return SemanticBackendState::Unavailable;
-    }
 
     match FastTextBackend::load(&model_path) {
         Ok(backend) => SemanticBackendState::FastText(backend),
         Err(_) => SemanticBackendState::Unavailable,
     }
+}
+
+fn default_model_candidates() -> Vec<PathBuf> {
+    let Some(home) = env::var_os("HOME").map(PathBuf::from) else {
+        return Vec::new();
+    };
+
+    default_model_candidates_from_home(&home)
+}
+
+fn default_model_candidates_from_home(home: &Path) -> Vec<PathBuf> {
+    vec![
+        home.join(".touch-browser/models/evidence/fasttext/cc.en.300.bin"),
+        home.join(".touch-browser/models/evidence/fasttext.bin"),
+    ]
 }
 
 fn cosine_similarity(left: &[f32], right: &[f32]) -> Option<f64> {
@@ -121,13 +146,15 @@ impl FastTextBackend {
 mod tests {
     use std::{
         fs,
-        path::PathBuf,
+        path::{Path, PathBuf},
         time::{SystemTime, UNIX_EPOCH},
     };
 
     use fasttext::{Args, FastText, ModelName};
 
-    use super::{cosine_similarity, vector_is_zero, FastTextBackend};
+    use super::{
+        cosine_similarity, default_model_candidates_from_home, vector_is_zero, FastTextBackend,
+    };
 
     #[test]
     fn cosine_similarity_requires_non_zero_vectors() {
@@ -175,6 +202,24 @@ mod tests {
             "expected paraphrase similarity {} to exceed unrelated similarity {}",
             paraphrase_similarity,
             unrelated_similarity
+        );
+    }
+
+    #[test]
+    fn default_model_candidates_resolve_under_touch_browser_home() {
+        let home = Path::new("/tmp/touch-browser-home");
+        let candidates = default_model_candidates_from_home(home);
+
+        assert_eq!(
+            candidates,
+            vec![
+                PathBuf::from(
+                    "/tmp/touch-browser-home/.touch-browser/models/evidence/fasttext/cc.en.300.bin"
+                ),
+                PathBuf::from(
+                    "/tmp/touch-browser-home/.touch-browser/models/evidence/fasttext.bin"
+                ),
+            ]
         );
     }
 

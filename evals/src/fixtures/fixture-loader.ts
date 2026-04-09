@@ -26,7 +26,10 @@ export type FixtureCase = {
     readonly claimChecks: readonly {
       readonly id: string;
       readonly statement: string;
-      readonly expectedStatus: "supported" | "unsupported";
+      readonly expectedStatus:
+        | "supported"
+        | "unsupported"
+        | "needs-more-browsing";
     }[];
     readonly hostileSignals?: readonly string[];
   };

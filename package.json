@@ -56,6 +56,7 @@
     "mcp:bridge": "node integrations/mcp/bridge/index.mjs",
     "verifier:example": "node scripts/example-verifier.mjs",
     "demo:gif": "python3 demo/generate-terminal-demo.py",
+    "setup:models": "bash scripts/setup-models.sh",
     "bootstrap:local": "bash scripts/bootstrap-local.sh",
     "pilot:healthcheck": "node scripts/pilot-healthcheck.mjs",
     "pilot:reference-workflow": "node scripts/run-reference-research-workflow.mjs",

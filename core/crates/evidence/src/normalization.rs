@@ -504,6 +504,11 @@ const QUALIFIER_TOKENS: &[&str] = &[
     "always",
     "never",
     "entire",
+    "default",
+    "maximum",
+    "minimum",
+    "max",
+    "min",
 ];
 
 const RELEASE_NOISE_TOKENS: &[&str] = &[

@@ -20,12 +20,12 @@
       {
         "id": "c2",
         "statement": "Page 1 includes a Next button.",
-        "expectedStatus": "unsupported"
+        "expectedStatus": "needs-more-browsing"
       },
       {
         "id": "c3",
         "statement": "Page 1 includes a pricing table.",
-        "expectedStatus": "unsupported"
+        "expectedStatus": "needs-more-browsing"
       }
     ]
   }

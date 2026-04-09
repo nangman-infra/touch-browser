@@ -201,8 +201,7 @@ pub(crate) fn guarded_resolution<'a>(
     top_support: &[ScoredCandidate<'a>],
     checked_refs: &[String],
     assessment: &GuardAssessment,
-    effective_score: f64,
-    support_threshold: f64,
+    decision: SupportDecisionContext,
 ) -> Option<ClaimResolution<'a>> {
     if let Some(reason) = assessment.contradiction_reason.clone() {
         return Some(ClaimResolution {
@@ -216,7 +215,26 @@ pub(crate) fn guarded_resolution<'a>(
         });
     }
 
-    if effective_score >= support_threshold && assessment.guard_failures.is_empty() {
+    if decision.effective_score >= decision.support_threshold
+        && assessment.guard_failures.is_empty()
+    {
+        if support_requires_additional_confirmation(
+            decision.effective_score,
+            top_support,
+            decision.uses_cross_lingual_matching,
+        ) {
+            return Some(ClaimResolution {
+                verdict: EvidenceClaimVerdict::NeedsMoreBrowsing,
+                support: top_support.to_vec(),
+                confidence: None,
+                reason: Some(UnsupportedClaimReason::NeedsMoreBrowsing),
+                checked_refs: checked_refs.to_vec(),
+                guard_failures: Vec::new(),
+                next_action_hint: Some(
+                    "The retrieved support is plausible but still borderline. Inspect the source sentence directly before answering.".to_string(),
+                ),
+            });
+        }
         if button_claim_requires_more_browsing(claim_tokens, top_support) {
             return Some(ClaimResolution {
                 verdict: EvidenceClaimVerdict::NeedsMoreBrowsing,
@@ -233,7 +251,7 @@ pub(crate) fn guarded_resolution<'a>(
         return None;
     }
 
-    let verdict = if should_keep_browsing(effective_score, assessment, claim) {
+    let verdict = if should_keep_browsing(decision.effective_score, assessment, claim) {
         EvidenceClaimVerdict::NeedsMoreBrowsing
     } else {
         EvidenceClaimVerdict::InsufficientEvidence
@@ -279,6 +297,34 @@ pub(crate) fn supported_resolution<'a>(
     }
 }
 
+fn support_requires_additional_confirmation(
+    effective_score: f64,
+    top_support: &[ScoredCandidate<'_>],
+    uses_cross_lingual_matching: bool,
+) -> bool {
+    if uses_cross_lingual_matching {
+        return false;
+    }
+
+    let confidence = round_confidence(
+        top_support
+            .iter()
+            .map(|candidate| candidate.score)
+            .fold(effective_score, f64::max),
+    );
+    let has_exact_support = top_support.iter().any(|candidate| candidate.exact_support);
+    let multi_block_support = top_support.len() >= 2;
+
+    confidence < 0.82 && !has_exact_support && !multi_block_support
+}
+
+#[derive(Debug, Clone, Copy)]
+pub(crate) struct SupportDecisionContext {
+    pub(crate) effective_score: f64,
+    pub(crate) support_threshold: f64,
+    pub(crate) uses_cross_lingual_matching: bool,
+}
+
 pub(crate) fn support_acceptance_threshold(
     top_support: &[ScoredCandidate<'_>],
     assessment: &GuardAssessment,
@@ -303,5 +349,74 @@ pub(crate) fn support_acceptance_threshold(
         0.46
     } else {
         0.52
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use touch_browser_contracts::{
+        SnapshotBlock, SnapshotBlockKind, SnapshotBlockRole, SnapshotEvidence, SourceType,
+    };
+
+    use super::support_requires_additional_confirmation;
+    use crate::scoring::ScoredCandidate;
+
+    fn candidate(score: f64, exact_support: bool) -> ScoredCandidate<'static> {
+        let block = Box::leak(Box::new(SnapshotBlock {
+            version: "1.0.0".to_string(),
+            id: format!("b-{score}"),
+            kind: SnapshotBlockKind::Text,
+            stable_ref: "rmain:text:test".to_string(),
+            role: SnapshotBlockRole::Content,
+            text: "support block".to_string(),
+            attributes: Default::default(),
+            evidence: SnapshotEvidence {
+                source_url: "https://example.com".to_string(),
+                source_type: SourceType::Http,
+                dom_path_hint: Some("html > body > main > p".to_string()),
+                byte_range_start: None,
+                byte_range_end: None,
+            },
+        }));
+
+        ScoredCandidate {
+            block,
+            score,
+            contradictory: false,
+            exact_support,
+        }
+    }
+
+    #[test]
+    fn weak_single_block_support_requires_more_confirmation() {
+        let top_support = vec![candidate(0.58, false)];
+
+        assert!(support_requires_additional_confirmation(
+            0.58,
+            &top_support,
+            false
+        ));
+    }
+
+    #[test]
+    fn exact_support_does_not_require_more_confirmation() {
+        let top_support = vec![candidate(0.58, true)];
+
+        assert!(!support_requires_additional_confirmation(
+            0.58,
+            &top_support,
+            false
+        ));
+    }
+
+    #[test]
+    fn multi_block_support_does_not_require_more_confirmation() {
+        let top_support = vec![candidate(0.55, false), candidate(0.54, false)];
+
+        assert!(!support_requires_additional_confirmation(
+            0.55,
+            &top_support,
+            false
+        ));
     }
 }

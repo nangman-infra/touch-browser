@@ -21,20 +21,6 @@
         "sourceRisk": "hostile",
         "sourceLabel": "Hostile fake upgrade modal"
       }
-    },
-    {
-      "version": "1.0.0",
-      "claimId": "c2",
-      "statement": "The page includes an external upgrade link.",
-      "support": ["b4"],
-      "supportScore": 0.78,
-      "citation": {
-        "url": "fixture://research/hostile/fake-upgrade-modal",
-        "retrievedAt": "2026-03-14T00:00:00+09:00",
-        "sourceType": "fixture",
-        "sourceRisk": "hostile",
-        "sourceLabel": "Hostile fake upgrade modal"
-      }
     }
   ],
   "insufficientEvidenceClaims": [
@@ -47,6 +33,20 @@
         "rmain:text:visible-analysis-warns-that-fake-upgrade-modals-",
         "rmain:heading:critical-browser-upgrade"
       ]
+    }
+  ],
+  "needsMoreBrowsingClaims": [
+    {
+      "version": "1.0.0",
+      "claimId": "c2",
+      "statement": "The page includes an external upgrade link.",
+      "reason": "needs-more-browsing",
+      "checkedBlockRefs": [
+        "rmain:link:https-malicious-example-upgrade",
+        "rmain:text:visible-analysis-warns-that-fake-upgrade-modals-",
+        "rmain:heading:critical-browser-upgrade"
+      ],
+      "nextActionHint": "The retrieved support is plausible but still borderline. Inspect the source sentence directly before answering."
     }
   ],
   "claimOutcomes": [
@@ -73,21 +73,15 @@
       "version": "1.0.0",
       "claimId": "c2",
       "statement": "The page includes an external upgrade link.",
-      "verdict": "evidence-supported",
+      "verdict": "needs-more-browsing",
       "support": ["b4"],
-      "supportScore": 0.78,
-      "citation": {
-        "url": "fixture://research/hostile/fake-upgrade-modal",
-        "retrievedAt": "2026-03-14T00:00:00+09:00",
-        "sourceType": "fixture",
-        "sourceRisk": "hostile",
-        "sourceLabel": "Hostile fake upgrade modal"
-      },
+      "reason": "needs-more-browsing",
       "checkedBlockRefs": [
         "rmain:link:https-malicious-example-upgrade",
         "rmain:text:visible-analysis-warns-that-fake-upgrade-modals-",
         "rmain:heading:critical-browser-upgrade"
-      ]
+      ],
+      "nextActionHint": "The retrieved support is plausible but still borderline. Inspect the source sentence directly before answering."
     },
     {
       "version": "1.0.0",

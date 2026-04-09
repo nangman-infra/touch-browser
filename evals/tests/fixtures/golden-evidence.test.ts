@@ -53,11 +53,13 @@ describe("golden evidence", () => {
       const supportedIds = new Set(
         evidence.evidenceSupportedClaims.map((claim) => claim.claimId),
       );
+      const needsMoreBrowsingIds = new Set(
+        (evidence.needsMoreBrowsingClaims ?? []).map((claim) => claim.claimId),
+      );
       const unsupportedIds = new Set(
         [
           ...(evidence.contradictedClaims ?? []),
           ...evidence.insufficientEvidenceClaims,
-          ...(evidence.needsMoreBrowsingClaims ?? []),
         ].map((claim) => claim.claimId),
       );
 
@@ -65,6 +67,11 @@ describe("golden evidence", () => {
         if (claimCheck.expectedStatus === "supported") {
           expect(
             supportedIds.has(claimCheck.id),
+            `${fixture.id}: ${claimCheck.id}`,
+          ).toBe(true);
+        } else if (claimCheck.expectedStatus === "needs-more-browsing") {
+          expect(
+            needsMoreBrowsingIds.has(claimCheck.id),
             `${fixture.id}: ${claimCheck.id}`,
           ).toBe(true);
         } else {

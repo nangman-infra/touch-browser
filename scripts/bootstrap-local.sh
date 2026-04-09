@@ -16,6 +16,7 @@ fi
 rustup component add rustfmt clippy
 mkdir -p contracts/generated/ts contracts/generated/rust
 pnpm install
+./scripts/setup-models.sh
 pnpm run contracts:check
 pnpm run contracts:manifest
 pnpm exec playwright install chromium

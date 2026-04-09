@@ -47,6 +47,9 @@ cargo run -q -p touch-browser-cli -- extract https://www.iana.org/help/example-d
 
 If you already built the binary, replace `cargo run -q -p touch-browser-cli --` with `touch-browser`.
 
+`bootstrap-local.sh` also installs the default semantic matching model under `~/.touch-browser/models/evidence/fasttext/cc.en.300.bin`.
+Use `TOUCH_BROWSER_EVIDENCE_FASTTEXT_MODEL_PATH` only when you need to override that default path.
+
 ## What It Solves
 
 | Problem | touch-browser |

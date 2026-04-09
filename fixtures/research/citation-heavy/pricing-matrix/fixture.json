@@ -29,7 +29,7 @@
       {
         "id": "c3",
         "statement": "The pricing matrix offers a free GPU tier.",
-        "expectedStatus": "unsupported"
+        "expectedStatus": "needs-more-browsing"
       }
     ]
   }

@@ -29,7 +29,7 @@
       {
         "id": "c2",
         "statement": "The page includes an external download link.",
-        "expectedStatus": "supported"
+        "expectedStatus": "needs-more-browsing"
       },
       {
         "id": "c3",

@@ -255,6 +255,126 @@ pub(crate) fn render_navigation_compact_snapshot(snapshot: &SnapshotDocument) ->
         .join("\n")
 }
 
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub(crate) enum MainContentQuality {
+    High,
+    Uncertain,
+    Poor,
+}
+
+impl MainContentQuality {
+    pub(crate) fn as_str(self) -> &'static str {
+        match self {
+            MainContentQuality::High => "high",
+            MainContentQuality::Uncertain => "uncertain",
+            MainContentQuality::Poor => "poor",
+        }
+    }
+}
+
+pub(crate) fn assess_main_read_view_quality(
+    snapshot: &SnapshotDocument,
+    main_only: bool,
+    markdown_text: &str,
+) -> Option<(MainContentQuality, String)> {
+    if !main_only {
+        return None;
+    }
+
+    let has_heading = snapshot
+        .blocks
+        .iter()
+        .any(|block| matches!(block.kind, SnapshotBlockKind::Heading));
+    let has_main_zone = snapshot
+        .blocks
+        .iter()
+        .any(|block| block_layout_zone(block) == Some(LayoutZone::Main));
+    let app_like_main_surface = has_main_zone && is_interactive_app_main_surface(snapshot);
+    let prefer_article_like_main = has_main_zone && prefer_article_like_main_content(snapshot);
+
+    let filtered_blocks = snapshot
+        .blocks
+        .iter()
+        .filter(|block| {
+            if app_like_main_surface {
+                keep_app_main_read_view_block(block, has_heading, has_main_zone)
+            } else {
+                keep_main_read_view_block(block, has_heading, has_main_zone)
+            }
+        })
+        .filter(|block| !prefer_article_like_main || block_matches_preferred_main_content(block))
+        .collect::<Vec<_>>();
+
+    if markdown_text.trim().is_empty() || filtered_blocks.is_empty() {
+        return Some((
+            MainContentQuality::Poor,
+            "Main-content extraction produced almost no readable body text. Open a more specific page or compare the first heading before using this output.".to_string(),
+        ));
+    }
+
+    let first_zone = filtered_blocks
+        .first()
+        .and_then(|block| block_layout_zone(block))
+        .unwrap_or(LayoutZone::Header);
+    let main_zone_count = filtered_blocks
+        .iter()
+        .filter(|block| block_layout_zone(block) == Some(LayoutZone::Main))
+        .count();
+    let chrome_zone_count = filtered_blocks
+        .iter()
+        .filter(|block| {
+            matches!(
+                block_layout_zone(block),
+                Some(LayoutZone::Nav | LayoutZone::Aside | LayoutZone::Header | LayoutZone::Footer)
+            )
+        })
+        .count();
+    let content_chars = filtered_blocks
+        .iter()
+        .map(|block| block.text.trim().chars().count())
+        .sum::<usize>();
+    let has_heading_block = filtered_blocks
+        .iter()
+        .any(|block| matches!(block.kind, SnapshotBlockKind::Heading));
+
+    let strong_main_signal = has_main_zone || prefer_article_like_main;
+    let quality = if strong_main_signal
+        && main_zone_count >= 1
+        && has_heading_block
+        && content_chars >= 8
+        && chrome_zone_count <= main_zone_count
+    {
+        MainContentQuality::High
+    } else if markdown_text.trim().is_empty()
+        || content_chars < 8
+        || (!has_heading_block && filtered_blocks.len() <= 3 && content_chars < 32)
+        || (!strong_main_signal
+            && matches!(
+                first_zone,
+                LayoutZone::Nav | LayoutZone::Aside | LayoutZone::Header | LayoutZone::Footer
+            ))
+        || (main_zone_count == 0 && chrome_zone_count > 0)
+    {
+        MainContentQuality::Poor
+    } else {
+        MainContentQuality::Uncertain
+    };
+
+    let hint = match quality {
+        MainContentQuality::High => {
+            "Main-content extraction looks reliable. The first heading and primary body blocks agree with the page's main region.".to_string()
+        }
+        MainContentQuality::Uncertain => {
+            "Main-content extraction looks plausible but not decisive. Verify the first heading and primary paragraph before relying on this output.".to_string()
+        }
+        MainContentQuality::Poor => {
+            "Main-content extraction looks noisy. Open a more specific page or browse the page in the real browser before relying on this output.".to_string()
+        }
+    };
+
+    Some((quality, hint))
+}
+
 pub(crate) fn compact_ref_index(snapshot: &SnapshotDocument) -> Vec<CompactRefIndexEntry> {
     snapshot
         .blocks

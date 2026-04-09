@@ -1439,6 +1439,62 @@ mod tests {
     }
 
     #[test]
+    fn rejects_default_timeout_claim_when_support_only_states_maximum_timeout() {
+        let snapshot = SnapshotDocument {
+            version: "1.0.0".to_string(),
+            stable_ref_version: "1".to_string(),
+            source: touch_browser_contracts::SnapshotSource {
+                source_url: "https://docs.aws.example/lambda/limits".to_string(),
+                source_type: touch_browser_contracts::SourceType::Http,
+                title: Some("Lambda quotas".to_string()),
+            },
+            budget: touch_browser_contracts::SnapshotBudget {
+                requested_tokens: 512,
+                estimated_tokens: 32,
+                emitted_tokens: 32,
+                truncated: false,
+            },
+            blocks: vec![touch_browser_contracts::SnapshotBlock {
+                version: "1.0.0".to_string(),
+                id: "b1".to_string(),
+                kind: touch_browser_contracts::SnapshotBlockKind::Text,
+                stable_ref: "rmain:text:timeout".to_string(),
+                role: touch_browser_contracts::SnapshotBlockRole::Content,
+                text: "The maximum timeout for a Lambda function is 900 seconds (15 minutes)."
+                    .to_string(),
+                attributes: Default::default(),
+                evidence: touch_browser_contracts::SnapshotEvidence {
+                    source_url: "https://docs.aws.example/lambda/limits".to_string(),
+                    source_type: touch_browser_contracts::SourceType::Http,
+                    dom_path_hint: Some("html > body > main > p:nth-of-type(1)".to_string()),
+                    byte_range_start: None,
+                    byte_range_end: None,
+                },
+            }],
+        };
+
+        let report = EvidenceExtractor
+            .extract(&EvidenceInput::new(
+                snapshot,
+                vec![ClaimRequest::new(
+                    "c1",
+                    "The default timeout for a Lambda function is 15 minutes.",
+                )],
+                "2026-04-09T00:00:00+09:00",
+                SourceRisk::Low,
+                Some("Lambda quotas".to_string()),
+            ))
+            .expect("evidence extraction should succeed");
+
+        assert!(report.supported_claims.is_empty());
+        assert_eq!(report.needs_more_browsing_claims.len(), 1);
+        assert_eq!(
+            report.needs_more_browsing_claims[0].reason,
+            UnsupportedClaimReason::NeedsMoreBrowsing
+        );
+    }
+
+    #[test]
     fn contradiction_detection_matches_mutability_polarity_locally() {
         assert!(contradiction_detected(
             &normalize_text("The data structure is mutable."),

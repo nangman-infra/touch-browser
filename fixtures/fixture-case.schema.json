@@ -91,7 +91,7 @@
               },
               "expectedStatus": {
                 "type": "string",
-                "enum": ["supported", "unsupported"]
+                "enum": ["supported", "unsupported", "needs-more-browsing"]
               }
             }
           },
@@ -152,7 +152,11 @@
                     },
                     "expectedStatus": {
                       "type": "string",
-                      "enum": ["supported", "unsupported"]
+                      "enum": [
+                        "supported",
+                        "unsupported",
+                        "needs-more-browsing"
+                      ]
                     }
                   }
                 },

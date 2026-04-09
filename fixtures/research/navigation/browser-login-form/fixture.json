@@ -24,7 +24,7 @@
       {
         "id": "c2",
         "statement": "The page includes a Sign in button.",
-        "expectedStatus": "supported"
+        "expectedStatus": "needs-more-browsing"
       },
       {
         "id": "c3",

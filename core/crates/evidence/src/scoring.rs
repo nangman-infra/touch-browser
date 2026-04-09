@@ -18,6 +18,7 @@ pub(crate) struct ScoredCandidate<'a> {
     pub(crate) block: &'a SnapshotBlock,
     pub(crate) score: f64,
     pub(crate) contradictory: bool,
+    pub(crate) exact_support: bool,
 }
 
 pub(crate) struct ScoringContext {
@@ -366,6 +367,7 @@ fn score_block<'a>(
         block,
         score: score.min(1.0),
         contradictory,
+        exact_support: exact_bonus >= 0.70,
     })
 }
 

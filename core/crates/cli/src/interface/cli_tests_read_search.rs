@@ -116,6 +116,11 @@ fn read_view_output_changes_when_main_only_is_enabled() {
     assert!(!main.markdown_text.contains("Contents"));
     assert!(!main.markdown_text.contains("Privacy"));
     assert!(full.char_count > main.char_count);
+    assert_eq!(
+        main.main_content_quality.as_deref(),
+        Some("high"),
+        "expected article-like main content to be trusted"
+    );
 }
 
 #[test]
@@ -155,6 +160,86 @@ fn read_view_main_only_filters_wikipedia_language_header_noise() {
     assert!(main.markdown_text.contains("中國位於東亞。"));
     assert!(!main.markdown_text.contains("English"));
     assert!(!main.markdown_text.contains("目录"));
+    assert_eq!(main.main_content_quality.as_deref(), Some("high"));
+}
+
+#[test]
+fn read_view_main_only_reports_poor_quality_for_navigation_heavy_output() {
+    let snapshot = SnapshotDocument {
+        version: touch_browser_contracts::CONTRACT_VERSION.to_string(),
+        stable_ref_version: touch_browser_contracts::STABLE_REF_VERSION.to_string(),
+        source: SnapshotSource {
+            source_url: "https://example.com/noisy-shell".to_string(),
+            source_type: SourceType::Http,
+            title: Some("Noisy Shell".to_string()),
+        },
+        budget: SnapshotBudget {
+            requested_tokens: 128,
+            estimated_tokens: 24,
+            emitted_tokens: 24,
+            truncated: false,
+        },
+        blocks: vec![
+            SnapshotBlock {
+                version: touch_browser_contracts::CONTRACT_VERSION.to_string(),
+                id: "b1".to_string(),
+                kind: SnapshotBlockKind::Link,
+                stable_ref: "rmain:link:docs".to_string(),
+                role: SnapshotBlockRole::Content,
+                text: "Docs".to_string(),
+                attributes: Default::default(),
+                evidence: SnapshotEvidence {
+                    source_url: "https://example.com/noisy-shell".to_string(),
+                    source_type: SourceType::Http,
+                    dom_path_hint: Some("html > body > main > nav > a".to_string()),
+                    byte_range_start: None,
+                    byte_range_end: None,
+                },
+            },
+            SnapshotBlock {
+                version: touch_browser_contracts::CONTRACT_VERSION.to_string(),
+                id: "b2".to_string(),
+                kind: SnapshotBlockKind::Link,
+                stable_ref: "rmain:link:pricing".to_string(),
+                role: SnapshotBlockRole::Content,
+                text: "Pricing".to_string(),
+                attributes: Default::default(),
+                evidence: SnapshotEvidence {
+                    source_url: "https://example.com/noisy-shell".to_string(),
+                    source_type: SourceType::Http,
+                    dom_path_hint: Some("html > body > main > nav > a:nth-of-type(2)".to_string()),
+                    byte_range_start: None,
+                    byte_range_end: None,
+                },
+            },
+            SnapshotBlock {
+                version: touch_browser_contracts::CONTRACT_VERSION.to_string(),
+                id: "b3".to_string(),
+                kind: SnapshotBlockKind::Text,
+                stable_ref: "rmain:text:cta".to_string(),
+                role: SnapshotBlockRole::Content,
+                text: "Start free".to_string(),
+                attributes: Default::default(),
+                evidence: SnapshotEvidence {
+                    source_url: "https://example.com/noisy-shell".to_string(),
+                    source_type: SourceType::Http,
+                    dom_path_hint: Some("html > body > main > div.hero > p".to_string()),
+                    byte_range_start: None,
+                    byte_range_end: None,
+                },
+            },
+        ],
+    };
+
+    let main = ReadViewOutput::new(&snapshot, None, None, true);
+
+    assert_eq!(main.main_content_quality.as_deref(), Some("poor"));
+    assert!(
+        main.main_content_hint
+            .as_deref()
+            .is_some_and(|hint| hint.contains("noisy")),
+        "expected noisy-shell guidance"
+    );
 }
 
 #[test]

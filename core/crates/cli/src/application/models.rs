@@ -1,9 +1,9 @@
 use std::path::PathBuf;
 
 use super::presentation_support::{
-    compact_ref_index, navigation_ref_index, render_compact_snapshot,
-    render_main_read_view_markdown, render_navigation_compact_snapshot, render_read_view_markdown,
-    render_reading_compact_snapshot,
+    assess_main_read_view_quality, compact_ref_index, navigation_ref_index,
+    render_compact_snapshot, render_main_read_view_markdown, render_navigation_compact_snapshot,
+    render_read_view_markdown, render_reading_compact_snapshot,
 };
 use serde::{Deserialize, Serialize};
 use touch_browser_contracts::{
@@ -551,6 +551,10 @@ pub(crate) struct ReadViewOutput {
     pub(crate) approx_tokens: usize,
     pub(crate) ref_index: Vec<CompactRefIndexEntry>,
     #[serde(skip_serializing_if = "Option::is_none")]
+    pub(crate) main_content_quality: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub(crate) main_content_hint: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
     pub(crate) session_state: Option<SessionState>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub(crate) session_file: Option<String>,
@@ -577,6 +581,10 @@ impl ReadViewOutput {
         let char_count = markdown_text.chars().count();
         let approx_tokens = char_count.div_ceil(4).max(1);
         let ref_index = compact_ref_index(snapshot);
+        let (main_content_quality, main_content_hint) =
+            assess_main_read_view_quality(snapshot, main_only, &markdown_text)
+                .map(|(quality, hint)| (Some(quality.as_str().to_string()), Some(hint)))
+                .unwrap_or((None, None));
 
         Self {
             source_url: snapshot.source.source_url.clone(),
@@ -587,6 +595,8 @@ impl ReadViewOutput {
             char_count,
             approx_tokens,
             ref_index,
+            main_content_quality,
+            main_content_hint,
             session_state,
             session_file,
         }

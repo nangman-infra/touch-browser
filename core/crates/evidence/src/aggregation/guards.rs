@@ -78,6 +78,14 @@ enum PredicatePolarity {
     Negative,
 }
 
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+enum QualifierProfile {
+    Unknown,
+    Default,
+    Maximum,
+    Minimum,
+}
+
 struct PredicateOpposition {
     label: &'static str,
     positive: &'static [&'static str],
@@ -124,11 +132,6 @@ pub(super) fn assess_support_guards(
     apply_guard_check(
         &mut contradiction_reason,
         &mut guard_failures,
-        qualifier_guard_check(claim_qualifier_tokens, &aggregated_all_tokens),
-    );
-    apply_guard_check(
-        &mut contradiction_reason,
-        &mut guard_failures,
         numeric_guard_check(&claim.statement, &aggregated_text),
     );
     apply_guard_check(
@@ -140,6 +143,16 @@ pub(super) fn assess_support_guards(
         &mut contradiction_reason,
         &mut guard_failures,
         status_guard_check(&claim.statement, &aggregated_all_tokens),
+    );
+    apply_guard_check(
+        &mut contradiction_reason,
+        &mut guard_failures,
+        qualifier_guard_check(
+            claim_qualifier_tokens,
+            &aggregated_all_tokens,
+            &claim.statement,
+            &aggregated_text,
+        ),
     );
     apply_guard_check(
         &mut contradiction_reason,
@@ -289,27 +302,64 @@ fn anchor_guard_check(claim_anchor_tokens: &[String], aggregated_tokens: &[Strin
 fn qualifier_guard_check(
     claim_qualifier_tokens: &[String],
     aggregated_all_tokens: &[String],
+    claim_text: &str,
+    aggregated_text: &str,
 ) -> GuardCheck {
     let qualifier_coverage = if claim_qualifier_tokens.is_empty() {
         1.0
     } else {
         token_overlap_ratio(claim_qualifier_tokens, aggregated_all_tokens)
     };
+    if qualifier_coverage < 1.0 {
+        return GuardCheck {
+            contradiction_reason: None,
+            failure: Some(EvidenceGuardFailure {
+                kind: EvidenceGuardKind::QualifierCoverage,
+                detail: format!(
+                    "qualifier coverage {:.2} is below required 1.00",
+                    qualifier_coverage
+                ),
+            }),
+        };
+    }
 
-    if qualifier_coverage >= 1.0 {
+    let claim_qualifier = detect_qualifier_profile(claim_text);
+    if claim_qualifier == QualifierProfile::Unknown {
         return GuardCheck {
             contradiction_reason: None,
             failure: None,
         };
     }
 
+    let support_qualifier = detect_qualifier_profile(aggregated_text);
+    if support_qualifier == claim_qualifier {
+        return GuardCheck {
+            contradiction_reason: None,
+            failure: None,
+        };
+    }
+
+    if support_qualifier != QualifierProfile::Unknown {
+        return GuardCheck {
+            contradiction_reason: Some(UnsupportedClaimReason::PredicateMismatch),
+            failure: Some(EvidenceGuardFailure {
+                kind: EvidenceGuardKind::Predicate,
+                detail: format!(
+                    "Claim qualifier `{}` conflicts with support qualifier `{}`.",
+                    claim_qualifier.label(),
+                    support_qualifier.label()
+                ),
+            }),
+        };
+    }
+
     GuardCheck {
         contradiction_reason: None,
         failure: Some(EvidenceGuardFailure {
-            kind: EvidenceGuardKind::QualifierCoverage,
+            kind: EvidenceGuardKind::Predicate,
             detail: format!(
-                "qualifier coverage {:.2} is below required 1.00",
-                qualifier_coverage
+                "The claim requires explicit `{}` evidence, but the retrieved support is qualifier-ambiguous.",
+                claim_qualifier.label()
             ),
         }),
     }
@@ -647,6 +697,45 @@ fn detect_status_profile(tokens: &[String]) -> StatusProfile {
     }
 }
 
+fn detect_qualifier_profile(text: &str) -> QualifierProfile {
+    let normalized = normalize_text(text);
+    let tokens = tokenize_all(&normalized);
+    let token_set = tokens.iter().map(String::as_str).collect::<BTreeSet<_>>();
+
+    let has_default = contains_phrase(&normalized, &["by", "default"])
+        || contains_phrase(&normalized, &["default"])
+        || token_set.contains("default");
+    if has_default {
+        return QualifierProfile::Default;
+    }
+
+    let has_maximum = contains_phrase(&normalized, &["at", "most"])
+        || contains_phrase(&normalized, &["up", "to"])
+        || token_set.contains("maximum")
+        || token_set.contains("max");
+    if has_maximum {
+        return QualifierProfile::Maximum;
+    }
+
+    let has_minimum = contains_phrase(&normalized, &["at", "least"])
+        || token_set.contains("minimum")
+        || token_set.contains("min");
+    if has_minimum {
+        return QualifierProfile::Minimum;
+    }
+
+    QualifierProfile::Unknown
+}
+
+fn contains_phrase(normalized_text: &str, phrase: &[&str]) -> bool {
+    let tokens = normalized_text.split_whitespace().collect::<Vec<_>>();
+    if phrase.is_empty() || tokens.len() < phrase.len() {
+        return false;
+    }
+
+    tokens.windows(phrase.len()).any(|window| window == phrase)
+}
+
 fn status_profiles_contradict(claim: StatusProfile, support: StatusProfile) -> bool {
     matches!(
         (claim, support),
@@ -771,6 +860,17 @@ fn next_action_hint_for_failures(failures: &[EvidenceGuardFailure]) -> Option<St
         None
     } else {
         Some("Browse a more specific source page before answering.".to_string())
+    }
+}
+
+impl QualifierProfile {
+    fn label(self) -> &'static str {
+        match self {
+            QualifierProfile::Unknown => "unknown",
+            QualifierProfile::Default => "default",
+            QualifierProfile::Maximum => "maximum",
+            QualifierProfile::Minimum => "minimum",
+        }
     }
 }
 
