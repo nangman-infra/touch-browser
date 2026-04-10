@@ -261,6 +261,141 @@ fn snapshot_document(
     }
 }
 
+fn nodejs_about_snapshot(standard_library_role: SnapshotBlockRole) -> SnapshotDocument {
+    snapshot_document(
+        "https://nodejs.org/en/about",
+        SourceType::Playwright,
+        "About Node.js",
+        512,
+        96,
+        vec![
+            heading_block(
+                "https://nodejs.org/en/about",
+                SourceType::Playwright,
+                "b1",
+                "rmain:heading:about-nodejs",
+                "About Node.js",
+                "html > body > main > h1",
+                1,
+            ),
+            text_block(
+                "https://nodejs.org/en/about",
+                SourceType::Playwright,
+                "b2",
+                "rmain:text:runtime-overview",
+                SnapshotBlockRole::Content,
+                "As an asynchronous event-driven JavaScript runtime, Node.js is designed to build scalable network applications.",
+                "html > body > main > p:nth-of-type(1)",
+            ),
+            text_block(
+                "https://nodejs.org/en/about",
+                SourceType::Playwright,
+                "b3",
+                "rmain:text:standard-library",
+                standard_library_role,
+                "The synchronous methods of the Node.js standard library are convenient for startup tasks.",
+                "html > body > main > p:nth-of-type(2)",
+            ),
+        ],
+    )
+}
+
+fn nodejs_blocking_overview_snapshot() -> SnapshotDocument {
+    snapshot_document(
+        "https://nodejs.org/en/learn/asynchronous-work/overview-of-blocking-vs-non-blocking",
+        SourceType::Http,
+        "Overview of Blocking vs Non-Blocking",
+        512,
+        96,
+        vec![
+            heading_block(
+                "https://nodejs.org/en/learn/asynchronous-work/overview-of-blocking-vs-non-blocking",
+                SourceType::Http,
+                "b1",
+                "rmain:heading:blocking-vs-non-blocking",
+                "Overview of Blocking vs Non-Blocking",
+                "html > body > main > h1",
+                1,
+            ),
+            text_block(
+                "https://nodejs.org/en/learn/asynchronous-work/overview-of-blocking-vs-non-blocking",
+                SourceType::Http,
+                "b92",
+                "rmain:text:blocking-is-when-the-execution-of-additional-jav",
+                SnapshotBlockRole::Content,
+                "Blocking is when the execution of additional JavaScript in the Node.js process must wait until a non-JavaScript operation completes.",
+                "html > body > main > p:nth-of-type(1)",
+            ),
+            text_block(
+                "https://nodejs.org/en/learn/asynchronous-work/overview-of-blocking-vs-non-blocking",
+                SourceType::Http,
+                "b93",
+                "rmain:text:in-node-js-javascript-that-exhibits-poor-perform",
+                SnapshotBlockRole::Content,
+                "Synchronous methods in the Node.js standard library that use libuv are the most commonly used blocking operations.",
+                "html > body > main > p:nth-of-type(2)",
+            ),
+            text_block(
+                "https://nodejs.org/en/learn/asynchronous-work/overview-of-blocking-vs-non-blocking",
+                SourceType::Http,
+                "b94",
+                "rmain:text:all-of-the-i-o-methods-in-the-node-js-standard-l",
+                SnapshotBlockRole::Content,
+                "All of the I/O methods in the Node.js standard library provide asynchronous versions, which are non-blocking, and accept callback functions.",
+                "html > body > main > p:nth-of-type(3)",
+            ),
+        ],
+    )
+}
+
+fn live_like_python_snapshot() -> SnapshotDocument {
+    snapshot_document(
+        "https://ko.wikipedia.org/wiki/%ED%8C%8C%EC%9D%B4%EC%8D%AC",
+        SourceType::Http,
+        "파이썬",
+        512,
+        128,
+        vec![
+            text_block(
+                "https://ko.wikipedia.org/wiki/%ED%8C%8C%EC%9D%B4%EC%8D%AC",
+                SourceType::Http,
+                "b239",
+                "rmain:text:mwcw",
+                SnapshotBlockRole::Content,
+                "파이썬은 1991년 발표된 고급 프로그래밍 언어로, 인터프리터를 사용하는 객체지향 언어이자 플랫폼에 독립적인 동적 타이핑 대화형 언어다.",
+                "html > body > main > p:nth-of-type(1)",
+            ),
+            text_block(
+                "https://ko.wikipedia.org/wiki/%ED%8C%8C%EC%9D%B4%EC%8D%AC",
+                SourceType::Http,
+                "b246",
+                "rmain:text:mwvg",
+                SnapshotBlockRole::Content,
+                "현대의 파이썬은 여전히 인터프리터 언어처럼 동작하나 사용자가 모르는 사이에 스스로 파이썬 소스 코드를 컴파일하여 바이트 코드를 만들어 낸다.",
+                "html > body > main > p:nth-of-type(2)",
+            ),
+            text_block(
+                "https://ko.wikipedia.org/wiki/%ED%8C%8C%EC%9D%B4%EC%8D%AC",
+                SourceType::Http,
+                "b261",
+                "rmain:text:mwkq",
+                SnapshotBlockRole::Supporting,
+                "파이썬은 다양한 프로그래밍 패러다임을 지원하는 언어이다.",
+                "html > body > main > p:nth-of-type(3)",
+            ),
+            text_block(
+                "https://ko.wikipedia.org/wiki/%ED%8C%8C%EC%9D%B4%EC%8D%AC",
+                SourceType::Http,
+                "b282",
+                "rmain:text:mwaxy",
+                SnapshotBlockRole::Supporting,
+                "파이썬은 동적 타이핑을 사용하는 언어다.",
+                "html > body > main > p:nth-of-type(4)",
+            ),
+        ],
+    )
+}
+
 fn extract_report(
     snapshot: SnapshotDocument,
     claims: Vec<ClaimRequest>,
@@ -1055,42 +1190,7 @@ fn prefers_main_content_over_navigation_for_js_docs_claims() {
 
 #[test]
 fn rejects_synchronous_runtime_claim_when_support_is_asynchronous() {
-    let snapshot = snapshot_document(
-        "https://nodejs.org/en/about",
-        SourceType::Playwright,
-        "About Node.js",
-        512,
-        96,
-        vec![
-            heading_block(
-                "https://nodejs.org/en/about",
-                SourceType::Playwright,
-                "b1",
-                "rmain:heading:about-nodejs",
-                "About Node.js",
-                "html > body > main > h1",
-                1,
-            ),
-            text_block(
-                "https://nodejs.org/en/about",
-                SourceType::Playwright,
-                "b2",
-                "rmain:text:runtime-overview",
-                SnapshotBlockRole::Content,
-                "As an asynchronous event-driven JavaScript runtime, Node.js is designed to build scalable network applications.",
-                "html > body > main > p:nth-of-type(1)",
-            ),
-            text_block(
-                "https://nodejs.org/en/about",
-                SourceType::Playwright,
-                "b3",
-                "rmain:text:standard-library",
-                SnapshotBlockRole::Content,
-                "The synchronous methods of the Node.js standard library are convenient for startup tasks.",
-                "html > body > main > p:nth-of-type(2)",
-            ),
-        ],
-    );
+    let snapshot = nodejs_about_snapshot(SnapshotBlockRole::Content);
 
     let report = extract_report(
         snapshot,
@@ -1109,51 +1209,7 @@ fn rejects_synchronous_runtime_claim_when_support_is_asynchronous() {
 
 #[test]
 fn rejects_compiled_language_claim_on_live_like_python_snapshot() {
-    let snapshot = snapshot_document(
-        "https://ko.wikipedia.org/wiki/%ED%8C%8C%EC%9D%B4%EC%8D%AC",
-        SourceType::Http,
-        "파이썬",
-        512,
-        128,
-        vec![
-            text_block(
-                "https://ko.wikipedia.org/wiki/%ED%8C%8C%EC%9D%B4%EC%8D%AC",
-                SourceType::Http,
-                "b239",
-                "rmain:text:mwcw",
-                SnapshotBlockRole::Content,
-                "파이썬은 1991년 발표된 고급 프로그래밍 언어로, 인터프리터를 사용하는 객체지향 언어이자 플랫폼에 독립적인 동적 타이핑 대화형 언어다.",
-                "html > body > main > p:nth-of-type(1)",
-            ),
-            text_block(
-                "https://ko.wikipedia.org/wiki/%ED%8C%8C%EC%9D%B4%EC%8D%AC",
-                SourceType::Http,
-                "b246",
-                "rmain:text:mwvg",
-                SnapshotBlockRole::Content,
-                "현대의 파이썬은 여전히 인터프리터 언어처럼 동작하나 사용자가 모르는 사이에 스스로 파이썬 소스 코드를 컴파일하여 바이트 코드를 만들어 낸다.",
-                "html > body > main > p:nth-of-type(2)",
-            ),
-            text_block(
-                "https://ko.wikipedia.org/wiki/%ED%8C%8C%EC%9D%B4%EC%8D%AC",
-                SourceType::Http,
-                "b261",
-                "rmain:text:mwkq",
-                SnapshotBlockRole::Supporting,
-                "파이썬은 다양한 프로그래밍 패러다임을 지원하는 언어이다.",
-                "html > body > main > p:nth-of-type(3)",
-            ),
-            text_block(
-                "https://ko.wikipedia.org/wiki/%ED%8C%8C%EC%9D%B4%EC%8D%AC",
-                SourceType::Http,
-                "b282",
-                "rmain:text:mwaxy",
-                SnapshotBlockRole::Supporting,
-                "파이썬은 동적 타이핑을 사용하는 언어다.",
-                "html > body > main > p:nth-of-type(4)",
-            ),
-        ],
-    );
+    let snapshot = live_like_python_snapshot();
 
     let report = extract_report(
         snapshot,
@@ -1179,42 +1235,7 @@ fn rejects_compiled_language_claim_on_live_like_python_snapshot() {
 
 #[test]
 fn supports_asynchronous_runtime_claim_when_synchronous_is_only_contrastive() {
-    let snapshot = snapshot_document(
-        "https://nodejs.org/en/about",
-        SourceType::Playwright,
-        "About Node.js",
-        512,
-        96,
-        vec![
-            heading_block(
-                "https://nodejs.org/en/about",
-                SourceType::Playwright,
-                "b1",
-                "rmain:heading:about-nodejs",
-                "About Node.js",
-                "html > body > main > h1",
-                1,
-            ),
-            text_block(
-                "https://nodejs.org/en/about",
-                SourceType::Playwright,
-                "b2",
-                "rmain:text:runtime-overview",
-                SnapshotBlockRole::Content,
-                "As an asynchronous event-driven JavaScript runtime, Node.js is designed to build scalable network applications.",
-                "html > body > main > p:nth-of-type(1)",
-            ),
-            text_block(
-                "https://nodejs.org/en/about",
-                SourceType::Playwright,
-                "b3",
-                "rmain:text:standard-library",
-                SnapshotBlockRole::Supporting,
-                "The synchronous methods of the Node.js standard library are convenient for startup tasks.",
-                "html > body > main > p:nth-of-type(2)",
-            ),
-        ],
-    );
+    let snapshot = nodejs_about_snapshot(SnapshotBlockRole::Supporting);
 
     let report = extract_report(
         snapshot,
@@ -1229,51 +1250,7 @@ fn supports_asynchronous_runtime_claim_when_synchronous_is_only_contrastive() {
 
 #[test]
 fn requires_more_browsing_for_bare_runtime_behavior_claim_on_method_level_page() {
-    let snapshot = snapshot_document(
-        "https://nodejs.org/en/learn/asynchronous-work/overview-of-blocking-vs-non-blocking",
-        SourceType::Http,
-        "Overview of Blocking vs Non-Blocking",
-        512,
-        96,
-        vec![
-            heading_block(
-                "https://nodejs.org/en/learn/asynchronous-work/overview-of-blocking-vs-non-blocking",
-                SourceType::Http,
-                "b1",
-                "rmain:heading:blocking-vs-non-blocking",
-                "Overview of Blocking vs Non-Blocking",
-                "html > body > main > h1",
-                1,
-            ),
-            text_block(
-                "https://nodejs.org/en/learn/asynchronous-work/overview-of-blocking-vs-non-blocking",
-                SourceType::Http,
-                "b92",
-                "rmain:text:blocking-is-when-the-execution-of-additional-jav",
-                SnapshotBlockRole::Content,
-                "Blocking is when the execution of additional JavaScript in the Node.js process must wait until a non-JavaScript operation completes.",
-                "html > body > main > p:nth-of-type(1)",
-            ),
-            text_block(
-                "https://nodejs.org/en/learn/asynchronous-work/overview-of-blocking-vs-non-blocking",
-                SourceType::Http,
-                "b93",
-                "rmain:text:in-node-js-javascript-that-exhibits-poor-perform",
-                SnapshotBlockRole::Content,
-                "Synchronous methods in the Node.js standard library that use libuv are the most commonly used blocking operations.",
-                "html > body > main > p:nth-of-type(2)",
-            ),
-            text_block(
-                "https://nodejs.org/en/learn/asynchronous-work/overview-of-blocking-vs-non-blocking",
-                SourceType::Http,
-                "b94",
-                "rmain:text:all-of-the-i-o-methods-in-the-node-js-standard-l",
-                SnapshotBlockRole::Content,
-                "All of the I/O methods in the Node.js standard library provide asynchronous versions, which are non-blocking, and accept callback functions.",
-                "html > body > main > p:nth-of-type(3)",
-            ),
-        ],
-    );
+    let snapshot = nodejs_blocking_overview_snapshot();
 
     let sync_report = extract_report(
         snapshot.clone(),
