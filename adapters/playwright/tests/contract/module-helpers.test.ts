@@ -125,6 +125,7 @@ describe("playwright adapter module helpers", () => {
         "/tmp/context",
         "/tmp/profile",
         true,
+        false,
       ),
     ).toEqual({
       url: "https://example.com/docs",
@@ -133,6 +134,7 @@ describe("playwright adapter module helpers", () => {
       profileDir: "/tmp/profile",
       headless: true,
       searchIdentity: true,
+      manualRecovery: false,
     });
   });
 });

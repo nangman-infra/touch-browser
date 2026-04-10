@@ -3,8 +3,10 @@
   "files": {
     "ignore": [
       "target/**",
+      "dist/**",
       "output/**",
       "sonar-reports/**",
+      "adapters/playwright/dist-runtime/**",
       "contracts/generated/manifest.json",
       "fixtures/scenarios/**/*.json"
     ],

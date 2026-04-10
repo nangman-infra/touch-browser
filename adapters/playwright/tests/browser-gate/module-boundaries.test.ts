@@ -50,6 +50,7 @@ describe("playwright adapter module boundaries", () => {
         undefined,
         undefined,
         false,
+        false,
       ),
       async (page) => capturePageState(page),
     );
@@ -88,6 +89,7 @@ describe("playwright adapter module boundaries", () => {
           true,
           contextDir,
           undefined,
+          false,
           false,
         ),
         async (page) => page.title(),
@@ -145,6 +147,7 @@ describe("playwright adapter module boundaries", () => {
         true,
         undefined,
         undefined,
+        false,
         false,
       ),
       async (page) => {
