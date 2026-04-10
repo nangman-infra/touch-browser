@@ -431,61 +431,17 @@ fn numeric_guard_check(
     let claim_requires_unit = claim_numeric
         .iter()
         .any(|expression| expression.unit.is_some());
-    let qualifier_matched_candidates = if claim_qualifier == QualifierProfile::Unknown {
-        Vec::new()
-    } else {
-        top_support
-            .iter()
-            .filter(|candidate| {
-                detect_qualifier_profile(numeric_guard_text(candidate, claim_qualifier))
-                    == claim_qualifier
-            })
-            .collect::<Vec<_>>()
-    };
-    let qualifier_matched_narrative_candidates = qualifier_matched_candidates
-        .iter()
-        .copied()
-        .filter(|candidate| matches!(candidate.block.kind, SnapshotBlockKind::Text))
-        .collect::<Vec<_>>();
-    let all_candidates = top_support.iter().collect::<Vec<_>>();
-    let primary_candidates = if !qualifier_matched_narrative_candidates.is_empty() {
-        qualifier_matched_narrative_candidates
-    } else if qualifier_matched_candidates.is_empty() {
-        all_candidates.clone()
-    } else {
-        qualifier_matched_candidates
-    };
-    let mut numeric_evidence_candidates = select_anchor_aligned_numeric_candidates(
-        &primary_candidates,
+    let numeric_evidence_candidates = select_numeric_guard_candidates(
+        top_support,
         claim_anchor_tokens,
         claim_qualifier,
         claim_requires_unit,
     );
-    let allow_global_numeric_fallback = !matches!(claim_qualifier, QualifierProfile::Default);
-    if numeric_evidence_candidates.is_empty()
-        && allow_global_numeric_fallback
-        && primary_candidates.len() != all_candidates.len()
-    {
-        numeric_evidence_candidates = select_anchor_aligned_numeric_candidates(
-            &all_candidates,
-            claim_anchor_tokens,
-            claim_qualifier,
-            claim_requires_unit,
-        );
-    }
-    if numeric_evidence_candidates.is_empty() {
-        numeric_evidence_candidates = primary_candidates;
-    }
-    let qualifier_matched_text = numeric_evidence_candidates
-        .iter()
-        .map(|candidate| numeric_guard_text(candidate, claim_qualifier))
-        .collect::<Vec<_>>()
-        .join(" ");
-    let support_numeric = if qualifier_matched_text.is_empty() {
-        numeric_expressions(aggregated_text)
-    } else {
-        numeric_expressions(&qualifier_matched_text)
-    };
+    let support_numeric = support_numeric_expressions(
+        aggregated_text,
+        &numeric_evidence_candidates,
+        claim_qualifier,
+    );
 
     if claim_numeric.is_empty() {
         return GuardCheck {
@@ -587,6 +543,80 @@ fn numeric_mismatch_is_hard_contradiction(
     let support_numeric_is_dense = support_numeric.len() > claim_numeric_count.saturating_add(4);
 
     has_precise_numeric_support && !support_numeric_is_dense
+}
+
+fn select_numeric_guard_candidates<'a>(
+    top_support: &'a [ScoredCandidate<'a>],
+    claim_anchor_tokens: &[String],
+    claim_qualifier: QualifierProfile,
+    claim_requires_unit: bool,
+) -> Vec<&'a ScoredCandidate<'a>> {
+    let qualifier_matched_candidates = if claim_qualifier == QualifierProfile::Unknown {
+        Vec::new()
+    } else {
+        top_support
+            .iter()
+            .filter(|candidate| {
+                detect_qualifier_profile(numeric_guard_text(candidate, claim_qualifier))
+                    == claim_qualifier
+            })
+            .collect::<Vec<_>>()
+    };
+    let qualifier_matched_narrative_candidates = qualifier_matched_candidates
+        .iter()
+        .copied()
+        .filter(|candidate| matches!(candidate.block.kind, SnapshotBlockKind::Text))
+        .collect::<Vec<_>>();
+    let all_candidates = top_support.iter().collect::<Vec<_>>();
+    let primary_candidates = if !qualifier_matched_narrative_candidates.is_empty() {
+        qualifier_matched_narrative_candidates
+    } else if qualifier_matched_candidates.is_empty() {
+        all_candidates.clone()
+    } else {
+        qualifier_matched_candidates
+    };
+
+    let mut numeric_evidence_candidates = select_anchor_aligned_numeric_candidates(
+        &primary_candidates,
+        claim_anchor_tokens,
+        claim_qualifier,
+        claim_requires_unit,
+    );
+    let allow_global_numeric_fallback = !matches!(claim_qualifier, QualifierProfile::Default);
+    if numeric_evidence_candidates.is_empty()
+        && allow_global_numeric_fallback
+        && primary_candidates.len() != all_candidates.len()
+    {
+        numeric_evidence_candidates = select_anchor_aligned_numeric_candidates(
+            &all_candidates,
+            claim_anchor_tokens,
+            claim_qualifier,
+            claim_requires_unit,
+        );
+    }
+    if numeric_evidence_candidates.is_empty() {
+        primary_candidates
+    } else {
+        numeric_evidence_candidates
+    }
+}
+
+fn support_numeric_expressions(
+    aggregated_text: &str,
+    numeric_evidence_candidates: &[&ScoredCandidate<'_>],
+    claim_qualifier: QualifierProfile,
+) -> Vec<NumericExpression> {
+    let qualifier_matched_text = numeric_evidence_candidates
+        .iter()
+        .map(|candidate| numeric_guard_text(candidate, claim_qualifier))
+        .collect::<Vec<_>>()
+        .join(" ");
+
+    if qualifier_matched_text.is_empty() {
+        numeric_expressions(aggregated_text)
+    } else {
+        numeric_expressions(&qualifier_matched_text)
+    }
 }
 
 fn select_anchor_aligned_numeric_candidates<'a>(
