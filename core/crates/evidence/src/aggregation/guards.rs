@@ -137,7 +137,12 @@ pub(super) fn assess_support_guards(
     apply_guard_check(
         &mut contradiction_reason,
         &mut guard_failures,
-        numeric_guard_check(&claim.statement, &aggregated_text, top_support),
+        numeric_guard_check(
+            &claim.statement,
+            &aggregated_text,
+            top_support,
+            claim_anchor_tokens,
+        ),
     );
     apply_guard_check(
         &mut contradiction_reason,
@@ -310,13 +315,60 @@ fn qualifier_guard_check(
     top_support: &[ScoredCandidate<'_>],
     claim_text: &str,
 ) -> GuardCheck {
+    let claim_qualifier = detect_qualifier_profile(claim_text);
+    if claim_qualifier == QualifierProfile::Unknown {
+        let qualifier_coverage = if claim_qualifier_tokens.is_empty() {
+            1.0
+        } else {
+            top_support
+                .iter()
+                .map(|candidate| {
+                    token_overlap_ratio(claim_qualifier_tokens, &tokenize_all(&candidate.text))
+                })
+                .fold(0.0, f64::max)
+        };
+        return if qualifier_coverage < 1.0 {
+            GuardCheck {
+                contradiction_reason: None,
+                failure: Some(EvidenceGuardFailure {
+                    kind: EvidenceGuardKind::QualifierCoverage,
+                    detail: format!(
+                        "qualifier coverage {:.2} is below required 1.00",
+                        qualifier_coverage
+                    ),
+                }),
+            }
+        } else {
+            GuardCheck {
+                contradiction_reason: None,
+                failure: None,
+            }
+        };
+    }
+
+    let support_qualifiers = top_support
+        .iter()
+        .map(|candidate| detect_qualifier_profile(qualifier_guard_text(candidate, claim_qualifier)))
+        .filter(|profile| *profile != QualifierProfile::Unknown)
+        .collect::<BTreeSet<_>>();
+
+    if support_qualifiers.contains(&claim_qualifier) {
+        return GuardCheck {
+            contradiction_reason: None,
+            failure: None,
+        };
+    }
+
     let qualifier_coverage = if claim_qualifier_tokens.is_empty() {
         1.0
     } else {
         top_support
             .iter()
             .map(|candidate| {
-                token_overlap_ratio(claim_qualifier_tokens, &tokenize_all(&candidate.text))
+                token_overlap_ratio(
+                    claim_qualifier_tokens,
+                    &tokenize_all(qualifier_guard_text(candidate, claim_qualifier)),
+                )
             })
             .fold(0.0, f64::max)
     };
@@ -330,27 +382,6 @@ fn qualifier_guard_check(
                     qualifier_coverage
                 ),
             }),
-        };
-    }
-
-    let claim_qualifier = detect_qualifier_profile(claim_text);
-    if claim_qualifier == QualifierProfile::Unknown {
-        return GuardCheck {
-            contradiction_reason: None,
-            failure: None,
-        };
-    }
-
-    let support_qualifiers = top_support
-        .iter()
-        .map(|candidate| detect_qualifier_profile(&candidate.text))
-        .filter(|profile| *profile != QualifierProfile::Unknown)
-        .collect::<BTreeSet<_>>();
-
-    if support_qualifiers.contains(&claim_qualifier) {
-        return GuardCheck {
-            contradiction_reason: None,
-            failure: None,
         };
     }
 
@@ -384,6 +415,7 @@ fn numeric_guard_check(
     claim_text: &str,
     aggregated_text: &str,
     top_support: &[ScoredCandidate<'_>],
+    claim_anchor_tokens: &[String],
 ) -> GuardCheck {
     if claim_mentions_version_or_release(&tokenize_significant(claim_text))
         || claim_contains_raw_version_marker(claim_text)
@@ -396,16 +428,59 @@ fn numeric_guard_check(
 
     let claim_numeric = numeric_expressions(claim_text);
     let claim_qualifier = detect_qualifier_profile(claim_text);
-    let qualifier_matched_text = if claim_qualifier == QualifierProfile::Unknown {
-        String::new()
+    let claim_requires_unit = claim_numeric
+        .iter()
+        .any(|expression| expression.unit.is_some());
+    let qualifier_matched_candidates = if claim_qualifier == QualifierProfile::Unknown {
+        Vec::new()
     } else {
         top_support
             .iter()
-            .filter(|candidate| detect_qualifier_profile(&candidate.text) == claim_qualifier)
-            .map(|candidate| candidate.text.as_str())
+            .filter(|candidate| {
+                detect_qualifier_profile(numeric_guard_text(candidate, claim_qualifier))
+                    == claim_qualifier
+            })
             .collect::<Vec<_>>()
-            .join(" ")
     };
+    let qualifier_matched_narrative_candidates = qualifier_matched_candidates
+        .iter()
+        .copied()
+        .filter(|candidate| matches!(candidate.block.kind, SnapshotBlockKind::Text))
+        .collect::<Vec<_>>();
+    let all_candidates = top_support.iter().collect::<Vec<_>>();
+    let primary_candidates = if !qualifier_matched_narrative_candidates.is_empty() {
+        qualifier_matched_narrative_candidates
+    } else if qualifier_matched_candidates.is_empty() {
+        all_candidates.clone()
+    } else {
+        qualifier_matched_candidates
+    };
+    let mut numeric_evidence_candidates = select_anchor_aligned_numeric_candidates(
+        &primary_candidates,
+        claim_anchor_tokens,
+        claim_qualifier,
+        claim_requires_unit,
+    );
+    let allow_global_numeric_fallback = !matches!(claim_qualifier, QualifierProfile::Default);
+    if numeric_evidence_candidates.is_empty()
+        && allow_global_numeric_fallback
+        && primary_candidates.len() != all_candidates.len()
+    {
+        numeric_evidence_candidates = select_anchor_aligned_numeric_candidates(
+            &all_candidates,
+            claim_anchor_tokens,
+            claim_qualifier,
+            claim_requires_unit,
+        );
+    }
+    if numeric_evidence_candidates.is_empty() {
+        numeric_evidence_candidates = primary_candidates;
+    }
+    let qualifier_matched_text = numeric_evidence_candidates
+        .iter()
+        .map(|candidate| numeric_guard_text(candidate, claim_qualifier))
+        .collect::<Vec<_>>()
+        .join(" ");
     let support_numeric = if qualifier_matched_text.is_empty() {
         numeric_expressions(aggregated_text)
     } else {
@@ -436,7 +511,12 @@ fn numeric_guard_check(
         };
     }
 
-    if !numeric_mismatch_is_hard_contradiction(top_support, claim_numeric.len(), &support_numeric) {
+    if !numeric_mismatch_is_hard_contradiction(
+        &numeric_evidence_candidates,
+        claim_numeric.len(),
+        &support_numeric,
+        claim_requires_unit,
+    ) {
         return GuardCheck {
             contradiction_reason: None,
             failure: Some(EvidenceGuardFailure {
@@ -476,27 +556,80 @@ fn numeric_guard_check(
 }
 
 fn numeric_mismatch_is_hard_contradiction(
-    top_support: &[ScoredCandidate<'_>],
+    top_support: &[&ScoredCandidate<'_>],
     claim_numeric_count: usize,
     support_numeric: &[NumericExpression],
+    claim_requires_unit: bool,
 ) -> bool {
     if top_support.is_empty() {
         return false;
     }
 
-    let has_narrative_text_support = top_support.iter().any(|candidate| {
-        matches!(candidate.block.kind, SnapshotBlockKind::Text)
-            && numeric_expressions(&candidate.text).len() <= claim_numeric_count.saturating_add(3)
-    });
-    let has_tabular_support = top_support.iter().any(|candidate| {
+    if claim_requires_unit
+        && !support_numeric
+            .iter()
+            .any(|expression| expression.unit.is_some())
+    {
+        return false;
+    }
+
+    let has_precise_numeric_support = top_support.iter().any(|candidate| {
         matches!(
             candidate.block.kind,
-            SnapshotBlockKind::Table | SnapshotBlockKind::List
-        )
+            SnapshotBlockKind::Text
+                | SnapshotBlockKind::Heading
+                | SnapshotBlockKind::Table
+                | SnapshotBlockKind::List
+                | SnapshotBlockKind::Metadata
+        ) && numeric_expressions(&candidate.block.text).len()
+            <= claim_numeric_count.saturating_add(3)
     });
     let support_numeric_is_dense = support_numeric.len() > claim_numeric_count.saturating_add(4);
 
-    has_narrative_text_support && !has_tabular_support && !support_numeric_is_dense
+    has_precise_numeric_support && !support_numeric_is_dense
+}
+
+fn select_anchor_aligned_numeric_candidates<'a>(
+    candidates: &[&'a ScoredCandidate<'a>],
+    claim_anchor_tokens: &[String],
+    claim_qualifier: QualifierProfile,
+    require_unit: bool,
+) -> Vec<&'a ScoredCandidate<'a>> {
+    let anchor_aligned = candidates
+        .iter()
+        .copied()
+        .filter(|candidate| {
+            claim_anchor_tokens.is_empty()
+                || token_overlap_ratio(
+                    claim_anchor_tokens,
+                    &tokenize_significant(numeric_guard_text(candidate, claim_qualifier)),
+                ) > 0.0
+        })
+        .collect::<Vec<_>>();
+
+    if anchor_aligned.is_empty() {
+        return Vec::new();
+    }
+
+    if !require_unit {
+        return anchor_aligned;
+    }
+
+    let unit_aligned = anchor_aligned
+        .iter()
+        .copied()
+        .filter(|candidate| {
+            numeric_expressions(numeric_guard_text(candidate, claim_qualifier))
+                .iter()
+                .any(|expression| expression.unit.is_some())
+        })
+        .collect::<Vec<_>>();
+
+    if unit_aligned.is_empty() {
+        Vec::new()
+    } else {
+        unit_aligned
+    }
 }
 
 fn claim_contains_raw_version_marker(text: &str) -> bool {
@@ -1076,6 +1209,26 @@ fn contains_phrase(normalized_text: &str, phrase: &[&str]) -> bool {
     }
 
     tokens.windows(phrase.len()).any(|window| window == phrase)
+}
+
+fn qualifier_guard_text<'a>(
+    candidate: &'a ScoredCandidate<'_>,
+    claim_qualifier: QualifierProfile,
+) -> &'a str {
+    if claim_qualifier != QualifierProfile::Unknown
+        && detect_qualifier_profile(&candidate.text) == QualifierProfile::Unknown
+    {
+        &candidate.block.text
+    } else {
+        &candidate.text
+    }
+}
+
+fn numeric_guard_text<'a>(
+    candidate: &'a ScoredCandidate<'_>,
+    claim_qualifier: QualifierProfile,
+) -> &'a str {
+    qualifier_guard_text(candidate, claim_qualifier)
 }
 
 fn status_profiles_contradict(claim: StatusProfile, support: StatusProfile) -> bool {

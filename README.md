@@ -136,6 +136,8 @@ Evidence output note:
 - `verdictExplanation` summarizes why the verdict landed where it did
 - `confidenceBand` and `reviewRecommended` distinguish strong support from borderline support
 - `matchSignals` exposes the first support block's lexical, contextual, numeric, semantic, and NLI-side matching signals when available
+- `evidence-supported + confidenceBand=high + reviewRecommended=false` is the intended direct-reuse path in pilot domains
+- `reviewRecommended=true` or `confidenceBand=review` means the next step should be `--verifier-command` or another page, not blind reuse
 
 ## Docs And Proof
 

@@ -163,6 +163,8 @@ Evidence output terminology:
 - `reviewRecommended`: explicit flag for borderline or unresolved claims that should not be reused without checking the evidence
 - `matchSignals`: first-support block match diagnostics such as lexical overlap, contextual overlap, numeric alignment, semantic similarity, and NLI signals when available
 - `verification`: optional second-pass verifier output supplied by `--verifier-command`, which may refine the final verdict while leaving the collected support trace intact
+- operationally, `evidence-supported + confidenceBand=high + reviewRecommended=false` is the only evidence state that is considered auto-reuse-friendly in the curated pilot domains
+- operationally, `confidenceBand=review` or `reviewRecommended=true` means a caller should escalate to `--verifier-command` or browse a more specific page instead of answering directly
 - search output includes `results`, `recommendedResultRanks`, and `nextActionHints` so a higher-level AI can decide the next browsing step without pretending the browser already knows the final answer
 - each `nextActionHint` also includes `actor`, `canAutoRun`, and `headedRequired` so touch-browser can separate AI-owned follow-up from human checkpoints
 - search output also includes `status` and optional `statusDetail` so challenge pages and empty result pages are explicit instead of masquerading as normal zero-result searches
@@ -224,6 +226,7 @@ Eval and smoke validation covers:
 - `search` is the discovery surface; it structures result pages, but it does not replace the later `read-view` / `extract` pass on the selected tabs
 - use `--main-only` when the page shell is noisy and you want the Markdown output scoped to the primary content region
 - verifier hooks do not replace the base extractor; they adjudicate the final claim verdict on top of the same collected support trace
+- `reviewRecommended` is not just metadata; it is the intended handoff signal for a verifier or another page-open step
 - browser-backed `follow` is supported on persisted sessions, not as a general live multi-step replay
 - `--budget` controls the observation budget for live and browser open paths and is reused during follow, paginate, and expand recompilation
 - interactive actions are only supported inside allowlisted browser sessions

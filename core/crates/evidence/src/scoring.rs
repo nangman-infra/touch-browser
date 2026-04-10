@@ -353,6 +353,8 @@ fn score_block_candidates<'a>(
             let numeric_overlap = numeric_overlap_ratio(input.claim_numeric_tokens, &search_text);
             let numeric_presence_bonus =
                 numeric_presence_bonus(input.claim_numeric_tokens, &search_text);
+            let numeric_unit_alignment_adjustment =
+                numeric_unit_alignment_adjustment(input.normalized_claim, &search_text);
             let numeric_noise_penalty =
                 numeric_noise_penalty(input.claim_numeric_tokens, block, &search_text);
             let kind_bonus = kind_score_bonus(&block.kind);
@@ -360,6 +362,12 @@ fn score_block_candidates<'a>(
             let structural_adjustment = block_structural_adjustment(block);
             let qualifier_adjustment =
                 qualifier_alignment_adjustment(input.claim_qualifier_tokens, &search_text);
+            let qualified_numeric_limit_adjustment = qualified_numeric_limit_adjustment(
+                input.claim_qualifier_tokens,
+                input.claim_numeric_tokens,
+                block,
+                &search_text,
+            );
             let version_noise_penalty =
                 version_noise_penalty(input.claim_tokens, input.claim_numeric_tokens, &search_text);
             let contextual_bonus = (contextual_overlap - lexical_overlap).max(0.0) * 0.10;
@@ -369,11 +377,13 @@ fn score_block_candidates<'a>(
                 + (exact_bonus * 0.16)
                 + (numeric_overlap * 0.08)
                 + numeric_presence_bonus
+                + numeric_unit_alignment_adjustment
                 + numeric_noise_penalty
                 + kind_bonus
                 + control_bonus
                 + structural_adjustment
                 + qualifier_adjustment
+                + qualified_numeric_limit_adjustment
                 + version_noise_penalty
                 + contextual_bonus;
 
@@ -467,6 +477,31 @@ fn qualifier_profiles_conflict(claim: QualifierPresence, support: QualifierPrese
     (claim.has_default && (support.has_maximum || support.has_minimum))
         || (claim.has_maximum && (support.has_default || support.has_minimum))
         || (claim.has_minimum && (support.has_default || support.has_maximum))
+}
+
+fn qualified_numeric_limit_adjustment(
+    claim_qualifier_tokens: &[String],
+    claim_numeric_tokens: &[String],
+    block: &SnapshotBlock,
+    support_text: &str,
+) -> f64 {
+    if claim_qualifier_tokens.is_empty() || claim_numeric_tokens.is_empty() {
+        return 0.0;
+    }
+
+    let claim_qualifiers = qualifier_presence_from_tokens(claim_qualifier_tokens);
+    let support_qualifiers = qualifier_presence_from_text(support_text);
+    if !qualifier_profiles_align(claim_qualifiers, support_qualifiers) {
+        return 0.0;
+    }
+
+    match block.kind {
+        SnapshotBlockKind::Text => 0.12,
+        SnapshotBlockKind::Heading => 0.03,
+        SnapshotBlockKind::Table => -0.08,
+        SnapshotBlockKind::List => -0.05,
+        _ => 0.0,
+    }
 }
 
 pub(crate) fn semantic_similarity_bonus(semantic_similarity: f64, lexical_overlap: f64) -> f64 {
@@ -702,6 +737,55 @@ fn numeric_presence_bonus(claim_numeric_tokens: &[String], block_text: &str) -> 
     } else {
         0.06
     }
+}
+
+fn numeric_unit_alignment_adjustment(claim_text: &str, block_text: &str) -> f64 {
+    let claim_units = duration_units_in_text(claim_text);
+    if claim_units.is_empty() {
+        return 0.0;
+    }
+
+    let support_units = duration_units_in_text(block_text);
+    if support_units.is_empty() {
+        0.0
+    } else {
+        0.08
+    }
+}
+
+fn duration_units_in_text(text: &str) -> BTreeSet<&'static str> {
+    let normalized = normalize_text(text);
+    let tokens = tokenize_significant(&normalized);
+    let mut units = BTreeSet::new();
+
+    for token in tokens {
+        match token.as_str() {
+            "second" | "seconds" | "sec" | "secs" => {
+                units.insert("second");
+            }
+            "minute" | "minutes" | "min" | "mins" => {
+                units.insert("minute");
+            }
+            "hour" | "hours" | "hr" | "hrs" => {
+                units.insert("hour");
+            }
+            "day" | "days" => {
+                units.insert("day");
+            }
+            "week" | "weeks" => {
+                units.insert("week");
+            }
+            "month" | "months" => {
+                units.insert("month");
+            }
+            "year" | "years" => {
+                units.insert("year");
+            }
+            _ => {}
+        }
+    }
+
+    units
 }
 
 fn numeric_noise_penalty(

@@ -528,6 +528,66 @@ fn moon_landing_snapshot(blocks: Vec<SnapshotBlock>) -> SnapshotDocument {
     }
 }
 
+fn lambda_limits_live_like_snapshot() -> SnapshotDocument {
+    snapshot_document(
+        "https://docs.aws.example/lambda/limits",
+        SourceType::Http,
+        "Lambda quotas",
+        2048,
+        256,
+        vec![
+            heading_block(
+                "https://docs.aws.example/lambda/limits",
+                SourceType::Http,
+                "b1",
+                "rmain:heading:function-configuration",
+                "Function configuration, deployment, and execution",
+                "html > body > main > h2",
+                2,
+            ),
+            text_block(
+                "https://docs.aws.example/lambda/limits",
+                SourceType::Http,
+                "b14",
+                "rmain:text:aws-lambda-is-designed-to-scale-rapidly-to-meet-",
+                SnapshotBlockRole::Content,
+                "Code can run for up to 15 minutes in a single invocation and a single function can use up to 10,240 MB of memory.",
+                "html > body > main > p:nth-of-type(1)",
+            ),
+            content_block(
+                "https://docs.aws.example/lambda/limits",
+                SourceType::Http,
+                "b32",
+                SnapshotBlockKind::Table,
+                "rmain:table:w325aac71c17b5",
+                SnapshotBlockRole::Content,
+                "Storage for uploaded functions ( Resource | Default quota | Can be increased up to 3 5 table 667 main",
+                "html > body > main > table:nth-of-type(1)",
+            ),
+            content_block(
+                "https://docs.aws.example/lambda/limits",
+                SourceType::Http,
+                "b41",
+                SnapshotBlockKind::Table,
+                "rmain:table:w325aac71c19b7",
+                SnapshotBlockRole::Content,
+                "Function timeout | 900 seconds (15 minutes) Resource | Quota 2 16 table 2017 main",
+                "html > body > main > table:nth-of-type(2)",
+            ),
+            content_block(
+                "https://docs.aws.example/lambda/limits",
+                SourceType::Http,
+                "b45",
+                SnapshotBlockKind::Table,
+                "rmain:table:w325aac71c21b5",
+                SnapshotBlockRole::Content,
+                "Invocation requests per function per Region (synchronous) | Each instance of your execution environment can serve up to 10 requests per second Resource | Quota 2 7 table 1110 main",
+                "html > body > main > table:nth-of-type(3)",
+            ),
+        ],
+    )
+}
+
 #[test]
 fn produces_expected_evidence_reports_for_seed_fixtures() {
     let extractor = EvidenceExtractor;
@@ -1465,6 +1525,38 @@ fn distinguishes_default_and_maximum_claims_inside_the_same_block() {
     );
 
     assert_supported_only(&maximum_report);
+}
+
+#[test]
+fn supports_maximum_timeout_claim_with_narrative_text_and_tabular_noise() {
+    let report = extract_report(
+        lambda_limits_live_like_snapshot(),
+        vec![claim(
+            "c1",
+            "The maximum timeout for a Lambda function is 15 minutes.",
+        )],
+        "2026-04-10T00:00:00+09:00",
+        SourceRisk::Low,
+        Some("Lambda quotas".to_string()),
+    );
+
+    assert_supported_only(&report);
+}
+
+#[test]
+fn contradicts_wrong_maximum_timeout_claim_when_narrative_limit_text_exists() {
+    let report = extract_report(
+        lambda_limits_live_like_snapshot(),
+        vec![claim(
+            "c1",
+            "The maximum timeout for a Lambda function is 24 hours.",
+        )],
+        "2026-04-10T00:00:00+09:00",
+        SourceRisk::Low,
+        Some("Lambda quotas".to_string()),
+    );
+
+    assert_contradicted_only(&report, UnsupportedClaimReason::NumericMismatch);
 }
 
 #[test]

@@ -34,7 +34,14 @@
         "rmain:button:next",
         "rmain:text:page-label",
         "rmain:text:page-content"
-      ]
+      ],
+      "guardFailures": [
+        {
+          "kind": "numeric-value",
+          "detail": "Claim numeric values [\"1\"] do not align with support values [\"4\"], but the mismatch comes from summary or table-like support rather than an explicit narrative contradiction."
+        }
+      ],
+      "nextActionHint": "Browse the limits, pricing, or quotas page before answering."
     },
     {
       "version": "1.0.0",
@@ -130,7 +137,7 @@
       ],
       "reason": "needs-more-browsing",
       "reviewRecommended": true,
-      "verdictExplanation": "The current page surfaced plausible evidence, but it still needs a more specific source or manual review.",
+      "verdictExplanation": "Browse the limits, pricing, or quotas page before answering.",
       "matchSignals": {
         "blockId": "b5",
         "stableRef": "rmain:button:next",
@@ -144,7 +151,14 @@
         "rmain:button:next",
         "rmain:text:page-label",
         "rmain:text:page-content"
-      ]
+      ],
+      "guardFailures": [
+        {
+          "kind": "numeric-value",
+          "detail": "Claim numeric values [\"1\"] do not align with support values [\"4\"], but the mismatch comes from summary or table-like support rather than an explicit narrative contradiction."
+        }
+      ],
+      "nextActionHint": "Browse the limits, pricing, or quotas page before answering."
     },
     {
       "version": "1.0.0",

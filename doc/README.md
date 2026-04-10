@@ -18,6 +18,7 @@ This directory is the usage and operations index for the uploaded repository.
 | inspect documentation link integrity | [DOC_LINK_INTEGRITY_SPEC.md](DOC_LINK_INTEGRITY_SPEC.md) |
 | inspect the markdown-baseline comparison benchmark | [TOOL_COMPARISON_BENCHMARK_SPEC.md](TOOL_COMPARISON_BENCHMARK_SPEC.md) |
 | inspect adversarial contradiction and unresolved benchmark results | [ADVERSARIAL_BENCHMARK_SPEC.md](ADVERSARIAL_BENCHMARK_SPEC.md) |
+| inspect evidence operating rules for `high` / `review` / verifier handoff | [EVIDENCE_OPERATING_MODEL.md](EVIDENCE_OPERATING_MODEL.md) |
 | inspect live JS-rendered page coverage | [JS_RENDERER_BENCHMARK_SPEC.md](JS_RENDERER_BENCHMARK_SPEC.md) |
 
 ## Workflows And Integrations
@@ -50,6 +51,7 @@ This directory is the usage and operations index for the uploaded repository.
 | align domain terms across code, schema, and docs | [UBIQUITOUS_LANGUAGE.md](UBIQUITOUS_LANGUAGE.md) |
 | inspect DDD-lite completion and quality gate criteria | [DDD_COMPLETION_CRITERIA.md](DDD_COMPLETION_CRITERIA.md) |
 | inspect product maturity and feature completion criteria | [PRODUCT_MATURITY_CRITERIA.md](PRODUCT_MATURITY_CRITERIA.md) |
+| inspect enterprise evidence operating DoD and verifier routing | [EVIDENCE_OPERATING_MODEL.md](EVIDENCE_OPERATING_MODEL.md) |
 | inspect Sonar SAFE exclusions and rationale | [SONAR_SAFE_BASELINE.md](SONAR_SAFE_BASELINE.md) |
 
 ## Repository Shortcuts

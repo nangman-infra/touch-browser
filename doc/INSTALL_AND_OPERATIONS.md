@@ -64,6 +64,14 @@ cargo run -q -p touch-browser-cli -- extract https://www.iana.org/help/example-d
   --verifier-command 'node scripts/example-verifier.mjs'
 ```
 
+Evidence operating rule of thumb:
+
+- `evidence-supported` + `confidenceBand=high` + `reviewRecommended=false`: safe enough for direct reuse inside the curated pilot domains
+- `confidenceBand=medium`: reuse only for lower-impact answers or after additional review
+- `confidenceBand=review` or `reviewRecommended=true`: run a verifier or browse another page before answering
+- `needs-more-browsing`: open a more specific page
+- `contradicted`: reuse only together with `verdictExplanation` and the attached snippets
+
 Render a multi-page session as Markdown:
 
 ```bash
@@ -145,6 +153,7 @@ pnpm run pilot:real-user-research
 - `serve` and MCP keep returning structured JSON
 - `extract` emits four-state claim outcomes: `evidence-supported`, `contradicted`, `insufficient-evidence`, and `needs-more-browsing`
 - verifier hooks can adjudicate the final claim verdict, but they still run on top of the same base evidence collector
+- `reviewRecommended` and `confidenceBand=review` are the primary escalation signals for verifier-driven operation
 - non-sensitive typed values are replayed in the same browser pass right before submit
 - sensitive values are replayed only through the direct CLI secret sidecar or the daemon in-memory secret store
 - anti-bot, MFA, payment, and other high-risk write actions are handled as supervised flows, not bypass flows

@@ -25,6 +25,7 @@ function indexEvidenceClaims(evidenceReport) {
     needsMoreBrowsingClaims: claimsById(
       evidenceReport?.needsMoreBrowsingClaims ?? [],
     ),
+    claimOutcomes: claimsById(evidenceReport?.claimOutcomes ?? []),
   };
 }
 
@@ -39,7 +40,13 @@ function verifyClaim(claim, evidenceIndex, blocksById) {
   }
 
   const supported = evidenceIndex.supportedClaims.get(claim.id);
-  const analysis = analyzeSupportedClaim(claim, supported, blocksById);
+  const claimOutcome = evidenceIndex.claimOutcomes.get(claim.id) ?? null;
+  const analysis = analyzeSupportedClaim(
+    claim,
+    supported,
+    blocksById,
+    claimOutcome,
+  );
 
   return {
     claimId: claim.id,
@@ -104,7 +111,7 @@ function buildOutcome(claim, verdict, verifierScore, notes) {
   };
 }
 
-function analyzeSupportedClaim(claim, supported, blocksById) {
+function analyzeSupportedClaim(claim, supported, blocksById, claimOutcome) {
   const supportTexts = (supported.support ?? [])
     .map((id) => blocksById.get(id)?.text ?? "")
     .filter(Boolean);
@@ -124,23 +131,31 @@ function analyzeSupportedClaim(claim, supported, blocksById) {
     numericExpressions(combinedSupportText),
   );
   const minimumAnchorCoverage = requiredAnchorCoverage(anchorTokens.length);
+  const reviewRecommended = Boolean(claimOutcome?.reviewRecommended);
+  const confidenceBand = claimOutcome?.confidenceBand ?? null;
   const verified =
     anchorCoverage >= minimumAnchorCoverage &&
     qualifierCoverage >= 1 &&
     numericCheck.kind === "match" &&
-    Number(supported.supportScore ?? 0) >= 0.6;
+    Number(supported.supportScore ?? 0) >= 0.6 &&
+    !reviewRecommended &&
+    confidenceBand !== "review";
 
   return {
     anchorCoverage,
     qualifierCoverage,
     numericCheck,
     minimumAnchorCoverage,
+    reviewRecommended,
+    confidenceBand,
     verified,
     verdict: supportedVerdict({
       anchorCoverage,
       qualifierCoverage,
       numericCheck,
       minimumAnchorCoverage,
+      reviewRecommended,
+      confidenceBand,
       verified,
     }),
   };
@@ -151,10 +166,15 @@ function supportedVerdict({
   qualifierCoverage,
   numericCheck,
   minimumAnchorCoverage,
+  reviewRecommended,
+  confidenceBand,
   verified,
 }) {
   if (numericCheck.kind === "mismatch") {
     return "contradicted";
+  }
+  if (reviewRecommended || confidenceBand === "review") {
+    return "needs-more-browsing";
   }
   if (verified) {
     return "verified";
@@ -191,12 +211,17 @@ function notesForAnalysis(analysis, supported) {
     `anchorCoverage=${analysis.anchorCoverage.toFixed(2)}`,
     `qualifierCoverage=${analysis.qualifierCoverage.toFixed(2)}`,
     `numericCheck=${analysis.numericCheck.kind}`,
+    `confidenceBand=${analysis.confidenceBand ?? "none"}`,
+    `reviewRecommended=${analysis.reviewRecommended}`,
     `supportScore=${Number(supported.supportScore ?? 0).toFixed(2)}`,
     verificationNote(analysis),
   ].join("; ");
 }
 
 function verificationNote(analysis) {
+  if (analysis.reviewRecommended || analysis.confidenceBand === "review") {
+    return "Base extractor marked this claim for review, so the verifier keeps it unresolved.";
+  }
   if (analysis.verified) {
     return "Conservative verifier accepted the evidence set.";
   }

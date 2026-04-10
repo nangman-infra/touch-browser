@@ -60,6 +60,59 @@ describe("example verifier", () => {
     expect(outcome.verdict).toBe("needs-more-browsing");
     expect(outcome.notes).toContain("qualifierCoverage=0.00");
   });
+
+  it("keeps review-recommended supported claims unresolved", async () => {
+    const payload = {
+      claims: [
+        {
+          id: "c2",
+          statement: "Kubernetes is written in Python.",
+        },
+      ],
+      snapshot: {
+        blocks: [
+          {
+            id: "b7",
+            text: "Kubernetes is an open source container orchestration platform.",
+          },
+        ],
+      },
+      evidenceReport: {
+        evidenceSupportedClaims: [
+          {
+            claimId: "c2",
+            statement: "Kubernetes is written in Python.",
+            supportScore: 0.79,
+            support: ["b7"],
+          },
+        ],
+        claimOutcomes: [
+          {
+            claimId: "c2",
+            statement: "Kubernetes is written in Python.",
+            verdict: "evidence-supported",
+            support: ["b7"],
+            supportScore: 0.79,
+            confidenceBand: "review",
+            reviewRecommended: true,
+          },
+        ],
+      },
+    };
+
+    const output = await runVerifier(payload);
+
+    expect(output.outcomes).toHaveLength(1);
+    const [outcome] = output.outcomes;
+    expect(outcome).toBeDefined();
+    if (!outcome) {
+      throw new Error("expected one verifier outcome");
+    }
+    expect(outcome.claimId).toBe("c2");
+    expect(outcome.verdict).toBe("needs-more-browsing");
+    expect(outcome.notes).toContain("reviewRecommended=true");
+    expect(outcome.notes).toContain("confidenceBand=review");
+  });
 });
 
 function runVerifier(payload: unknown) {
