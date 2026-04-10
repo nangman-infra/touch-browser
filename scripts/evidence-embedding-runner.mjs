@@ -1,24 +1,26 @@
-import { mkdir, writeFile } from "node:fs/promises";
-import { resolve } from "node:path";
+import { pipeline } from "@huggingface/transformers";
 
-import { env, pipeline } from "@huggingface/transformers";
+import {
+  parseModelRunnerArgs,
+  prepareModelRuntime,
+  readJsonPayloadFromStdin,
+  writeReadyMarker,
+} from "./lib/model-runner.mjs";
 
 const DEFAULT_MODEL_ID = "Xenova/multilingual-e5-small";
+const DEFAULT_MODEL_ROOT = `${process.env.HOME}/.touch-browser/models/evidence/embedding`;
 
 async function main() {
-  const options = parseArgs(process.argv.slice(2));
-  const modelId =
-    options.modelId ??
-    process.env.TOUCH_BROWSER_EVIDENCE_EMBEDDING_MODEL_ID ??
-    DEFAULT_MODEL_ID;
-  const modelRoot = resolve(
-    options.modelRoot ??
-      process.env.TOUCH_BROWSER_EVIDENCE_EMBEDDING_MODEL_PATH ??
-      `${process.env.HOME}/.touch-browser/models/evidence/embedding`,
-  );
-
-  await mkdir(modelRoot, { recursive: true });
-  configureEnvironment(modelRoot, options.allowDownload);
+  const options = parseModelRunnerArgs(process.argv.slice(2));
+  const { modelId, modelRoot } = await prepareModelRuntime({
+    allowDownload: options.allowDownload,
+    cliModelId: options.modelId,
+    cliModelRoot: options.modelRoot,
+    defaultModelId: DEFAULT_MODEL_ID,
+    defaultModelRoot: DEFAULT_MODEL_ROOT,
+    envModelIdKey: "TOUCH_BROWSER_EVIDENCE_EMBEDDING_MODEL_ID",
+    envModelRootKey: "TOUCH_BROWSER_EVIDENCE_EMBEDDING_MODEL_PATH",
+  });
 
   const extractor = await pipeline("feature-extraction", modelId, {
     quantized: true,
@@ -29,14 +31,14 @@ async function main() {
       pooling: "mean",
       normalize: true,
     });
-    await writeMarker(modelRoot, modelId);
+    await writeReadyMarker(modelRoot, modelId);
     process.stdout.write(
       `${JSON.stringify({ status: "ok", modelId, modelRoot })}\n`,
     );
     return;
   }
 
-  const payload = JSON.parse(await readStdin());
+  const payload = await readJsonPayloadFromStdin();
   const output = await extractor(payload.texts, {
     pooling: "mean",
     normalize: true,
@@ -44,38 +46,6 @@ async function main() {
   process.stdout.write(
     `${JSON.stringify({ modelId, embeddings: tensorRows(output) })}\n`,
   );
-}
-
-function configureEnvironment(modelRoot, allowDownload) {
-  env.cacheDir = modelRoot;
-  env.useFSCache = true;
-  env.allowLocalModels = false;
-  env.allowRemoteModels = allowDownload;
-}
-
-function parseArgs(args) {
-  const options = {
-    warmup: false,
-    allowDownload: false,
-    modelRoot: null,
-    modelId: null,
-  };
-
-  const remainingArgs = [...args];
-  while (remainingArgs.length > 0) {
-    const value = remainingArgs.shift();
-    if (value === "--warmup") {
-      options.warmup = true;
-    } else if (value === "--allow-download") {
-      options.allowDownload = true;
-    } else if (value === "--model-root") {
-      options.modelRoot = remainingArgs.shift() ?? null;
-    } else if (value === "--model-id") {
-      options.modelId = remainingArgs.shift() ?? null;
-    }
-  }
-
-  return options;
 }
 
 function tensorRows(tensor) {
@@ -96,21 +66,6 @@ function tensorRows(tensor) {
     rows.push(Array.from(tensor.data.slice(offset, offset + stride)));
   }
   return rows;
-}
-
-async function readStdin() {
-  const chunks = [];
-  for await (const chunk of process.stdin) {
-    chunks.push(chunk);
-  }
-  return Buffer.concat(chunks).toString("utf8");
-}
-
-async function writeMarker(modelRoot, modelId) {
-  await writeFile(
-    resolve(modelRoot, ".ready.json"),
-    `${JSON.stringify({ modelId, warmedAt: new Date().toISOString() }, null, 2)}\n`,
-  );
 }
 
 await main();
