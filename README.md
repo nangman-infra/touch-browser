@@ -52,25 +52,51 @@ The extractor returns four verdicts:
 
 `confidenceBand`, `reviewRecommended`, `supportSnippets`, `verdictExplanation`, and `matchSignals` are there so an agent can decide what to do next without blindly trusting the first match.
 
-## Local Quick Start
+## Standalone Bundle
+
+Tagged `v*` pushes now build standalone macOS and Linux bundles in the `Standalone Release` workflow. Each bundle includes:
+
+- `bin/touch-browser`
+- the optimized Rust binary under `runtime/touch-browser-bin`
+- a bundled Node runtime and Playwright adapter
+- the default semantic runner scripts and model cache
+
+When a tagged release is published, download the matching tarball from [GitHub Releases](https://github.com/nangman-infra/touch-browser/releases), unpack it, and run:
+
+```bash
+./touch-browser-<version>-<platform>-<arch>/bin/touch-browser telemetry-summary
+```
+
+To build the same portable bundle locally:
+
+```bash
+pnpm install --frozen-lockfile
+pnpm run build:standalone-bundle -- v0.1.0-rc1
+
+# Then run the bundled command from dist/standalone/<bundle-name>/bin
+./dist/standalone/touch-browser-v0.1.0-rc1-<platform>-<arch>/bin/touch-browser telemetry-summary
+```
+
+## Build From Source
 
 Prerequisites: [rustup](https://rustup.rs), Node.js 18+, `pnpm`.
 
 ```bash
 bash scripts/bootstrap-local.sh
+cargo build --release -p touch-browser-cli
 
 # Verify a claim against a public page
-cargo run -q -p touch-browser-cli -- extract https://www.iana.org/help/example-domains \
+./target/release/touch-browser extract https://www.iana.org/help/example-domains \
   --claim "As described in RFC 2606 and RFC 6761, a number of domains such as example.com and example.org are maintained for documentation purposes."
 
 # Read the same page as Markdown
-cargo run -q -p touch-browser-cli -- read-view https://www.iana.org/help/example-domains
+./target/release/touch-browser read-view https://www.iana.org/help/example-domains
 
 # Produce the low-token agent view
-cargo run -q -p touch-browser-cli -- compact-view https://www.iana.org/help/example-domains
+./target/release/touch-browser compact-view https://www.iana.org/help/example-domains
 ```
 
-If you already built the binary, replace `cargo run -q -p touch-browser-cli --` with `touch-browser`.
+For the inner development loop, `cargo run -q -p touch-browser-cli -- ...` still works, but the user-facing command is `touch-browser`.
 
 `bootstrap-local.sh` installs the default semantic models under:
 

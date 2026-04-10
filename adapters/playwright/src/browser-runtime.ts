@@ -32,6 +32,8 @@ import {
   MAX_CAPTURED_LINKS,
   PAGE_ACTION_TIMEOUT_MS,
   PAGE_NAVIGATION_TIMEOUT_MS,
+  SEARCH_MANUAL_RECOVERY_POLL_MS,
+  SEARCH_MANUAL_RECOVERY_TIMEOUT_MS,
   SEARCH_PROFILE_POST_LOAD_IDLE_MS,
   SEARCH_PROFILE_POST_LOAD_WAIT_MS,
 } from "./types.js";
@@ -43,6 +45,7 @@ export function browserSource(
   contextDir: string | undefined,
   profileDir: string | undefined,
   searchIdentity: boolean,
+  manualRecovery: boolean,
 ): BrowserSource {
   return {
     url,
@@ -51,6 +54,7 @@ export function browserSource(
     profileDir,
     headless,
     searchIdentity,
+    manualRecovery,
   };
 }
 
@@ -86,6 +90,7 @@ export async function withPage<T>(
         if (shouldLoad) {
           await loadPageSource(page, effectiveSource);
         }
+        await maybeAwaitManualSearchRecovery(page, effectiveSource);
         return await run(page);
       } finally {
         await closeContextQuietly(context);
@@ -106,6 +111,7 @@ export async function withPage<T>(
         const page = context.pages()[0] ?? (await context.newPage());
         applyPageTimeouts(page);
         await loadPageSource(page, source);
+        await maybeAwaitManualSearchRecovery(page, source);
         return await run(page);
       } finally {
         await closeContextQuietly(context);
@@ -130,6 +136,7 @@ export async function withPage<T>(
 
     try {
       await loadPageSource(page, source);
+      await maybeAwaitManualSearchRecovery(page, source);
       return await run(page);
     } finally {
       await page.close();
@@ -381,6 +388,110 @@ function delay(ms: number): Promise<void> {
   return new Promise((resolve) => {
     setTimeout(resolve, ms);
   });
+}
+
+type SearchChallengeSnapshot = {
+  finalUrl: string;
+  title: string;
+  visibleText: string;
+};
+
+async function maybeAwaitManualSearchRecovery(
+  page: Page,
+  source: BrowserSource,
+): Promise<void> {
+  if (!source.searchIdentity || !source.manualRecovery) {
+    return;
+  }
+
+  let challenge = await readSearchChallengeSnapshot(page);
+  if (!looksLikeSearchChallenge(challenge)) {
+    return;
+  }
+
+  await ignoreNavigationSettleFailure(
+    page.bringToFront(),
+    "manual search recovery bringToFront",
+  );
+
+  const deadline = Date.now() + resolveSearchManualRecoveryTimeoutMs();
+  while (Date.now() < deadline) {
+    await ignoreNavigationSettleFailure(
+      page.waitForLoadState("domcontentloaded", { timeout: 1_000 }),
+      "manual search recovery domcontentloaded",
+    );
+    await ignoreNavigationSettleFailure(
+      page.waitForLoadState("networkidle", { timeout: 1_000 }),
+      "manual search recovery networkidle",
+    );
+    await ignoreNavigationSettleFailure(
+      page.waitForTimeout(SEARCH_MANUAL_RECOVERY_POLL_MS),
+      "manual search recovery poll wait",
+    );
+
+    challenge = await readSearchChallengeSnapshot(page);
+    if (!looksLikeSearchChallenge(challenge)) {
+      return;
+    }
+  }
+}
+
+async function readSearchChallengeSnapshot(
+  page: Page,
+): Promise<SearchChallengeSnapshot> {
+  const [title, visibleText] = await Promise.all([
+    readProbeFallback(page.title(), "", "search challenge page title"),
+    readProbeFallback(
+      page.locator("body").innerText(),
+      "",
+      "search challenge page body text",
+    ),
+  ]);
+
+  return {
+    finalUrl: page.url(),
+    title: normalizeWhitespace(title).toLowerCase(),
+    visibleText: normalizeWhitespace(visibleText).toLowerCase(),
+  };
+}
+
+function looksLikeSearchChallenge(snapshot: SearchChallengeSnapshot): boolean {
+  const combined = [
+    snapshot.finalUrl.toLowerCase(),
+    snapshot.title,
+    snapshot.visibleText,
+  ].join(" ");
+  const signals = [
+    "captcha",
+    "recaptcha",
+    "confirm you're not a robot",
+    "i'm not a robot",
+    "unusual traffic",
+    "traffic verification",
+    "verify you are human",
+    "verify you're human",
+    "robot check",
+    "human checkpoint",
+    "drag the slider",
+    "security check",
+    "비정상적인 트래픽",
+    "로봇이 아닙니다",
+  ];
+
+  return (
+    combined.includes("/sorry/") ||
+    signals.some((signal) => combined.includes(signal))
+  );
+}
+
+function resolveSearchManualRecoveryTimeoutMs(): number {
+  const explicit = Number.parseInt(
+    process.env.TOUCH_BROWSER_SEARCH_MANUAL_RECOVERY_TIMEOUT_MS ?? "",
+    10,
+  );
+  return Number.isFinite(explicit) && explicit > 0
+    ? explicit
+    : SEARCH_MANUAL_RECOVERY_TIMEOUT_MS;
 }
 
 async function loadPageSource(

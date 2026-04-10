@@ -23,6 +23,7 @@ pub(crate) fn serve_search(
         .map(|value| parse_search_engine(&value))
         .transpose()?
         .unwrap_or(SearchEngine::Google);
+    let engine_explicit = params.get("engine").is_some();
     let budget = json_usize(params, "budget").unwrap_or(DEFAULT_SEARCH_TOKENS);
     let resolved_tab_id = match requested_tab_id.as_deref() {
         Some(tab_id) => {
@@ -45,6 +46,7 @@ pub(crate) fn serve_search(
     let result = dispatch(CliCommand::Search(SearchOptions {
         query,
         engine,
+        engine_explicit,
         budget,
         headed,
         profile_dir: None,

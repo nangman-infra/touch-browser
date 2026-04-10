@@ -21,7 +21,9 @@ use crate::infrastructure::fixtures::load_fixture_catalog;
 use crate::interface::{
     cli_error::CliError,
     cli_models::SecretPrefill,
-    cli_support::{current_timestamp, is_fixture_target, repo_root},
+    cli_support::{
+        current_timestamp, is_fixture_target, node_executable, repo_root, resource_root,
+    },
 };
 use touch_browser_contracts::{
     PolicyProfile, SearchReport, SessionMode, SnapshotBlock, SnapshotDocument, SourceRisk,
@@ -123,6 +125,7 @@ pub(crate) fn browser_document(
             budget: effective_budget,
             headless: !headed,
             search_identity: false,
+            manual_recovery: false,
         })?;
         let snapshot = compile_browser_snapshot(target, &capture.html, effective_budget)?;
 
@@ -147,6 +150,7 @@ pub(crate) fn browser_document(
         budget: requested_budget,
         headless: !headed,
         search_identity: is_search_results_target(target),
+        manual_recovery: headed && is_search_results_target(target),
     })?;
     let effective_budget = recommend_requested_tokens(&capture.html, requested_budget);
     let snapshot = compile_browser_snapshot(&capture.final_url, &capture.html, effective_budget)?;
@@ -625,9 +629,9 @@ where
         params,
     };
     let request_body = serde_json::to_vec(&request)?;
-    let mut child = Command::new("pnpm")
-        .args(["exec", "tsx", "adapters/playwright/src/index.ts"])
-        .current_dir(repo_root())
+    let repo_root = repo_root();
+    let runtime_root = resource_root();
+    let mut child = build_playwright_adapter_command(&repo_root, &runtime_root)?
         .stdin(Stdio::piped())
         .stdout(Stdio::piped())
         .stderr(Stdio::piped())
@@ -662,5 +666,135 @@ where
         _ => Err(CliError::Adapter(
             "Playwright adapter returned an invalid JSON-RPC envelope.".to_string(),
         )),
+    }
+}
+
+fn build_playwright_adapter_command(
+    repo_root: &Path,
+    runtime_root: &Path,
+) -> Result<Command, CliError> {
+    if let Some(explicit_command) = std::env::var_os("TOUCH_BROWSER_PLAYWRIGHT_ADAPTER_COMMAND")
+        .filter(|value| !value.is_empty())
+    {
+        let mut command = Command::new("sh");
+        command
+            .args(["-lc", explicit_command.to_string_lossy().as_ref()])
+            .current_dir(repo_root);
+        return Ok(command);
+    }
+
+    if let Some(packaged_entry) = resolve_packaged_playwright_adapter(runtime_root) {
+        let mut command = Command::new(node_executable());
+        command.arg(packaged_entry).current_dir(runtime_root);
+        return Ok(command);
+    }
+
+    if let Some(compiled_entry) = resolve_compiled_playwright_adapter(repo_root) {
+        let mut command = Command::new(node_executable());
+        command.arg(compiled_entry).current_dir(repo_root);
+        return Ok(command);
+    }
+
+    let source_entry = repo_root.join("adapters/playwright/src/index.ts");
+    if source_entry.is_file() {
+        let mut command = Command::new("pnpm");
+        command
+            .args(["exec", "tsx", "adapters/playwright/src/index.ts"])
+            .current_dir(repo_root);
+        return Ok(command);
+    }
+
+    Err(CliError::Adapter(
+        "Could not resolve a Playwright adapter entrypoint for this installation.".to_string(),
+    ))
+}
+
+fn resolve_packaged_playwright_adapter(runtime_root: &Path) -> Option<PathBuf> {
+    [
+        runtime_root.join("adapters/playwright/index.js"),
+        runtime_root.join("adapters/playwright/dist/index.js"),
+    ]
+    .into_iter()
+    .find(|path| path.is_file())
+}
+
+fn resolve_compiled_playwright_adapter(repo_root: &Path) -> Option<PathBuf> {
+    [
+        repo_root.join("adapters/playwright/dist-runtime/src/index.js"),
+        repo_root.join("adapters/playwright/dist/src/index.js"),
+    ]
+    .into_iter()
+    .find(|path| path.is_file())
+}
+
+#[cfg(test)]
+mod tests {
+    use std::{
+        fs,
+        path::PathBuf,
+        time::{SystemTime, UNIX_EPOCH},
+    };
+
+    use crate::interface::cli_error::CliError;
+
+    use super::{
+        build_playwright_adapter_command, resolve_compiled_playwright_adapter,
+        resolve_packaged_playwright_adapter,
+    };
+
+    fn temporary_directory(prefix: &str) -> PathBuf {
+        let unique = SystemTime::now()
+            .duration_since(UNIX_EPOCH)
+            .expect("time should move forward")
+            .as_nanos();
+        let path = std::env::temp_dir().join(format!("touch-browser-{prefix}-{unique}"));
+        fs::create_dir_all(&path).expect("temporary directory should exist");
+        path
+    }
+
+    #[test]
+    fn resolves_packaged_playwright_adapter_from_runtime_root() {
+        let runtime_root = temporary_directory("runtime-root");
+        let packaged_entry = runtime_root.join("adapters/playwright/index.js");
+        fs::create_dir_all(
+            packaged_entry
+                .parent()
+                .expect("packaged adapter parent should exist"),
+        )
+        .expect("packaged adapter parent should be created");
+        fs::write(&packaged_entry, "export {};\n").expect("packaged adapter should exist");
+
+        assert_eq!(
+            resolve_packaged_playwright_adapter(&runtime_root),
+            Some(packaged_entry)
+        );
+    }
+
+    #[test]
+    fn resolves_compiled_playwright_adapter_from_repo_root() {
+        let repo_root = temporary_directory("compiled-adapter");
+        let compiled_entry = repo_root.join("adapters/playwright/dist-runtime/src/index.js");
+        fs::create_dir_all(
+            compiled_entry
+                .parent()
+                .expect("compiled adapter parent should exist"),
+        )
+        .expect("compiled adapter parent should be created");
+        fs::write(&compiled_entry, "export {};\n").expect("compiled adapter should exist");
+
+        assert_eq!(
+            resolve_compiled_playwright_adapter(&repo_root),
+            Some(compiled_entry)
+        );
+    }
+
+    #[test]
+    fn adapter_command_errors_when_no_entrypoint_exists() {
+        let repo_root = temporary_directory("adapter-repo");
+        let runtime_root = temporary_directory("adapter-runtime");
+
+        let error = build_playwright_adapter_command(&repo_root, &runtime_root)
+            .expect_err("missing adapter should be rejected");
+        assert!(matches!(error, CliError::Adapter(_)));
     }
 }

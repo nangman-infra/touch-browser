@@ -108,6 +108,7 @@ fn parses_search_command_with_engine_and_session_file() {
         CliCommand::Search(SearchOptions {
             query: "lambda timeout".to_string(),
             engine: SearchEngine::Brave,
+            engine_explicit: true,
             budget: DEFAULT_SEARCH_TOKENS,
             headed: true,
             profile_dir: None,
@@ -131,6 +132,7 @@ fn parses_search_command_with_profile_dir() {
         CliCommand::Search(SearchOptions {
             query: "lambda timeout".to_string(),
             engine: SearchEngine::Google,
+            engine_explicit: false,
             budget: DEFAULT_SEARCH_TOKENS,
             headed: false,
             profile_dir: Some(PathBuf::from("/tmp/dedicated-search-profile")),

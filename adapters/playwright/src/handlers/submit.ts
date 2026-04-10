@@ -59,7 +59,7 @@ export async function handleSubmit(
   try {
     const resolvedTarget = targetText ?? targetRef ?? "";
     const result = await withPage(
-      browserSource(url, html, headless, contextDir, profileDir, false),
+      browserSource(url, html, headless, contextDir, profileDir, false, false),
       async (page) => {
         for (const action of prefill) {
           const fillTarget = {

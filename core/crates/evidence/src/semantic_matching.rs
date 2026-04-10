@@ -201,10 +201,23 @@ fn embedding_runner_command() -> Option<String> {
         }
     }
 
-    default_embedding_runner_script().map(|path| format!("node {}", shell_escape(&path)))
+    default_embedding_runner_script().map(|path| {
+        format!(
+            "{} {}",
+            shell_escape_text(&runner_node_executable()),
+            shell_escape(&path)
+        )
+    })
 }
 
 fn default_embedding_runner_script() -> Option<PathBuf> {
+    if let Some(runtime_script) = runtime_resource_root()
+        .map(|root| root.join("scripts/evidence-embedding-runner.mjs"))
+        .filter(|path| path.is_file())
+    {
+        return Some(runtime_script);
+    }
+
     let current_dir_script = std::env::current_dir()
         .ok()
         .map(|dir| dir.join("scripts/evidence-embedding-runner.mjs"));
@@ -261,10 +274,23 @@ fn nli_runner_command() -> Option<String> {
         }
     }
 
-    default_nli_runner_script().map(|path| format!("node {}", shell_escape(&path)))
+    default_nli_runner_script().map(|path| {
+        format!(
+            "{} {}",
+            shell_escape_text(&runner_node_executable()),
+            shell_escape(&path)
+        )
+    })
 }
 
 fn default_nli_runner_script() -> Option<PathBuf> {
+    if let Some(runtime_script) = runtime_resource_root()
+        .map(|root| root.join("scripts/evidence-nli-runner.mjs"))
+        .filter(|path| path.is_file())
+    {
+        return Some(runtime_script);
+    }
+
     let current_dir_script = std::env::current_dir()
         .ok()
         .map(|dir| dir.join("scripts/evidence-nli-runner.mjs"));
@@ -278,6 +304,10 @@ fn default_nli_runner_script() -> Option<PathBuf> {
 }
 
 fn repo_root_for_runner() -> PathBuf {
+    if let Some(runtime_root) = runtime_resource_root() {
+        return runtime_root;
+    }
+
     std::env::current_dir()
         .ok()
         .filter(|dir| dir.join(".git").exists())
@@ -436,7 +466,56 @@ fn prefix_passage_text(text: &str) -> String {
 }
 
 fn shell_escape(path: &Path) -> String {
-    format!("'{}'", path.display().to_string().replace('\'', "'\"'\"'"))
+    let rendered = path.display().to_string();
+    shell_escape_text(&rendered)
+}
+
+fn shell_escape_text(value: &str) -> String {
+    format!("'{}'", value.replace('\'', "'\"'\"'"))
+}
+
+fn runner_node_executable() -> String {
+    if let Some(explicit_node) =
+        env::var_os("TOUCH_BROWSER_NODE_EXECUTABLE").filter(|value| !value.is_empty())
+    {
+        return PathBuf::from(explicit_node).display().to_string();
+    }
+
+    if let Some(runtime_root) = runtime_resource_root() {
+        let bundled_node = runtime_root.join("node/bin/node");
+        if bundled_node.is_file() {
+            return bundled_node.display().to_string();
+        }
+    }
+
+    "node".to_string()
+}
+
+fn runtime_resource_root() -> Option<PathBuf> {
+    if let Some(explicit_root) =
+        env::var_os("TOUCH_BROWSER_RESOURCE_ROOT").filter(|value| !value.is_empty())
+    {
+        return Some(canonical_or_raw(PathBuf::from(explicit_root)));
+    }
+
+    let current_exe = env::current_exe().ok()?;
+    let bundled_runtime = current_exe
+        .parent()
+        .and_then(Path::parent)
+        .map(|path| path.join("runtime"));
+    if let Some(runtime_root) = bundled_runtime.filter(|path| path.exists()) {
+        return Some(canonical_or_raw(runtime_root));
+    }
+
+    current_exe
+        .parent()
+        .map(|path| path.join("runtime"))
+        .filter(|path| path.exists())
+        .map(canonical_or_raw)
+}
+
+fn canonical_or_raw(path: PathBuf) -> PathBuf {
+    path.canonicalize().unwrap_or(path)
 }
 
 fn cosine_similarity(left: &[f32], right: &[f32]) -> Option<f64> {
@@ -503,6 +582,7 @@ mod tests {
     use std::{
         fs,
         path::{Path, PathBuf},
+        sync::{Mutex, OnceLock},
         time::{SystemTime, UNIX_EPOCH},
     };
 
@@ -511,11 +591,18 @@ mod tests {
     };
 
     use super::{
-        apply_nli_reranking, cosine_similarity, default_embedding_model_root_from_home,
-        embedding_request_texts, run_embedding_batch_with_backend, run_nli_batch_with_backend,
+        apply_nli_reranking, canonical_or_raw, cosine_similarity,
+        default_embedding_model_root_from_home, default_embedding_runner_script,
+        default_nli_runner_script, embedding_request_texts, repo_root_for_runner,
+        run_embedding_batch_with_backend, run_nli_batch_with_backend, runner_node_executable,
         vector_is_zero, NliScore,
     };
     use crate::scoring::{semantic_similarity_bonus, CandidateMatchSignals, ScoredCandidate};
+
+    fn env_lock() -> &'static Mutex<()> {
+        static LOCK: OnceLock<Mutex<()>> = OnceLock::new();
+        LOCK.get_or_init(|| Mutex::new(()))
+    }
 
     #[test]
     fn cosine_similarity_requires_non_zero_vectors() {
@@ -533,6 +620,104 @@ mod tests {
             default_embedding_model_root_from_home(home),
             PathBuf::from("/tmp/touch-browser-home/.touch-browser/models/evidence/embedding")
         );
+    }
+
+    #[test]
+    fn embedding_runner_script_prefers_explicit_runtime_root() {
+        let _guard = env_lock()
+            .lock()
+            .unwrap_or_else(|poisoned| poisoned.into_inner());
+        let runtime_root = temporary_directory("embedding-runtime");
+        let runner_script = runtime_root.join("scripts/evidence-embedding-runner.mjs");
+        fs::create_dir_all(
+            runner_script
+                .parent()
+                .expect("runner script parent should exist"),
+        )
+        .expect("runner script parent should be created");
+        fs::write(&runner_script, "export {};\n").expect("runner script should be written");
+
+        let previous = std::env::var_os("TOUCH_BROWSER_RESOURCE_ROOT");
+        std::env::set_var("TOUCH_BROWSER_RESOURCE_ROOT", &runtime_root);
+
+        assert_eq!(
+            default_embedding_runner_script(),
+            Some(canonical_or_raw(runner_script))
+        );
+
+        restore_env("TOUCH_BROWSER_RESOURCE_ROOT", previous);
+    }
+
+    #[test]
+    fn nli_runner_script_prefers_explicit_runtime_root() {
+        let _guard = env_lock()
+            .lock()
+            .unwrap_or_else(|poisoned| poisoned.into_inner());
+        let runtime_root = temporary_directory("nli-runtime");
+        let runner_script = runtime_root.join("scripts/evidence-nli-runner.mjs");
+        fs::create_dir_all(
+            runner_script
+                .parent()
+                .expect("runner script parent should exist"),
+        )
+        .expect("runner script parent should be created");
+        fs::write(&runner_script, "export {};\n").expect("runner script should be written");
+
+        let previous = std::env::var_os("TOUCH_BROWSER_RESOURCE_ROOT");
+        std::env::set_var("TOUCH_BROWSER_RESOURCE_ROOT", &runtime_root);
+
+        assert_eq!(
+            default_nli_runner_script(),
+            Some(canonical_or_raw(runner_script))
+        );
+
+        restore_env("TOUCH_BROWSER_RESOURCE_ROOT", previous);
+    }
+
+    #[test]
+    fn runner_node_executable_prefers_bundled_runtime_node() {
+        let _guard = env_lock()
+            .lock()
+            .unwrap_or_else(|poisoned| poisoned.into_inner());
+        let runtime_root = temporary_directory("bundled-node");
+        let bundled_node = runtime_root.join("node/bin/node");
+        fs::create_dir_all(
+            bundled_node
+                .parent()
+                .expect("bundled node parent should exist"),
+        )
+        .expect("bundled node parent should be created");
+        fs::write(&bundled_node, "#!/bin/sh\n").expect("bundled node should be written");
+
+        let previous_runtime_root = std::env::var_os("TOUCH_BROWSER_RESOURCE_ROOT");
+        let previous_node = std::env::var_os("TOUCH_BROWSER_NODE_EXECUTABLE");
+        std::env::set_var("TOUCH_BROWSER_RESOURCE_ROOT", &runtime_root);
+        std::env::remove_var("TOUCH_BROWSER_NODE_EXECUTABLE");
+
+        assert_eq!(
+            runner_node_executable(),
+            canonical_or_raw(bundled_node).display().to_string()
+        );
+
+        restore_env("TOUCH_BROWSER_RESOURCE_ROOT", previous_runtime_root);
+        restore_env("TOUCH_BROWSER_NODE_EXECUTABLE", previous_node);
+    }
+
+    #[test]
+    fn runner_working_directory_prefers_explicit_runtime_root() {
+        let _guard = env_lock()
+            .lock()
+            .unwrap_or_else(|poisoned| poisoned.into_inner());
+        let runtime_root = temporary_directory("runner-working-root");
+        let previous = std::env::var_os("TOUCH_BROWSER_RESOURCE_ROOT");
+        std::env::set_var("TOUCH_BROWSER_RESOURCE_ROOT", &runtime_root);
+
+        assert_eq!(
+            repo_root_for_runner(),
+            canonical_or_raw(runtime_root.clone())
+        );
+
+        restore_env("TOUCH_BROWSER_RESOURCE_ROOT", previous);
     }
 
     #[test]
@@ -715,6 +900,14 @@ process.stdin.on('end', () => {
         let directory = std::env::temp_dir().join(format!("touch-browser-{name}-{nonce}"));
         fs::create_dir_all(&directory).expect("temp dir should exist");
         directory
+    }
+
+    fn restore_env(key: &str, value: Option<std::ffi::OsString>) {
+        if let Some(value) = value {
+            std::env::set_var(key, value);
+        } else {
+            std::env::remove_var(key);
+        }
     }
 
     fn scored_candidate<'a>(

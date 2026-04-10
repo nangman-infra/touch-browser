@@ -149,6 +149,7 @@ export async function executeTargetAction(
         params.contextDir,
         params.profileDir,
         false,
+        false,
       ),
       async (page) => {
         const target = buildTargetDescriptor(params);

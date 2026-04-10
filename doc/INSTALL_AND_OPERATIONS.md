@@ -5,7 +5,36 @@
 - Last Updated: `2026-04-05`
 - Scope: `local bootstrap, validation, and day-to-day operation`
 
-## 1. Quick Start
+## 1. Distribution Paths
+
+### Standalone release bundle
+
+Tagged `v*` pushes build standalone macOS and Linux tarballs through `.github/workflows/release-standalone.yml`.
+
+Each bundle contains:
+
+- `bin/touch-browser`
+- `runtime/touch-browser-bin`
+- bundled Node runtime, Playwright adapter, and semantic runner scripts
+- bundled semantic model cache
+
+After downloading and unpacking a release asset from [GitHub Releases](https://github.com/nangman-infra/touch-browser/releases), run:
+
+```bash
+./touch-browser-<version>-<platform>-<arch>/bin/touch-browser telemetry-summary
+```
+
+### Build the standalone bundle locally
+
+```bash
+pnpm install --frozen-lockfile
+pnpm run build:standalone-bundle -- v0.1.0-rc1
+
+# Output:
+# dist/standalone/touch-browser-v0.1.0-rc1-<platform>-<arch>/
+```
+
+### Build from source
 
 Prerequisites:
 
@@ -17,6 +46,7 @@ Bootstrap:
 
 ```bash
 bash scripts/bootstrap-local.sh
+cargo build --release -p touch-browser-cli
 ```
 
 `bootstrap-local.sh` also installs the default semantic models under:
@@ -45,7 +75,7 @@ pnpm test
 Read a real page:
 
 ```bash
-cargo run -q -p touch-browser-cli -- read-view https://www.iana.org/help/example-domains
+./target/release/touch-browser read-view https://www.iana.org/help/example-domains
 ```
 
 For navigation-heavy pages, add `--main-only` to keep the Markdown output centered on the primary content region.
@@ -53,13 +83,13 @@ For navigation-heavy pages, add `--main-only` to keep the Markdown output center
 Generate the low-token agent view:
 
 ```bash
-cargo run -q -p touch-browser-cli -- compact-view https://www.iana.org/help/example-domains
+./target/release/touch-browser compact-view https://www.iana.org/help/example-domains
 ```
 
 Extract evidence with an optional verifier hook:
 
 ```bash
-cargo run -q -p touch-browser-cli -- extract https://www.iana.org/help/example-domains \
+./target/release/touch-browser extract https://www.iana.org/help/example-domains \
   --claim "As described in RFC 2606 and RFC 6761, a number of domains such as example.com and example.org are maintained for documentation purposes." \
   --verifier-command 'node scripts/example-verifier.mjs'
 ```
@@ -75,16 +105,10 @@ Evidence operating rule of thumb:
 Render a multi-page session as Markdown:
 
 ```bash
-cargo run -q -p touch-browser-cli -- session-synthesize --session-file /tmp/tb-session.json --format markdown
+./target/release/touch-browser session-synthesize --session-file /tmp/tb-session.json --format markdown
 ```
 
 Serve daemon:
-
-```bash
-cargo run -q -p touch-browser-cli -- serve
-```
-
-If you already have a built binary, the equivalent command is:
 
 ```bash
 target/release/touch-browser serve
@@ -131,8 +155,8 @@ pnpm run pilot:real-user-research
 - public benchmark failure:
   - check network access and remote site availability
 - MCP bridge failure:
-  - verify either `touch-browser serve` or `cargo run -q -p touch-browser-cli -- serve` works on its own
-  - the bridge prefers `TOUCH_BROWSER_SERVE_COMMAND`, then an installed or packaged `touch-browser` binary, then falls back to `cargo run -q -p touch-browser-cli -- serve`
+  - verify either `touch-browser serve` or `target/release/touch-browser serve` works on its own
+  - the bridge prefers `TOUCH_BROWSER_SERVE_COMMAND`, then an installed or packaged `touch-browser` binary, then falls back to `cargo run -q -p touch-browser-cli -- serve` for source checkouts
   - set `TOUCH_BROWSER_SERVE_COMMAND="target/debug/touch-browser serve"` if you want to force a specific built binary or wrapper
 - verifier hook failure:
   - run the verifier command directly and confirm it returns JSON with an `outcomes` array

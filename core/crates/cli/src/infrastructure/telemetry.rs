@@ -3,12 +3,12 @@ use std::{env, path::PathBuf};
 use serde_json::{json, Value};
 use touch_browser_storage_sqlite::{PilotTelemetryEvent, PilotTelemetryStore};
 
-use crate::interface::{cli_error::CliError, cli_support::repo_root};
+use crate::interface::{cli_error::CliError, cli_support::data_root};
 
 pub(crate) fn default_telemetry_db_path() -> PathBuf {
     env::var_os("TOUCH_BROWSER_TELEMETRY_DB")
         .map(PathBuf::from)
-        .unwrap_or_else(|| repo_root().join("output/pilot/telemetry.sqlite"))
+        .unwrap_or_else(|| data_root().join("pilot/telemetry.sqlite"))
 }
 
 pub(crate) fn telemetry_surface_label(default_surface: &str) -> String {
@@ -177,4 +177,62 @@ fn telemetry_value<'a>(value: &'a Value, path: &[&str]) -> Option<&'a Value> {
         current = current.get(*segment)?;
     }
     Some(current)
+}
+
+#[cfg(test)]
+mod tests {
+    use std::{
+        fs,
+        path::PathBuf,
+        sync::{Mutex, OnceLock},
+        time::{SystemTime, UNIX_EPOCH},
+    };
+
+    use super::default_telemetry_db_path;
+
+    fn env_lock() -> &'static Mutex<()> {
+        static LOCK: OnceLock<Mutex<()>> = OnceLock::new();
+        LOCK.get_or_init(|| Mutex::new(()))
+    }
+
+    fn temporary_directory(prefix: &str) -> PathBuf {
+        let unique = SystemTime::now()
+            .duration_since(UNIX_EPOCH)
+            .expect("time should move forward")
+            .as_nanos();
+        let path = std::env::temp_dir().join(format!("touch-browser-{prefix}-{unique}"));
+        fs::create_dir_all(&path).expect("temporary directory should exist");
+        path
+    }
+
+    #[test]
+    fn telemetry_db_path_respects_explicit_data_root() {
+        let _guard = env_lock()
+            .lock()
+            .unwrap_or_else(|poisoned| poisoned.into_inner());
+        let data_root = temporary_directory("telemetry-data-root");
+        let previous_data_root = std::env::var_os("TOUCH_BROWSER_DATA_ROOT");
+        let previous_telemetry_db = std::env::var_os("TOUCH_BROWSER_TELEMETRY_DB");
+        std::env::set_var("TOUCH_BROWSER_DATA_ROOT", &data_root);
+        std::env::remove_var("TOUCH_BROWSER_TELEMETRY_DB");
+
+        assert_eq!(
+            default_telemetry_db_path(),
+            data_root
+                .canonicalize()
+                .unwrap_or(data_root.clone())
+                .join("pilot/telemetry.sqlite")
+        );
+
+        restore_env("TOUCH_BROWSER_DATA_ROOT", previous_data_root);
+        restore_env("TOUCH_BROWSER_TELEMETRY_DB", previous_telemetry_db);
+    }
+
+    fn restore_env(key: &str, value: Option<std::ffi::OsString>) {
+        if let Some(value) = value {
+            std::env::set_var(key, value);
+        } else {
+            std::env::remove_var(key);
+        }
+    }
 }

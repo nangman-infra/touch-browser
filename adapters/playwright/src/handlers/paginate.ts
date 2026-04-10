@@ -43,7 +43,7 @@ export async function handlePaginate(
 
   try {
     const result = await withPage(
-      browserSource(url, html, headless, contextDir, profileDir, false),
+      browserSource(url, html, headless, contextDir, profileDir, false, false),
       async (page) => {
         const locator = await findFirstLocator(
           page,

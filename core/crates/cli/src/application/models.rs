@@ -68,6 +68,7 @@ pub(crate) struct TargetOptions {
 pub(crate) struct SearchOptions {
     pub(crate) query: String,
     pub(crate) engine: SearchEngine,
+    pub(crate) engine_explicit: bool,
     pub(crate) budget: usize,
     pub(crate) headed: bool,
     pub(crate) profile_dir: Option<PathBuf>,

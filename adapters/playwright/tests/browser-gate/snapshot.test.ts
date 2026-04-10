@@ -97,6 +97,90 @@ describe("playwright adapter browser snapshots", () => {
     expect(visibleText.startsWith("true|")).toBe(false);
   }, 15_000);
 
+  it("waits for manual recovery pages to clear before capturing a search snapshot", async () => {
+    const response = await handleRequest({
+      jsonrpc: "2.0",
+      id: "req-search-manual-recovery",
+      method: "browser.snapshot",
+      params: {
+        html: `
+          <!doctype html>
+          <html>
+            <head><title>I'm not a robot</title></head>
+            <body>
+              <main id="app">I'm not a robot</main>
+              <script>
+                setTimeout(() => {
+                  document.title = "Recovered Search";
+                  const app = document.getElementById("app");
+                  if (app) {
+                    app.innerHTML = [
+                      '<a href="https://developers.cloudflare.com/workers/platform/pricing/">Cloudflare Workers Pricing</a>',
+                      '<p>Pricing details loaded after the checkpoint cleared.</p>',
+                    ].join("");
+                  }
+                }, 600);
+              </script>
+            </body>
+          </html>
+        `,
+        budget: 600,
+        searchIdentity: true,
+        manualRecovery: true,
+      },
+    });
+
+    const success = expectJsonRpcSuccess(response);
+    expect(success.result).toMatchObject({
+      title: "Recovered Search",
+      visibleText: expect.stringContaining(
+        "Pricing details loaded after the checkpoint cleared.",
+      ),
+      links: [
+        {
+          text: "Cloudflare Workers Pricing",
+          href: "https://developers.cloudflare.com/workers/platform/pricing/",
+        },
+      ],
+    });
+  }, 15_000);
+
+  it("returns the challenge page immediately when manual recovery is disabled", async () => {
+    const response = await handleRequest({
+      jsonrpc: "2.0",
+      id: "req-search-manual-recovery-disabled",
+      method: "browser.snapshot",
+      params: {
+        html: `
+          <!doctype html>
+          <html>
+            <head><title>I'm not a robot</title></head>
+            <body>
+              <main id="app">I'm not a robot</main>
+              <script>
+                setTimeout(() => {
+                  document.title = "Recovered Search";
+                  const app = document.getElementById("app");
+                  if (app) {
+                    app.textContent = "Recovered result";
+                  }
+                }, 600);
+              </script>
+            </body>
+          </html>
+        `,
+        budget: 600,
+        searchIdentity: true,
+      },
+    });
+
+    const success = expectJsonRpcSuccess(response);
+    expect(success.result).toMatchObject({
+      title: "I'm not a robot",
+      visibleText: expect.stringContaining("I'm not a robot"),
+    });
+  }, 15_000);
+
   it("expands obvious selector controls before capturing snapshot evidence", async () => {
     const response = await handleRequest({
       jsonrpc: "2.0",

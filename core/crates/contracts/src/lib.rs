@@ -605,12 +605,37 @@ pub struct SearchActionHint {
     pub action: String,
     pub detail: String,
     pub actor: SearchActionActor,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub engine: Option<SearchEngine>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub command: Option<String>,
     #[serde(default)]
     pub can_auto_run: bool,
     #[serde(default)]
     pub headed_required: bool,
     #[serde(skip_serializing_if = "Vec::is_empty", default)]
     pub result_ranks: Vec<usize>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
+#[serde(rename_all = "camelCase")]
+pub struct SearchRecoveryAttempt {
+    pub engine: SearchEngine,
+    pub status: SearchReportStatus,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub status_detail: Option<String>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
+#[serde(rename_all = "camelCase")]
+pub struct SearchRecovery {
+    #[serde(default)]
+    pub recovered: bool,
+    #[serde(default)]
+    pub human_intervention_required_now: bool,
+    pub final_engine: SearchEngine,
+    #[serde(skip_serializing_if = "Vec::is_empty", default)]
+    pub attempts: Vec<SearchRecoveryAttempt>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
@@ -625,6 +650,8 @@ pub struct SearchReport {
     pub status: SearchReportStatus,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub status_detail: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub recovery: Option<SearchRecovery>,
     pub result_count: usize,
     #[serde(default)]
     pub results: Vec<SearchResultItem>,

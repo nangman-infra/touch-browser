@@ -14,6 +14,8 @@ pub(crate) struct PlaywrightSnapshotParams {
     pub(crate) headless: bool,
     #[serde(skip_serializing_if = "std::ops::Not::not")]
     pub(crate) search_identity: bool,
+    #[serde(skip_serializing_if = "std::ops::Not::not")]
+    pub(crate) manual_recovery: bool,
 }
 
 #[derive(Debug, Deserialize)]

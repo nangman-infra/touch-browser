@@ -59,6 +59,7 @@ export type BrowserSource = {
   readonly profileDir: string | undefined;
   readonly headless: boolean;
   readonly searchIdentity: boolean;
+  readonly manualRecovery: boolean;
 };
 
 export type BrowserPageState = {
@@ -119,6 +120,8 @@ export const ACTION_SETTLE_IDLE_TIMEOUT_MS = 1_250;
 export const ACTION_SETTLE_EXTRA_WAIT_MS = 700;
 export const SEARCH_PROFILE_POST_LOAD_IDLE_MS = 3_000;
 export const SEARCH_PROFILE_POST_LOAD_WAIT_MS = 350;
+export const SEARCH_MANUAL_RECOVERY_TIMEOUT_MS = 300_000;
+export const SEARCH_MANUAL_RECOVERY_POLL_MS = 750;
 export const MAX_CAPTURED_LINKS = 50;
 export const MAX_EVIDENCE_SELECTOR_CANDIDATES = 8;
 export const SEARCH_PROFILE_MARKER = ".touch-browser-search-profile.json";

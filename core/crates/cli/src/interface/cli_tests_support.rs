@@ -189,6 +189,7 @@ pub(super) fn fixture_search_report(
         final_url: "https://www.google.com/search?q=browser+pagination".to_string(),
         status: SearchReportStatus::Ready,
         status_detail: None,
+        recovery: None,
         result_count,
         results,
         recommended_result_ranks,

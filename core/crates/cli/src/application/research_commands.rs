@@ -9,15 +9,16 @@ use super::{
         ActionResult, ActionStatus, BrowserCliSession, BrowserOrigin, BrowserSessionContext,
         ClaimInput, CliError, CompactSnapshotOutput, ExtractCommandOutput, ExtractOptions,
         MemorySummaryOutput, PolicyCommandOutput, ReadViewOutput, ReplayCommandOutput,
-        ReplayTranscript, RiskClass, SearchCommandOutput, SearchEngine, SearchNextCommands,
-        SearchOpenResultCommandOutput, SearchOpenResultOptions, SearchOpenTopCommandOutput,
-        SearchOpenTopItem, SearchOpenTopOptions, SearchOptions, SearchReport, SearchReportStatus,
-        SearchResultItem, SnapshotBlock, SnapshotBlockKind, SnapshotBlockRole, SnapshotDocument,
-        SourceRisk, SourceType, TargetOptions, CONTRACT_VERSION, DEFAULT_OPENED_AT,
+        ReplayTranscript, RiskClass, SearchActionActor, SearchActionHint, SearchCommandOutput,
+        SearchEngine, SearchNextCommands, SearchOpenResultCommandOutput, SearchOpenResultOptions,
+        SearchOpenTopCommandOutput, SearchOpenTopItem, SearchOpenTopOptions, SearchOptions,
+        SearchRecovery, SearchRecoveryAttempt, SearchReport, SearchReportStatus, SearchResultItem,
+        SnapshotBlock, SnapshotBlockKind, SnapshotBlockRole, SnapshotDocument, SourceRisk,
+        SourceType, TargetOptions, CONTRACT_VERSION, DEFAULT_OPENED_AT,
     },
     search_support::{
-        build_search_report, build_search_url, default_search_session_file,
-        derived_search_result_session_file, resolve_search_session_file,
+        build_search_report, build_search_url, derived_search_result_session_file,
+        load_preferred_search_engine, resolve_search_session_file, save_preferred_search_engine,
         search_engine_source_label,
     },
 };
@@ -59,6 +60,36 @@ fn claim_inputs_from_statements(statements: &[String]) -> Result<Vec<ClaimInput>
 
 fn shell_quote(value: &str) -> String {
     format!("'{}'", value.replace('\'', "'\"'\"'"))
+}
+
+fn search_retry_command(
+    query: &str,
+    engine: SearchEngine,
+    headed: bool,
+    session_file: &str,
+) -> String {
+    let engine_value = match engine {
+        SearchEngine::Google => "google",
+        SearchEngine::Brave => "brave",
+    };
+    let headed_flag = if headed { " --headed" } else { "" };
+    let session_file_flag = if should_include_search_session_file(engine, session_file) {
+        format!(" --session-file {}", shell_quote(session_file))
+    } else {
+        String::new()
+    };
+    format!(
+        "touch-browser search {} --engine {}{}{}",
+        shell_quote(query),
+        engine_value,
+        session_file_flag,
+        headed_flag
+    )
+}
+
+fn should_include_search_session_file(engine: SearchEngine, session_file: &str) -> bool {
+    let default_session_file = resolve_search_session_file(None, engine);
+    Path::new(session_file) != default_session_file.as_path()
 }
 
 fn merged_allowlisted_domains(existing: &[String], added: &[String]) -> Vec<String> {
@@ -342,14 +373,176 @@ pub(crate) fn selected_search_result(
         })
 }
 
-pub(crate) fn handle_search(
+fn should_auto_recover_search(options: &SearchOptions) -> bool {
+    !options.engine_explicit && options.session_file.is_none()
+}
+
+fn alternate_search_engine(engine: SearchEngine) -> SearchEngine {
+    match engine {
+        SearchEngine::Google => SearchEngine::Brave,
+        SearchEngine::Brave => SearchEngine::Google,
+    }
+}
+
+fn resolved_search_engine(options: &SearchOptions) -> Result<SearchEngine, CliError> {
+    if should_auto_recover_search(options) {
+        return Ok(load_preferred_search_engine()?.unwrap_or(options.engine));
+    }
+
+    Ok(options.engine)
+}
+
+fn remember_successful_search_engine(
+    engine: SearchEngine,
+    status: SearchReportStatus,
+) -> Result<(), CliError> {
+    if matches!(
+        status,
+        SearchReportStatus::Ready | SearchReportStatus::NoResults
+    ) {
+        save_preferred_search_engine(engine)?;
+    }
+    Ok(())
+}
+
+fn recovery_attempt_from_report(report: &SearchReport) -> SearchRecoveryAttempt {
+    SearchRecoveryAttempt {
+        engine: report.engine,
+        status: report.status,
+        status_detail: report.status_detail.clone(),
+    }
+}
+
+fn google_challenge_hint(query: &str, google_session_file: &str) -> Vec<SearchActionHint> {
+    vec![
+        SearchActionHint {
+            action: "retry-google-headed".to_string(),
+            detail: "If you specifically want Google, run the same Google search in headed mode once, clear the challenge manually, then reuse that saved Google session.".to_string(),
+            actor: SearchActionActor::Human,
+            engine: Some(SearchEngine::Google),
+            command: Some(search_retry_command(
+                query,
+                SearchEngine::Google,
+                true,
+                google_session_file,
+            )),
+            can_auto_run: false,
+            headed_required: true,
+            result_ranks: Vec::new(),
+        },
+        SearchActionHint {
+            action: "resume-google-search".to_string(),
+            detail: "After the manual Google challenge is cleared, rerun the same Google search without headed mode to keep using the saved Google session automatically.".to_string(),
+            actor: SearchActionActor::Ai,
+            engine: Some(SearchEngine::Google),
+            command: Some(search_retry_command(
+                query,
+                SearchEngine::Google,
+                false,
+                google_session_file,
+            )),
+            can_auto_run: true,
+            headed_required: false,
+            result_ranks: Vec::new(),
+        },
+    ]
+}
+
+fn challenge_hints_for_engine(
+    query: &str,
+    engine: SearchEngine,
+    session_file: &str,
+) -> Vec<SearchActionHint> {
+    vec![
+        SearchActionHint {
+            action: "complete-challenge".to_string(),
+            detail: "The current search provider returned a challenge page. Re-run the same search in headed mode, clear the challenge manually once, then rerun it without headed mode.".to_string(),
+            actor: SearchActionActor::Human,
+            engine: Some(engine),
+            command: Some(search_retry_command(query, engine, true, session_file)),
+            can_auto_run: false,
+            headed_required: true,
+            result_ranks: Vec::new(),
+        },
+        SearchActionHint {
+            action: "resume-search".to_string(),
+            detail: "After the manual challenge is cleared, rerun the same search against the same saved session without headed mode.".to_string(),
+            actor: SearchActionActor::Ai,
+            engine: Some(engine),
+            command: Some(search_retry_command(query, engine, false, session_file)),
+            can_auto_run: true,
+            headed_required: false,
+            result_ranks: Vec::new(),
+        },
+    ]
+}
+
+fn enrich_search_output_with_recovery(
+    mut output: SearchCommandOutput,
+    attempts: &[SearchRecoveryAttempt],
+) -> SearchCommandOutput {
+    let google_session_file = resolve_search_session_file(None, SearchEngine::Google)
+        .display()
+        .to_string();
+    let final_engine = output.result.engine;
+    let recovered = attempts.len() > 1
+        && attempts
+            .iter()
+            .any(|attempt| attempt.status == SearchReportStatus::Challenge)
+        && matches!(
+            output.result.status,
+            SearchReportStatus::Ready | SearchReportStatus::NoResults
+        );
+    let human_intervention_required_now = output.result.status == SearchReportStatus::Challenge;
+    let recovery = (!attempts.is_empty()).then(|| SearchRecovery {
+        recovered,
+        human_intervention_required_now,
+        final_engine,
+        attempts: attempts.to_vec(),
+    });
+
+    output.result.recovery = recovery.clone();
+    output.search.recovery = recovery;
+
+    let final_session_file = output.session_file.clone();
+    if output.result.status == SearchReportStatus::Challenge {
+        output
+            .result
+            .next_action_hints
+            .retain(|hint| hint.action != "complete-challenge");
+        output
+            .result
+            .next_action_hints
+            .extend(challenge_hints_for_engine(
+                &output.query,
+                final_engine,
+                &final_session_file,
+            ));
+    }
+
+    if attempts.iter().any(|attempt| {
+        attempt.engine == SearchEngine::Google && attempt.status == SearchReportStatus::Challenge
+    }) && final_engine != SearchEngine::Google
+    {
+        output
+            .result
+            .next_action_hints
+            .extend(google_challenge_hint(&output.query, &google_session_file));
+    }
+
+    output.search.next_action_hints = output.result.next_action_hints.clone();
+    output
+}
+
+fn execute_search(
     ctx: &CliAppContext<'_>,
-    options: SearchOptions,
+    options: &SearchOptions,
+    engine: SearchEngine,
+    session_file: std::path::PathBuf,
 ) -> Result<SearchCommandOutput, CliError> {
     let ports = ctx.ports;
     let opened_at = current_timestamp();
-    let search_url = build_search_url(options.engine, &options.query)?;
-    let session_file = resolve_search_session_file(options.session_file.as_ref(), options.engine);
+    let search_url = build_search_url(engine, &options.query)?;
     let browser_profile_dir = options
         .profile_dir
         .as_ref()
@@ -369,7 +562,7 @@ pub(crate) fn handle_search(
         &search_url,
         options.budget,
         Some(SourceRisk::Low),
-        Some(search_engine_source_label(options.engine).to_string()),
+        Some(search_engine_source_label(engine).to_string()),
         options.headed,
         browser_context_dir.clone(),
         browser_profile_dir.clone(),
@@ -377,7 +570,7 @@ pub(crate) fn handle_search(
         &opened_at,
     )?;
     let report = build_search_report(
-        options.engine,
+        engine,
         &options.query,
         &search_url,
         &context.snapshot,
@@ -398,7 +591,7 @@ pub(crate) fn handle_search(
             Some(BrowserOrigin {
                 target: search_url.clone(),
                 source_risk: Some(SourceRisk::Low),
-                source_label: Some(search_engine_source_label(options.engine).to_string()),
+                source_label: Some(search_engine_source_label(engine).to_string()),
             }),
             Vec::new(),
             Vec::new(),
@@ -407,8 +600,8 @@ pub(crate) fn handle_search(
     )?;
 
     Ok(SearchCommandOutput {
-        query: options.query,
-        engine: options.engine,
+        query: options.query.clone(),
+        engine,
         search_url,
         result_count: report.result_count,
         search: report.clone(),
@@ -418,6 +611,39 @@ pub(crate) fn handle_search(
         session_state: context.session.state,
         session_file: session_file.display().to_string(),
     })
+}
+
+pub(crate) fn handle_search(
+    ctx: &CliAppContext<'_>,
+    options: SearchOptions,
+) -> Result<SearchCommandOutput, CliError> {
+    let auto_recover = should_auto_recover_search(&options);
+    let primary_engine = resolved_search_engine(&options)?;
+    let primary_session_file =
+        resolve_search_session_file(options.session_file.as_ref(), primary_engine);
+    let primary = execute_search(ctx, &options, primary_engine, primary_session_file)?;
+    let primary_attempt = recovery_attempt_from_report(&primary.result);
+    if primary.result.status != SearchReportStatus::Challenge || !auto_recover {
+        remember_successful_search_engine(primary.engine, primary.result.status)?;
+        return Ok(enrich_search_output_with_recovery(
+            primary,
+            &[primary_attempt],
+        ));
+    }
+
+    let fallback_engine = alternate_search_engine(primary.engine);
+    let fallback = execute_search(
+        ctx,
+        &options,
+        fallback_engine,
+        resolve_search_session_file(None, fallback_engine),
+    )?;
+    let fallback_attempt = recovery_attempt_from_report(&fallback.result);
+    remember_successful_search_engine(fallback.engine, fallback.result.status)?;
+    Ok(enrich_search_output_with_recovery(
+        fallback,
+        &[primary_attempt, fallback_attempt],
+    ))
 }
 
 pub(crate) fn handle_search_open_result(
@@ -476,21 +702,21 @@ pub(crate) fn handle_search_open_result(
         ),
     )?;
 
-    let session_extract_hint = if session_file == default_search_session_file(latest_search.engine)
-    {
-        format!(
-            "touch-browser session-extract --engine {} --claim \"<statement>\"",
-            match latest_search.engine {
-                SearchEngine::Google => "google",
-                SearchEngine::Brave => "brave",
-            }
-        )
-    } else {
-        format!(
-            "touch-browser session-extract --session-file {} --claim \"<statement>\"",
-            shell_quote(&session_file.display().to_string())
-        )
-    };
+    let session_extract_hint =
+        if session_file == resolve_search_session_file(None, latest_search.engine) {
+            format!(
+                "touch-browser session-extract --engine {} --claim \"<statement>\"",
+                match latest_search.engine {
+                    SearchEngine::Google => "google",
+                    SearchEngine::Brave => "brave",
+                }
+            )
+        } else {
+            format!(
+                "touch-browser session-extract --session-file {} --claim \"<statement>\"",
+                shell_quote(&session_file.display().to_string())
+            )
+        };
 
     Ok(SearchOpenResultCommandOutput {
         selected_result: selected,
@@ -1344,4 +1570,247 @@ pub(crate) fn handle_memory_summary(
         session_state: session.state,
         memory_summary: summarize_turns(&memory_turns, 12),
     })
+}
+
+#[cfg(test)]
+mod tests {
+    use super::{
+        enrich_search_output_with_recovery, recovery_attempt_from_report, resolved_search_engine,
+        search_retry_command, should_auto_recover_search, SearchCommandOutput, SearchEngine,
+        SearchOptions, SearchReport, SearchReportStatus,
+    };
+    use crate::application::search_support::resolve_search_session_file;
+    use touch_browser_contracts::{
+        PolicyProfile, SessionMode, SessionState, SessionStatus, CONTRACT_VERSION,
+    };
+
+    fn test_search_report(engine: SearchEngine, status: SearchReportStatus) -> SearchReport {
+        SearchReport {
+            version: CONTRACT_VERSION.to_string(),
+            generated_at: "2026-04-11T00:00:00+09:00".to_string(),
+            engine,
+            query: "cloudflare workers pricing".to_string(),
+            search_url: format!(
+                "https://{}.example/search?q=cloudflare+workers+pricing",
+                match engine {
+                    SearchEngine::Google => "google",
+                    SearchEngine::Brave => "brave",
+                }
+            ),
+            final_url: format!(
+                "https://{}.example/final",
+                match engine {
+                    SearchEngine::Google => "google",
+                    SearchEngine::Brave => "brave",
+                }
+            ),
+            status,
+            status_detail: (status == SearchReportStatus::Challenge)
+                .then(|| "Challenge returned by provider.".to_string()),
+            recovery: None,
+            result_count: 0,
+            results: Vec::new(),
+            recommended_result_ranks: Vec::new(),
+            next_action_hints: Vec::new(),
+        }
+    }
+
+    fn test_session_state() -> SessionState {
+        SessionState {
+            version: CONTRACT_VERSION.to_string(),
+            session_id: "sclisearch001".to_string(),
+            mode: SessionMode::ReadOnly,
+            status: SessionStatus::Active,
+            policy_profile: PolicyProfile::ResearchReadOnly,
+            current_url: Some("https://example.com".to_string()),
+            opened_at: "2026-04-11T00:00:00+09:00".to_string(),
+            updated_at: "2026-04-11T00:00:00+09:00".to_string(),
+            visited_urls: vec!["https://example.com".to_string()],
+            snapshot_ids: vec!["snap1".to_string()],
+            working_set_refs: Vec::new(),
+        }
+    }
+
+    fn test_output(
+        engine: SearchEngine,
+        status: SearchReportStatus,
+        session_file: &str,
+    ) -> SearchCommandOutput {
+        let report = test_search_report(engine, status);
+        SearchCommandOutput {
+            query: "cloudflare workers pricing".to_string(),
+            engine,
+            search_url: report.search_url.clone(),
+            result_count: report.result_count,
+            search: report.clone(),
+            result: report,
+            browser_context_dir: None,
+            browser_profile_dir: None,
+            session_state: test_session_state(),
+            session_file: session_file.to_string(),
+        }
+    }
+
+    #[test]
+    fn challenge_output_contains_structured_human_recovery_commands() {
+        let output = test_output(
+            SearchEngine::Google,
+            SearchReportStatus::Challenge,
+            "/tmp/google.search-session.json",
+        );
+        let attempts = vec![recovery_attempt_from_report(&output.result)];
+        let enriched = enrich_search_output_with_recovery(output, &attempts);
+
+        let recovery = enriched
+            .result
+            .recovery
+            .expect("challenge output should include recovery trace");
+        assert!(!recovery.recovered);
+        assert!(recovery.human_intervention_required_now);
+        assert_eq!(recovery.attempts.len(), 1);
+
+        let complete = enriched
+            .result
+            .next_action_hints
+            .iter()
+            .find(|hint| hint.action == "complete-challenge")
+            .expect("challenge hint should exist");
+        assert_eq!(complete.engine, Some(SearchEngine::Google));
+        assert_eq!(
+            complete.actor,
+            touch_browser_contracts::SearchActionActor::Human
+        );
+        assert!(complete.headed_required);
+        assert!(complete
+            .command
+            .as_deref()
+            .is_some_and(|command| command.contains("--engine google")));
+
+        let resume = enriched
+            .result
+            .next_action_hints
+            .iter()
+            .find(|hint| hint.action == "resume-search")
+            .expect("resume hint should exist");
+        assert_eq!(resume.engine, Some(SearchEngine::Google));
+        assert!(resume
+            .command
+            .as_deref()
+            .is_some_and(|command| !command.contains("--headed")));
+    }
+
+    #[test]
+    fn recovered_output_tracks_attempts_and_google_specific_followup() {
+        let output = test_output(
+            SearchEngine::Brave,
+            SearchReportStatus::Ready,
+            "/tmp/brave.search-session.json",
+        );
+        let attempts = vec![
+            recovery_attempt_from_report(&test_search_report(
+                SearchEngine::Google,
+                SearchReportStatus::Challenge,
+            )),
+            recovery_attempt_from_report(&output.result),
+        ];
+        let enriched = enrich_search_output_with_recovery(output, &attempts);
+
+        let recovery = enriched
+            .result
+            .recovery
+            .expect("recovered output should include recovery trace");
+        assert!(recovery.recovered);
+        assert!(!recovery.human_intervention_required_now);
+        assert_eq!(recovery.final_engine, SearchEngine::Brave);
+        assert_eq!(recovery.attempts.len(), 2);
+
+        let google_retry = enriched
+            .result
+            .next_action_hints
+            .iter()
+            .find(|hint| hint.action == "retry-google-headed")
+            .expect("google retry hint should exist");
+        assert_eq!(google_retry.engine, Some(SearchEngine::Google));
+        assert!(google_retry.headed_required);
+        assert!(google_retry
+            .command
+            .as_deref()
+            .is_some_and(|command| command.contains("--engine google")));
+    }
+
+    #[test]
+    fn default_search_session_hints_omit_session_file_flag() {
+        let default_google_session = resolve_search_session_file(None, SearchEngine::Google)
+            .display()
+            .to_string();
+
+        let command = search_retry_command(
+            "cloudflare workers pricing",
+            SearchEngine::Google,
+            true,
+            &default_google_session,
+        );
+
+        assert!(command.contains("--engine google"));
+        assert!(command.contains("--headed"));
+        assert!(!command.contains("--session-file"));
+    }
+
+    #[test]
+    fn custom_search_session_hints_keep_session_file_flag() {
+        let command = search_retry_command(
+            "cloudflare workers pricing",
+            SearchEngine::Google,
+            true,
+            "/tmp/custom-google-session.json",
+        );
+
+        assert!(command.contains("--engine google"));
+        assert!(command.contains("--headed"));
+        assert!(command.contains("--session-file"));
+    }
+
+    #[test]
+    fn explicit_google_search_disables_brave_fallback_policy() {
+        let options = SearchOptions {
+            query: "cloudflare workers pricing".to_string(),
+            engine: SearchEngine::Google,
+            engine_explicit: true,
+            budget: 600,
+            headed: false,
+            profile_dir: None,
+            session_file: None,
+        };
+
+        assert!(
+            !should_auto_recover_search(&options),
+            "explicit google requests should stay pinned to google"
+        );
+        assert_eq!(
+            resolved_search_engine(&options).expect("explicit engine should resolve"),
+            SearchEngine::Google
+        );
+    }
+
+    #[test]
+    fn explicit_google_challenge_hints_never_point_to_brave() {
+        let output = test_output(
+            SearchEngine::Google,
+            SearchReportStatus::Challenge,
+            "/tmp/google.search-session.json",
+        );
+        let attempts = vec![recovery_attempt_from_report(&output.result)];
+        let enriched = enrich_search_output_with_recovery(output, &attempts);
+
+        assert!(enriched
+            .result
+            .next_action_hints
+            .iter()
+            .all(|hint| hint.engine != Some(SearchEngine::Brave)));
+        assert!(enriched
+            .result
+            .next_action_hints
+            .iter()
+            .all(|hint| hint.action != "retry-google-headed"));
+    }
 }

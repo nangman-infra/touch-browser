@@ -163,6 +163,7 @@ impl BrowserAutomationPort for DefaultBrowserAutomation {
             budget: request.budget,
             headless: request.headless,
             search_identity: request.search_identity,
+            manual_recovery: false,
         })?;
         Ok(BrowserSnapshotCaptureResult {
             final_url: result.final_url,

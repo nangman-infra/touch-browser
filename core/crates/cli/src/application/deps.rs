@@ -43,10 +43,10 @@ pub(super) use touch_browser_contracts::{
     ActionCommand, ActionFailureKind, ActionName, ActionResult, ActionStatus, EvidenceClaimOutcome,
     EvidenceClaimVerdict, EvidenceReport, EvidenceVerificationReport, EvidenceVerificationVerdict,
     PolicyProfile, PolicyReport, ReplayTranscript, RiskClass, SearchActionActor, SearchActionHint,
-    SearchEngine, SearchReport, SearchReportStatus, SearchResultItem, SessionSynthesisClaim,
-    SessionSynthesisClaimStatus, SessionSynthesisReport, SnapshotBlock, SnapshotBlockKind,
-    SnapshotBlockRole, SnapshotDocument, SourceRisk, SourceType, UnsupportedClaimReason,
-    CONTRACT_VERSION,
+    SearchEngine, SearchRecovery, SearchRecoveryAttempt, SearchReport, SearchReportStatus,
+    SearchResultItem, SessionSynthesisClaim, SessionSynthesisClaimStatus, SessionSynthesisReport,
+    SnapshotBlock, SnapshotBlockKind, SnapshotBlockRole, SnapshotDocument, SourceRisk, SourceType,
+    UnsupportedClaimReason, CONTRACT_VERSION,
 };
 pub(super) use touch_browser_memory::{plan_memory_turn, summarize_turns};
 pub(super) use touch_browser_observation::{

@@ -14,6 +14,7 @@ pub(crate) fn parse_search_options(args: &[String]) -> Result<SearchOptions, Cli
     let mut options = SearchOptions {
         query,
         engine: SearchEngine::Google,
+        engine_explicit: false,
         budget: DEFAULT_SEARCH_TOKENS,
         headed: false,
         profile_dir: None,
@@ -28,6 +29,7 @@ pub(crate) fn parse_search_options(args: &[String]) -> Result<SearchOptions, Cli
                     .get(index + 1)
                     .ok_or_else(|| CliError::Usage("--engine requires a value.".to_string()))?;
                 options.engine = parse_search_engine(value)?;
+                options.engine_explicit = true;
                 index += 2;
             }
             "--headed" => {

@@ -56,9 +56,10 @@ pub(crate) use touch_browser_contracts::PolicyProfile;
 #[cfg(test)]
 pub(crate) use touch_browser_contracts::{
     ActionName, ReplayTranscript, ReplayTranscriptEntry, RiskClass, SearchActionActor,
-    SearchEngine, SearchReport, SearchReportStatus, SearchResultItem, SnapshotBlock,
-    SnapshotBlockKind, SnapshotBlockRole, SnapshotBudget, SnapshotDocument, SnapshotEvidence,
-    SnapshotSource, SourceType, TranscriptKind, TranscriptPayloadType, CONTRACT_VERSION,
+    SearchEngine, SearchRecovery, SearchRecoveryAttempt, SearchReport, SearchReportStatus,
+    SearchResultItem, SnapshotBlock, SnapshotBlockKind, SnapshotBlockRole, SnapshotBudget,
+    SnapshotDocument, SnapshotEvidence, SnapshotSource, SourceType, TranscriptKind,
+    TranscriptPayloadType, CONTRACT_VERSION,
 };
 #[cfg(test)]
 pub(crate) use touch_browser_observation::{ObservationCompiler, ObservationInput};

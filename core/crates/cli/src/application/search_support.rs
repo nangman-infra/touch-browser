@@ -1,18 +1,25 @@
 use std::{
     collections::BTreeSet,
-    fs,
+    env, fs,
     path::{Path, PathBuf},
 };
 
 use kuchiki::{parse_html, traits::*, NodeRef};
+use serde::{Deserialize, Serialize};
 use serde_json::Value;
 use url::{form_urlencoded, Url};
 
 use super::deps::{
-    repo_root, CliError, SearchActionActor, SearchActionHint, SearchEngine, SearchReport,
-    SearchReportStatus, SearchResultItem, SnapshotBlock, SnapshotBlockKind, SnapshotBlockRole,
-    SnapshotDocument, CONTRACT_VERSION,
+    CliError, SearchActionActor, SearchActionHint, SearchEngine, SearchReport, SearchReportStatus,
+    SearchResultItem, SnapshotBlock, SnapshotBlockKind, SnapshotBlockRole, SnapshotDocument,
+    CONTRACT_VERSION,
 };
+use crate::interface::cli_support::data_root;
+
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
+struct PreferredSearchEngineRecord {
+    engine: SearchEngine,
+}
 
 pub(crate) fn build_search_url(engine: SearchEngine, query: &str) -> Result<String, CliError> {
     let base = match engine {
@@ -32,15 +39,82 @@ fn search_engine_slug(engine: SearchEngine) -> &'static str {
     }
 }
 
-pub(crate) fn default_search_session_file(engine: SearchEngine) -> PathBuf {
-    default_search_output_dir().join(format!(
+fn default_search_session_file_in(search_output_dir: &Path, engine: SearchEngine) -> PathBuf {
+    search_output_dir.join(format!(
         "{}.search-session.json",
         search_engine_slug(engine)
     ))
 }
 
+#[cfg_attr(not(test), allow(dead_code))]
+pub(crate) fn default_search_session_file(engine: SearchEngine) -> PathBuf {
+    default_search_session_file_in(&default_search_output_dir(), engine)
+}
+
 pub(crate) fn default_search_output_dir() -> PathBuf {
-    repo_root().join("output/browser-search")
+    data_root().join("browser-search")
+}
+
+fn source_checkout_root() -> Option<PathBuf> {
+    if let Some(explicit_root) =
+        env::var_os("TOUCH_BROWSER_REPO_ROOT").filter(|value| !value.is_empty())
+    {
+        return Some(canonical_or_raw(PathBuf::from(explicit_root)));
+    }
+
+    let manifest_root = Path::new(env!("CARGO_MANIFEST_DIR")).join("../../..");
+    manifest_root
+        .exists()
+        .then(|| canonical_or_raw(manifest_root))
+}
+
+fn legacy_search_output_dir() -> Option<PathBuf> {
+    let legacy_dir = source_checkout_root()?.join("output/browser-search");
+    let canonical_legacy = canonical_or_raw(legacy_dir);
+    (canonical_legacy != default_search_output_dir()).then_some(canonical_legacy)
+}
+
+fn default_or_legacy_search_session_file_for(
+    engine: SearchEngine,
+    default_output_dir: &Path,
+    legacy_output_dir: Option<&Path>,
+) -> PathBuf {
+    let default_session = default_search_session_file_in(default_output_dir, engine);
+    if default_session.is_file() {
+        return default_session;
+    }
+
+    legacy_output_dir
+        .map(|dir| default_search_session_file_in(dir, engine))
+        .filter(|path| path.is_file())
+        .unwrap_or(default_session)
+}
+
+fn default_or_legacy_search_session_file(engine: SearchEngine) -> PathBuf {
+    default_or_legacy_search_session_file_for(
+        engine,
+        &default_search_output_dir(),
+        legacy_search_output_dir().as_deref(),
+    )
+}
+
+fn preferred_search_engine_file_in(search_output_dir: &Path) -> PathBuf {
+    search_output_dir.join("preferred-engine.json")
+}
+
+fn preferred_search_engine_file() -> PathBuf {
+    preferred_search_engine_file_in(&default_search_output_dir())
+}
+
+fn infer_search_engine_from_session_file(path: &Path) -> Option<SearchEngine> {
+    let file_name = path.file_name()?.to_str()?;
+    if file_name.starts_with("google.search-session") {
+        return Some(SearchEngine::Google);
+    }
+    if file_name.starts_with("brave.search-session") {
+        return Some(SearchEngine::Brave);
+    }
+    None
 }
 
 pub(crate) fn resolve_search_session_file(
@@ -49,7 +123,46 @@ pub(crate) fn resolve_search_session_file(
 ) -> PathBuf {
     session_file
         .cloned()
-        .unwrap_or_else(|| default_search_session_file(engine))
+        .unwrap_or_else(|| default_or_legacy_search_session_file(engine))
+}
+
+pub(crate) fn load_preferred_search_engine() -> Result<Option<SearchEngine>, CliError> {
+    if let Some(engine) = load_preferred_search_engine_from(&preferred_search_engine_file())? {
+        return Ok(Some(engine));
+    }
+
+    Ok(latest_search_session_file()?
+        .as_deref()
+        .and_then(infer_search_engine_from_session_file))
+}
+
+fn load_preferred_search_engine_from(
+    metadata_file: &Path,
+) -> Result<Option<SearchEngine>, CliError> {
+    if !metadata_file.is_file() {
+        return Ok(None);
+    }
+
+    let bytes = fs::read(metadata_file)?;
+    let record = serde_json::from_slice::<PreferredSearchEngineRecord>(&bytes).ok();
+    Ok(record.map(|record| record.engine))
+}
+
+pub(crate) fn save_preferred_search_engine(engine: SearchEngine) -> Result<(), CliError> {
+    save_preferred_search_engine_to(&preferred_search_engine_file(), engine)
+}
+
+fn save_preferred_search_engine_to(
+    metadata_file: &Path,
+    engine: SearchEngine,
+) -> Result<(), CliError> {
+    if let Some(parent) = metadata_file.parent() {
+        fs::create_dir_all(parent)?;
+    }
+    let payload = serde_json::to_vec_pretty(&PreferredSearchEngineRecord { engine })
+        .map_err(|error| CliError::Usage(error.to_string()))?;
+    fs::write(metadata_file, payload)?;
+    Ok(())
 }
 
 pub(crate) fn resolve_latest_search_session_file(
@@ -60,7 +173,7 @@ pub(crate) fn resolve_latest_search_session_file(
         Some(path) => Ok(path.clone()),
         None => {
             if let Some(engine) = engine {
-                let engine_default = default_search_session_file(engine);
+                let engine_default = default_or_legacy_search_session_file(engine);
                 if engine_default.is_file() {
                     return Ok(engine_default);
                 }
@@ -70,13 +183,33 @@ pub(crate) fn resolve_latest_search_session_file(
                     search_engine_slug(engine)
                 )));
             }
-            latest_search_session_file_in(&default_search_output_dir())?.ok_or_else(|| {
-                CliError::Usage(
-                    "No persisted search session was found. Run `touch-browser search ...` first or pass `--session-file <path>`.".to_string(),
-                )
-            })
+            latest_search_session_file()?
+                .ok_or_else(|| {
+                    CliError::Usage(
+                        "No persisted search session was found. Run `touch-browser search ...` first or pass `--session-file <path>`.".to_string(),
+                    )
+                })
         }
     }
+}
+
+fn latest_search_session_file() -> Result<Option<PathBuf>, CliError> {
+    latest_search_session_file_for(
+        &default_search_output_dir(),
+        legacy_search_output_dir().as_deref(),
+    )
+}
+
+fn latest_search_session_file_for(
+    default_output_dir: &Path,
+    legacy_output_dir: Option<&Path>,
+) -> Result<Option<PathBuf>, CliError> {
+    let default_latest = latest_search_session_file_in(default_output_dir)?;
+    let legacy_latest = legacy_output_dir
+        .map(latest_search_session_file_in)
+        .transpose()?
+        .flatten();
+    newest_by_modified(default_latest, legacy_latest)
 }
 
 pub(crate) fn latest_search_session_file_in(
@@ -104,6 +237,25 @@ pub(crate) fn latest_search_session_file_in(
     candidates.sort_by(|left, right| right.0.cmp(&left.0));
 
     Ok(candidates.into_iter().map(|(_, path)| path).next())
+}
+
+fn newest_by_modified(
+    left: Option<PathBuf>,
+    right: Option<PathBuf>,
+) -> Result<Option<PathBuf>, CliError> {
+    match (left, right) {
+        (Some(left), Some(right)) => {
+            let left_modified = fs::metadata(&left)?.modified()?;
+            let right_modified = fs::metadata(&right)?.modified()?;
+            Ok(Some(if right_modified > left_modified {
+                right
+            } else {
+                left
+            }))
+        }
+        (Some(path), None) | (None, Some(path)) => Ok(Some(path)),
+        (None, None) => Ok(None),
+    }
 }
 
 pub(crate) fn derived_search_result_session_file(
@@ -193,6 +345,7 @@ pub(crate) fn build_search_report(
         final_url: final_url.to_string(),
         status,
         status_detail,
+        recovery: None,
         result_count: results.len(),
         results,
         recommended_result_ranks,
@@ -672,6 +825,8 @@ fn search_action_hints(
             action: "complete-challenge".to_string(),
             detail: status_detail.unwrap_or("The search provider returned a challenge page. Re-run in headed mode, clear the challenge manually, then retry search.").to_string(),
             actor: SearchActionActor::Human,
+            engine: None,
+            command: None,
             can_auto_run: false,
             headed_required: true,
             result_ranks: Vec::new(),
@@ -683,6 +838,8 @@ fn search_action_hints(
             action: "refine-search".to_string(),
             detail: status_detail.unwrap_or("No external results were structured from the current search page. Retry with a narrower query or run in headed mode.").to_string(),
             actor: SearchActionActor::Ai,
+            engine: None,
+            command: None,
             can_auto_run: false,
             headed_required: false,
             result_ranks: Vec::new(),
@@ -693,6 +850,8 @@ fn search_action_hints(
         action: "open-top".to_string(),
         detail: "Open the highest-ranked candidate tabs first, then run read-view or extract on the most specific pages.".to_string(),
         actor: SearchActionActor::Ai,
+        engine: None,
+        command: None,
         can_auto_run: true,
         headed_required: false,
         result_ranks: recommended_ranks.to_vec(),
@@ -711,6 +870,8 @@ fn search_action_hints(
                 "Prefer documentation-like or official domains before making an evidence judgment."
                     .to_string(),
             actor: SearchActionActor::Ai,
+            engine: None,
+            command: None,
             can_auto_run: false,
             headed_required: false,
             result_ranks: official_ranks,
@@ -722,6 +883,8 @@ fn search_action_hints(
             action: "extract".to_string(),
             detail: "This query looks numeric or limit-sensitive. Prefer limits, pricing, release-note, or reference pages before answering.".to_string(),
             actor: SearchActionActor::Ai,
+            engine: None,
+            command: None,
             can_auto_run: true,
             headed_required: false,
             result_ranks: recommended_ranks.to_vec(),
@@ -731,6 +894,8 @@ fn search_action_hints(
             action: "read-view".to_string(),
             detail: "Use read-view on the most relevant tabs first, then run extract only after the scope looks right.".to_string(),
             actor: SearchActionActor::Ai,
+            engine: None,
+            command: None,
             can_auto_run: true,
             headed_required: false,
             result_ranks: recommended_ranks.to_vec(),
@@ -774,4 +939,169 @@ fn truncate_plain_text(text: &str, limit: usize) -> String {
         .take(limit.saturating_sub(1))
         .collect::<String>()
         + "…"
+}
+
+fn canonical_or_raw(path: PathBuf) -> PathBuf {
+    path.canonicalize().unwrap_or(path)
+}
+
+#[cfg(test)]
+mod tests {
+    use std::{
+        fs,
+        path::PathBuf,
+        sync::{Mutex, OnceLock},
+        time::{SystemTime, UNIX_EPOCH},
+    };
+
+    use super::{
+        default_or_legacy_search_session_file_for, default_search_output_dir,
+        infer_search_engine_from_session_file, latest_search_session_file_for,
+        latest_search_session_file_in, load_preferred_search_engine_from,
+        save_preferred_search_engine_to, SearchEngine,
+    };
+
+    fn env_lock() -> &'static Mutex<()> {
+        static LOCK: OnceLock<Mutex<()>> = OnceLock::new();
+        LOCK.get_or_init(|| Mutex::new(()))
+    }
+
+    fn temporary_directory(prefix: &str) -> PathBuf {
+        let unique = SystemTime::now()
+            .duration_since(UNIX_EPOCH)
+            .expect("time should move forward")
+            .as_nanos();
+        let path = std::env::temp_dir().join(format!("touch-browser-{prefix}-{unique}"));
+        fs::create_dir_all(&path).expect("temporary directory should exist");
+        path
+    }
+
+    #[test]
+    fn default_search_output_dir_respects_explicit_data_root() {
+        let _guard = env_lock()
+            .lock()
+            .unwrap_or_else(|poisoned| poisoned.into_inner());
+        let data_root = temporary_directory("search-data-root");
+        let previous = std::env::var_os("TOUCH_BROWSER_DATA_ROOT");
+        std::env::set_var("TOUCH_BROWSER_DATA_ROOT", &data_root);
+
+        assert_eq!(
+            default_search_output_dir(),
+            data_root
+                .canonicalize()
+                .unwrap_or(data_root.clone())
+                .join("browser-search")
+        );
+
+        restore_env("TOUCH_BROWSER_DATA_ROOT", previous);
+    }
+
+    #[test]
+    fn resolve_search_session_file_prefers_legacy_session_when_new_default_is_missing() {
+        let data_root = temporary_directory("search-data-root-new");
+        let repo_root = temporary_directory("search-legacy-repo");
+        let legacy_session = repo_root.join("output/browser-search/google.search-session.json");
+        fs::create_dir_all(
+            legacy_session
+                .parent()
+                .expect("legacy session parent should exist"),
+        )
+        .expect("legacy session parent should be created");
+        fs::write(&legacy_session, "{}").expect("legacy session file should exist");
+
+        assert_eq!(
+            default_or_legacy_search_session_file_for(
+                SearchEngine::Google,
+                &data_root.join("browser-search"),
+                Some(&repo_root.join("output/browser-search")),
+            )
+            .canonicalize()
+            .unwrap_or_else(|_| {
+                default_or_legacy_search_session_file_for(
+                    SearchEngine::Google,
+                    &data_root.join("browser-search"),
+                    Some(&repo_root.join("output/browser-search")),
+                )
+            }),
+            legacy_session
+                .canonicalize()
+                .unwrap_or_else(|_| legacy_session.clone())
+        );
+    }
+
+    #[test]
+    fn resolve_latest_search_session_file_checks_legacy_output_dir() {
+        let data_root = temporary_directory("search-data-root-empty");
+        let repo_root = temporary_directory("search-legacy-latest");
+        let legacy_session = repo_root.join("output/browser-search/brave.search-session.json");
+        fs::create_dir_all(
+            legacy_session
+                .parent()
+                .expect("legacy session parent should exist"),
+        )
+        .expect("legacy session parent should be created");
+        fs::write(&legacy_session, "{}").expect("legacy latest session file should exist");
+
+        assert_eq!(
+            latest_search_session_file_for(
+                &data_root.join("browser-search"),
+                Some(&repo_root.join("output/browser-search")),
+            )
+            .expect("legacy session should resolve")
+            .map(|path| path.canonicalize().unwrap_or(path)),
+            Some(
+                legacy_session
+                    .canonicalize()
+                    .unwrap_or_else(|_| legacy_session.clone())
+            )
+        );
+    }
+
+    #[test]
+    fn preferred_search_engine_round_trips_through_metadata_file() {
+        let data_root = temporary_directory("search-preferred-engine");
+        let metadata_file = data_root.join("browser-search/preferred-engine.json");
+
+        assert_eq!(
+            load_preferred_search_engine_from(&metadata_file)
+                .expect("preferred engine should load"),
+            None
+        );
+        save_preferred_search_engine_to(&metadata_file, SearchEngine::Brave)
+            .expect("preferred engine metadata should save");
+        assert_eq!(
+            load_preferred_search_engine_from(&metadata_file)
+                .expect("preferred engine should reload"),
+            Some(SearchEngine::Brave)
+        );
+    }
+
+    #[test]
+    fn infers_latest_search_engine_from_latest_session_file_when_metadata_is_missing() {
+        let data_root = temporary_directory("search-latest-engine");
+        let search_output_dir = data_root.join("browser-search");
+        fs::create_dir_all(&search_output_dir).expect("search output dir should exist");
+
+        let google_session = search_output_dir.join("google.search-session.json");
+        let brave_session = search_output_dir.join("brave.search-session.json");
+        fs::write(&google_session, "{}\n").expect("google session should exist");
+        std::thread::sleep(std::time::Duration::from_millis(20));
+        fs::write(&brave_session, "{}\n").expect("brave session should exist");
+
+        let latest = latest_search_session_file_in(&search_output_dir)
+            .expect("latest session should resolve")
+            .expect("latest session should exist");
+        assert_eq!(
+            infer_search_engine_from_session_file(&latest),
+            Some(SearchEngine::Brave)
+        );
+    }
+
+    fn restore_env(key: &str, value: Option<std::ffi::OsString>) {
+        if let Some(value) = value {
+            std::env::set_var(key, value);
+        } else {
+            std::env::remove_var(key);
+        }
+    }
 }

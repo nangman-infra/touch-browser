@@ -52,6 +52,8 @@
     "verify:semantic-models": "node scripts/verify-semantic-model-runners.mjs",
     "quality:sonar-reports": "mkdir -p sonar-reports && cargo clippy --workspace --all-targets --message-format=json --quiet > sonar-reports/clippy.json",
     "quality:sonar-coverage": "pnpm run test:adapter:sonar && node scripts/normalize-sonar-lcov.mjs sonar-reports/adapters-playwright/lcov.info adapters/playwright",
+    "build:playwright-runtime": "pnpm exec tsc -p adapters/playwright/tsconfig.runtime.json",
+    "build:standalone-bundle": "bash scripts/build-standalone-bundle.sh",
     "adapter:playwright": "pnpm exec tsx adapters/playwright/src/index.ts",
     "evals:smoke": "pnpm exec tsx evals/src/index.ts",
     "mcp:bridge": "node integrations/mcp/bridge/index.mjs",

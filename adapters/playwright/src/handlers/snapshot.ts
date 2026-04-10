@@ -21,6 +21,7 @@ export async function handleSnapshot(
   const contextDir = asString(request.params?.contextDir);
   const profileDir = asString(request.params?.profileDir);
   const searchIdentity = asBoolean(request.params?.searchIdentity) ?? false;
+  const manualRecovery = asBoolean(request.params?.manualRecovery) ?? false;
 
   if (!url && !html && !contextDir && !profileDir) {
     return failure(
@@ -39,6 +40,7 @@ export async function handleSnapshot(
         contextDir,
         profileDir,
         searchIdentity,
+        manualRecovery,
       ),
       async (page) => {
         await maybeExpandEvidenceSelectors(page);
