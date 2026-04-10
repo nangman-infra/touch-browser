@@ -2,7 +2,7 @@
 
 ![Terminal demo](demo/terminal-demo.gif)
 
-[![License: BUSL-1.1](https://img.shields.io/badge/license-BUSL--1.1-blue.svg)](LICENSE)
+[![License: MPL-2.0](https://img.shields.io/badge/license-MPL--2.0-brightgreen.svg)](LICENSE)
 [![Status: pilot-ready](https://img.shields.io/badge/status-pilot--ready-2d7d46.svg)](doc/RELEASE_READINESS_SPEC.md)
 
 Turn any web page into structured, citable evidence for AI agents.
@@ -151,9 +151,10 @@ Evidence output note:
 
 ## License
 
-This repository now uses `BUSL-1.1`.
+This repository now uses `MPL-2.0`.
 
-- allowed without a commercial license: self-hosted evaluation, development, testing
-- not allowed without a commercial license: production, hosted, or commercial operation
+- commercial and non-commercial use are allowed
+- if you distribute modified MPL-covered files, those covered files stay under `MPL-2.0`
+- separate files in a larger work can use different terms
 - full legal text: [LICENSE](LICENSE)
 - plain-language policy: [LICENSE-POLICY.md](LICENSE-POLICY.md)

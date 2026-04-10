@@ -13,7 +13,7 @@ This directory is the usage and operations index for the uploaded repository.
 | connect an external agent over MCP | [MCP_BRIDGE_SPEC.md](MCP_BRIDGE_SPEC.md) |
 | run the pilot package | [PILOT_PACKAGE_SPEC.md](PILOT_PACKAGE_SPEC.md) |
 | deploy the self-hosted operations package | [OPERATIONS_SECURITY_PACKAGE_SPEC.md](OPERATIONS_SECURITY_PACKAGE_SPEC.md) |
-| understand license boundaries | [../LICENSE-POLICY.md](../LICENSE-POLICY.md) |
+| understand MPL-2.0 terms | [../LICENSE-POLICY.md](../LICENSE-POLICY.md) |
 | understand the external benchmark context | [EXTERNAL_BASELINE_AND_POSITIONING.md](EXTERNAL_BASELINE_AND_POSITIONING.md) |
 | inspect documentation link integrity | [DOC_LINK_INTEGRITY_SPEC.md](DOC_LINK_INTEGRITY_SPEC.md) |
 | inspect the markdown-baseline comparison benchmark | [TOOL_COMPARISON_BENCHMARK_SPEC.md](TOOL_COMPARISON_BENCHMARK_SPEC.md) |

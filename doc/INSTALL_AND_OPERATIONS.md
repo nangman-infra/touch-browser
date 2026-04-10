@@ -162,8 +162,10 @@ pnpm run pilot:real-user-research
 
 ## 7. License
 
-This repository is distributed under `BUSL-1.1`.
+This repository is distributed under `MPL-2.0`.
 
-- allowed without a commercial license: self-hosted evaluation, development, testing
-- production, hosted, or commercial operation requires a commercial license
+- commercial use is allowed
+- if you distribute changes to MPL-covered files, those covered files must stay
+  available under `MPL-2.0`
+- larger works may include separate files under different terms
 - see [LICENSE](../LICENSE) and [LICENSE-POLICY.md](../LICENSE-POLICY.md)
