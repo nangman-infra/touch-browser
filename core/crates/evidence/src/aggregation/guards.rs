@@ -637,6 +637,13 @@ fn predicate_guard_check(
                 raw_context
             }
         };
+        if opposition.label == "execution-model"
+            && !claim_context_tokens
+                .iter()
+                .any(|token| is_execution_model_context_token(token))
+        {
+            continue;
+        }
         let subject_anchor_tokens =
             predicate_subject_anchor_tokens(claim_anchor_tokens, opposition);
         let matching_blocks = support_blocks_with_matching_predicate(
@@ -727,7 +734,7 @@ fn support_blocks_with_matching_predicate(
         .iter()
         .filter_map(|candidate| {
             let search_text = block_search_text(candidate.block);
-            let candidate_tokens = tokenize_all(&search_text);
+            let candidate_tokens = normalized_sequence_tokens(&search_text);
             let candidate_polarity = detect_predicate_polarity(&candidate_tokens, opposition);
             if candidate_polarity != claim_polarity {
                 return None;
@@ -1124,11 +1131,11 @@ fn opposition_matches_token(opposition_terms: &[&str], token: &str) -> bool {
 fn tokens_match_opposition_terms(tokens: &[String], opposition_terms: &[&str]) -> bool {
     opposition_terms
         .iter()
-        .any(|term| token_sequence_position(tokens, term).is_some())
+        .any(|term| predicate_term_position(tokens, term).is_some())
 }
 
-fn token_sequence_position(tokens: &[String], term: &str) -> Option<usize> {
-    let term_tokens = tokenize_all(term);
+fn predicate_term_position(tokens: &[String], term: &str) -> Option<usize> {
+    let term_tokens = normalized_sequence_tokens(term);
     if term_tokens.is_empty() || tokens.len() < term_tokens.len() {
         return None;
     }
@@ -1166,7 +1173,7 @@ fn document_blocks_with_opposite_predicate(
         .iter()
         .filter_map(|block| {
             let search_text = block_search_text(block);
-            let block_tokens = tokenize_all(&search_text);
+            let block_tokens = normalized_sequence_tokens(&search_text);
             let block_polarity = detect_predicate_polarity(&block_tokens, opposition);
             if !predicate_polarities_conflict(claim_polarity, block_polarity) {
                 return None;
@@ -1221,7 +1228,7 @@ fn claim_specific_predicate_terms<'a>(
     let specific_terms = polarity_terms
         .iter()
         .copied()
-        .filter(|term| token_sequence_position(claim_tokens, term).is_some())
+        .filter(|term| predicate_term_position(claim_tokens, term).is_some())
         .collect::<Vec<_>>();
 
     if specific_terms.is_empty() {
@@ -1234,7 +1241,7 @@ fn claim_specific_predicate_terms<'a>(
 fn block_explicitly_asserts_predicate(
     block_tokens: &[String],
     opposition: &PredicateOpposition,
-    _polarity: PredicatePolarity,
+    polarity: PredicatePolarity,
     predicate_terms: &[&str],
     claim_context_tokens: &[String],
 ) -> bool {
@@ -1244,7 +1251,7 @@ fn block_explicitly_asserts_predicate(
 
     let Some(predicate_index) = predicate_terms
         .iter()
-        .filter_map(|term| token_sequence_position(block_tokens, term))
+        .filter_map(|term| predicate_term_position(block_tokens, term))
         .min()
     else {
         return false;
@@ -1259,6 +1266,13 @@ fn block_explicitly_asserts_predicate(
     }
 
     predicate_context_matches(claim_context_tokens, block_tokens, predicate_terms)
+        || execution_model_language_context_matches(
+            opposition,
+            polarity,
+            claim_context_tokens,
+            block_tokens,
+            predicate_index,
+        )
 }
 
 fn predicate_has_subordinate_target(
@@ -1285,9 +1299,9 @@ fn predicate_context_tokens(tokens: &[String], opposition_terms: &[&str]) -> Vec
 
         let context = tokens[index + 1..]
             .iter()
+            .filter_map(|token| normalize_predicate_context_token(token))
             .filter(|token| !PREDICATE_CONTEXT_STOP_WORDS.contains(&token.as_str()))
             .take(10)
-            .cloned()
             .collect::<Vec<_>>();
         if !context.is_empty() {
             return context;
@@ -1309,6 +1323,81 @@ fn predicate_context_matches(
     let support_context_tokens = predicate_context_tokens(support_tokens, support_predicate_terms);
     !support_context_tokens.is_empty()
         && token_overlap_ratio(claim_context_tokens, &support_context_tokens) >= 0.5
+}
+
+fn normalize_predicate_context_token(token: &str) -> Option<String> {
+    if token.is_empty() {
+        return None;
+    }
+
+    let normalized = if contains_hangul(token) {
+        strip_hangul_context_suffix(token)
+    } else {
+        token.to_string()
+    };
+
+    (!normalized.is_empty()).then_some(normalized)
+}
+
+fn normalized_sequence_tokens(text: &str) -> Vec<String> {
+    normalize_text(text)
+        .split_whitespace()
+        .map(ToString::to_string)
+        .collect()
+}
+
+fn execution_model_language_context_matches(
+    opposition: &PredicateOpposition,
+    polarity: PredicatePolarity,
+    claim_context_tokens: &[String],
+    block_tokens: &[String],
+    predicate_index: usize,
+) -> bool {
+    if opposition.label != "execution-model" || polarity != PredicatePolarity::Negative {
+        return false;
+    }
+
+    if !claim_context_tokens
+        .iter()
+        .all(|token| is_language_context_token(token))
+    {
+        return false;
+    }
+
+    block_tokens
+        .iter()
+        .skip(predicate_index + 1)
+        .take(8)
+        .any(|token| is_language_context_token(token))
+}
+
+fn is_language_context_token(token: &str) -> bool {
+    LANGUAGE_CONTEXT_TOKENS
+        .iter()
+        .any(|candidate| tokens_match(token, candidate))
+}
+
+fn is_execution_model_context_token(token: &str) -> bool {
+    EXECUTION_MODEL_CONTEXT_TOKENS
+        .iter()
+        .any(|candidate| tokens_match(token, candidate))
+}
+
+fn contains_hangul(text: &str) -> bool {
+    text.chars()
+        .any(|character| matches!(character as u32, 0xac00..=0xd7af))
+}
+
+fn strip_hangul_context_suffix(token: &str) -> String {
+    for suffix in HANGUL_CONTEXT_SUFFIXES {
+        if let Some(stripped) = token.strip_suffix(suffix) {
+            if stripped.chars().count() >= 2 {
+                return stripped.to_string();
+            }
+        }
+    }
+
+    token.to_string()
 }
 
 fn next_action_hint_for_failures(failures: &[EvidenceGuardFailure]) -> Option<String> {
@@ -1421,10 +1510,53 @@ const PREDICATE_CONTEXT_STOP_WORDS: &[&str] = &[
     "a", "an", "and", "as", "at", "be", "by", "for", "from", "in", "is", "it", "its", "of", "or",
     "the", "to", "with",
 ];
+const HANGUL_CONTEXT_SUFFIXES: &[&str] = &[
+    "으로부터",
+    "으로써",
+    "으로서",
+    "에서는",
+    "에서",
+    "에게",
+    "으로",
+    "이다",
+    "이자",
+    "처럼",
+    "하다",
+    "하는",
+    "하며",
+    "하고",
+    "한",
+    "는",
+    "은",
+    "이",
+    "가",
+    "을",
+    "를",
+    "에",
+    "의",
+    "로",
+];
+const LANGUAGE_CONTEXT_TOKENS: &[&str] = &["language", "languages", "언어", "语言"];
+const EXECUTION_MODEL_CONTEXT_TOKENS: &[&str] = &[
+    "language",
+    "languages",
+    "runtime",
+    "runtimes",
+    "model",
+    "models",
+    "언어",
+    "语言",
+    "런타임",
+    "모델",
+];
 
 #[cfg(test)]
 mod tests {
-    use super::{numeric_expressions, numeric_expressions_match};
+    use super::{
+        block_explicitly_asserts_predicate, normalized_sequence_tokens, numeric_expressions,
+        numeric_expressions_match, predicate_context_tokens, PredicateOpposition,
+        PredicatePolarity,
+    };
 
     #[test]
     fn numeric_expressions_match_korean_numeric_dates_with_english_month_names() {
@@ -1437,6 +1569,32 @@ mod tests {
         assert!(
             numeric_expressions_match(&claim_numeric, &support_numeric),
             "expected Korean numeric date tokens to align with English month-name dates"
+        );
+    }
+
+    #[test]
+    fn execution_model_guard_accepts_korean_interpreter_language_support() {
+        let opposition = PredicateOpposition {
+            label: "execution-model",
+            positive: &["compiled", "컴파일", "编译"],
+            negative: &["interpreted", "interpret", "인터프리", "해석", "解释"],
+            subordinate_targets: &["byte", "bytes", "bytecode", "code", "codes", "source"],
+        };
+        let claim_tokens = normalized_sequence_tokens("파이썬은 인터프리터 언어이다.");
+        let claim_context = predicate_context_tokens(&claim_tokens, &["인터프리"]);
+        let block_tokens = normalized_sequence_tokens(
+            "파이썬은 인터프리터를 사용하는 객체지향 언어이자 플랫폼에 독립적인 언어다.",
+        );
+
+        assert!(
+            block_explicitly_asserts_predicate(
+                &block_tokens,
+                &opposition,
+                PredicatePolarity::Negative,
+                &["인터프리"],
+                &claim_context,
+            ),
+            "expected explicit interpreter-language phrasing to satisfy the execution-model predicate guard"
         );
     }
 }

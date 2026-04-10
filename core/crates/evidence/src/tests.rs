@@ -1234,6 +1234,21 @@ fn rejects_compiled_language_claim_on_live_like_python_snapshot() {
 }
 
 #[test]
+fn supports_interpreted_language_claim_on_live_like_python_snapshot() {
+    let snapshot = live_like_python_snapshot();
+
+    let report = extract_report(
+        snapshot,
+        vec![claim("c1", "파이썬은 인터프리터 언어이다.")],
+        "2026-04-10T00:00:00+09:00",
+        SourceRisk::Low,
+        Some("파이썬".to_string()),
+    );
+
+    assert_supported_only(&report);
+}
+
+#[test]
 fn supports_asynchronous_runtime_claim_when_synchronous_is_only_contrastive() {
     let snapshot = nodejs_about_snapshot(SnapshotBlockRole::Supporting);
 
