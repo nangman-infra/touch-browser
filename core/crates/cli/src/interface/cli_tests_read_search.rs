@@ -25,87 +25,56 @@ fn dispatches_read_view_for_fixture_target() {
 
 #[test]
 fn read_view_output_changes_when_main_only_is_enabled() {
-    let snapshot = SnapshotDocument {
-        version: touch_browser_contracts::CONTRACT_VERSION.to_string(),
-        stable_ref_version: touch_browser_contracts::STABLE_REF_VERSION.to_string(),
-        source: SnapshotSource {
-            source_url: "https://example.com/read-view".to_string(),
-            source_type: SourceType::Http,
-            title: Some("Read View".to_string()),
-        },
-        budget: SnapshotBudget {
-            requested_tokens: 128,
-            estimated_tokens: 24,
-            emitted_tokens: 24,
-            truncated: false,
-        },
-        blocks: vec![
-            SnapshotBlock {
-                version: touch_browser_contracts::CONTRACT_VERSION.to_string(),
-                id: "b1".to_string(),
-                kind: SnapshotBlockKind::Link,
-                stable_ref: "rnav:link:toc".to_string(),
-                role: SnapshotBlockRole::Content,
-                text: "Contents".to_string(),
-                attributes: Default::default(),
-                evidence: SnapshotEvidence {
-                    source_url: "https://example.com/read-view".to_string(),
-                    source_type: SourceType::Http,
-                    dom_path_hint: Some("html > body > nav > a".to_string()),
-                    byte_range_start: None,
-                    byte_range_end: None,
-                },
-            },
-            SnapshotBlock {
-                version: touch_browser_contracts::CONTRACT_VERSION.to_string(),
-                id: "b2".to_string(),
-                kind: SnapshotBlockKind::Heading,
-                stable_ref: "rmain:heading:title".to_string(),
-                role: SnapshotBlockRole::Content,
-                text: "Read View".to_string(),
-                attributes: Default::default(),
-                evidence: SnapshotEvidence {
-                    source_url: "https://example.com/read-view".to_string(),
-                    source_type: SourceType::Http,
-                    dom_path_hint: Some("html > body > main > h1".to_string()),
-                    byte_range_start: None,
-                    byte_range_end: None,
-                },
-            },
-            SnapshotBlock {
-                version: touch_browser_contracts::CONTRACT_VERSION.to_string(),
-                id: "b3".to_string(),
-                kind: SnapshotBlockKind::Text,
-                stable_ref: "rmain:text:body".to_string(),
-                role: SnapshotBlockRole::Content,
-                text: "Main article body.".to_string(),
-                attributes: Default::default(),
-                evidence: SnapshotEvidence {
-                    source_url: "https://example.com/read-view".to_string(),
-                    source_type: SourceType::Http,
-                    dom_path_hint: Some("html > body > main > p".to_string()),
-                    byte_range_start: None,
-                    byte_range_end: None,
-                },
-            },
-            SnapshotBlock {
-                version: touch_browser_contracts::CONTRACT_VERSION.to_string(),
-                id: "b4".to_string(),
-                kind: SnapshotBlockKind::Link,
-                stable_ref: "rfooter:link:privacy".to_string(),
-                role: SnapshotBlockRole::Content,
-                text: "Privacy".to_string(),
-                attributes: Default::default(),
-                evidence: SnapshotEvidence {
-                    source_url: "https://example.com/read-view".to_string(),
-                    source_type: SourceType::Http,
-                    dom_path_hint: Some("html > body > footer > a".to_string()),
-                    byte_range_start: None,
-                    byte_range_end: None,
-                },
-            },
+    let source_url = "https://example.com/read-view";
+    let snapshot = test_snapshot_document(
+        source_url,
+        SourceType::Http,
+        "Read View",
+        128,
+        24,
+        vec![
+            test_snapshot_block(
+                source_url,
+                SourceType::Http,
+                "b1",
+                SnapshotBlockKind::Link,
+                "rnav:link:toc",
+                SnapshotBlockRole::Content,
+                "Contents",
+                "html > body > nav > a",
+            ),
+            test_snapshot_block(
+                source_url,
+                SourceType::Http,
+                "b2",
+                SnapshotBlockKind::Heading,
+                "rmain:heading:title",
+                SnapshotBlockRole::Content,
+                "Read View",
+                "html > body > main > h1",
+            ),
+            test_snapshot_block(
+                source_url,
+                SourceType::Http,
+                "b3",
+                SnapshotBlockKind::Text,
+                "rmain:text:body",
+                SnapshotBlockRole::Content,
+                "Main article body.",
+                "html > body > main > p",
+            ),
+            test_snapshot_block(
+                source_url,
+                SourceType::Http,
+                "b4",
+                SnapshotBlockKind::Link,
+                "rfooter:link:privacy",
+                SnapshotBlockRole::Content,
+                "Privacy",
+                "html > body > footer > a",
+            ),
         ],
-    };
+    );
 
     let full = ReadViewOutput::new(&snapshot, None, None, false);
     let main = ReadViewOutput::new(&snapshot, None, None, true);
@@ -165,71 +134,46 @@ fn read_view_main_only_filters_wikipedia_language_header_noise() {
 
 #[test]
 fn read_view_main_only_reports_poor_quality_for_navigation_heavy_output() {
-    let snapshot = SnapshotDocument {
-        version: touch_browser_contracts::CONTRACT_VERSION.to_string(),
-        stable_ref_version: touch_browser_contracts::STABLE_REF_VERSION.to_string(),
-        source: SnapshotSource {
-            source_url: "https://example.com/noisy-shell".to_string(),
-            source_type: SourceType::Http,
-            title: Some("Noisy Shell".to_string()),
-        },
-        budget: SnapshotBudget {
-            requested_tokens: 128,
-            estimated_tokens: 24,
-            emitted_tokens: 24,
-            truncated: false,
-        },
-        blocks: vec![
-            SnapshotBlock {
-                version: touch_browser_contracts::CONTRACT_VERSION.to_string(),
-                id: "b1".to_string(),
-                kind: SnapshotBlockKind::Link,
-                stable_ref: "rmain:link:docs".to_string(),
-                role: SnapshotBlockRole::Content,
-                text: "Docs".to_string(),
-                attributes: Default::default(),
-                evidence: SnapshotEvidence {
-                    source_url: "https://example.com/noisy-shell".to_string(),
-                    source_type: SourceType::Http,
-                    dom_path_hint: Some("html > body > main > nav > a".to_string()),
-                    byte_range_start: None,
-                    byte_range_end: None,
-                },
-            },
-            SnapshotBlock {
-                version: touch_browser_contracts::CONTRACT_VERSION.to_string(),
-                id: "b2".to_string(),
-                kind: SnapshotBlockKind::Link,
-                stable_ref: "rmain:link:pricing".to_string(),
-                role: SnapshotBlockRole::Content,
-                text: "Pricing".to_string(),
-                attributes: Default::default(),
-                evidence: SnapshotEvidence {
-                    source_url: "https://example.com/noisy-shell".to_string(),
-                    source_type: SourceType::Http,
-                    dom_path_hint: Some("html > body > main > nav > a:nth-of-type(2)".to_string()),
-                    byte_range_start: None,
-                    byte_range_end: None,
-                },
-            },
-            SnapshotBlock {
-                version: touch_browser_contracts::CONTRACT_VERSION.to_string(),
-                id: "b3".to_string(),
-                kind: SnapshotBlockKind::Text,
-                stable_ref: "rmain:text:cta".to_string(),
-                role: SnapshotBlockRole::Content,
-                text: "Start free".to_string(),
-                attributes: Default::default(),
-                evidence: SnapshotEvidence {
-                    source_url: "https://example.com/noisy-shell".to_string(),
-                    source_type: SourceType::Http,
-                    dom_path_hint: Some("html > body > main > div.hero > p".to_string()),
-                    byte_range_start: None,
-                    byte_range_end: None,
-                },
-            },
+    let source_url = "https://example.com/noisy-shell";
+    let snapshot = test_snapshot_document(
+        source_url,
+        SourceType::Http,
+        "Noisy Shell",
+        128,
+        24,
+        vec![
+            test_snapshot_block(
+                source_url,
+                SourceType::Http,
+                "b1",
+                SnapshotBlockKind::Link,
+                "rmain:link:docs",
+                SnapshotBlockRole::Content,
+                "Docs",
+                "html > body > main > nav > a",
+            ),
+            test_snapshot_block(
+                source_url,
+                SourceType::Http,
+                "b2",
+                SnapshotBlockKind::Link,
+                "rmain:link:pricing",
+                SnapshotBlockRole::Content,
+                "Pricing",
+                "html > body > main > nav > a:nth-of-type(2)",
+            ),
+            test_snapshot_block(
+                source_url,
+                SourceType::Http,
+                "b3",
+                SnapshotBlockKind::Text,
+                "rmain:text:cta",
+                SnapshotBlockRole::Content,
+                "Start free",
+                "html > body > main > div.hero > p",
+            ),
         ],
-    };
+    );
 
     let main = ReadViewOutput::new(&snapshot, None, None, true);
 
@@ -244,79 +188,56 @@ fn read_view_main_only_reports_poor_quality_for_navigation_heavy_output() {
 
 #[test]
 fn structures_google_style_search_results_from_snapshot_blocks() {
-    let snapshot = SnapshotDocument {
-        version: "1.0.0".to_string(),
-        stable_ref_version: "1".to_string(),
-        source: SnapshotSource {
-            source_url: "https://www.google.com/search?q=lambda+timeout".to_string(),
-            source_type: SourceType::Playwright,
-            title: Some("lambda timeout - Google Search".to_string()),
-        },
-        budget: SnapshotBudget {
-            requested_tokens: DEFAULT_SEARCH_TOKENS,
-            estimated_tokens: 256,
-            emitted_tokens: 256,
-            truncated: false,
-        },
-        blocks: vec![
-            SnapshotBlock {
-                version: "1.0.0".to_string(),
-                id: "b1".to_string(),
-                kind: SnapshotBlockKind::Link,
-                stable_ref: "rmain:link:aws-lambda-quotas".to_string(),
-                role: SnapshotBlockRole::Content,
-                text: "Lambda quotas".to_string(),
-                attributes: std::collections::BTreeMap::from([(
+    let source_url = "https://www.google.com/search?q=lambda+timeout";
+    let snapshot = test_snapshot_document(
+        source_url,
+        SourceType::Playwright,
+        "lambda timeout - Google Search",
+        DEFAULT_SEARCH_TOKENS,
+        256,
+        vec![
+            test_snapshot_block_with_attributes(
+                source_url,
+                SourceType::Playwright,
+                "b1",
+                SnapshotBlockKind::Link,
+                "rmain:link:aws-lambda-quotas",
+                SnapshotBlockRole::Content,
+                "Lambda quotas",
+                "html > body > main > a:nth-of-type(1)",
+                std::collections::BTreeMap::from([(
                     "href".to_string(),
                     json!(
                         "https://docs.aws.amazon.com/lambda/latest/dg/gettingstarted-limits.html"
                     ),
                 )]),
-                evidence: SnapshotEvidence {
-                    source_url: "https://www.google.com/search?q=lambda+timeout".to_string(),
-                    source_type: SourceType::Playwright,
-                    dom_path_hint: Some("html > body > main > a:nth-of-type(1)".to_string()),
-                    byte_range_start: None,
-                    byte_range_end: None,
-                },
-            },
-            SnapshotBlock {
-                version: "1.0.0".to_string(),
-                id: "b2".to_string(),
-                kind: SnapshotBlockKind::Text,
-                stable_ref: "rmain:text:aws-lambda-quotas-snippet".to_string(),
-                role: SnapshotBlockRole::Supporting,
-                text: "Function timeout: 900 seconds (15 minutes).".to_string(),
-                attributes: Default::default(),
-                evidence: SnapshotEvidence {
-                    source_url: "https://www.google.com/search?q=lambda+timeout".to_string(),
-                    source_type: SourceType::Playwright,
-                    dom_path_hint: Some("html > body > main > p:nth-of-type(1)".to_string()),
-                    byte_range_start: None,
-                    byte_range_end: None,
-                },
-            },
-            SnapshotBlock {
-                version: "1.0.0".to_string(),
-                id: "b3".to_string(),
-                kind: SnapshotBlockKind::Link,
-                stable_ref: "rmain:link:google-help".to_string(),
-                role: SnapshotBlockRole::PrimaryNav,
-                text: "Google Help".to_string(),
-                attributes: std::collections::BTreeMap::from([(
+            ),
+            test_snapshot_block(
+                source_url,
+                SourceType::Playwright,
+                "b2",
+                SnapshotBlockKind::Text,
+                "rmain:text:aws-lambda-quotas-snippet",
+                SnapshotBlockRole::Supporting,
+                "Function timeout: 900 seconds (15 minutes).",
+                "html > body > main > p:nth-of-type(1)",
+            ),
+            test_snapshot_block_with_attributes(
+                source_url,
+                SourceType::Playwright,
+                "b3",
+                SnapshotBlockKind::Link,
+                "rmain:link:google-help",
+                SnapshotBlockRole::PrimaryNav,
+                "Google Help",
+                "html > body > nav > a:nth-of-type(1)",
+                std::collections::BTreeMap::from([(
                     "href".to_string(),
                     json!("https://support.google.com/websearch"),
                 )]),
-                evidence: SnapshotEvidence {
-                    source_url: "https://www.google.com/search?q=lambda+timeout".to_string(),
-                    source_type: SourceType::Playwright,
-                    dom_path_hint: Some("html > body > nav > a:nth-of-type(1)".to_string()),
-                    byte_range_start: None,
-                    byte_range_end: None,
-                },
-            },
+            ),
         ],
-    };
+    );
 
     let report = build_search_report(
         SearchEngine::Google,
@@ -343,22 +264,14 @@ fn structures_google_style_search_results_from_snapshot_blocks() {
 
 #[test]
 fn structures_search_results_from_html_when_snapshot_is_sparse() {
-    let snapshot = SnapshotDocument {
-        version: "1.0.0".to_string(),
-        stable_ref_version: "1".to_string(),
-        source: SnapshotSource {
-            source_url: "https://search.brave.com/search?q=lambda+timeout".to_string(),
-            source_type: SourceType::Playwright,
-            title: Some("lambda timeout - Brave Search".to_string()),
-        },
-        budget: SnapshotBudget {
-            requested_tokens: DEFAULT_SEARCH_TOKENS,
-            estimated_tokens: 64,
-            emitted_tokens: 64,
-            truncated: false,
-        },
-        blocks: Vec::new(),
-    };
+    let snapshot = test_snapshot_document(
+        "https://search.brave.com/search?q=lambda+timeout",
+        SourceType::Playwright,
+        "lambda timeout - Brave Search",
+        DEFAULT_SEARCH_TOKENS,
+        64,
+        Vec::new(),
+    );
 
     let html = r#"
         <html>
@@ -396,22 +309,14 @@ fn structures_search_results_from_html_when_snapshot_is_sparse() {
 
 #[test]
 fn deduplicates_youtube_timestamp_variants_in_search_results() {
-    let snapshot = SnapshotDocument {
-        version: "1.0.0".to_string(),
-        stable_ref_version: "1".to_string(),
-        source: SnapshotSource {
-            source_url: "https://www.google.com/search?q=postgresql+mvcc".to_string(),
-            source_type: SourceType::Playwright,
-            title: Some("postgresql mvcc - Google Search".to_string()),
-        },
-        budget: SnapshotBudget {
-            requested_tokens: DEFAULT_SEARCH_TOKENS,
-            estimated_tokens: 64,
-            emitted_tokens: 64,
-            truncated: false,
-        },
-        blocks: Vec::new(),
-    };
+    let snapshot = test_snapshot_document(
+        "https://www.google.com/search?q=postgresql+mvcc",
+        SourceType::Playwright,
+        "postgresql mvcc - Google Search",
+        DEFAULT_SEARCH_TOKENS,
+        64,
+        Vec::new(),
+    );
     let html = r#"
         <html>
           <body>
@@ -453,38 +358,23 @@ fn deduplicates_youtube_timestamp_variants_in_search_results() {
 
 #[test]
 fn marks_google_sorry_pages_as_search_challenges() {
-    let snapshot = SnapshotDocument {
-        version: "1.0.0".to_string(),
-        stable_ref_version: "1".to_string(),
-        source: SnapshotSource {
-            source_url: "https://www.google.com/search?q=lambda+timeout".to_string(),
-            source_type: SourceType::Playwright,
-            title: Some("Traffic verification".to_string()),
-        },
-        budget: SnapshotBudget {
-            requested_tokens: DEFAULT_SEARCH_TOKENS,
-            estimated_tokens: 96,
-            emitted_tokens: 96,
-            truncated: false,
-        },
-        blocks: vec![SnapshotBlock {
-            version: "1.0.0".to_string(),
-            id: "b1".to_string(),
-            kind: SnapshotBlockKind::Text,
-            stable_ref: "rmain:text:captcha".to_string(),
-            role: SnapshotBlockRole::Supporting,
-            text: "Google detected unusual traffic and requires reCAPTCHA verification."
-                .to_string(),
-            attributes: Default::default(),
-            evidence: SnapshotEvidence {
-                source_url: "https://www.google.com/sorry/index".to_string(),
-                source_type: SourceType::Playwright,
-                dom_path_hint: Some("html > body > main".to_string()),
-                byte_range_start: None,
-                byte_range_end: None,
-            },
-        }],
-    };
+    let snapshot = test_snapshot_document(
+        "https://www.google.com/search?q=lambda+timeout",
+        SourceType::Playwright,
+        "Traffic verification",
+        DEFAULT_SEARCH_TOKENS,
+        96,
+        vec![test_snapshot_block(
+            "https://www.google.com/sorry/index",
+            SourceType::Playwright,
+            "b1",
+            SnapshotBlockKind::Text,
+            "rmain:text:captcha",
+            SnapshotBlockRole::Supporting,
+            "Google detected unusual traffic and requires reCAPTCHA verification.",
+            "html > body > main",
+        )],
+    );
 
     let report = build_search_report(
         SearchEngine::Google,

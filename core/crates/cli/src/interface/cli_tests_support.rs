@@ -8,6 +8,88 @@ pub(super) fn temp_session_path(name: &str) -> PathBuf {
     std::env::temp_dir().join(format!("touch-browser-{name}-{nanos}.json"))
 }
 
+pub(super) fn test_snapshot_document(
+    source_url: &str,
+    source_type: SourceType,
+    title: &str,
+    requested_tokens: usize,
+    estimated_tokens: usize,
+    blocks: Vec<SnapshotBlock>,
+) -> SnapshotDocument {
+    SnapshotDocument {
+        version: CONTRACT_VERSION.to_string(),
+        stable_ref_version: touch_browser_contracts::STABLE_REF_VERSION.to_string(),
+        source: SnapshotSource {
+            source_url: source_url.to_string(),
+            source_type,
+            title: Some(title.to_string()),
+        },
+        budget: SnapshotBudget {
+            requested_tokens,
+            estimated_tokens,
+            emitted_tokens: estimated_tokens,
+            truncated: false,
+        },
+        blocks,
+    }
+}
+
+#[allow(clippy::too_many_arguments)]
+pub(super) fn test_snapshot_block(
+    source_url: &str,
+    source_type: SourceType,
+    id: &str,
+    kind: SnapshotBlockKind,
+    stable_ref: &str,
+    role: SnapshotBlockRole,
+    text: &str,
+    dom_path_hint: &str,
+) -> SnapshotBlock {
+    SnapshotBlock {
+        version: CONTRACT_VERSION.to_string(),
+        id: id.to_string(),
+        kind,
+        stable_ref: stable_ref.to_string(),
+        role,
+        text: text.to_string(),
+        attributes: Default::default(),
+        evidence: SnapshotEvidence {
+            source_url: source_url.to_string(),
+            source_type,
+            dom_path_hint: Some(dom_path_hint.to_string()),
+            byte_range_start: None,
+            byte_range_end: None,
+        },
+    }
+}
+
+#[allow(clippy::too_many_arguments)]
+pub(super) fn test_snapshot_block_with_attributes(
+    source_url: &str,
+    source_type: SourceType,
+    id: &str,
+    kind: SnapshotBlockKind,
+    stable_ref: &str,
+    role: SnapshotBlockRole,
+    text: &str,
+    dom_path_hint: &str,
+    attributes: std::collections::BTreeMap<String, Value>,
+) -> SnapshotBlock {
+    SnapshotBlock {
+        attributes,
+        ..test_snapshot_block(
+            source_url,
+            source_type,
+            id,
+            kind,
+            stable_ref,
+            role,
+            text,
+            dom_path_hint,
+        )
+    }
+}
+
 pub(super) fn open_browser_fixture_session(session_file: &Path, target: &str) -> Value {
     dispatch(CliCommand::Open(TargetOptions {
         target: target.to_string(),

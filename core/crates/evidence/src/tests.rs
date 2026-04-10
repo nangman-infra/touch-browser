@@ -266,6 +266,37 @@ fn attrs(value: Value) -> BTreeMap<String, Value> {
         .collect()
 }
 
+fn assert_supported_only(report: &EvidenceReport) {
+    assert_eq!(report.supported_claims.len(), 1);
+    assert!(report.contradicted_claims.is_empty());
+    assert!(report.needs_more_browsing_claims.is_empty());
+    assert!(report.unsupported_claims.is_empty());
+}
+
+fn assert_contradicted_only(report: &EvidenceReport, expected_reason: UnsupportedClaimReason) {
+    assert!(report.supported_claims.is_empty());
+    assert_eq!(report.contradicted_claims.len(), 1);
+    assert_eq!(report.contradicted_claims[0].reason, expected_reason);
+}
+
+fn assert_needs_more_browsing_only(
+    report: &EvidenceReport,
+    expected_reason: UnsupportedClaimReason,
+) {
+    assert!(report.supported_claims.is_empty());
+    assert!(report.contradicted_claims.is_empty());
+    assert_eq!(report.needs_more_browsing_claims.len(), 1);
+    assert_eq!(report.needs_more_browsing_claims[0].reason, expected_reason);
+}
+
+fn assert_unsupported_only(report: &EvidenceReport, expected_reason: UnsupportedClaimReason) {
+    assert!(report.supported_claims.is_empty());
+    assert!(report.contradicted_claims.is_empty());
+    assert!(report.needs_more_browsing_claims.is_empty());
+    assert_eq!(report.unsupported_claims.len(), 1);
+    assert_eq!(report.unsupported_claims[0].reason, expected_reason);
+}
+
 fn moon_landing_source() -> SnapshotSource {
     SnapshotSource {
         source_url: "https://en.wikipedia.org/wiki/Moon_landing".to_string(),
@@ -397,14 +428,7 @@ fn marks_missing_support_as_unsupported() {
         ))
         .expect("evidence extraction should succeed");
 
-    assert!(report.supported_claims.is_empty());
-    assert!(report.contradicted_claims.is_empty());
-    assert!(report.needs_more_browsing_claims.is_empty());
-    assert_eq!(report.unsupported_claims.len(), 1);
-    assert_eq!(
-        report.unsupported_claims[0].reason,
-        UnsupportedClaimReason::InsufficientConfidence
-    );
+    assert_unsupported_only(&report, UnsupportedClaimReason::InsufficientConfidence);
 }
 
 #[test]
@@ -437,12 +461,7 @@ fn marks_contradictory_claim_as_unsupported() {
         Some("Example Domains".to_string()),
     );
 
-    assert!(report.supported_claims.is_empty());
-    assert_eq!(report.contradicted_claims.len(), 1);
-    assert_eq!(
-        report.contradicted_claims[0].reason,
-        UnsupportedClaimReason::NegationMismatch
-    );
+    assert_contradicted_only(&report, UnsupportedClaimReason::NegationMismatch);
 }
 
 #[test]
@@ -475,10 +494,7 @@ fn supports_negative_availability_claim_when_page_matches_negative_polarity() {
         Some("Example Domains".to_string()),
     );
 
-    assert_eq!(report.supported_claims.len(), 1);
-    assert!(report.contradicted_claims.is_empty());
-    assert!(report.needs_more_browsing_claims.is_empty());
-    assert!(report.unsupported_claims.is_empty());
+    assert_supported_only(&report);
 }
 
 #[test]
@@ -511,10 +527,7 @@ fn does_not_treat_plural_notes_as_negation() {
         Some("Browser Expand".to_string()),
     );
 
-    assert_eq!(report.supported_claims.len(), 1);
-    assert!(report.contradicted_claims.is_empty());
-    assert!(report.needs_more_browsing_claims.is_empty());
-    assert!(report.unsupported_claims.is_empty());
+    assert_supported_only(&report);
 }
 
 #[test]
@@ -630,10 +643,7 @@ fn supports_claims_when_evidence_is_split_across_heading_and_body_blocks() {
         Some("What is Amazon Elastic Container Service?".to_string()),
     );
 
-    assert_eq!(report.supported_claims.len(), 1);
-    assert!(report.contradicted_claims.is_empty());
-    assert!(report.needs_more_browsing_claims.is_empty());
-    assert!(report.unsupported_claims.is_empty());
+    assert_supported_only(&report);
 }
 
 #[test]
@@ -692,10 +702,7 @@ fn does_not_promote_interaction_claims_from_single_button_context() {
         Some("Browser Pagination".to_string()),
     );
 
-    assert!(report.supported_claims.is_empty());
-    assert!(report.contradicted_claims.is_empty());
-    assert_eq!(report.needs_more_browsing_claims.len(), 1);
-    assert!(report.unsupported_claims.is_empty());
+    assert_needs_more_browsing_only(&report, UnsupportedClaimReason::NeedsMoreBrowsing);
 }
 
 #[test]
@@ -739,12 +746,7 @@ fn rejects_numeric_mismatches_as_contradicted() {
         Some("Lambda quotas".to_string()),
     );
 
-    assert!(report.supported_claims.is_empty());
-    assert_eq!(report.contradicted_claims.len(), 1);
-    assert_eq!(
-        report.contradicted_claims[0].reason,
-        UnsupportedClaimReason::NumericMismatch
-    );
+    assert_contradicted_only(&report, UnsupportedClaimReason::NumericMismatch);
 }
 
 #[test]
@@ -780,13 +782,7 @@ fn defers_table_numeric_noise_to_needs_more_browsing() {
         ))
         .expect("evidence extraction should succeed");
 
-    assert!(report.supported_claims.is_empty());
-    assert!(report.contradicted_claims.is_empty());
-    assert_eq!(report.needs_more_browsing_claims.len(), 1);
-    assert_eq!(
-        report.needs_more_browsing_claims[0].reason,
-        UnsupportedClaimReason::NeedsMoreBrowsing
-    );
+    assert_needs_more_browsing_only(&report, UnsupportedClaimReason::NeedsMoreBrowsing);
 }
 
 #[test]
@@ -822,8 +818,7 @@ fn prefers_narrative_support_over_numeric_table_noise_for_date_claims() {
         ))
         .expect("evidence extraction should succeed");
 
-    assert_eq!(report.supported_claims.len(), 1);
-    assert!(report.contradicted_claims.is_empty());
+    assert_supported_only(&report);
     assert!(
         report.supported_claims[0]
             .support
@@ -862,10 +857,7 @@ fn supports_cjk_claims_when_main_subject_terms_are_present() {
         Some("Python".to_string()),
     );
 
-    assert_eq!(report.supported_claims.len(), 1);
-    assert!(report.contradicted_claims.is_empty());
-    assert!(report.needs_more_browsing_claims.is_empty());
-    assert!(report.unsupported_claims.is_empty());
+    assert_supported_only(&report);
 }
 
 #[test]
@@ -898,10 +890,7 @@ fn supports_japanese_claims_when_main_subject_terms_are_present() {
         Some("明治維新".to_string()),
     );
 
-    assert_eq!(report.supported_claims.len(), 1);
-    assert!(report.contradicted_claims.is_empty());
-    assert!(report.needs_more_browsing_claims.is_empty());
-    assert!(report.unsupported_claims.is_empty());
+    assert_supported_only(&report);
 }
 
 #[test]
@@ -931,10 +920,7 @@ fn supports_simplified_chinese_claims_against_traditional_snapshot_text() {
         Some("中國".to_string()),
     );
 
-    assert_eq!(report.supported_claims.len(), 1);
-    assert!(report.contradicted_claims.is_empty());
-    assert!(report.needs_more_browsing_claims.is_empty());
-    assert!(report.unsupported_claims.is_empty());
+    assert_supported_only(&report);
 }
 
 #[test]
@@ -987,10 +973,7 @@ fn supports_paraphrased_claims_from_adjacent_evidence_blocks() {
         Some("Fetch API".to_string()),
     );
 
-    assert_eq!(report.supported_claims.len(), 1);
-    assert!(report.contradicted_claims.is_empty());
-    assert!(report.needs_more_browsing_claims.is_empty());
-    assert!(report.unsupported_claims.is_empty());
+    assert_supported_only(&report);
 }
 
 #[test]
@@ -1061,10 +1044,7 @@ fn prefers_main_content_over_navigation_for_js_docs_claims() {
         Some("React Router Home".to_string()),
     );
 
-    assert_eq!(report.supported_claims.len(), 1);
-    assert!(report.contradicted_claims.is_empty());
-    assert!(report.needs_more_browsing_claims.is_empty());
-    assert!(report.unsupported_claims.is_empty());
+    assert_supported_only(&report);
     assert!(report.claim_outcomes[0]
         .checked_block_refs
         .iter()
@@ -1172,10 +1152,7 @@ fn supports_asynchronous_runtime_claim_when_synchronous_is_only_contrastive() {
         Some("About Node.js".to_string()),
     );
 
-    assert_eq!(report.supported_claims.len(), 1);
-    assert!(report.contradicted_claims.is_empty());
-    assert!(report.unsupported_claims.is_empty());
-    assert!(report.needs_more_browsing_claims.is_empty());
+    assert_supported_only(&report);
 }
 
 #[test]
@@ -1281,12 +1258,7 @@ fn rejects_low_signal_repetitive_claims() {
         Some("Welcome to Python.org".to_string()),
     );
 
-    assert!(report.supported_claims.is_empty());
-    assert_eq!(report.unsupported_claims.len(), 1);
-    assert_eq!(
-        report.unsupported_claims[0].reason,
-        UnsupportedClaimReason::InsufficientConfidence
-    );
+    assert_unsupported_only(&report, UnsupportedClaimReason::InsufficientConfidence);
 }
 
 #[test]
@@ -1319,12 +1291,7 @@ fn rejects_default_timeout_claim_when_support_only_states_maximum_timeout() {
         Some("Lambda quotas".to_string()),
     );
 
-    assert!(report.supported_claims.is_empty());
-    assert_eq!(report.needs_more_browsing_claims.len(), 1);
-    assert_eq!(
-        report.needs_more_browsing_claims[0].reason,
-        UnsupportedClaimReason::NeedsMoreBrowsing
-    );
+    assert_needs_more_browsing_only(&report, UnsupportedClaimReason::NeedsMoreBrowsing);
 }
 
 #[test]
@@ -1374,8 +1341,7 @@ fn distinguishes_default_and_maximum_claims_inside_the_same_block() {
         Some("Lambda quotas".to_string()),
     );
 
-    assert_eq!(maximum_report.supported_claims.len(), 1);
-    assert!(maximum_report.contradicted_claims.is_empty());
+    assert_supported_only(&maximum_report);
 }
 
 #[test]

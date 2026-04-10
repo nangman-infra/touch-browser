@@ -204,7 +204,10 @@ describe("mcp bridge smoke", () => {
   }, 20_000);
 
   it("restarts the serve daemon after a crash on the next call", async () => {
-    const serve = createBridgeServeClient({ cwd: repoRoot });
+    const serve = createBridgeServeClient({
+      cwd: repoRoot,
+      serveCommand: "cargo run -q -p touch-browser-cli -- serve",
+    });
     serveClients.push(serve);
 
     const firstStatus = await serve.ensureReady<{ status: string }>();
