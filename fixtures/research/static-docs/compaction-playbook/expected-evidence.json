@@ -20,7 +20,24 @@
         "sourceType": "fixture",
         "sourceRisk": "low",
         "sourceLabel": "Compaction playbook"
-      }
+      },
+      "supportSnippets": [
+        {
+          "blockId": "b3",
+          "stableRef": "rmain:text:compaction-playbook-keeps-working-sets-small-by-",
+          "snippet": "Compaction Playbook keeps working sets small by promoting supported claims and recent refs p 91 main"
+        },
+        {
+          "blockId": "b4",
+          "stableRef": "rmain:list:recent-refs-remain-in-the-active-working-set-uns",
+          "snippet": "- Recent refs remain in the active working set - Recent refs remain in the active working set. - Unsupported claims drop into audit notes. 2 ul 91 main list items"
+        },
+        {
+          "blockId": "b2",
+          "stableRef": "rmain:heading:compaction-playbook",
+          "snippet": "Compaction Playbook 1 h1 19 main"
+        }
+      ]
     },
     {
       "version": "1.0.0",
@@ -34,7 +51,24 @@
         "sourceType": "fixture",
         "sourceRisk": "low",
         "sourceLabel": "Compaction playbook"
-      }
+      },
+      "supportSnippets": [
+        {
+          "blockId": "b4",
+          "stableRef": "rmain:list:recent-refs-remain-in-the-active-working-set-uns",
+          "snippet": "- Recent refs remain in the active working set - Recent refs remain in the active working set. - Unsupported claims drop into audit notes. 2 ul 91 main list items"
+        },
+        {
+          "blockId": "b3",
+          "stableRef": "rmain:text:compaction-playbook-keeps-working-sets-small-by-",
+          "snippet": "Compaction Playbook keeps working sets small by promoting supported claims and recent refs p 91 main"
+        },
+        {
+          "blockId": "b2",
+          "stableRef": "rmain:heading:compaction-playbook",
+          "snippet": "Compaction Playbook 1 h1 19 main"
+        }
+      ]
     }
   ],
   "insufficientEvidenceClaims": [

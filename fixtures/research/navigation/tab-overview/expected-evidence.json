@@ -20,7 +20,24 @@
         "sourceType": "fixture",
         "sourceRisk": "low",
         "sourceLabel": "Navigation tab overview page"
-      }
+      },
+      "supportSnippets": [
+        {
+          "blockId": "b8",
+          "stableRef": "rmain:text:researchers-often-open-the-architecture-tab-firs",
+          "snippet": "Researchers often open the Architecture tab first p 50 main"
+        },
+        {
+          "blockId": "b3",
+          "stableRef": "rmain:text:the-runtime-can-scan-documentation-tabs-before-o",
+          "snippet": "The runtime can scan documentation tabs before opening a deeper page p 69 main"
+        },
+        {
+          "blockId": "b4",
+          "stableRef": "rmain:list:architecture-benchmarks-policy",
+          "snippet": "- Architecture - Benchmarks - Policy 3 ul 36 main list items"
+        }
+      ]
     },
     {
       "version": "1.0.0",
@@ -34,7 +51,24 @@
         "sourceType": "fixture",
         "sourceRisk": "low",
         "sourceLabel": "Navigation tab overview page"
-      }
+      },
+      "supportSnippets": [
+        {
+          "blockId": "b4",
+          "stableRef": "rmain:list:architecture-benchmarks-policy",
+          "snippet": "- Architecture - Benchmarks - Policy 3 ul 36 main list items"
+        },
+        {
+          "blockId": "b3",
+          "stableRef": "rmain:text:the-runtime-can-scan-documentation-tabs-before-o",
+          "snippet": "The runtime can scan documentation tabs before opening a deeper page p 69 main"
+        },
+        {
+          "blockId": "b8",
+          "stableRef": "rmain:text:researchers-often-open-the-architecture-tab-firs",
+          "snippet": "Researchers often open the Architecture tab first p 50 main"
+        }
+      ]
     }
   ],
   "insufficientEvidenceClaims": [

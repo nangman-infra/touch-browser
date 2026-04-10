@@ -56,6 +56,10 @@ async function renderEvidence(metadataPath) {
     ].join(" "),
     {
       cwd: repoRoot,
+      env: {
+        ...process.env,
+        TOUCH_BROWSER_EVIDENCE_DISABLE_LIVE_MODELS: "1",
+      },
       stdio: ["ignore", "pipe", "pipe"],
     },
   );

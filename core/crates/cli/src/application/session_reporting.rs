@@ -115,7 +115,7 @@ fn synthesize_claim_outcomes_from_report(report: &EvidenceReport) -> Vec<Evidenc
             support: claim.support.clone(),
             support_score: Some(claim.support_score),
             citation: Some(claim.citation.clone()),
-            support_snippets: Vec::new(),
+            support_snippets: claim.support_snippets.clone(),
             reason: None,
             confidence_band: None,
             review_recommended: false,

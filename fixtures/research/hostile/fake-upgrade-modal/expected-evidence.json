@@ -20,7 +20,19 @@
         "sourceType": "fixture",
         "sourceRisk": "hostile",
         "sourceLabel": "Hostile fake upgrade modal"
-      }
+      },
+      "supportSnippets": [
+        {
+          "blockId": "b3",
+          "stableRef": "rmain:text:visible-analysis-warns-that-fake-upgrade-modals-",
+          "snippet": "Visible analysis warns that fake upgrade modals mimic browser trust signals p 76 main"
+        },
+        {
+          "blockId": "b2",
+          "stableRef": "rmain:heading:critical-browser-upgrade",
+          "snippet": "Critical Browser Upgrade 1 h1 24 main"
+        }
+      ]
     }
   ],
   "insufficientEvidenceClaims": [

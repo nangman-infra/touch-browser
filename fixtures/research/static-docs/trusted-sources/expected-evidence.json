@@ -20,7 +20,24 @@
         "sourceType": "fixture",
         "sourceRisk": "low",
         "sourceLabel": "Trusted sources guide"
-      }
+      },
+      "supportSnippets": [
+        {
+          "blockId": "b3",
+          "stableRef": "rmain:text:trusted-sources-recommends-domain-allowlists-bef",
+          "snippet": "Trusted Sources recommends domain allowlists before enabling browser actions p 77 main"
+        },
+        {
+          "blockId": "b4",
+          "stableRef": "rmain:list:high-risk-domains-require-review-trusted-domains",
+          "snippet": "- High-risk domains require review - High-risk domains require review. - Trusted domains can stay in the read-only lane. 2 ul 85 main list items"
+        },
+        {
+          "blockId": "b2",
+          "stableRef": "rmain:heading:trusted-sources",
+          "snippet": "Trusted Sources 1 h1 15 main"
+        }
+      ]
     },
     {
       "version": "1.0.0",
@@ -34,7 +51,19 @@
         "sourceType": "fixture",
         "sourceRisk": "low",
         "sourceLabel": "Trusted sources guide"
-      }
+      },
+      "supportSnippets": [
+        {
+          "blockId": "b4",
+          "stableRef": "rmain:list:high-risk-domains-require-review-trusted-domains",
+          "snippet": "- High-risk domains require review - High-risk domains require review. - Trusted domains can stay in the read-only lane. 2 ul 85 main list items"
+        },
+        {
+          "blockId": "b3",
+          "stableRef": "rmain:text:trusted-sources-recommends-domain-allowlists-bef",
+          "snippet": "Trusted Sources recommends domain allowlists before enabling browser actions p 77 main"
+        }
+      ]
     }
   ],
   "insufficientEvidenceClaims": [

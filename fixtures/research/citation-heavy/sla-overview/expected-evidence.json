@@ -20,7 +20,24 @@
         "sourceType": "fixture",
         "sourceRisk": "low",
         "sourceLabel": "SLA overview"
-      }
+      },
+      "supportSnippets": [
+        {
+          "blockId": "b3",
+          "stableRef": "rmain:text:sla-overview-states-that-priority-incidents-rece",
+          "snippet": "SLA Overview states that Priority incidents receive updates every 30 minutes p 77 main"
+        },
+        {
+          "blockId": "b4",
+          "stableRef": "rmain:table:severity-updates-availability-priority-30-minute",
+          "snippet": "Priority | 30 minutes | 99.9 Severity | Updates | Availability 3 3 table 88 main"
+        },
+        {
+          "blockId": "b2",
+          "stableRef": "rmain:heading:sla-overview",
+          "snippet": "SLA Overview 1 h1 12 main"
+        }
+      ]
     },
     {
       "version": "1.0.0",
@@ -34,7 +51,24 @@
         "sourceType": "fixture",
         "sourceRisk": "low",
         "sourceLabel": "SLA overview"
-      }
+      },
+      "supportSnippets": [
+        {
+          "blockId": "b4",
+          "stableRef": "rmain:table:severity-updates-availability-priority-30-minute",
+          "snippet": "Priority | 30 minutes | 99.9 Severity | Updates | Availability 3 3 table 88 main"
+        },
+        {
+          "blockId": "b3",
+          "stableRef": "rmain:text:sla-overview-states-that-priority-incidents-rece",
+          "snippet": "SLA Overview states that Priority incidents receive updates every 30 minutes p 77 main"
+        },
+        {
+          "blockId": "b2",
+          "stableRef": "rmain:heading:sla-overview",
+          "snippet": "SLA Overview 1 h1 12 main"
+        }
+      ]
     }
   ],
   "insufficientEvidenceClaims": [],

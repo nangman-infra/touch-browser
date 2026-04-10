@@ -20,7 +20,24 @@
         "sourceType": "fixture",
         "sourceRisk": "low",
         "sourceLabel": "Static docs security model page"
-      }
+      },
+      "supportSnippets": [
+        {
+          "blockId": "b6",
+          "stableRef": "rmain:text:the-runtime-separates-page-content-policy-state-",
+          "snippet": "The runtime separates page content, policy state, and action inputs into distinct channels p 91 main"
+        },
+        {
+          "blockId": "b7",
+          "stableRef": "rmain:text:all-replayable-sessions-emit-audit-logs-that-can",
+          "snippet": "All replayable sessions emit audit logs that can be reviewed after each action p 79 main"
+        },
+        {
+          "blockId": "b5",
+          "stableRef": "rmain:heading:security-model",
+          "snippet": "Security Model 1 h1 14 main"
+        }
+      ]
     },
     {
       "version": "1.0.0",
@@ -34,7 +51,24 @@
         "sourceType": "fixture",
         "sourceRisk": "low",
         "sourceLabel": "Static docs security model page"
-      }
+      },
+      "supportSnippets": [
+        {
+          "blockId": "b7",
+          "stableRef": "rmain:text:all-replayable-sessions-emit-audit-logs-that-can",
+          "snippet": "All replayable sessions emit audit logs that can be reviewed after each action p 79 main"
+        },
+        {
+          "blockId": "b6",
+          "stableRef": "rmain:text:the-runtime-separates-page-content-policy-state-",
+          "snippet": "The runtime separates page content, policy state, and action inputs into distinct channels p 91 main"
+        },
+        {
+          "blockId": "b8",
+          "stableRef": "rmain:heading:core-rules",
+          "snippet": "Core Rules 2 h2 10 main"
+        }
+      ]
     }
   ],
   "insufficientEvidenceClaims": [

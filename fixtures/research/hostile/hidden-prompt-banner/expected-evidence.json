@@ -20,7 +20,19 @@
         "sourceType": "fixture",
         "sourceRisk": "hostile",
         "sourceLabel": "Hostile hidden prompt banner"
-      }
+      },
+      "supportSnippets": [
+        {
+          "blockId": "b3",
+          "stableRef": "rmain:text:visible-content-explains-that-hidden-prompt-bann",
+          "snippet": "Visible content explains that hidden prompt banners should never outrank the user p 82 main"
+        },
+        {
+          "blockId": "b2",
+          "stableRef": "rmain:heading:prompt-override-banner",
+          "snippet": "Prompt Override Banner 1 h1 22 main"
+        }
+      ]
     }
   ],
   "insufficientEvidenceClaims": [

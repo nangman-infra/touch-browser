@@ -20,7 +20,24 @@
         "sourceType": "fixture",
         "sourceRisk": "low",
         "sourceLabel": "Browser MFA challenge seed"
-      }
+      },
+      "supportSnippets": [
+        {
+          "blockId": "b3",
+          "stableRef": "rmain:text:enter-the-6-digit-verification-code-from-your-au",
+          "snippet": "Enter the 6-digit verification code from your authenticator app p 64 main"
+        },
+        {
+          "blockId": "b7",
+          "stableRef": "rmain:text:status",
+          "snippet": "Waiting for verification code p 30 main"
+        },
+        {
+          "blockId": "b2",
+          "stableRef": "rmain:heading:two-factor-verification",
+          "snippet": "Two-factor verification 1 h1 23 main"
+        }
+      ]
     }
   ],
   "insufficientEvidenceClaims": [

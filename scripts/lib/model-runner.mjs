@@ -26,7 +26,7 @@ export async function prepareModelRuntime({
 export function configureEnvironment(modelRoot, allowDownload) {
   env.cacheDir = modelRoot;
   env.useFSCache = true;
-  env.allowLocalModels = false;
+  env.allowLocalModels = true;
   env.allowRemoteModels = allowDownload;
 }
 

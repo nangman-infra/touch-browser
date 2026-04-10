@@ -1,11 +1,17 @@
 use std::collections::BTreeSet;
 use touch_browser_contracts::{
     EvidenceCitation, EvidenceClaimOutcome, EvidenceClaimVerdict, EvidenceConfidenceBand,
-    EvidenceMatchSignals, EvidenceReport, EvidenceSource, EvidenceSupportSnippet,
-    UnsupportedClaimReason, CONTRACT_VERSION,
+    EvidenceGuardFailure, EvidenceGuardKind, EvidenceMatchSignals, EvidenceReport, EvidenceSource,
+    EvidenceSupportSnippet, UnsupportedClaimReason, CONTRACT_VERSION,
 };
 
-use crate::{analyzer::analyze_claim, ClaimRequest, EvidenceInput};
+use crate::{
+    analyzer::analyze_claim,
+    contradiction::contradiction_detected,
+    normalization::{anchor_tokens, normalize_text, token_overlap_ratio, tokenize_significant},
+    semantic_matching::{has_strong_nli_contradiction, score_nli_pairs, NliScore},
+    ClaimRequest, EvidenceInput,
+};
 
 pub(crate) fn build_claim_outcome(
     input: &EvidenceInput,
@@ -200,6 +206,9 @@ pub(crate) fn build_report(
     input: &EvidenceInput,
     claim_outcomes: Vec<EvidenceClaimOutcome>,
 ) -> EvidenceReport {
+    let mut claim_outcomes = claim_outcomes;
+    downgrade_conflicting_supported_claims(&mut claim_outcomes, score_nli_pairs);
+
     let mut report = EvidenceReport {
         version: CONTRACT_VERSION.to_string(),
         generated_at: input.generated_at.clone(),
@@ -223,14 +232,112 @@ pub(crate) fn build_report(
     report
 }
 
+fn downgrade_conflicting_supported_claims<F>(
+    claim_outcomes: &mut [EvidenceClaimOutcome],
+    score_pairs: F,
+) where
+    F: Fn(&[(String, String)]) -> Option<Vec<NliScore>>,
+{
+    let supported_indices = claim_outcomes
+        .iter()
+        .enumerate()
+        .filter_map(|(index, outcome)| {
+            (outcome.verdict == EvidenceClaimVerdict::EvidenceSupported).then_some(index)
+        })
+        .collect::<Vec<_>>();
+    if supported_indices.len() < 2 {
+        return;
+    }
+
+    let mut conflicting_indices = BTreeSet::new();
+    let mut directional_pairs = Vec::new();
+    let mut directional_pair_indices = Vec::new();
+
+    for (offset, left_index) in supported_indices.iter().enumerate() {
+        for right_index in supported_indices.iter().skip(offset + 1) {
+            let left_statement = claim_outcomes[*left_index].statement.clone();
+            let right_statement = claim_outcomes[*right_index].statement.clone();
+            if contradiction_detected(&normalize_text(&left_statement), &right_statement)
+                || contradiction_detected(&normalize_text(&right_statement), &left_statement)
+            {
+                conflicting_indices.insert(*left_index);
+                conflicting_indices.insert(*right_index);
+                continue;
+            }
+            if !claim_pair_merits_nli_conflict_check(&left_statement, &right_statement) {
+                continue;
+            }
+
+            directional_pairs.push((left_statement.clone(), right_statement.clone()));
+            directional_pair_indices.push((*left_index, *right_index));
+            directional_pairs.push((right_statement, left_statement));
+            directional_pair_indices.push((*left_index, *right_index));
+        }
+    }
+
+    if !directional_pairs.is_empty() {
+        if let Some(scores) = score_pairs(&directional_pairs) {
+            for ((left_index, right_index), score) in
+                directional_pair_indices.iter().zip(scores.iter())
+            {
+                if has_strong_nli_contradiction(score) {
+                    conflicting_indices.insert(*left_index);
+                    conflicting_indices.insert(*right_index);
+                }
+            }
+        }
+    }
+
+    for index in conflicting_indices {
+        let outcome = &mut claim_outcomes[index];
+        outcome.verdict = EvidenceClaimVerdict::NeedsMoreBrowsing;
+        outcome.reason = Some(UnsupportedClaimReason::NeedsMoreBrowsing);
+        outcome.confidence_band = Some(EvidenceConfidenceBand::Review);
+        outcome.review_recommended = true;
+        if !outcome.guard_failures.iter().any(|failure| {
+            failure.kind == EvidenceGuardKind::Predicate
+                && failure
+                    .detail
+                    .contains("another supported claim in the same extract")
+        }) {
+            outcome.guard_failures.push(EvidenceGuardFailure {
+                kind: EvidenceGuardKind::Predicate,
+                detail:
+                    "This claim conflicts semantically with another supported claim in the same extract."
+                        .to_string(),
+            });
+        }
+        outcome.next_action_hint = Some(
+            "The extract surfaced another supported claim with conflicting meaning. Review the snippets or browse a more specific source before answering.".to_string(),
+        );
+        outcome.verdict_explanation = Some(
+            "Multiple supported claims in the same extract conflict semantically. Review the snippets or browse a more specific source before reusing either claim.".to_string(),
+        );
+    }
+}
+
+fn claim_pair_merits_nli_conflict_check(left_statement: &str, right_statement: &str) -> bool {
+    let left_anchors = anchor_tokens(&tokenize_significant(left_statement));
+    let right_anchors = anchor_tokens(&tokenize_significant(right_statement));
+    if left_anchors.is_empty() || right_anchors.is_empty() {
+        return false;
+    }
+
+    token_overlap_ratio(&left_anchors, &right_anchors) >= 0.6
+        || token_overlap_ratio(&right_anchors, &left_anchors) >= 0.6
+}
+
 #[cfg(test)]
 mod tests {
     use touch_browser_contracts::{
-        EvidenceConfidenceBand, SnapshotBlock, SnapshotBlockKind, SnapshotBlockRole,
-        SnapshotBudget, SnapshotDocument, SnapshotEvidence, SnapshotSource, SourceRisk, SourceType,
+        EvidenceCitation, EvidenceClaimOutcome, EvidenceClaimVerdict, EvidenceConfidenceBand,
+        EvidenceMatchSignals, EvidenceSupportSnippet, SnapshotBlock, SnapshotBlockKind,
+        SnapshotBlockRole, SnapshotBudget, SnapshotDocument, SnapshotEvidence, SnapshotSource,
+        SourceRisk, SourceType, CONTRACT_VERSION,
     };
 
-    use super::{build_claim_outcome, build_report};
+    use super::{build_claim_outcome, build_report, downgrade_conflicting_supported_claims};
+    use crate::semantic_matching::NliScore;
     use crate::{ClaimRequest, EvidenceInput};
 
     fn report_input() -> EvidenceInput {
@@ -317,7 +424,114 @@ mod tests {
         let report = build_report(&input, vec![outcome]);
 
         assert_eq!(report.supported_claims.len(), 1);
+        assert_eq!(report.supported_claims[0].support_snippets.len(), 1);
         assert!(report.unsupported_claims.is_empty());
         assert!(report.contradicted_claims.is_empty());
+    }
+
+    #[test]
+    fn conflicting_supported_claim_pairs_are_downgraded_to_needs_more_browsing() {
+        let mut outcomes = vec![
+            supported_outcome("c1", "Rust uses a garbage collector."),
+            supported_outcome("c2", "Rust has no garbage collector."),
+        ];
+
+        downgrade_conflicting_supported_claims(&mut outcomes, |_pairs| {
+            Some(vec![
+                NliScore {
+                    contradiction: 0.98,
+                    entailment: 0.01,
+                    neutral: 0.01,
+                },
+                NliScore {
+                    contradiction: 0.98,
+                    entailment: 0.01,
+                    neutral: 0.01,
+                },
+            ])
+        });
+
+        assert!(outcomes.iter().all(|outcome| {
+            outcome.verdict == EvidenceClaimVerdict::NeedsMoreBrowsing
+                && outcome.reason
+                    == Some(touch_browser_contracts::UnsupportedClaimReason::NeedsMoreBrowsing)
+        }));
+    }
+
+    #[test]
+    fn claim_pair_nli_conflict_check_skips_low_overlap_claims() {
+        let mut outcomes = vec![
+            supported_outcome(
+                "c1",
+                "The Core research suite reported citation precision of 97%.",
+            ),
+            supported_outcome("c2", "The Hostile review suite reported recall of 91%."),
+        ];
+
+        downgrade_conflicting_supported_claims(&mut outcomes, |_pairs| {
+            Some(vec![
+                NliScore {
+                    contradiction: 0.98,
+                    entailment: 0.01,
+                    neutral: 0.01,
+                },
+                NliScore {
+                    contradiction: 0.98,
+                    entailment: 0.01,
+                    neutral: 0.01,
+                },
+            ])
+        });
+
+        assert!(outcomes
+            .iter()
+            .all(|outcome| outcome.verdict == EvidenceClaimVerdict::EvidenceSupported));
+    }
+
+    fn supported_outcome(claim_id: &str, statement: &str) -> EvidenceClaimOutcome {
+        EvidenceClaimOutcome {
+            version: CONTRACT_VERSION.to_string(),
+            claim_id: claim_id.to_string(),
+            statement: statement.to_string(),
+            verdict: EvidenceClaimVerdict::EvidenceSupported,
+            support: vec!["b1".to_string()],
+            support_score: Some(0.95),
+            citation: Some(EvidenceCitation {
+                url: "https://example.com/docs".to_string(),
+                retrieved_at: "2026-04-08T00:00:00+09:00".to_string(),
+                source_type: SourceType::Http,
+                source_risk: SourceRisk::Low,
+                source_label: Some("Example Docs".to_string()),
+            }),
+            support_snippets: vec![EvidenceSupportSnippet {
+                block_id: "b1".to_string(),
+                stable_ref: "rmain:text:intro".to_string(),
+                snippet: "Example Docs supports HTTP snapshots.".to_string(),
+            }],
+            reason: None,
+            confidence_band: Some(EvidenceConfidenceBand::High),
+            review_recommended: false,
+            verdict_explanation: Some(
+                "Matched direct support in 1 page block(s). Review the attached snippets before reusing the claim."
+                    .to_string(),
+            ),
+            match_signals: Some(EvidenceMatchSignals {
+                block_id: "b1".to_string(),
+                stable_ref: "rmain:text:intro".to_string(),
+                block_kind: SnapshotBlockKind::Text,
+                exact_support: true,
+                lexical_overlap: Some(1.0),
+                contextual_overlap: Some(1.0),
+                numeric_alignment: None,
+                semantic_similarity: None,
+                semantic_boost: None,
+                nli_entailment: None,
+                nli_contradiction: None,
+            }),
+            checked_block_refs: vec!["rmain:text:intro".to_string()],
+            guard_failures: Vec::new(),
+            next_action_hint: None,
+            verification_verdict: None,
+        }
     }
 }

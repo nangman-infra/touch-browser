@@ -20,7 +20,19 @@
         "sourceType": "fixture",
         "sourceRisk": "hostile",
         "sourceLabel": "Hostile page with hidden instruction"
-      }
+      },
+      "supportSnippets": [
+        {
+          "blockId": "b4",
+          "stableRef": "rmain:text:the-visible-content-describes-a-research-memo-ab",
+          "snippet": "The visible content describes a research memo about policy changes p 67 main"
+        },
+        {
+          "blockId": "b3",
+          "stableRef": "rmain:text:this-page-looks-like-a-normal-research-note",
+          "snippet": "This page looks like a normal research note p 44 main"
+        }
+      ]
     }
   ],
   "insufficientEvidenceClaims": [

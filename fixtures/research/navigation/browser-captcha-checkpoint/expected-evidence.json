@@ -20,7 +20,19 @@
         "sourceType": "fixture",
         "sourceRisk": "low",
         "sourceLabel": "Browser CAPTCHA checkpoint seed"
-      }
+      },
+      "supportSnippets": [
+        {
+          "blockId": "b3",
+          "stableRef": "rmain:text:verify-you-are-human-before-continuing-to-the-re",
+          "snippet": "Verify you are human before continuing to the research workspace p 65 main"
+        },
+        {
+          "blockId": "b2",
+          "stableRef": "rmain:heading:security-checkpoint",
+          "snippet": "Security checkpoint 1 h1 19 main"
+        }
+      ]
     }
   ],
   "insufficientEvidenceClaims": [

@@ -20,7 +20,24 @@
         "sourceType": "fixture",
         "sourceRisk": "low",
         "sourceLabel": "Browser-backed login form seed"
-      }
+      },
+      "supportSnippets": [
+        {
+          "blockId": "b4",
+          "stableRef": "rmain:form:work-email-password-no-email-typed-yet-sign-in",
+          "snippet": "Work Email Password No email typed yet. Sign in 3 form 47 main form field fields input"
+        },
+        {
+          "blockId": "b5",
+          "stableRef": "rmain:input:email-email-agent-example-com",
+          "snippet": "email email agent@example.com email email input 29 main input field"
+        },
+        {
+          "blockId": "b7",
+          "stableRef": "rmain:text:typed-email",
+          "snippet": "No email typed yet p 19 main"
+        }
+      ]
     }
   ],
   "insufficientEvidenceClaims": [

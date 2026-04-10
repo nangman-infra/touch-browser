@@ -20,7 +20,24 @@
         "sourceType": "fixture",
         "sourceRisk": "low",
         "sourceLabel": "Citation-heavy release notes page"
-      }
+      },
+      "supportSnippets": [
+        {
+          "blockId": "b4",
+          "stableRef": "rmain:table:version-date-highlights-0-1-0-2026-02-10-added-r",
+          "snippet": "0.1.0 | 2026-02-10 | Added read-only replay sessions Version | Date | Highlights 3 3 table 132 main"
+        },
+        {
+          "blockId": "b5",
+          "stableRef": "rmain:text:each-release-entry-is-intended-to-support-citati",
+          "snippet": "Each release entry is intended to support citation-ready research answers p 74 main"
+        },
+        {
+          "blockId": "b3",
+          "stableRef": "rmain:text:touch-browser-documents-major-runtime-changes-in",
+          "snippet": "Touch Browser documents major runtime changes in a citation-heavy release log p 78 main"
+        }
+      ]
     },
     {
       "version": "1.0.0",
@@ -34,7 +51,24 @@
         "sourceType": "fixture",
         "sourceRisk": "low",
         "sourceLabel": "Citation-heavy release notes page"
-      }
+      },
+      "supportSnippets": [
+        {
+          "blockId": "b4",
+          "stableRef": "rmain:table:version-date-highlights-0-1-0-2026-02-10-added-r",
+          "snippet": "0.2.0 | 2026-03-01 | Added hostile policy reports Version | Date | Highlights 3 3 table 132 main"
+        },
+        {
+          "blockId": "b3",
+          "stableRef": "rmain:text:touch-browser-documents-major-runtime-changes-in",
+          "snippet": "Touch Browser documents major runtime changes in a citation-heavy release log p 78 main"
+        },
+        {
+          "blockId": "b5",
+          "stableRef": "rmain:text:each-release-entry-is-intended-to-support-citati",
+          "snippet": "Each release entry is intended to support citation-ready research answers p 74 main"
+        }
+      ]
     }
   ],
   "insufficientEvidenceClaims": [

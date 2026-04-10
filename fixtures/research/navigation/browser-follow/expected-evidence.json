@@ -20,7 +20,24 @@
         "sourceType": "fixture",
         "sourceRisk": "low",
         "sourceLabel": "Browser-backed follow seed"
-      }
+      },
+      "supportSnippets": [
+        {
+          "blockId": "b3",
+          "stableRef": "rmain:text:follow-content",
+          "snippet": "Follow the Advanced guide link to reveal the next research step p 64 main"
+        },
+        {
+          "blockId": "b4",
+          "stableRef": "rmain:link:advanced",
+          "snippet": "Advanced guide #advanced a 14 main link"
+        },
+        {
+          "blockId": "b2",
+          "stableRef": "rmain:heading:browser-follow",
+          "snippet": "Browser Follow 1 h1 14 main"
+        }
+      ]
     },
     {
       "version": "1.0.0",
@@ -34,7 +51,24 @@
         "sourceType": "fixture",
         "sourceRisk": "low",
         "sourceLabel": "Browser-backed follow seed"
-      }
+      },
+      "supportSnippets": [
+        {
+          "blockId": "b3",
+          "stableRef": "rmain:text:follow-content",
+          "snippet": "Follow the Advanced guide link to reveal the next research step p 64 main"
+        },
+        {
+          "blockId": "b4",
+          "stableRef": "rmain:link:advanced",
+          "snippet": "Advanced guide #advanced a 14 main link"
+        },
+        {
+          "blockId": "b2",
+          "stableRef": "rmain:heading:browser-follow",
+          "snippet": "Browser Follow 1 h1 14 main"
+        }
+      ]
     }
   ],
   "insufficientEvidenceClaims": [

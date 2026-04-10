@@ -20,7 +20,24 @@
         "sourceType": "fixture",
         "sourceRisk": "low",
         "sourceLabel": "Navigation-heavy API reference page"
-      }
+      },
+      "supportSnippets": [
+        {
+          "blockId": "b6",
+          "stableRef": "rmain:text:the-runtime-exposes-open-snapshot-extract-diff-c",
+          "snippet": "The runtime exposes open, snapshot, extract, diff, compact, and replay commands p 80 main"
+        },
+        {
+          "blockId": "b7",
+          "stableRef": "rmain:heading:snapshot",
+          "snippet": "Snapshot 2 h2 8 main"
+        },
+        {
+          "blockId": "b5",
+          "stableRef": "rmain:heading:overview",
+          "snippet": "API Reference 1 h1 13 main"
+        }
+      ]
     },
     {
       "version": "1.0.0",
@@ -34,7 +51,24 @@
         "sourceType": "fixture",
         "sourceRisk": "low",
         "sourceLabel": "Navigation-heavy API reference page"
-      }
+      },
+      "supportSnippets": [
+        {
+          "blockId": "b8",
+          "stableRef": "rmain:text:snapshot-responses-include-stable-refs-and-evide",
+          "snippet": "Snapshot responses include stable refs and evidence metadata p 61 main"
+        },
+        {
+          "blockId": "b9",
+          "stableRef": "rmain:heading:evidence",
+          "snippet": "Evidence 2 h2 8 main"
+        },
+        {
+          "blockId": "b7",
+          "stableRef": "rmain:heading:snapshot",
+          "snippet": "Snapshot 2 h2 8 main"
+        }
+      ]
     }
   ],
   "insufficientEvidenceClaims": [],

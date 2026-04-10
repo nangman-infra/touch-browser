@@ -20,7 +20,24 @@
         "sourceType": "fixture",
         "sourceRisk": "low",
         "sourceLabel": "Deployment notes summary"
-      }
+      },
+      "supportSnippets": [
+        {
+          "blockId": "b3",
+          "stableRef": "rmain:text:deployment-notes-record-that-blue-green-rollouts",
+          "snippet": "Deployment notes record that blue-green rollouts cut recovery time to 8 minutes p 80 main"
+        },
+        {
+          "blockId": "b4",
+          "stableRef": "rmain:table:stage-recovery-mode-rollback-8-minutes-automatic",
+          "snippet": "Rollback | 8 minutes | Automatic Stage | Recovery | Mode 3 3 table 91 main"
+        },
+        {
+          "blockId": "b2",
+          "stableRef": "rmain:heading:deployment-notes",
+          "snippet": "Deployment Notes 1 h1 16 main"
+        }
+      ]
     },
     {
       "version": "1.0.0",
@@ -34,7 +51,24 @@
         "sourceType": "fixture",
         "sourceRisk": "low",
         "sourceLabel": "Deployment notes summary"
-      }
+      },
+      "supportSnippets": [
+        {
+          "blockId": "b4",
+          "stableRef": "rmain:table:stage-recovery-mode-rollback-8-minutes-automatic",
+          "snippet": "Rollback | 8 minutes | Automatic Stage | Recovery | Mode 3 3 table 91 main"
+        },
+        {
+          "blockId": "b3",
+          "stableRef": "rmain:text:deployment-notes-record-that-blue-green-rollouts",
+          "snippet": "Deployment notes record that blue-green rollouts cut recovery time to 8 minutes p 80 main"
+        },
+        {
+          "blockId": "b2",
+          "stableRef": "rmain:heading:deployment-notes",
+          "snippet": "Deployment Notes 1 h1 16 main"
+        }
+      ]
     }
   ],
   "insufficientEvidenceClaims": [],

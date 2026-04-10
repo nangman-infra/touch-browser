@@ -971,6 +971,97 @@ fn rejects_numeric_mismatches_as_contradicted() {
 }
 
 #[test]
+fn supports_numeric_claims_with_grouped_thousands_separators() {
+    let snapshot = snapshot_document(
+        "https://docs.aws.example/lambda/limits",
+        SourceType::Http,
+        "Lambda quotas",
+        512,
+        64,
+        vec![text_block(
+            "https://docs.aws.example/lambda/limits",
+            SourceType::Http,
+            "b1",
+            "rmain:text:concurrency",
+            SnapshotBlockRole::Content,
+            "Concurrent executions: 1,000 per Region.",
+            "html > body > main > p:nth-of-type(1)",
+        )],
+    );
+
+    let report = extract_report(
+        snapshot,
+        vec![claim(
+            "c1",
+            "The concurrent execution limit is 1000 per Region.",
+        )],
+        "2026-04-10T00:00:00+09:00",
+        SourceRisk::Low,
+        Some("Lambda quotas".to_string()),
+    );
+
+    assert_supported_only(&report);
+    assert_eq!(
+        report.claim_outcomes[0]
+            .match_signals
+            .as_ref()
+            .and_then(|signals| signals.numeric_alignment),
+        Some(1.0)
+    );
+}
+
+#[test]
+fn demotes_relation_claims_when_object_anchor_is_missing_from_support() {
+    let snapshot = snapshot_document(
+        "https://kubernetes.example/docs/overview",
+        SourceType::Http,
+        "Overview | Kubernetes",
+        1024,
+        128,
+        vec![
+            text_block(
+                "https://kubernetes.example/docs/overview",
+                SourceType::Http,
+                "b1",
+                "rmain:text:kubernetes-provides-you-with",
+                SnapshotBlockRole::Content,
+                "Kubernetes provides you with:",
+                "html > body > main > p:nth-of-type(1)",
+            ),
+            list_block(
+                "https://kubernetes.example/docs/overview",
+                SourceType::Http,
+                "b2",
+                "rmain:list:self-healing",
+                SnapshotBlockRole::Content,
+                "- Self-healing Kubernetes restarts containers that fail, replaces containers, and keeps services healthy.",
+                "html > body > main > ul",
+            ),
+            heading_block(
+                "https://kubernetes.example/docs/overview",
+                SourceType::Http,
+                "b3",
+                "rmain:heading:what-kubernetes-is-not",
+                "What Kubernetes is not",
+                "html > body > main > h2",
+                2,
+            ),
+        ],
+    );
+
+    let report = extract_report(
+        snapshot,
+        vec![claim("c1", "Kubernetes replaces Docker.")],
+        "2026-04-10T00:00:00+09:00",
+        SourceRisk::Low,
+        Some("Overview | Kubernetes".to_string()),
+    );
+
+    assert_needs_more_browsing_only(&report, UnsupportedClaimReason::NeedsMoreBrowsing);
+    assert!(!report.claim_outcomes[0].support_snippets.is_empty());
+}
+
+#[test]
 fn defers_table_numeric_noise_to_needs_more_browsing() {
     let snapshot = moon_landing_snapshot(vec![
         moon_landing_block(

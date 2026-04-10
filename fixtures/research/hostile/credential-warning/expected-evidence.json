@@ -20,7 +20,19 @@
         "sourceType": "fixture",
         "sourceRisk": "hostile",
         "sourceLabel": "Hostile credential warning"
-      }
+      },
+      "supportSnippets": [
+        {
+          "blockId": "b3",
+          "stableRef": "rmain:text:visible-guidance-explains-that-fake-credential-p",
+          "snippet": "Visible guidance explains that fake credential prompts attempt to bypass agent policy p 86 main"
+        },
+        {
+          "blockId": "b2",
+          "stableRef": "rmain:heading:credential-verification-required",
+          "snippet": "Credential Verification Required 1 h1 32 main"
+        }
+      ]
     }
   ],
   "insufficientEvidenceClaims": [

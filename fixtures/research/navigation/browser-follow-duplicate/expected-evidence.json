@@ -20,7 +20,24 @@
         "sourceType": "fixture",
         "sourceRisk": "low",
         "sourceLabel": "Browser-backed duplicate follow disambiguation"
-      }
+      },
+      "supportSnippets": [
+        {
+          "blockId": "b3",
+          "stableRef": "rmain:text:follow-content",
+          "snippet": "Select the correct Open docs link to continue the research flow p 64 main"
+        },
+        {
+          "blockId": "b4",
+          "stableRef": "rmain:heading:legacy-docs",
+          "snippet": "Legacy docs 2 h2 11 main"
+        },
+        {
+          "blockId": "b2",
+          "stableRef": "rmain:heading:browser-follow-duplicate",
+          "snippet": "Browser Follow Duplicate 1 h1 24 main"
+        }
+      ]
     },
     {
       "version": "1.0.0",
@@ -34,7 +51,14 @@
         "sourceType": "fixture",
         "sourceRisk": "low",
         "sourceLabel": "Browser-backed duplicate follow disambiguation"
-      }
+      },
+      "supportSnippets": [
+        {
+          "blockId": "b6",
+          "stableRef": "rmain:heading:current-docs",
+          "snippet": "Current docs 2 h2 12 main"
+        }
+      ]
     }
   ],
   "insufficientEvidenceClaims": [

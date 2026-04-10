@@ -34,6 +34,12 @@ jobs:
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
 
+      - name: Prepare semantic model cache
+        run: pnpm run setup:models
+
+      - name: Verify semantic model runners
+        run: pnpm run verify:semantic-models
+
       - name: Install Playwright Chromium
         run: pnpm exec playwright install --with-deps chromium
 

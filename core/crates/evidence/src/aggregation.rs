@@ -10,6 +10,7 @@ use crate::{
     analyzer::ClaimResolution,
     normalization::ClaimAnalysisInput,
     scoring::{is_narrative_aggregate_block, round_confidence, ScoredCandidate, ScoringContext},
+    semantic_matching::score_nli_pairs,
     ClaimRequest,
 };
 
@@ -73,8 +74,36 @@ pub(crate) fn contradiction_resolution<'a>(
     let reason = assessment
         .contradiction_reason
         .clone()
+        .or_else(|| {
+            assessment
+                .guard_failures
+                .iter()
+                .any(|failure| {
+                    matches!(
+                        failure.kind,
+                        EvidenceGuardKind::Predicate
+                            | EvidenceGuardKind::AnchorCoverage
+                            | EvidenceGuardKind::QualifierCoverage
+                    )
+                })
+                .then_some(UnsupportedClaimReason::NeedsMoreBrowsing)
+        })
         .or(Some(UnsupportedClaimReason::NegationMismatch))?;
     let mut guard_failures = assessment.guard_failures;
+    if reason == UnsupportedClaimReason::NeedsMoreBrowsing {
+        return Some(ClaimResolution {
+            verdict: EvidenceClaimVerdict::NeedsMoreBrowsing,
+            support: contradictory_support.to_vec(),
+            confidence: None,
+            reason: Some(reason),
+            checked_refs: contradiction_checked_refs,
+            guard_failures,
+            next_action_hint: assessment.next_action_hint.or(Some(
+                "The retrieved evidence is directionally relevant, but it still describes narrower behavior than the claim. Browse a more specific source before answering."
+                    .to_string(),
+            )),
+        });
+    }
     if !guard_failures
         .iter()
         .any(|failure| matches!(failure.kind, EvidenceGuardKind::Negation))
@@ -293,6 +322,19 @@ pub(crate) fn guarded_resolution<'a>(
                 ),
             });
         }
+        if nli_support_requires_more_browsing(claim, top_support) {
+            return Some(ClaimResolution {
+                verdict: EvidenceClaimVerdict::NeedsMoreBrowsing,
+                support: top_support.to_vec(),
+                confidence: None,
+                reason: Some(UnsupportedClaimReason::NeedsMoreBrowsing),
+                checked_refs: checked_refs.to_vec(),
+                guard_failures: Vec::new(),
+                next_action_hint: Some(
+                    "Lexical overlap is high, but semantic verification still disagrees with the claim. Review the snippets or browse a more specific source before answering.".to_string(),
+                ),
+            });
+        }
         return None;
     }
 
@@ -357,10 +399,47 @@ fn support_requires_additional_confirmation(
             .map(|candidate| candidate.score)
             .fold(effective_score, f64::max),
     );
+    let has_strong_numeric_alignment = top_support.iter().any(|candidate| {
+        candidate
+            .signals
+            .numeric_alignment
+            .is_some_and(|alignment| alignment >= 0.99)
+    });
     let has_exact_support = top_support.iter().any(|candidate| candidate.exact_support);
     let multi_block_support = top_support.len() >= 2;
 
-    confidence < 0.82 && !has_exact_support && !multi_block_support
+    confidence < 0.82 && !has_exact_support && !has_strong_numeric_alignment && !multi_block_support
+}
+
+fn nli_support_requires_more_browsing(
+    claim: &ClaimRequest,
+    top_support: &[ScoredCandidate<'_>],
+) -> bool {
+    if top_support.iter().any(|candidate| candidate.exact_support) {
+        return false;
+    }
+    if top_support.iter().any(|candidate| {
+        candidate
+            .signals
+            .numeric_alignment
+            .is_some_and(|alignment| alignment >= 0.99)
+    }) {
+        return false;
+    }
+
+    let aggregated_support = top_support
+        .iter()
+        .map(|candidate| candidate.text.trim())
+        .filter(|text| !text.is_empty())
+        .collect::<Vec<_>>()
+        .join(" ");
+    if aggregated_support.is_empty() {
+        return false;
+    }
+
+    score_nli_pairs(&[(aggregated_support, claim.statement.clone())])
+        .and_then(|mut scores| scores.pop())
+        .is_some_and(|score| score.entailment <= 0.05 && score.contradiction >= 0.70)
 }
 
 #[derive(Debug, Clone, Copy)]
@@ -375,7 +454,20 @@ pub(crate) fn support_acceptance_threshold(
     assessment: &GuardAssessment,
     uses_cross_lingual_matching: bool,
 ) -> f64 {
+    let has_strong_numeric_alignment = top_support.iter().any(|candidate| {
+        candidate
+            .signals
+            .numeric_alignment
+            .is_some_and(|alignment| alignment >= 0.99)
+    });
+
     if !assessment.guard_failures.is_empty() || top_support.len() < 2 {
+        if assessment.guard_failures.is_empty() && has_strong_numeric_alignment {
+            if uses_cross_lingual_matching {
+                return 0.38;
+            }
+            return 0.40;
+        }
         if uses_cross_lingual_matching {
             return 0.40;
         }

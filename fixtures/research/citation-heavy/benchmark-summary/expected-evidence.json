@@ -20,7 +20,24 @@
         "sourceType": "fixture",
         "sourceRisk": "low",
         "sourceLabel": "Citation-heavy benchmark summary page"
-      }
+      },
+      "supportSnippets": [
+        {
+          "blockId": "b4",
+          "stableRef": "rmain:table:suite-recall-citation-precision-core-research-95",
+          "snippet": "Core research | 95% | 97% Suite | Recall | Citation Precision 3 3 table 88 main"
+        },
+        {
+          "blockId": "b5",
+          "stableRef": "rmain:text:core-research-kept-citation-precision-above-the-",
+          "snippet": "Core research kept citation precision above the go threshold p 61 main"
+        },
+        {
+          "blockId": "b3",
+          "stableRef": "rmain:text:the-internal-benchmark-compares-semantic-snapsho",
+          "snippet": "The internal benchmark compares semantic snapshot quality across research tasks p 80 main"
+        }
+      ]
     },
     {
       "version": "1.0.0",
@@ -34,7 +51,24 @@
         "sourceType": "fixture",
         "sourceRisk": "low",
         "sourceLabel": "Citation-heavy benchmark summary page"
-      }
+      },
+      "supportSnippets": [
+        {
+          "blockId": "b4",
+          "stableRef": "rmain:table:suite-recall-citation-precision-core-research-95",
+          "snippet": "Hostile review | 91% | 99% Suite | Recall | Citation Precision 3 3 table 88 main"
+        },
+        {
+          "blockId": "b3",
+          "stableRef": "rmain:text:the-internal-benchmark-compares-semantic-snapsho",
+          "snippet": "The internal benchmark compares semantic snapshot quality across research tasks p 80 main"
+        },
+        {
+          "blockId": "b5",
+          "stableRef": "rmain:text:core-research-kept-citation-precision-above-the-",
+          "snippet": "Core research kept citation precision above the go threshold p 61 main"
+        }
+      ]
     }
   ],
   "insufficientEvidenceClaims": [

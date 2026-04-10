@@ -159,6 +159,8 @@ pub struct EvidenceBlock {
     #[serde(rename = "supportScore", alias = "confidence")]
     pub support_score: f64,
     pub citation: EvidenceCitation,
+    #[serde(skip_serializing_if = "Vec::is_empty", default)]
+    pub support_snippets: Vec<EvidenceSupportSnippet>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
@@ -348,6 +350,7 @@ impl EvidenceClaimOutcome {
                 source_risk: SourceRisk::Low,
                 source_label: None,
             }),
+            support_snippets: self.support_snippets.clone(),
         })
     }
 
@@ -454,6 +457,7 @@ mod tests {
                 source_risk: SourceRisk::Low,
                 source_label: None,
             },
+            support_snippets: Vec::new(),
         };
         let value = serde_json::to_value(&block).expect("serialize");
         let round_trip: EvidenceBlock =

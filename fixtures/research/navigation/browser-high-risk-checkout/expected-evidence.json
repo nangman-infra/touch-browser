@@ -20,7 +20,24 @@
         "sourceType": "fixture",
         "sourceRisk": "low",
         "sourceLabel": "Browser high-risk checkout seed"
-      }
+      },
+      "supportSnippets": [
+        {
+          "blockId": "b6",
+          "stableRef": "rmain:button:confirm-purchase",
+          "snippet": "Confirm purchase button 16 main button"
+        },
+        {
+          "blockId": "b3",
+          "stableRef": "rmain:text:confirm-payment-to-place-order-for-the-research-",
+          "snippet": "Confirm payment to place order for the research plan p 53 main"
+        },
+        {
+          "blockId": "b7",
+          "stableRef": "rmain:text:status",
+          "snippet": "Awaiting payment confirmation p 30 main"
+        }
+      ]
     }
   ],
   "insufficientEvidenceClaims": [

@@ -132,7 +132,7 @@ pub(crate) fn tokenize_cross_lingual_search(text: &str) -> Vec<String> {
 }
 
 pub(crate) fn normalize_text(text: &str) -> String {
-    let normalized_source = normalize_chinese_variants(text);
+    let normalized_source = strip_grouped_numeric_separators(&normalize_chinese_variants(text));
     let mut normalized = String::with_capacity(text.len());
     let mut previous_kind = CharacterKind::Separator;
 
@@ -160,6 +160,26 @@ pub(crate) fn normalize_text(text: &str) -> String {
     }
 
     normalized.split_whitespace().collect::<Vec<_>>().join(" ")
+}
+
+fn strip_grouped_numeric_separators(text: &str) -> String {
+    let characters = text.chars().collect::<Vec<_>>();
+    let mut normalized = String::with_capacity(text.len());
+
+    for (index, character) in characters.iter().enumerate() {
+        if *character == ','
+            && index > 0
+            && characters[index - 1].is_ascii_digit()
+            && characters
+                .get(index + 1)
+                .is_some_and(|candidate| candidate.is_ascii_digit())
+        {
+            continue;
+        }
+        normalized.push(*character);
+    }
+
+    normalized
 }
 
 pub(crate) fn tokens_match(left: &str, right: &str) -> bool {
@@ -488,6 +508,7 @@ const ANCHOR_STOP_WORDS: &[&str] = &[
     "apps",
     "model",
     "provid",
+    "replac",
     "service",
     "system",
     "platform",

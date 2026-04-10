@@ -20,7 +20,24 @@
         "sourceType": "fixture",
         "sourceRisk": "low",
         "sourceLabel": "Citation contracts"
-      }
+      },
+      "supportSnippets": [
+        {
+          "blockId": "b3",
+          "stableRef": "rmain:text:citation-contracts-require-supported-claims-to-c",
+          "snippet": "Citation Contracts require supported claims to carry a source URL and retrieved timestamp p 90 main"
+        },
+        {
+          "blockId": "b4",
+          "stableRef": "rmain:list:support-refs-point-to-stable-snapshot-blocks-uns",
+          "snippet": "- Support refs point to stable snapshot blocks - Support refs point to stable snapshot blocks. - Unsupported claims keep checked refs for audit. 2 ul 97 main list items"
+        },
+        {
+          "blockId": "b2",
+          "stableRef": "rmain:heading:citation-contracts",
+          "snippet": "Citation Contracts 1 h1 18 main"
+        }
+      ]
     },
     {
       "version": "1.0.0",
@@ -34,7 +51,19 @@
         "sourceType": "fixture",
         "sourceRisk": "low",
         "sourceLabel": "Citation contracts"
-      }
+      },
+      "supportSnippets": [
+        {
+          "blockId": "b4",
+          "stableRef": "rmain:list:support-refs-point-to-stable-snapshot-blocks-uns",
+          "snippet": "- Support refs point to stable snapshot blocks - Support refs point to stable snapshot blocks. - Unsupported claims keep checked refs for audit. 2 ul 97 main list items"
+        },
+        {
+          "blockId": "b3",
+          "stableRef": "rmain:text:citation-contracts-require-supported-claims-to-c",
+          "snippet": "Citation Contracts require supported claims to carry a source URL and retrieved timestamp p 90 main"
+        }
+      ]
     }
   ],
   "insufficientEvidenceClaims": [

@@ -20,7 +20,24 @@
         "sourceType": "fixture",
         "sourceRisk": "low",
         "sourceLabel": "Static docs getting started page"
-      }
+      },
+      "supportSnippets": [
+        {
+          "blockId": "b6",
+          "stableRef": "rmain:text:touch-browser-compiles-web-pages-into-semantic-s",
+          "snippet": "Touch Browser compiles web pages into semantic state for research agents p 73 main"
+        },
+        {
+          "blockId": "b5",
+          "stableRef": "rmain:heading:getting-started",
+          "snippet": "Getting Started 1 h1 15 main"
+        },
+        {
+          "blockId": "b7",
+          "stableRef": "rmain:heading:quickstart",
+          "snippet": "Quickstart 2 h2 10 main"
+        }
+      ]
     },
     {
       "version": "1.0.0",
@@ -34,7 +51,24 @@
         "sourceType": "fixture",
         "sourceRisk": "low",
         "sourceLabel": "Static docs getting started page"
-      }
+      },
+      "supportSnippets": [
+        {
+          "blockId": "b8",
+          "stableRef": "rmain:list:1-install-the-runtime-2-open-a-research-url-3-ca",
+          "snippet": "1 1. Install the runtime. 2. Open a research URL. 3. Capture a semantic snapshot. 3 ordered ol 79 main list items"
+        },
+        {
+          "blockId": "b7",
+          "stableRef": "rmain:heading:quickstart",
+          "snippet": "Quickstart 2 h2 10 main"
+        },
+        {
+          "blockId": "b6",
+          "stableRef": "rmain:text:touch-browser-compiles-web-pages-into-semantic-s",
+          "snippet": "Touch Browser compiles web pages into semantic state for research agents p 73 main"
+        }
+      ]
     }
   ],
   "insufficientEvidenceClaims": [

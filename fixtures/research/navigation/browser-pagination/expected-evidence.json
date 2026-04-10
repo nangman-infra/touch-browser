@@ -20,7 +20,24 @@
         "sourceType": "fixture",
         "sourceRisk": "low",
         "sourceLabel": "Browser-backed pagination seed"
-      }
+      },
+      "supportSnippets": [
+        {
+          "blockId": "b4",
+          "stableRef": "rmain:text:page-content",
+          "snippet": "Page 1 collects the first batch of release highlights p 54 main"
+        },
+        {
+          "blockId": "b3",
+          "stableRef": "rmain:text:page-label",
+          "snippet": "Page 1 p 6 main"
+        },
+        {
+          "blockId": "b2",
+          "stableRef": "rmain:heading:browser-pagination",
+          "snippet": "Browser Pagination 1 h1 18 main"
+        }
+      ]
     }
   ],
   "insufficientEvidenceClaims": [],

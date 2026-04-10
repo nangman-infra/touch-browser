@@ -111,6 +111,39 @@ pub(crate) fn rerank_candidates_with_nli(claim_text: &str, candidates: &mut [Sco
     sort_candidates_by_score(candidates);
 }
 
+pub(crate) fn score_nli_pairs(pairs: &[(String, String)]) -> Option<Vec<NliScore>> {
+    if pairs.is_empty() {
+        return Some(Vec::new());
+    }
+
+    let model_root = resolved_nli_model_root()?;
+    let runner_command = nli_runner_command()?;
+    let model_id = nli_model_id();
+    let request = NliBatchRequest {
+        model_id: model_id.clone(),
+        pairs: pairs
+            .iter()
+            .map(|(premise, hypothesis)| NliPairRequest {
+                premise: premise.clone(),
+                hypothesis: hypothesis.clone(),
+            })
+            .collect(),
+    };
+    let request_body = serde_json::to_vec(&request).ok()?;
+
+    let output = run_json_runner(
+        &runner_command,
+        &[
+            ("TOUCH_BROWSER_EVIDENCE_NLI_MODEL_PATH", &model_root),
+            ("TOUCH_BROWSER_EVIDENCE_NLI_MODEL_ID", Path::new(&model_id)),
+        ],
+        &request_body,
+    )?;
+
+    let response: NliBatchResponse = serde_json::from_slice(&output).ok()?;
+    Some(response.results)
+}
+
 fn sort_candidates_by_score(candidates: &mut [ScoredCandidate<'_>]) {
     candidates.sort_by(|left, right| {
         right
@@ -121,6 +154,22 @@ fn sort_candidates_by_score(candidates: &mut [ScoredCandidate<'_>]) {
 }
 
 fn resolved_embedding_model_root() -> Option<PathBuf> {
+    if env::var("TOUCH_BROWSER_EVIDENCE_DISABLE_LIVE_MODELS")
+        .ok()
+        .as_deref()
+        == Some("1")
+    {
+        return None;
+    }
+
+    #[cfg(test)]
+    if env::var_os("TOUCH_BROWSER_EVIDENCE_ENABLE_LIVE_MODELS").is_none()
+        && env::var_os("TOUCH_BROWSER_EVIDENCE_EMBEDDING_MODEL_PATH").is_none()
+        && env::var_os("TOUCH_BROWSER_EVIDENCE_EMBEDDING_RUNNER").is_none()
+    {
+        return None;
+    }
+
     if let Some(model_path) = env::var_os("TOUCH_BROWSER_EVIDENCE_EMBEDDING_MODEL_PATH") {
         let model_root = PathBuf::from(model_path);
         return model_root.is_dir().then_some(model_root);
@@ -169,6 +218,22 @@ fn default_embedding_runner_script() -> Option<PathBuf> {
 }
 
 fn resolved_nli_model_root() -> Option<PathBuf> {
+    if env::var("TOUCH_BROWSER_EVIDENCE_DISABLE_LIVE_MODELS")
+        .ok()
+        .as_deref()
+        == Some("1")
+    {
+        return None;
+    }
+
+    #[cfg(test)]
+    if env::var_os("TOUCH_BROWSER_EVIDENCE_ENABLE_LIVE_MODELS").is_none()
+        && env::var_os("TOUCH_BROWSER_EVIDENCE_NLI_MODEL_PATH").is_none()
+        && env::var_os("TOUCH_BROWSER_EVIDENCE_NLI_RUNNER").is_none()
+    {
+        return None;
+    }
+
     if let Some(model_path) = env::var_os("TOUCH_BROWSER_EVIDENCE_NLI_MODEL_PATH") {
         let model_root = PathBuf::from(model_path);
         return model_root.is_dir().then_some(model_root);
@@ -335,11 +400,7 @@ fn run_json_runner(
 }
 
 fn apply_nli_reranking(candidate: &mut ScoredCandidate<'_>, nli: &NliScore) {
-    let contradiction_margin = nli.contradiction - nli.entailment.max(nli.neutral);
-    if nli.contradiction >= STRONG_NLI_CONTRADICTION
-        && contradiction_margin >= STRONG_NLI_MARGIN
-        && candidate.score >= 0.40
-    {
+    if has_strong_nli_contradiction(nli) && candidate.score >= 0.40 {
         candidate.contradictory = true;
         candidate.score = (candidate.score + 0.05).min(1.0);
         candidate.signals.nli_entailment = Some(nli.entailment);
@@ -347,14 +408,23 @@ fn apply_nli_reranking(candidate: &mut ScoredCandidate<'_>, nli: &NliScore) {
         return;
     }
 
-    let entailment_margin = nli.entailment - nli.contradiction.max(nli.neutral);
-    if nli.entailment >= STRONG_NLI_ENTAILMENT && entailment_margin >= STRONG_NLI_MARGIN {
+    if has_strong_nli_entailment(nli) {
         candidate.score = (candidate.score + 0.18).min(1.0);
         candidate.exact_support = true;
         candidate.signals.exact_support = true;
     }
     candidate.signals.nli_entailment = Some(nli.entailment);
     candidate.signals.nli_contradiction = Some(nli.contradiction);
+}
+
+pub(crate) fn has_strong_nli_contradiction(nli: &NliScore) -> bool {
+    let contradiction_margin = nli.contradiction - nli.entailment.max(nli.neutral);
+    nli.contradiction >= STRONG_NLI_CONTRADICTION && contradiction_margin >= STRONG_NLI_MARGIN
+}
+
+pub(crate) fn has_strong_nli_entailment(nli: &NliScore) -> bool {
+    let entailment_margin = nli.entailment - nli.contradiction.max(nli.neutral);
+    nli.entailment >= STRONG_NLI_ENTAILMENT && entailment_margin >= STRONG_NLI_MARGIN
 }
 
 fn prefix_query_text(text: &str) -> String {

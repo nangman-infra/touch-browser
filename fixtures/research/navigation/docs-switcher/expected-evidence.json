@@ -20,7 +20,24 @@
         "sourceType": "fixture",
         "sourceRisk": "low",
         "sourceLabel": "Docs switcher"
-      }
+      },
+      "supportSnippets": [
+        {
+          "blockId": "b3",
+          "stableRef": "rmain:text:docs-switcher-links-architecture-policy-and-repl",
+          "snippet": "Docs Switcher links architecture, policy, and replay references from one index p 79 main"
+        },
+        {
+          "blockId": "b4",
+          "stableRef": "rmain:list:architecture-reference-policy-reference-replay-r",
+          "snippet": "- Architecture reference - Policy reference - Replay reference 3 ul 62 main list items"
+        },
+        {
+          "blockId": "b2",
+          "stableRef": "rmain:heading:docs-switcher",
+          "snippet": "Docs Switcher 1 h1 13 main"
+        }
+      ]
     },
     {
       "version": "1.0.0",
@@ -34,7 +51,24 @@
         "sourceType": "fixture",
         "sourceRisk": "low",
         "sourceLabel": "Docs switcher"
-      }
+      },
+      "supportSnippets": [
+        {
+          "blockId": "b4",
+          "stableRef": "rmain:list:architecture-reference-policy-reference-replay-r",
+          "snippet": "- Architecture reference - Policy reference - Replay reference 3 ul 62 main list items"
+        },
+        {
+          "blockId": "b7",
+          "stableRef": "rmain:link:replay",
+          "snippet": "Replay reference /replay a 16 main link"
+        },
+        {
+          "blockId": "b3",
+          "stableRef": "rmain:text:docs-switcher-links-architecture-policy-and-repl",
+          "snippet": "Docs Switcher links architecture, policy, and replay references from one index p 79 main"
+        }
+      ]
     }
   ],
   "insufficientEvidenceClaims": [],
