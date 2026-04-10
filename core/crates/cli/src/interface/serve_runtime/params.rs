@@ -2,7 +2,7 @@ use std::path::PathBuf;
 
 use serde_json::Value;
 
-use crate::{
+use crate::interface::deps::{
     parse_ack_risk, parse_output_format, parse_source_risk, AckRisk, CliError, ExtractOptions,
     OutputFormat, SessionFileOptions, SessionSynthesizeOptions, TargetOptions,
     DEFAULT_REQUESTED_TOKENS,

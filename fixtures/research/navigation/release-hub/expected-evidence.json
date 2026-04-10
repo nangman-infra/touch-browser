@@ -85,6 +85,14 @@
       "confidenceBand": "high",
       "reviewRecommended": false,
       "verdictExplanation": "Matched direct support in 3 page block(s). Review the attached snippets before reusing the claim.",
+      "matchSignals": {
+        "blockId": "b3",
+        "stableRef": "rmain:text:release-hub-groups-stable-beta-and-archived-rele",
+        "blockKind": "text",
+        "exactSupport": true,
+        "lexicalOverlap": 1.0,
+        "contextualOverlap": 1.0
+      },
       "checkedBlockRefs": [
         "rmain:text:release-hub-groups-stable-beta-and-archived-rele",
         "rmain:list:stable-track-beta-track-archived-track",
@@ -125,6 +133,14 @@
       "confidenceBand": "high",
       "reviewRecommended": false,
       "verdictExplanation": "Matched direct support in 3 page block(s). Review the attached snippets before reusing the claim.",
+      "matchSignals": {
+        "blockId": "b4",
+        "stableRef": "rmain:list:stable-track-beta-track-archived-track",
+        "blockKind": "list",
+        "exactSupport": true,
+        "lexicalOverlap": 1.0,
+        "contextualOverlap": 1.0
+      },
       "checkedBlockRefs": [
         "rmain:list:stable-track-beta-track-archived-track",
         "rmain:text:release-hub-groups-stable-beta-and-archived-rele",

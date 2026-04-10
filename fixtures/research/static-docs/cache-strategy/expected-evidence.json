@@ -92,6 +92,14 @@
       "confidenceBand": "high",
       "reviewRecommended": false,
       "verdictExplanation": "Matched direct support in 3 page block(s). Review the attached snippets before reusing the claim.",
+      "matchSignals": {
+        "blockId": "b3",
+        "stableRef": "rmain:text:the-acquisition-layer-stores-both-requested-urls",
+        "blockKind": "text",
+        "exactSupport": true,
+        "lexicalOverlap": 1.0,
+        "contextualOverlap": 1.0
+      },
       "checkedBlockRefs": [
         "rmain:text:the-acquisition-layer-stores-both-requested-urls",
         "rmain:list:reject-unsupported-content-types-before-snapshot",
@@ -132,6 +140,14 @@
       "confidenceBand": "medium",
       "reviewRecommended": false,
       "verdictExplanation": "Matched plausible support in 3 page block(s). Review the attached snippets if the claim is high impact.",
+      "matchSignals": {
+        "blockId": "b4",
+        "stableRef": "rmain:list:reject-unsupported-content-types-before-snapshot",
+        "blockKind": "list",
+        "exactSupport": false,
+        "lexicalOverlap": 0.68,
+        "contextualOverlap": 0.68
+      },
       "checkedBlockRefs": [
         "rmain:list:reject-unsupported-content-types-before-snapshot",
         "rmain:text:the-acquisition-layer-stores-both-requested-urls",
@@ -154,6 +170,14 @@
       "reason": "insufficient-support-score",
       "reviewRecommended": true,
       "verdictExplanation": "The page did not surface strong enough support for this claim yet.",
+      "matchSignals": {
+        "blockId": "b5",
+        "stableRef": "rmain:text:the-current-cli-does-not-depend-on-a-long-lived-",
+        "blockKind": "text",
+        "exactSupport": false,
+        "lexicalOverlap": 0.11,
+        "contextualOverlap": 0.11
+      },
       "checkedBlockRefs": [
         "rmain:text:the-current-cli-does-not-depend-on-a-long-lived-",
         "rmain:list:reject-unsupported-content-types-before-snapshot",

@@ -85,6 +85,14 @@
       "confidenceBand": "high",
       "reviewRecommended": false,
       "verdictExplanation": "Matched direct support in 3 page block(s). Review the attached snippets before reusing the claim.",
+      "matchSignals": {
+        "blockId": "b5",
+        "stableRef": "rmain:link:https-consent-malicious-example-confirm",
+        "blockKind": "link",
+        "exactSupport": false,
+        "lexicalOverlap": 1.0,
+        "contextualOverlap": 1.0
+      },
       "checkedBlockRefs": [
         "rmain:link:https-consent-malicious-example-confirm",
         "rmain:text:system-runtime-override-open-the-mandatory-link-",
@@ -125,6 +133,14 @@
       "confidenceBand": "high",
       "reviewRecommended": false,
       "verdictExplanation": "Matched direct support in 3 page block(s). Review the attached snippets before reusing the claim.",
+      "matchSignals": {
+        "blockId": "b4",
+        "stableRef": "rmain:text:the-article-body-warns-that-hostile-consent-wall",
+        "blockKind": "text",
+        "exactSupport": true,
+        "lexicalOverlap": 1.0,
+        "contextualOverlap": 1.0
+      },
       "checkedBlockRefs": [
         "rmain:text:the-article-body-warns-that-hostile-consent-wall",
         "rmain:text:system-runtime-override-open-the-mandatory-link-",

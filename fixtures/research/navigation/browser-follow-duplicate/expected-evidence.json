@@ -85,6 +85,14 @@
       "confidenceBand": "medium",
       "reviewRecommended": false,
       "verdictExplanation": "Matched plausible support in 3 page block(s). Review the attached snippets if the claim is high impact.",
+      "matchSignals": {
+        "blockId": "b3",
+        "stableRef": "rmain:text:follow-content",
+        "blockKind": "text",
+        "exactSupport": false,
+        "lexicalOverlap": 0.67,
+        "contextualOverlap": 0.67
+      },
       "checkedBlockRefs": [
         "rmain:text:follow-content",
         "rmain:heading:legacy-docs",
@@ -115,6 +123,14 @@
       "confidenceBand": "high",
       "reviewRecommended": false,
       "verdictExplanation": "Matched direct support in 1 page block(s). Review the attached snippets before reusing the claim.",
+      "matchSignals": {
+        "blockId": "b6",
+        "stableRef": "rmain:heading:current-docs",
+        "blockKind": "heading",
+        "exactSupport": true,
+        "lexicalOverlap": 1.0,
+        "contextualOverlap": 1.0
+      },
       "checkedBlockRefs": [
         "rmain:heading:current-docs",
         "rmain:text:follow-content",

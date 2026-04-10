@@ -1,6 +1,6 @@
 use std::path::PathBuf;
 
-use crate::{
+use super::deps::{
     CliError, SearchEngine, SearchOpenResultOptions, SearchOpenTopOptions, SearchOptions,
     DEFAULT_SEARCH_TOKENS,
 };

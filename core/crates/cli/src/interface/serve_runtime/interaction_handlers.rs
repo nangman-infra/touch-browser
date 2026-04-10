@@ -1,6 +1,6 @@
 use serde_json::Value;
 
-use crate::{
+use crate::interface::deps::{
     dispatch, merge_ack_risks, AckRisk, CliCommand, CliError, ClickOptions, ExpandOptions,
     FollowOptions, PaginateOptions, PaginationDirection, SecretPrefill, SubmitOptions, TypeOptions,
 };

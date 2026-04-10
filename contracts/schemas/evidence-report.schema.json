@@ -181,6 +181,73 @@
             "type": "string",
             "minLength": 1
           },
+          "matchSignals": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["blockId", "stableRef", "blockKind", "exactSupport"],
+            "properties": {
+              "blockId": {
+                "type": "string",
+                "pattern": "^b[0-9]+$"
+              },
+              "stableRef": {
+                "type": "string",
+                "pattern": "^r[a-zA-Z0-9:_-]+$"
+              },
+              "blockKind": {
+                "type": "string",
+                "enum": [
+                  "text",
+                  "heading",
+                  "link",
+                  "list",
+                  "table",
+                  "metadata",
+                  "form",
+                  "button",
+                  "input"
+                ]
+              },
+              "exactSupport": {
+                "type": "boolean"
+              },
+              "lexicalOverlap": {
+                "type": "number",
+                "minimum": 0,
+                "maximum": 1
+              },
+              "contextualOverlap": {
+                "type": "number",
+                "minimum": 0,
+                "maximum": 1
+              },
+              "numericAlignment": {
+                "type": "number",
+                "minimum": 0,
+                "maximum": 1
+              },
+              "semanticSimilarity": {
+                "type": "number",
+                "minimum": 0,
+                "maximum": 1
+              },
+              "semanticBoost": {
+                "type": "number",
+                "minimum": 0,
+                "maximum": 1
+              },
+              "nliEntailment": {
+                "type": "number",
+                "minimum": 0,
+                "maximum": 1
+              },
+              "nliContradiction": {
+                "type": "number",
+                "minimum": 0,
+                "maximum": 1
+              }
+            }
+          },
           "checkedBlockRefs": {
             "type": "array",
             "items": {

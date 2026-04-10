@@ -71,6 +71,14 @@
       "confidenceBand": "high",
       "reviewRecommended": false,
       "verdictExplanation": "Matched direct support in 3 page block(s). Review the attached snippets before reusing the claim.",
+      "matchSignals": {
+        "blockId": "b6",
+        "stableRef": "rmain:button:confirm-purchase",
+        "blockKind": "button",
+        "exactSupport": false,
+        "lexicalOverlap": 1.0,
+        "contextualOverlap": 1.0
+      },
       "checkedBlockRefs": [
         "rmain:button:confirm-purchase",
         "rmain:text:confirm-payment-to-place-order-for-the-research-",

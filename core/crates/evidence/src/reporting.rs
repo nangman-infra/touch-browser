@@ -1,8 +1,8 @@
 use std::collections::BTreeSet;
 use touch_browser_contracts::{
     EvidenceCitation, EvidenceClaimOutcome, EvidenceClaimVerdict, EvidenceConfidenceBand,
-    EvidenceReport, EvidenceSource, EvidenceSupportSnippet, UnsupportedClaimReason,
-    CONTRACT_VERSION,
+    EvidenceMatchSignals, EvidenceReport, EvidenceSource, EvidenceSupportSnippet,
+    UnsupportedClaimReason, CONTRACT_VERSION,
 };
 
 use crate::{analyzer::analyze_claim, ClaimRequest, EvidenceInput};
@@ -13,6 +13,7 @@ pub(crate) fn build_claim_outcome(
 ) -> EvidenceClaimOutcome {
     let resolution = analyze_claim(claim, &input.snapshot.blocks);
     let support_snippets = build_support_snippets(&resolution.support);
+    let match_signals = resolution.support.first().map(build_match_signals);
     let confidence_band = resolution.confidence.map(confidence_band_for_score);
     let review_recommended = matches!(confidence_band, Some(EvidenceConfidenceBand::Review))
         || matches!(
@@ -65,6 +66,7 @@ pub(crate) fn build_claim_outcome(
         confidence_band,
         review_recommended,
         verdict_explanation,
+        match_signals,
         checked_block_refs: resolution.checked_refs,
         guard_failures: resolution.guard_failures,
         next_action_hint: resolution.next_action_hint,
@@ -85,6 +87,37 @@ fn build_support_snippets(
             snippet: truncate_snippet(&candidate.text),
         })
         .collect()
+}
+
+fn build_match_signals(candidate: &crate::scoring::ScoredCandidate<'_>) -> EvidenceMatchSignals {
+    EvidenceMatchSignals {
+        block_id: candidate.block.id.clone(),
+        stable_ref: candidate.block.stable_ref.clone(),
+        block_kind: candidate.block.kind.clone(),
+        exact_support: candidate.signals.exact_support,
+        lexical_overlap: Some((candidate.signals.lexical_overlap * 100.0).round() / 100.0),
+        contextual_overlap: Some((candidate.signals.contextual_overlap * 100.0).round() / 100.0),
+        numeric_alignment: candidate
+            .signals
+            .numeric_alignment
+            .map(|value| (value * 100.0).round() / 100.0),
+        semantic_similarity: candidate
+            .signals
+            .semantic_similarity
+            .map(|value| (value * 100.0).round() / 100.0),
+        semantic_boost: candidate
+            .signals
+            .semantic_boost
+            .map(|value| (value * 100.0).round() / 100.0),
+        nli_entailment: candidate
+            .signals
+            .nli_entailment
+            .map(|value| (value * 100.0).round() / 100.0),
+        nli_contradiction: candidate
+            .signals
+            .nli_contradiction
+            .map(|value| (value * 100.0).round() / 100.0),
+    }
 }
 
 fn truncate_snippet(text: &str) -> String {
@@ -260,6 +293,14 @@ mod tests {
         assert!(!outcome.review_recommended);
         assert_eq!(outcome.support_snippets.len(), 1);
         assert_eq!(outcome.support_snippets[0].block_id, "b1");
+        assert_eq!(
+            outcome
+                .match_signals
+                .as_ref()
+                .expect("supported claim should expose match signals")
+                .block_kind,
+            SnapshotBlockKind::Text
+        );
         assert!(
             outcome
                 .verdict_explanation

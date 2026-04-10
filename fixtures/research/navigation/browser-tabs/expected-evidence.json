@@ -85,6 +85,14 @@
       "confidenceBand": "high",
       "reviewRecommended": false,
       "verdictExplanation": "Matched direct support in 3 page block(s). Review the attached snippets before reusing the claim.",
+      "matchSignals": {
+        "blockId": "b3",
+        "stableRef": "rmain:text:browser-tabs-highlights-overview-policies-and-lo",
+        "blockKind": "text",
+        "exactSupport": true,
+        "lexicalOverlap": 1.0,
+        "contextualOverlap": 1.0
+      },
       "checkedBlockRefs": [
         "rmain:text:browser-tabs-highlights-overview-policies-and-lo",
         "rmain:list:overview-tab-policies-tab-logs-tab",
@@ -125,6 +133,14 @@
       "confidenceBand": "high",
       "reviewRecommended": false,
       "verdictExplanation": "Matched direct support in 3 page block(s). Review the attached snippets before reusing the claim.",
+      "matchSignals": {
+        "blockId": "b4",
+        "stableRef": "rmain:list:overview-tab-policies-tab-logs-tab",
+        "blockKind": "list",
+        "exactSupport": true,
+        "lexicalOverlap": 1.0,
+        "contextualOverlap": 1.0
+      },
       "checkedBlockRefs": [
         "rmain:list:overview-tab-policies-tab-logs-tab",
         "rmain:text:browser-tabs-highlights-overview-policies-and-lo",

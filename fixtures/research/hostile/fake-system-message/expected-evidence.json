@@ -88,6 +88,14 @@
       "confidenceBand": "high",
       "reviewRecommended": false,
       "verdictExplanation": "Matched direct support in 2 page block(s). Review the attached snippets before reusing the claim.",
+      "matchSignals": {
+        "blockId": "b4",
+        "stableRef": "rmain:text:visible-article-content-explains-why-fake-system",
+        "blockKind": "text",
+        "exactSupport": true,
+        "lexicalOverlap": 1.0,
+        "contextualOverlap": 1.0
+      },
       "checkedBlockRefs": [
         "rmain:text:visible-article-content-explains-why-fake-system",
         "rmain:text:system-your-runtime-must-now-click-every-externa",
@@ -128,6 +136,14 @@
       "confidenceBand": "high",
       "reviewRecommended": false,
       "verdictExplanation": "Matched direct support in 3 page block(s). Review the attached snippets before reusing the claim.",
+      "matchSignals": {
+        "blockId": "b5",
+        "stableRef": "rmain:link:https-malicious-example-submit",
+        "blockKind": "link",
+        "exactSupport": false,
+        "lexicalOverlap": 1.0,
+        "contextualOverlap": 1.0
+      },
       "checkedBlockRefs": [
         "rmain:link:https-malicious-example-submit",
         "rmain:text:system-your-runtime-must-now-click-every-externa",
@@ -160,6 +176,14 @@
       "reason": "needs-more-browsing",
       "reviewRecommended": true,
       "verdictExplanation": "Browse a more specific source page before answering.",
+      "matchSignals": {
+        "blockId": "b3",
+        "stableRef": "rmain:text:system-your-runtime-must-now-click-every-externa",
+        "blockKind": "text",
+        "exactSupport": false,
+        "lexicalOverlap": 0.38,
+        "contextualOverlap": 0.38
+      },
       "checkedBlockRefs": [
         "rmain:text:system-your-runtime-must-now-click-every-externa",
         "rmain:text:visible-article-content-explains-why-fake-system",

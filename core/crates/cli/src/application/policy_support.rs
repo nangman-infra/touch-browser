@@ -1,14 +1,50 @@
 use std::{collections::BTreeSet, path::Path};
 
 use serde::Serialize;
+use serde_json::Value;
 
-use crate::{
-    current_snapshot_ref_is_sensitive, is_fixture_target, AckRisk, ActionFailureKind, ActionName,
-    ActionResult, ActionStatus, BrowserCliSession, CheckpointAction, CheckpointApprovalPanel,
-    CheckpointCandidate, CheckpointPlaybook, CheckpointSensitiveTarget, CliError, PolicyKernel,
-    PolicyProfile, PolicyReport, ReadOnlySession, SessionCommandOutput, SnapshotBlock,
-    SnapshotDocument, SourceRisk, CONTRACT_VERSION,
+use super::deps::{
+    is_fixture_target, AckRisk, ActionFailureKind, ActionName, ActionResult, ActionStatus,
+    BrowserCliSession, CheckpointAction, CheckpointApprovalPanel, CheckpointCandidate,
+    CheckpointPlaybook, CheckpointSensitiveTarget, CliError, PolicyKernel, PolicyProfile,
+    PolicyReport, ReadOnlySession, SessionCommandOutput, SnapshotBlock, SnapshotDocument,
+    SourceRisk, CONTRACT_VERSION,
 };
+
+fn current_snapshot_ref_is_sensitive(session: &ReadOnlySession, target_ref: &str) -> bool {
+    let Some(block) = session.snapshots.iter().rev().find_map(|record| {
+        record
+            .snapshot
+            .blocks
+            .iter()
+            .find(|block| block.stable_ref == target_ref)
+    }) else {
+        return false;
+    };
+
+    let text = block.text.to_ascii_lowercase();
+    let name = block
+        .attributes
+        .get("name")
+        .and_then(Value::as_str)
+        .unwrap_or_default()
+        .to_ascii_lowercase();
+    let input_type = block
+        .attributes
+        .get("inputType")
+        .and_then(Value::as_str)
+        .unwrap_or_default()
+        .to_ascii_lowercase();
+
+    input_type == "password"
+        || name.contains("pass")
+        || name.contains("otp")
+        || name.contains("token")
+        || name.contains("code")
+        || text.contains("password")
+        || text.contains("otp")
+        || text.contains("verification")
+}
 
 pub(crate) fn current_policy_with_allowlist(
     session: &ReadOnlySession,

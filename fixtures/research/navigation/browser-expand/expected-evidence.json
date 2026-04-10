@@ -79,6 +79,14 @@
       "confidenceBand": "medium",
       "reviewRecommended": false,
       "verdictExplanation": "Matched plausible support in 2 page block(s). Review the attached snippets if the claim is high impact.",
+      "matchSignals": {
+        "blockId": "b3",
+        "stableRef": "rmain:text:expand-hidden-details-to-reveal-the-supporting-n",
+        "blockKind": "text",
+        "exactSupport": false,
+        "lexicalOverlap": 0.49,
+        "contextualOverlap": 0.49
+      },
       "checkedBlockRefs": [
         "rmain:text:expand-hidden-details-to-reveal-the-supporting-n",
         "rmain:heading:browser-expand",
@@ -119,6 +127,14 @@
       "confidenceBand": "high",
       "reviewRecommended": false,
       "verdictExplanation": "Matched direct support in 3 page block(s). Review the attached snippets before reusing the claim.",
+      "matchSignals": {
+        "blockId": "b4",
+        "stableRef": "rmain:button:expand-details",
+        "blockKind": "button",
+        "exactSupport": false,
+        "lexicalOverlap": 1.0,
+        "contextualOverlap": 1.0
+      },
       "checkedBlockRefs": [
         "rmain:button:expand-details",
         "rmain:text:expand-hidden-details-to-reveal-the-supporting-n",

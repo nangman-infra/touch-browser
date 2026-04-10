@@ -93,6 +93,15 @@
       "confidenceBand": "high",
       "reviewRecommended": false,
       "verdictExplanation": "Matched direct support in 3 page block(s). Review the attached snippets before reusing the claim.",
+      "matchSignals": {
+        "blockId": "b3",
+        "stableRef": "rmain:text:pricing-matrix-lists-research-at-49-per-month-an",
+        "blockKind": "text",
+        "exactSupport": true,
+        "lexicalOverlap": 1.0,
+        "contextualOverlap": 1.0,
+        "numericAlignment": 1.0
+      },
       "checkedBlockRefs": [
         "rmain:text:pricing-matrix-lists-research-at-49-per-month-an",
         "rmain:table:tier-price-notes-research-49-5-seats-enterprise-",
@@ -133,6 +142,14 @@
       "confidenceBand": "high",
       "reviewRecommended": false,
       "verdictExplanation": "Matched direct support in 3 page block(s). Review the attached snippets before reusing the claim.",
+      "matchSignals": {
+        "blockId": "b4",
+        "stableRef": "rmain:table:tier-price-notes-research-49-5-seats-enterprise-",
+        "blockKind": "table",
+        "exactSupport": true,
+        "lexicalOverlap": 1.0,
+        "contextualOverlap": 1.0
+      },
       "checkedBlockRefs": [
         "rmain:table:tier-price-notes-research-49-5-seats-enterprise-",
         "rmain:text:pricing-matrix-lists-research-at-49-per-month-an",
@@ -160,6 +177,14 @@
       "reason": "needs-more-browsing",
       "reviewRecommended": true,
       "verdictExplanation": "Browse a more specific source page before answering.",
+      "matchSignals": {
+        "blockId": "b4",
+        "stableRef": "rmain:table:tier-price-notes-research-49-5-seats-enterprise-",
+        "blockKind": "table",
+        "exactSupport": false,
+        "lexicalOverlap": 0.18,
+        "contextualOverlap": 0.2
+      },
       "checkedBlockRefs": [
         "rmain:table:tier-price-notes-research-49-5-seats-enterprise-",
         "rmain:text:pricing-matrix-lists-research-at-49-per-month-an",

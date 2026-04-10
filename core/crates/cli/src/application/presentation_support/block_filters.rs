@@ -116,6 +116,36 @@ pub(super) fn keep_navigation_block(block: &SnapshotBlock) -> bool {
     )
 }
 
+pub(super) fn keep_hub_summary_block(block: &SnapshotBlock) -> bool {
+    if block.text.trim().is_empty() || is_toc_like_block(block) {
+        return false;
+    }
+
+    match block.kind {
+        SnapshotBlockKind::Heading => true,
+        SnapshotBlockKind::Text => {
+            matches!(
+                block.role,
+                SnapshotBlockRole::Content | SnapshotBlockRole::Supporting
+            ) && block.text.trim().chars().count() >= 48
+        }
+        SnapshotBlockKind::List | SnapshotBlockKind::Table => {
+            matches!(
+                block.role,
+                SnapshotBlockRole::Content | SnapshotBlockRole::Supporting
+            ) && block.text.trim().chars().count() >= 96
+        }
+        SnapshotBlockKind::Link => {
+            matches!(block.role, SnapshotBlockRole::Content)
+                && block.text.trim().chars().count() >= 96
+        }
+        SnapshotBlockKind::Metadata
+        | SnapshotBlockKind::Button
+        | SnapshotBlockKind::Form
+        | SnapshotBlockKind::Input => false,
+    }
+}
+
 pub(super) fn keep_read_view_block(block: &SnapshotBlock, has_heading: bool) -> bool {
     if is_toc_like_block(block) {
         return false;

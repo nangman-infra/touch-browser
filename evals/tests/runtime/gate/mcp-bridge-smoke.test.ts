@@ -1,15 +1,43 @@
 import type { ChildProcessWithoutNullStreams } from "node:child_process";
+import fs from "node:fs";
+import { createRequire } from "node:module";
+import os from "node:os";
+import path from "node:path";
 
 import { afterEach, describe, expect, it } from "vitest";
 
-// @ts-expect-error local bridge helper is JavaScript-only in the integration package
-import { createBridgeServeClient } from "../../../../integrations/mcp/bridge/serve-client.mjs";
 import { repoRoot } from "../support/paths.js";
 import { spawnShellCommand } from "../support/shell.js";
 
+type BridgeServeClient = {
+  readonly child: ChildProcessWithoutNullStreams;
+  ensureReady<T = unknown>(): Promise<T>;
+  call<T = unknown>(
+    method: string,
+    params?: Record<string, unknown>,
+  ): Promise<T>;
+  close(): Promise<void>;
+};
+
+const require = createRequire(import.meta.url);
+const {
+  createBridgeServeClient,
+  resolveServeCommand,
+}: {
+  createBridgeServeClient: (options?: {
+    cwd?: string;
+    serveCommand?: string;
+    requestTimeoutMs?: number;
+  }) => BridgeServeClient;
+  resolveServeCommand: (options?: {
+    cwd?: string;
+    env?: NodeJS.ProcessEnv;
+  }) => string;
+} = require("../../../../integrations/mcp/bridge/serve-client.mjs");
+
 describe("mcp bridge smoke", () => {
   const clients: ChildProcessWithoutNullStreams[] = [];
-  const serveClients: Array<ReturnType<typeof createBridgeServeClient>> = [];
+  const serveClients: BridgeServeClient[] = [];
 
   afterEach(async () => {
     await Promise.allSettled(
@@ -179,17 +207,48 @@ describe("mcp bridge smoke", () => {
     const serve = createBridgeServeClient({ cwd: repoRoot });
     serveClients.push(serve);
 
-    const firstStatus = await serve.ensureReady();
+    const firstStatus = await serve.ensureReady<{ status: string }>();
     expect(firstStatus.status).toBe("ready");
     const firstPid = serve.child.pid;
     serve.child.kill("SIGTERM");
 
     await new Promise((resolve) => setTimeout(resolve, 300));
 
-    const secondStatus = await serve.call("runtime.status", {});
+    const secondStatus = await serve.call<{ status: string }>(
+      "runtime.status",
+      {},
+    );
     expect(secondStatus.status).toBe("ready");
     expect(serve.child.pid).not.toBe(firstPid);
   }, 20_000);
+
+  it("prefers a packaged touch-browser binary before falling back to cargo run", () => {
+    const tempRoot = fs.mkdtempSync(
+      path.join(os.tmpdir(), "touch-browser-mcp-"),
+    );
+    const binaryPath = path.join(
+      tempRoot,
+      "target",
+      "release",
+      "touch-browser",
+    );
+    fs.mkdirSync(path.dirname(binaryPath), { recursive: true });
+    fs.writeFileSync(binaryPath, "#!/bin/sh\nexit 0\n");
+    fs.chmodSync(binaryPath, 0o755);
+
+    const command = resolveServeCommand({
+      cwd: tempRoot,
+      env: {
+        ...process.env,
+        TOUCH_BROWSER_SERVE_COMMAND: "",
+        TOUCH_BROWSER_SERVE_BINARY: "",
+        PATH: "",
+      },
+    });
+
+    expect(command).toContain("target/release/touch-browser");
+    expect(command.endsWith(" serve")).toBe(true);
+  });
 });
 
 function createRpcCaller(child: ChildProcessWithoutNullStreams) {

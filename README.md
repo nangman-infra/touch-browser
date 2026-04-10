@@ -108,7 +108,8 @@ Minimal MCP bridge setup from the repository root:
 ```
 
 The bridge starts `touch-browser serve` underneath and exposes tools like `tb_search`, `tb_search_open_top`, `tb_open`, `tb_read_view`, `tb_extract`, `tb_tab_open`, and `tb_session_synthesize`.
-Use `TOUCH_BROWSER_SERVE_COMMAND` if you want the bridge to launch a built binary instead of the default `cargo run -q -p touch-browser-cli -- serve`.
+By default the bridge prefers an explicit `TOUCH_BROWSER_SERVE_COMMAND`, then a packaged or installed `touch-browser` binary, and only falls back to `cargo run -q -p touch-browser-cli -- serve` when no binary is available.
+Use `TOUCH_BROWSER_SERVE_COMMAND` if you want to force a specific built binary or wrapper command.
 `tb_read_view` accepts `mainOnly`, `tb_extract` accepts `verifierCommand`, and `tb_search` returns ranked results plus `nextActionHints` with `actor`, `canAutoRun`, and `headedRequired`.
 
 Core serve methods map to MCP tools like this:
@@ -128,6 +129,13 @@ Search capture note:
 - search identity stabilization is only applied to search-specific browser flows
 - it reduces browser-exposed automation markers enough to keep search result pages readable
 - it is not presented as a general stealth automation layer for arbitrary browsing, auth, or write flows
+
+Evidence output note:
+
+- `supportSnippets` returns short evidence text for the selected support blocks
+- `verdictExplanation` summarizes why the verdict landed where it did
+- `confidenceBand` and `reviewRecommended` distinguish strong support from borderline support
+- `matchSignals` exposes the first support block's lexical, contextual, numeric, semantic, and NLI-side matching signals when available
 
 ## Docs And Proof
 

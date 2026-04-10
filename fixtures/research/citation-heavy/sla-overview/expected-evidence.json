@@ -93,6 +93,15 @@
       "confidenceBand": "high",
       "reviewRecommended": false,
       "verdictExplanation": "Matched direct support in 3 page block(s). Review the attached snippets before reusing the claim.",
+      "matchSignals": {
+        "blockId": "b3",
+        "stableRef": "rmain:text:sla-overview-states-that-priority-incidents-rece",
+        "blockKind": "text",
+        "exactSupport": true,
+        "lexicalOverlap": 1.0,
+        "contextualOverlap": 1.0,
+        "numericAlignment": 1.0
+      },
       "checkedBlockRefs": [
         "rmain:text:sla-overview-states-that-priority-incidents-rece",
         "rmain:table:severity-updates-availability-priority-30-minute",
@@ -133,6 +142,15 @@
       "confidenceBand": "high",
       "reviewRecommended": false,
       "verdictExplanation": "Matched direct support in 3 page block(s). Review the attached snippets before reusing the claim.",
+      "matchSignals": {
+        "blockId": "b4",
+        "stableRef": "rmain:table:severity-updates-availability-priority-30-minute",
+        "blockKind": "table",
+        "exactSupport": true,
+        "lexicalOverlap": 1.0,
+        "contextualOverlap": 1.0,
+        "numericAlignment": 1.0
+      },
       "checkedBlockRefs": [
         "rmain:table:severity-updates-availability-priority-30-minute",
         "rmain:text:sla-overview-states-that-priority-incidents-rece",
@@ -160,6 +178,14 @@
       "reason": "needs-more-browsing",
       "reviewRecommended": true,
       "verdictExplanation": "Browse a more specific source page before answering.",
+      "matchSignals": {
+        "blockId": "b4",
+        "stableRef": "rmain:table:severity-updates-availability-priority-30-minute",
+        "blockKind": "table",
+        "exactSupport": false,
+        "lexicalOverlap": -0.0,
+        "contextualOverlap": 0.11
+      },
       "checkedBlockRefs": [
         "rmain:table:severity-updates-availability-priority-30-minute",
         "rmain:text:sla-overview-states-that-priority-incidents-rece",

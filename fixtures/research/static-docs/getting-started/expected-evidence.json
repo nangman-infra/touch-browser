@@ -85,6 +85,14 @@
       "confidenceBand": "high",
       "reviewRecommended": false,
       "verdictExplanation": "Matched direct support in 3 page block(s). Review the attached snippets before reusing the claim.",
+      "matchSignals": {
+        "blockId": "b6",
+        "stableRef": "rmain:text:touch-browser-compiles-web-pages-into-semantic-s",
+        "blockKind": "text",
+        "exactSupport": true,
+        "lexicalOverlap": 1.0,
+        "contextualOverlap": 1.0
+      },
       "checkedBlockRefs": [
         "rmain:text:touch-browser-compiles-web-pages-into-semantic-s",
         "rmain:heading:getting-started",
@@ -125,6 +133,14 @@
       "confidenceBand": "high",
       "reviewRecommended": false,
       "verdictExplanation": "Matched direct support in 3 page block(s). Review the attached snippets before reusing the claim.",
+      "matchSignals": {
+        "blockId": "b8",
+        "stableRef": "rmain:list:1-install-the-runtime-2-open-a-research-url-3-ca",
+        "blockKind": "list",
+        "exactSupport": false,
+        "lexicalOverlap": 0.73,
+        "contextualOverlap": 1.0
+      },
       "checkedBlockRefs": [
         "rmain:list:1-install-the-runtime-2-open-a-research-url-3-ca",
         "rmain:heading:quickstart",

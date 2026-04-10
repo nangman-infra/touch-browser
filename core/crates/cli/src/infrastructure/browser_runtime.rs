@@ -10,12 +10,27 @@ use serde::{Deserialize, Serialize};
 use serde_json::{json, Value};
 
 use super::browser_models::*;
-use crate::{
-    current_timestamp, is_fixture_target, is_search_results_target, load_fixture_catalog,
-    recommend_requested_tokens, repo_root, CliError, ObservationCompiler, ObservationInput,
-    PolicyProfile, ReadOnlyRuntime, ReadOnlySession, RuntimeError, SearchReport, SecretPrefill,
-    SessionMode, SnapshotBlock, SnapshotDocument, SourceRisk, SourceType, CONTRACT_VERSION,
+use crate::application::{
+    browser_session::{
+        BrowserActionSource, BrowserActionTraceEntry, BrowserCliSession, BrowserOrigin,
+        BrowserSessionContext, ObservedBrowserDocument, PersistedBrowserState,
+    },
+    search_support::is_search_results_target,
 };
+use crate::infrastructure::fixtures::load_fixture_catalog;
+use crate::interface::{
+    cli_error::CliError,
+    cli_models::SecretPrefill,
+    cli_support::{current_timestamp, is_fixture_target, repo_root},
+};
+use touch_browser_contracts::{
+    PolicyProfile, SearchReport, SessionMode, SnapshotBlock, SnapshotDocument, SourceRisk,
+    SourceType, CONTRACT_VERSION,
+};
+use touch_browser_observation::{
+    recommend_requested_tokens, ObservationCompiler, ObservationInput,
+};
+use touch_browser_runtime::{ReadOnlyRuntime, ReadOnlySession, RuntimeError};
 
 #[derive(Debug, Serialize)]
 struct JsonRpcRequest<T> {

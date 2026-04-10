@@ -1,9 +1,12 @@
 use std::collections::BTreeMap;
 
-use super::ports::EvidenceVerifierPort;
-use crate::{
-    ActionResult, ClaimInput, CliError, EvidenceClaimOutcome, EvidenceClaimVerdict, EvidenceReport,
-    EvidenceVerificationVerdict, ReadOnlySession, RuntimeError, UnsupportedClaimReason,
+use super::{
+    deps::{
+        ActionResult, ClaimInput, CliError, EvidenceClaimOutcome, EvidenceClaimVerdict,
+        EvidenceReport, EvidenceVerificationVerdict, ReadOnlySession, RuntimeError,
+        UnsupportedClaimReason,
+    },
+    ports::EvidenceVerifierPort,
 };
 
 pub(crate) fn verify_action_result_if_requested(
@@ -117,6 +120,7 @@ fn synthesize_claim_outcomes_from_report(report: &EvidenceReport) -> Vec<Evidenc
             confidence_band: None,
             review_recommended: false,
             verdict_explanation: None,
+            match_signals: None,
             checked_block_refs: Vec::new(),
             guard_failures: Vec::new(),
             next_action_hint: None,
@@ -138,6 +142,7 @@ fn synthesize_claim_outcomes_from_report(report: &EvidenceReport) -> Vec<Evidenc
             confidence_band: None,
             review_recommended: false,
             verdict_explanation: None,
+            match_signals: None,
             checked_block_refs: claim.checked_block_refs.clone(),
             guard_failures: claim.guard_failures.clone(),
             next_action_hint: claim.next_action_hint.clone(),
@@ -159,6 +164,7 @@ fn synthesize_claim_outcomes_from_report(report: &EvidenceReport) -> Vec<Evidenc
             confidence_band: None,
             review_recommended: false,
             verdict_explanation: None,
+            match_signals: None,
             checked_block_refs: claim.checked_block_refs.clone(),
             guard_failures: claim.guard_failures.clone(),
             next_action_hint: claim.next_action_hint.clone(),
@@ -180,6 +186,7 @@ fn synthesize_claim_outcomes_from_report(report: &EvidenceReport) -> Vec<Evidenc
             confidence_band: None,
             review_recommended: false,
             verdict_explanation: None,
+            match_signals: None,
             checked_block_refs: claim.checked_block_refs.clone(),
             guard_failures: claim.guard_failures.clone(),
             next_action_hint: claim.next_action_hint.clone(),

@@ -1,7 +1,9 @@
 use serde::Serialize;
 use serde_json::Value;
 
-use crate::{CliError, OutputFormat, SearchResultItem, SessionSynthesisReport, CONTRACT_VERSION};
+use crate::interface::deps::{
+    CliError, OutputFormat, SearchResultItem, SessionSynthesisReport, CONTRACT_VERSION,
+};
 
 fn to_value<T: Serialize>(value: T) -> Result<Value, CliError> {
     Ok(serde_json::to_value(value)?)

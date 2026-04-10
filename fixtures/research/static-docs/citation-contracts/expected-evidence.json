@@ -85,6 +85,14 @@
       "confidenceBand": "high",
       "reviewRecommended": false,
       "verdictExplanation": "Matched direct support in 3 page block(s). Review the attached snippets before reusing the claim.",
+      "matchSignals": {
+        "blockId": "b3",
+        "stableRef": "rmain:text:citation-contracts-require-supported-claims-to-c",
+        "blockKind": "text",
+        "exactSupport": true,
+        "lexicalOverlap": 1.0,
+        "contextualOverlap": 1.0
+      },
       "checkedBlockRefs": [
         "rmain:text:citation-contracts-require-supported-claims-to-c",
         "rmain:list:support-refs-point-to-stable-snapshot-blocks-uns",
@@ -120,6 +128,14 @@
       "confidenceBand": "high",
       "reviewRecommended": false,
       "verdictExplanation": "Matched direct support in 2 page block(s). Review the attached snippets before reusing the claim.",
+      "matchSignals": {
+        "blockId": "b4",
+        "stableRef": "rmain:list:support-refs-point-to-stable-snapshot-blocks-uns",
+        "blockKind": "list",
+        "exactSupport": true,
+        "lexicalOverlap": 1.0,
+        "contextualOverlap": 1.0
+      },
       "checkedBlockRefs": [
         "rmain:list:support-refs-point-to-stable-snapshot-blocks-uns",
         "rmain:text:citation-contracts-require-supported-claims-to-c",
@@ -152,6 +168,14 @@
       "reason": "insufficient-support-score",
       "reviewRecommended": true,
       "verdictExplanation": "The page did not surface strong enough support for this claim yet.",
+      "matchSignals": {
+        "blockId": "b3",
+        "stableRef": "rmain:text:citation-contracts-require-supported-claims-to-c",
+        "blockKind": "text",
+        "exactSupport": false,
+        "lexicalOverlap": 0.27,
+        "contextualOverlap": 0.27
+      },
       "checkedBlockRefs": [
         "rmain:text:citation-contracts-require-supported-claims-to-c",
         "rmain:list:support-refs-point-to-stable-snapshot-blocks-uns",

@@ -117,5 +117,6 @@ Serve-to-MCP mapping:
 - search responses also carry `status`, `statusDetail`, and structured `nextActionHints.actor/canAutoRun/headedRequired`, so an MCP client can decide whether to open ranked tabs, re-run headed for a CAPTCHA, or hand the step back to a human
 - interactive tools only make sense inside allowlisted daemon sessions and still require risk acknowledgement when challenge, MFA, auth, or high-risk-write signals appear
 - the bridge starts `touch-browser serve` as an internal child process and injects `TOUCH_BROWSER_TELEMETRY_SURFACE=mcp`
-- set `TOUCH_BROWSER_SERVE_COMMAND` to override the child-process command with a built binary or wrapper
+- child-process resolution order is `TOUCH_BROWSER_SERVE_COMMAND` -> `TOUCH_BROWSER_SERVE_BINARY` -> installed `touch-browser` on `PATH` -> packaged binaries under `bin/`, `dist/`, or `target/{release,debug}/` -> `cargo run -q -p touch-browser-cli -- serve`
+- set `TOUCH_BROWSER_SERVE_COMMAND` to force a specific built binary or wrapper command
 - use `verifierCommand` to let a second-pass judge adjudicate the final verdict without replacing the base evidence collector

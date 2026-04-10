@@ -2,7 +2,7 @@ use std::collections::{BTreeMap, BTreeSet};
 
 use serde_json::Value;
 
-use crate::{
+use crate::interface::deps::{
     approved_risk_labels, dispatch, load_browser_cli_session, parse_output_format,
     parse_policy_profile, parse_source_risk, policy_profile_label,
     promoted_policy_profile_for_risks, render_session_synthesis_markdown, save_browser_cli_session,

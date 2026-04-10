@@ -5,6 +5,7 @@ pub(crate) mod cli_error;
 pub(crate) mod cli_models;
 pub(crate) mod cli_support;
 pub(crate) mod command_parser;
+pub(crate) mod deps;
 pub(crate) mod search_command_parser;
 pub(crate) mod serve_runtime;
 pub(crate) mod session_command_parser;

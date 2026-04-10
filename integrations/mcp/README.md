@@ -18,6 +18,7 @@ Supported MCP tools include:
 - `tb_status`
 
 The legacy launcher at `scripts/touch-browser-mcp-bridge.mjs` remains as a thin compatibility wrapper.
-Set `TOUCH_BROWSER_SERVE_COMMAND` if you want the bridge to launch a built binary instead of the default `cargo run -q -p touch-browser-cli -- serve`.
+The bridge prefers `TOUCH_BROWSER_SERVE_COMMAND`, then an installed or packaged `touch-browser` binary, and only falls back to `cargo run -q -p touch-browser-cli -- serve` when no binary is available.
+Set `TOUCH_BROWSER_SERVE_COMMAND` if you want to force a specific built binary or wrapper command.
 
 For the protocol surface, see [MCP bridge spec](../../doc/MCP_BRIDGE_SPEC.md).

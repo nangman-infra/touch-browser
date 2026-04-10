@@ -1,10 +1,19 @@
+import fs from "node:fs";
+import path from "node:path";
+
 import { createServeRpcClient } from "../../../scripts/lib/serve-rpc-client.mjs";
 
 const DEFAULT_SERVE_COMMAND = "cargo run -q -p touch-browser-cli -- serve";
+const PACKAGED_BINARY_CANDIDATES = [
+  ["bin", "touch-browser"],
+  ["dist", "touch-browser"],
+  ["target", "release", "touch-browser"],
+  ["target", "debug", "touch-browser"],
+];
 
 export function createBridgeServeClient({
   cwd = process.cwd(),
-  serveCommand = resolveServeCommand(),
+  serveCommand = resolveServeCommand({ cwd }),
   requestTimeoutMs = 120_000,
 } = {}) {
   let client;
@@ -79,10 +88,21 @@ export function createBridgeServeClient({
   }
 }
 
-export function resolveServeCommand() {
-  return (
-    process.env.TOUCH_BROWSER_SERVE_COMMAND?.trim() || DEFAULT_SERVE_COMMAND
-  );
+export function resolveServeCommand({
+  cwd = process.cwd(),
+  env = process.env,
+} = {}) {
+  const override = env.TOUCH_BROWSER_SERVE_COMMAND?.trim();
+  if (override) {
+    return override;
+  }
+
+  const packagedBinary = resolvePackagedBinaryPath(cwd, env);
+  if (packagedBinary) {
+    return `${shellEscape(packagedBinary)} serve`;
+  }
+
+  return DEFAULT_SERVE_COMMAND;
 }
 
 function isRestartableServeError(error) {
@@ -94,4 +114,47 @@ function isRestartableServeError(error) {
     message.includes("serve RPC call timed out") ||
     message.includes("write EPIPE")
   );
+}
+
+function resolvePackagedBinaryPath(cwd, env) {
+  const explicitBinary = env.TOUCH_BROWSER_SERVE_BINARY?.trim();
+  if (explicitBinary && fs.existsSync(explicitBinary)) {
+    return explicitBinary;
+  }
+
+  const pathMatch = resolveBinaryFromPath(env.PATH);
+  if (pathMatch) {
+    return pathMatch;
+  }
+
+  for (const candidate of PACKAGED_BINARY_CANDIDATES) {
+    const absolutePath = path.resolve(cwd, ...candidate);
+    if (fs.existsSync(absolutePath)) {
+      return absolutePath;
+    }
+  }
+
+  return null;
+}
+
+function resolveBinaryFromPath(pathValue) {
+  if (!pathValue) {
+    return null;
+  }
+
+  for (const segment of pathValue.split(path.delimiter)) {
+    if (!segment) {
+      continue;
+    }
+    const binaryPath = path.join(segment, "touch-browser");
+    if (fs.existsSync(binaryPath)) {
+      return binaryPath;
+    }
+  }
+
+  return null;
+}
+
+function shellEscape(value) {
+  return `'${String(value).replaceAll("'", `'\"'\"'`)}'`;
 }

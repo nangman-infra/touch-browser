@@ -23,6 +23,11 @@ Evidence extraction is intentionally phrased as support retrieval, not final tru
 - `needsMoreBrowsingClaims`
 - `claimOutcomes`
 - `supportScore`
+- `supportSnippets`
+- `verdictExplanation`
+- `confidenceBand`
+- `reviewRecommended`
+- `matchSignals`
 - optional `verification` from `--verifier-command`
 
 ## 2. Stable Research Surface
@@ -152,6 +157,11 @@ Evidence output terminology:
 - `needsMoreBrowsingClaims`: claims that should stay unresolved until the agent opens a more specific source
 - `claimOutcomes`: the canonical four-state verdict list across all extracted claims
 - `supportScore`: evidence-match score for the retrieved support
+- `supportSnippets`: short evidence snippets so a caller can inspect the chosen support without reopening the snapshot
+- `verdictExplanation`: human-readable explanation of why the verdict landed on support, contradiction, needs-more-browsing, or insufficient-evidence
+- `confidenceBand`: `high`, `medium`, or `review` band derived from the support score
+- `reviewRecommended`: explicit flag for borderline or unresolved claims that should not be reused without checking the evidence
+- `matchSignals`: first-support block match diagnostics such as lexical overlap, contextual overlap, numeric alignment, semantic similarity, and NLI signals when available
 - `verification`: optional second-pass verifier output supplied by `--verifier-command`, which may refine the final verdict while leaving the collected support trace intact
 - search output includes `results`, `recommendedResultRanks`, and `nextActionHints` so a higher-level AI can decide the next browsing step without pretending the browser already knows the final answer
 - each `nextActionHint` also includes `actor`, `canAutoRun`, and `headedRequired` so touch-browser can separate AI-owned follow-up from human checkpoints

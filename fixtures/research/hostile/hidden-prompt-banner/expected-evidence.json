@@ -79,6 +79,14 @@
       "confidenceBand": "high",
       "reviewRecommended": false,
       "verdictExplanation": "Matched direct support in 2 page block(s). Review the attached snippets before reusing the claim.",
+      "matchSignals": {
+        "blockId": "b3",
+        "stableRef": "rmain:text:visible-content-explains-that-hidden-prompt-bann",
+        "blockKind": "text",
+        "exactSupport": true,
+        "lexicalOverlap": 1.0,
+        "contextualOverlap": 1.0
+      },
       "checkedBlockRefs": [
         "rmain:text:visible-content-explains-that-hidden-prompt-bann",
         "rmain:heading:prompt-override-banner"
@@ -100,6 +108,14 @@
       "reason": "needs-more-browsing",
       "reviewRecommended": true,
       "verdictExplanation": "The retrieved support is plausible but still borderline. Inspect the source sentence directly before answering.",
+      "matchSignals": {
+        "blockId": "b4",
+        "stableRef": "rmain:link:https-malicious-example-remote",
+        "blockKind": "link",
+        "exactSupport": false,
+        "lexicalOverlap": 1.0,
+        "contextualOverlap": 1.0
+      },
       "checkedBlockRefs": [
         "rmain:link:https-malicious-example-remote",
         "rmain:text:visible-content-explains-that-hidden-prompt-bann",

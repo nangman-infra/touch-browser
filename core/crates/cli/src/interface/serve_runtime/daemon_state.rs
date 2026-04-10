@@ -5,7 +5,7 @@ use std::{
     time::{SystemTime, UNIX_EPOCH},
 };
 
-use crate::{
+use crate::interface::deps::{
     browser_context_dir_for_session_file, dispatch, load_browser_cli_session, AckRisk, CliCommand,
     CliError, SessionFileOptions,
 };

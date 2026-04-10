@@ -5,11 +5,13 @@ use std::{
 };
 
 use serde::{Deserialize, Serialize};
-
-use crate::{
-    repo_root, ClaimInput, CliError, EvidenceReport, EvidenceVerificationOutcome,
-    EvidenceVerificationReport, EvidenceVerificationVerdict, SnapshotDocument, CONTRACT_VERSION,
+use touch_browser_contracts::{
+    EvidenceReport, EvidenceVerificationOutcome, EvidenceVerificationReport,
+    EvidenceVerificationVerdict, SnapshotDocument, CONTRACT_VERSION,
 };
+use touch_browser_runtime::ClaimInput;
+
+use crate::interface::{cli_error::CliError, cli_support::repo_root};
 
 #[derive(Debug, Serialize)]
 #[serde(rename_all = "camelCase")]

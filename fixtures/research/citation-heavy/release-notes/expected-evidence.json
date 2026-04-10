@@ -92,6 +92,15 @@
       "confidenceBand": "high",
       "reviewRecommended": false,
       "verdictExplanation": "Matched direct support in 3 page block(s). Review the attached snippets before reusing the claim.",
+      "matchSignals": {
+        "blockId": "b4",
+        "stableRef": "rmain:table:version-date-highlights-0-1-0-2026-02-10-added-r",
+        "blockKind": "table",
+        "exactSupport": true,
+        "lexicalOverlap": 1.0,
+        "contextualOverlap": 1.0,
+        "numericAlignment": 1.0
+      },
       "checkedBlockRefs": [
         "rmain:table:version-date-highlights-0-1-0-2026-02-10-added-r",
         "rmain:text:each-release-entry-is-intended-to-support-citati",
@@ -132,6 +141,15 @@
       "confidenceBand": "high",
       "reviewRecommended": false,
       "verdictExplanation": "Matched direct support in 3 page block(s). Review the attached snippets before reusing the claim.",
+      "matchSignals": {
+        "blockId": "b4",
+        "stableRef": "rmain:table:version-date-highlights-0-1-0-2026-02-10-added-r",
+        "blockKind": "table",
+        "exactSupport": true,
+        "lexicalOverlap": 1.0,
+        "contextualOverlap": 1.0,
+        "numericAlignment": 1.0
+      },
       "checkedBlockRefs": [
         "rmain:table:version-date-highlights-0-1-0-2026-02-10-added-r",
         "rmain:text:touch-browser-documents-major-runtime-changes-in",
@@ -154,6 +172,14 @@
       "reason": "insufficient-support-score",
       "reviewRecommended": true,
       "verdictExplanation": "The page did not surface strong enough support for this claim yet.",
+      "matchSignals": {
+        "blockId": "b4",
+        "stableRef": "rmain:table:version-date-highlights-0-1-0-2026-02-10-added-r",
+        "blockKind": "table",
+        "exactSupport": false,
+        "lexicalOverlap": -0.0,
+        "contextualOverlap": 0.1
+      },
       "checkedBlockRefs": [
         "rmain:table:version-date-highlights-0-1-0-2026-02-10-added-r",
         "rmain:text:touch-browser-documents-major-runtime-changes-in",

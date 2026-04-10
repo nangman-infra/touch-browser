@@ -20,10 +20,23 @@ pub(crate) struct ScoredCandidate<'a> {
     pub(crate) lexical_overlap: f64,
     pub(crate) contradictory: bool,
     pub(crate) exact_support: bool,
+    pub(crate) signals: CandidateMatchSignals,
 }
 
 pub(crate) struct ScoringContext {
     pub(crate) claim_token_weights: BTreeMap<String, f64>,
+}
+
+#[derive(Clone, Debug, Default)]
+pub(crate) struct CandidateMatchSignals {
+    pub(crate) lexical_overlap: f64,
+    pub(crate) contextual_overlap: f64,
+    pub(crate) numeric_alignment: Option<f64>,
+    pub(crate) exact_support: bool,
+    pub(crate) semantic_similarity: Option<f64>,
+    pub(crate) semantic_boost: Option<f64>,
+    pub(crate) nli_entailment: Option<f64>,
+    pub(crate) nli_contradiction: Option<f64>,
 }
 
 struct CandidateScoringInput<'a> {
@@ -376,6 +389,17 @@ fn score_block_candidates<'a>(
                 lexical_overlap,
                 contradictory,
                 exact_support: exact_bonus >= 0.70,
+                signals: CandidateMatchSignals {
+                    lexical_overlap,
+                    contextual_overlap,
+                    numeric_alignment: (!input.claim_numeric_tokens.is_empty())
+                        .then_some(numeric_overlap),
+                    exact_support: exact_bonus >= 0.70,
+                    semantic_similarity: None,
+                    semantic_boost: None,
+                    nli_entailment: None,
+                    nli_contradiction: None,
+                },
             })
         })
         .collect()

@@ -76,6 +76,12 @@ Serve daemon:
 cargo run -q -p touch-browser-cli -- serve
 ```
 
+If you already have a built binary, the equivalent command is:
+
+```bash
+target/release/touch-browser serve
+```
+
 MCP bridge:
 
 ```bash
@@ -117,8 +123,9 @@ pnpm run pilot:real-user-research
 - public benchmark failure:
   - check network access and remote site availability
 - MCP bridge failure:
-  - verify `cargo run -q -p touch-browser-cli -- serve` works on its own
-  - set `TOUCH_BROWSER_SERVE_COMMAND="target/debug/touch-browser serve"` if you want the bridge to use a built binary
+  - verify either `touch-browser serve` or `cargo run -q -p touch-browser-cli -- serve` works on its own
+  - the bridge prefers `TOUCH_BROWSER_SERVE_COMMAND`, then an installed or packaged `touch-browser` binary, then falls back to `cargo run -q -p touch-browser-cli -- serve`
+  - set `TOUCH_BROWSER_SERVE_COMMAND="target/debug/touch-browser serve"` if you want to force a specific built binary or wrapper
 - verifier hook failure:
   - run the verifier command directly and confirm it returns JSON with an `outcomes` array
   - start with `node scripts/example-verifier.mjs` and replace it only after your own verifier returns the same shape

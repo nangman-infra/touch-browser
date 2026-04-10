@@ -252,6 +252,29 @@ pub struct EvidenceSupportSnippet {
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
 #[serde(rename_all = "camelCase")]
+pub struct EvidenceMatchSignals {
+    pub block_id: String,
+    pub stable_ref: String,
+    pub block_kind: SnapshotBlockKind,
+    pub exact_support: bool,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub lexical_overlap: Option<f64>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub contextual_overlap: Option<f64>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub numeric_alignment: Option<f64>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub semantic_similarity: Option<f64>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub semantic_boost: Option<f64>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub nli_entailment: Option<f64>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub nli_contradiction: Option<f64>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
+#[serde(rename_all = "camelCase")]
 pub struct EvidenceClaimOutcome {
     pub version: String,
     pub claim_id: String,
@@ -274,6 +297,8 @@ pub struct EvidenceClaimOutcome {
     pub review_recommended: bool,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub verdict_explanation: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub match_signals: Option<EvidenceMatchSignals>,
     #[serde(skip_serializing_if = "Vec::is_empty", default)]
     pub checked_block_refs: Vec<String>,
     #[serde(skip_serializing_if = "Vec::is_empty", default)]
@@ -375,8 +400,8 @@ impl EvidenceReport {
 mod tests {
     use super::{
         EvidenceBlock, EvidenceCitation, EvidenceClaimOutcome, EvidenceClaimVerdict,
-        EvidenceConfidenceBand, EvidenceSupportSnippet, RiskClass, SourceRisk, SourceType,
-        CONTRACT_VERSION,
+        EvidenceConfidenceBand, EvidenceMatchSignals, EvidenceSupportSnippet, RiskClass,
+        SnapshotBlockKind, SourceRisk, SourceType, CONTRACT_VERSION,
     };
 
     #[test]
@@ -457,6 +482,19 @@ mod tests {
             verdict_explanation: Some(
                 "Matched direct support in the page's main content.".to_string(),
             ),
+            match_signals: Some(EvidenceMatchSignals {
+                block_id: "b1".to_string(),
+                stable_ref: "rmain:text:intro".to_string(),
+                block_kind: SnapshotBlockKind::Text,
+                exact_support: true,
+                lexical_overlap: Some(0.91),
+                contextual_overlap: Some(0.95),
+                numeric_alignment: None,
+                semantic_similarity: Some(0.93),
+                semantic_boost: Some(0.08),
+                nli_entailment: Some(0.97),
+                nli_contradiction: Some(0.01),
+            }),
             checked_block_refs: vec!["rmain:text:intro".to_string()],
             guard_failures: Vec::new(),
             next_action_hint: None,
@@ -472,6 +510,14 @@ mod tests {
         assert_eq!(
             value["verdictExplanation"],
             serde_json::json!("Matched direct support in the page's main content.")
+        );
+        assert_eq!(
+            value["matchSignals"]["blockKind"],
+            serde_json::json!("text")
+        );
+        assert_eq!(
+            value["matchSignals"]["semanticBoost"],
+            serde_json::json!(0.08)
         );
     }
 }

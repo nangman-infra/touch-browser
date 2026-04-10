@@ -1,8 +1,10 @@
 use std::{fs, path::PathBuf};
 
 use serde::Deserialize;
+use touch_browser_contracts::{SourceRisk, SourceType};
+use touch_browser_runtime::{CatalogDocument, FixtureCatalog};
 
-use crate::{repo_root, CatalogDocument, CliError, FixtureCatalog, SourceRisk, SourceType};
+use crate::interface::{cli_error::CliError, cli_support::repo_root};
 
 #[derive(Debug, Deserialize)]
 #[serde(rename_all = "camelCase")]

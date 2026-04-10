@@ -1,25 +1,26 @@
 use super::{
     context::CliAppContext,
+    deps::{
+        approved_risk_labels, checkpoint_approval_panel, checkpoint_candidates,
+        checkpoint_playbook, checkpoint_provider_hints, current_policy_with_allowlist,
+        current_timestamp, is_fixture_target, is_search_results_target, policy_profile_label,
+        promoted_policy_profile_for_risks, recommend_requested_tokens, recommended_policy_profile,
+        required_ack_risks, resolve_latest_search_session_file, succeed_action,
+        verify_action_result_if_requested, ActionName, ApproveOptions, BrowserReplayCommandOutput,
+        ClaimInput, CliError, ClickOptions, CompactSnapshotOutput, ExpandOptions, FollowOptions,
+        OutputFormat, PaginateOptions, PaginationDirection, PersistedBrowserState, ReadViewOutput,
+        RuntimeError, SessionApprovalCommandOutput, SessionApprovalValue,
+        SessionCheckpointCommandOutput, SessionCheckpointReport, SessionCloseCommandOutput,
+        SessionCloseResultValue, SessionCommandOutput, SessionExtractCommandOutput,
+        SessionExtractOptions, SessionFileOptions, SessionPolicyCommandOutput,
+        SessionProfileCommandOutput, SessionProfileSetOptions, SessionProfileValue,
+        SessionReadOptions, SessionRefreshOptions, SessionSynthesisCommandOutput,
+        SessionSynthesizeOptions, SourceRisk, SubmitOptions, TargetOptions,
+        TelemetryRecentCommandOutput, TelemetryRecentOptions, TelemetrySummaryCommandOutput,
+        TypeOptions,
+    },
     ports::BrowserSnapshotCaptureRequest,
     presentation_support::{render_compact_snapshot, render_session_synthesis_markdown},
-};
-use crate::{
-    approved_risk_labels, checkpoint_approval_panel, checkpoint_candidates, checkpoint_playbook,
-    checkpoint_provider_hints, current_policy_with_allowlist, current_timestamp, is_fixture_target,
-    is_search_results_target, policy_profile_label, promoted_policy_profile_for_risks,
-    recommend_requested_tokens, recommended_policy_profile, required_ack_risks,
-    resolve_latest_search_session_file, succeed_action, telemetry_store,
-    verify_action_result_if_requested, ActionName, ApproveOptions, BrowserReplayCommandOutput,
-    ClaimInput, CliError, ClickOptions, CompactSnapshotOutput, ExpandOptions, FollowOptions,
-    OutputFormat, PaginateOptions, PaginationDirection, PersistedBrowserState, ReadViewOutput,
-    RuntimeError, SessionApprovalCommandOutput, SessionApprovalValue,
-    SessionCheckpointCommandOutput, SessionCheckpointReport, SessionCloseCommandOutput,
-    SessionCloseResultValue, SessionCommandOutput, SessionExtractCommandOutput,
-    SessionExtractOptions, SessionFileOptions, SessionPolicyCommandOutput,
-    SessionProfileCommandOutput, SessionProfileSetOptions, SessionProfileValue, SessionReadOptions,
-    SessionRefreshOptions, SessionSynthesisCommandOutput, SessionSynthesizeOptions, SourceRisk,
-    SubmitOptions, TargetOptions, TelemetryRecentCommandOutput, TelemetryRecentOptions,
-    TelemetrySummaryCommandOutput, TypeOptions,
 };
 
 use std::{fs, path::PathBuf};
@@ -440,9 +441,9 @@ pub(crate) fn handle_approve(
 }
 
 pub(crate) fn handle_telemetry_summary(
-    _ctx: &CliAppContext<'_>,
+    ctx: &CliAppContext<'_>,
 ) -> Result<TelemetrySummaryCommandOutput, CliError> {
-    let summary = telemetry_store()?.summary()?;
+    let summary = ctx.ports.telemetry.summary()?;
     Ok(TelemetrySummaryCommandOutput {
         summary: summary.clone(),
         result: summary,
@@ -450,10 +451,10 @@ pub(crate) fn handle_telemetry_summary(
 }
 
 pub(crate) fn handle_telemetry_recent(
-    _ctx: &CliAppContext<'_>,
+    ctx: &CliAppContext<'_>,
     options: TelemetryRecentOptions,
 ) -> Result<TelemetryRecentCommandOutput, CliError> {
-    let events = telemetry_store()?.recent_events(options.limit)?;
+    let events = ctx.ports.telemetry.recent_events(options.limit)?;
     Ok(TelemetryRecentCommandOutput {
         limit: options.limit,
         events: events.clone(),

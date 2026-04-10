@@ -1,18 +1,18 @@
 use super::{
     context::CliAppContext,
+    deps::{
+        current_policy_with_allowlist, preflight_interactive_action, preflight_ref_action,
+        preflight_session_block, reject_action, succeed_action, ActionFailureKind, ActionName,
+        BrowserActionPayload, BrowserActionTraceEntry, CliError, ClickAdapterOutput, ClickOptions,
+        ExpandAdapterOutput, ExpandOptions, FollowAdapterOutput, FollowOptions,
+        InteractivePreflightOptions, PaginateAdapterOutput, PaginateOptions, PaginationDirection,
+        PersistedBrowserState, SecretPrefill, SessionCommandOutput, SubmitAdapterOutput,
+        SubmitOptions, TypeAdapterOutput, TypeOptions,
+    },
     ports::{
         BrowserClickRequest, BrowserExpandRequest, BrowserFollowRequest, BrowserPaginateRequest,
         BrowserSubmitRequest, BrowserTypeRequest,
     },
-};
-use crate::{
-    current_policy_with_allowlist, preflight_interactive_action, preflight_ref_action,
-    preflight_session_block, reject_action, succeed_action, ActionFailureKind, ActionName,
-    BrowserActionPayload, BrowserActionTraceEntry, CliError, ClickAdapterOutput, ClickOptions,
-    ExpandAdapterOutput, ExpandOptions, FollowAdapterOutput, FollowOptions,
-    InteractivePreflightOptions, PaginateAdapterOutput, PaginateOptions, PaginationDirection,
-    PersistedBrowserState, SecretPrefill, SessionCommandOutput, SubmitAdapterOutput, SubmitOptions,
-    TypeAdapterOutput, TypeOptions,
 };
 
 pub(crate) fn handle_follow(

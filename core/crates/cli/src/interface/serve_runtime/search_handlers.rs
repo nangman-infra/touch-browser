@@ -1,6 +1,6 @@
 use serde_json::Value;
 
-use crate::{
+use crate::interface::deps::{
     dispatch, load_browser_cli_session, parse_search_engine, CliCommand, CliError, SearchEngine,
     SearchOptions, SearchReportStatus, SourceRisk, DEFAULT_REQUESTED_TOKENS, DEFAULT_SEARCH_TOKENS,
 };

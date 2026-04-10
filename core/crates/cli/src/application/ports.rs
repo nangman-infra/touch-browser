@@ -4,12 +4,17 @@ use std::{
 };
 
 use touch_browser_acquisition::AcquisitionEngine;
+use touch_browser_storage_sqlite::{PilotTelemetryEvent, PilotTelemetrySummary};
 
-use crate::{
-    BrowserActionSource, BrowserActionTraceEntry, BrowserCliSession, BrowserOrigin,
-    BrowserSessionContext, ClaimInput, CliError, EvidenceVerificationReport, FixtureCatalog,
-    PersistedBrowserState, ReadOnlySession, SearchReport, SecretPrefill, SnapshotDocument,
-    SourceRisk,
+use super::{
+    browser_session::{
+        BrowserActionSource, BrowserActionTraceEntry, BrowserCliSession, BrowserOrigin,
+        BrowserSessionContext, PersistedBrowserState,
+    },
+    deps::{
+        ClaimInput, CliError, EvidenceReport, EvidenceVerificationReport, FixtureCatalog,
+        ReadOnlySession, SearchReport, SecretPrefill, SnapshotDocument, SourceRisk,
+    },
 };
 
 #[derive(Debug, Clone)]
@@ -259,9 +264,14 @@ pub(crate) trait EvidenceVerifierPort {
         verifier_command: &str,
         claims: &[ClaimInput],
         snapshot: &SnapshotDocument,
-        report: &crate::EvidenceReport,
+        report: &EvidenceReport,
         generated_at: &str,
     ) -> Result<EvidenceVerificationReport, CliError>;
+}
+
+pub(crate) trait TelemetryPort {
+    fn summary(&self) -> Result<PilotTelemetrySummary, CliError>;
+    fn recent_events(&self, limit: usize) -> Result<Vec<PilotTelemetryEvent>, CliError>;
 }
 
 #[derive(Clone, Copy)]
@@ -271,4 +281,5 @@ pub(crate) struct CliPorts<'a> {
     pub(crate) fixtures: &'a dyn FixtureCatalogPort,
     pub(crate) acquisition: &'a dyn AcquisitionFactoryPort,
     pub(crate) verifier: &'a dyn EvidenceVerifierPort,
+    pub(crate) telemetry: &'a dyn TelemetryPort,
 }

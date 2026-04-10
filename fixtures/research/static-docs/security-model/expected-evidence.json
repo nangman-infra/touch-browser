@@ -85,6 +85,14 @@
       "confidenceBand": "high",
       "reviewRecommended": false,
       "verdictExplanation": "Matched direct support in 3 page block(s). Review the attached snippets before reusing the claim.",
+      "matchSignals": {
+        "blockId": "b6",
+        "stableRef": "rmain:text:the-runtime-separates-page-content-policy-state-",
+        "blockKind": "text",
+        "exactSupport": true,
+        "lexicalOverlap": 1.0,
+        "contextualOverlap": 1.0
+      },
       "checkedBlockRefs": [
         "rmain:text:the-runtime-separates-page-content-policy-state-",
         "rmain:text:all-replayable-sessions-emit-audit-logs-that-can",
@@ -125,6 +133,14 @@
       "confidenceBand": "high",
       "reviewRecommended": false,
       "verdictExplanation": "Matched direct support in 3 page block(s). Review the attached snippets before reusing the claim.",
+      "matchSignals": {
+        "blockId": "b7",
+        "stableRef": "rmain:text:all-replayable-sessions-emit-audit-logs-that-can",
+        "blockKind": "text",
+        "exactSupport": true,
+        "lexicalOverlap": 1.0,
+        "contextualOverlap": 1.0
+      },
       "checkedBlockRefs": [
         "rmain:text:all-replayable-sessions-emit-audit-logs-that-can",
         "rmain:text:the-runtime-separates-page-content-policy-state-",

@@ -2,24 +2,24 @@ use std::{fs, path::Path};
 
 use super::{
     context::CliAppContext,
+    deps::{
+        current_policy_with_allowlist, current_timestamp, fail_action, is_fixture_target,
+        plan_memory_turn, repo_root, slot_timestamp, succeed_action, summarize_turns,
+        verify_action_result_if_requested, ActionCommand, ActionFailureKind, ActionName,
+        ActionResult, ActionStatus, BrowserCliSession, BrowserOrigin, BrowserSessionContext,
+        ClaimInput, CliError, CompactSnapshotOutput, ExtractCommandOutput, ExtractOptions,
+        MemorySummaryOutput, PolicyCommandOutput, ReadViewOutput, ReplayCommandOutput,
+        ReplayTranscript, RiskClass, SearchCommandOutput, SearchEngine, SearchNextCommands,
+        SearchOpenResultCommandOutput, SearchOpenResultOptions, SearchOpenTopCommandOutput,
+        SearchOpenTopItem, SearchOpenTopOptions, SearchOptions, SearchReport, SearchReportStatus,
+        SearchResultItem, SnapshotBlock, SnapshotBlockKind, SnapshotBlockRole, SnapshotDocument,
+        SourceRisk, SourceType, TargetOptions, CONTRACT_VERSION, DEFAULT_OPENED_AT,
+    },
     search_support::{
         build_search_report, build_search_url, default_search_session_file,
         derived_search_result_session_file, resolve_search_session_file,
         search_engine_source_label,
     },
-};
-use crate::{
-    current_policy_with_allowlist, current_timestamp, fail_action, is_fixture_target,
-    plan_memory_turn, repo_root, slot_timestamp, succeed_action, summarize_turns,
-    verify_action_result_if_requested, ActionCommand, ActionFailureKind, ActionName, ActionResult,
-    ActionStatus, BrowserCliSession, BrowserOrigin, BrowserSessionContext, ClaimInput, CliError,
-    CompactSnapshotOutput, ExtractCommandOutput, ExtractOptions, MemorySummaryOutput,
-    PolicyCommandOutput, ReadViewOutput, ReplayCommandOutput, ReplayTranscript, RiskClass,
-    SearchCommandOutput, SearchEngine, SearchNextCommands, SearchOpenResultCommandOutput,
-    SearchOpenResultOptions, SearchOpenTopCommandOutput, SearchOpenTopItem, SearchOpenTopOptions,
-    SearchOptions, SearchReport, SearchReportStatus, SearchResultItem, SnapshotBlock,
-    SnapshotBlockKind, SnapshotBlockRole, SnapshotDocument, SourceRisk, SourceType, TargetOptions,
-    CONTRACT_VERSION, DEFAULT_OPENED_AT,
 };
 use serde::Serialize;
 

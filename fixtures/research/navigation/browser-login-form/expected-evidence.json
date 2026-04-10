@@ -85,6 +85,14 @@
       "confidenceBand": "review",
       "reviewRecommended": true,
       "verdictExplanation": "Support is present but still borderline across 3 page block(s). Review the attached snippets before reusing the claim.",
+      "matchSignals": {
+        "blockId": "b4",
+        "stableRef": "rmain:form:work-email-password-no-email-typed-yet-sign-in",
+        "blockKind": "form",
+        "exactSupport": false,
+        "lexicalOverlap": 1.0,
+        "contextualOverlap": 1.0
+      },
       "checkedBlockRefs": [
         "rmain:form:work-email-password-no-email-typed-yet-sign-in",
         "rmain:input:email-email-agent-example-com",
@@ -107,6 +115,14 @@
       "reason": "needs-more-browsing",
       "reviewRecommended": true,
       "verdictExplanation": "The retrieved support is plausible but still borderline. Inspect the source sentence directly before answering.",
+      "matchSignals": {
+        "blockId": "b8",
+        "stableRef": "rmain:button:sign-in",
+        "blockKind": "button",
+        "exactSupport": false,
+        "lexicalOverlap": 1.0,
+        "contextualOverlap": 1.0
+      },
       "checkedBlockRefs": [
         "rmain:button:sign-in",
         "rmain:text:login-status",

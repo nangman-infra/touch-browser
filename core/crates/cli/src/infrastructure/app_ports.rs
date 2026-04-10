@@ -4,14 +4,50 @@ use std::{
 };
 
 use touch_browser_acquisition::{AcquisitionConfig, AcquisitionEngine};
+use touch_browser_contracts::{
+    EvidenceReport, EvidenceVerificationReport, SearchReport, SnapshotDocument, SourceRisk,
+};
+use touch_browser_runtime::{ClaimInput, FixtureCatalog, ReadOnlySession};
+use touch_browser_storage_sqlite::{PilotTelemetryEvent, PilotTelemetrySummary};
 
-use crate::{application::ports::*, *};
+use crate::{
+    application::{
+        browser_session::{
+            BrowserActionSource, BrowserActionTraceEntry, BrowserCliSession, BrowserOrigin,
+            BrowserSessionContext, PersistedBrowserState,
+        },
+        ports::*,
+    },
+    infrastructure::{
+        browser_models::{
+            PlaywrightClickParams, PlaywrightExpandParams, PlaywrightFollowParams,
+            PlaywrightPaginateParams, PlaywrightSnapshotParams, PlaywrightSubmitParams,
+            PlaywrightTypeParams, PlaywrightTypePrefill,
+        },
+        browser_runtime::{
+            browser_context_dir_for_session_file, browser_secret_store_path,
+            build_browser_cli_session, collect_submit_prefill, compile_browser_snapshot,
+            current_browser_action_source, current_snapshot_ref_dom_path_hint,
+            current_snapshot_ref_href, current_snapshot_ref_input_type,
+            current_snapshot_ref_is_sensitive, current_snapshot_ref_name,
+            current_snapshot_ref_tag_name, current_snapshot_ref_text, invoke_playwright_click,
+            invoke_playwright_expand, invoke_playwright_follow, invoke_playwright_paginate,
+            invoke_playwright_snapshot, invoke_playwright_submit, invoke_playwright_type,
+            load_browser_cli_secrets, load_browser_cli_session, mark_browser_session_interactive,
+            next_session_timestamp, open_browser_session, resolved_browser_source_url,
+            save_browser_cli_secrets, save_browser_cli_session, stable_ref_ordinal_hint,
+        },
+        fixtures::load_fixture_catalog,
+    },
+    interface::{cli_error::CliError, cli_models::SecretPrefill},
+};
 
 pub(crate) struct DefaultSessionStore;
 pub(crate) struct DefaultBrowserAutomation;
 pub(crate) struct DefaultFixtureCatalog;
 pub(crate) struct DefaultAcquisitionFactory;
 pub(crate) struct DefaultEvidenceVerifier;
+pub(crate) struct DefaultTelemetry;
 
 pub(crate) static DEFAULT_SESSION_STORE: DefaultSessionStore = DefaultSessionStore;
 pub(crate) static DEFAULT_BROWSER_AUTOMATION: DefaultBrowserAutomation = DefaultBrowserAutomation;
@@ -19,6 +55,7 @@ pub(crate) static DEFAULT_FIXTURE_CATALOG: DefaultFixtureCatalog = DefaultFixtur
 pub(crate) static DEFAULT_ACQUISITION_FACTORY: DefaultAcquisitionFactory =
     DefaultAcquisitionFactory;
 pub(crate) static DEFAULT_EVIDENCE_VERIFIER: DefaultEvidenceVerifier = DefaultEvidenceVerifier;
+pub(crate) static DEFAULT_TELEMETRY: DefaultTelemetry = DefaultTelemetry;
 
 impl SessionStorePort for DefaultSessionStore {
     fn save_session(&self, path: &Path, persisted: &BrowserCliSession) -> Result<(), CliError> {
@@ -389,5 +426,19 @@ impl EvidenceVerifierPort for DefaultEvidenceVerifier {
             report,
             generated_at,
         )
+    }
+}
+
+impl TelemetryPort for DefaultTelemetry {
+    fn summary(&self) -> Result<PilotTelemetrySummary, CliError> {
+        super::telemetry::telemetry_store()?
+            .summary()
+            .map_err(Into::into)
+    }
+
+    fn recent_events(&self, limit: usize) -> Result<Vec<PilotTelemetryEvent>, CliError> {
+        super::telemetry::telemetry_store()?
+            .recent_events(limit)
+            .map_err(Into::into)
     }
 }

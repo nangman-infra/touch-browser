@@ -1,6 +1,6 @@
 use serde_json::Value;
 
-use crate::{
+use super::deps::{
     dispatch, emit_cli_error, log_telemetry_error, log_telemetry_success, parse_command, run_serve,
     telemetry_surface_label, usage, CliCommand, CliError, OutputFormat,
 };

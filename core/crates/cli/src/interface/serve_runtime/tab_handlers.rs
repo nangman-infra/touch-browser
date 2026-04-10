@@ -1,6 +1,6 @@
 use serde_json::Value;
 
-use crate::{parse_source_risk, CliError, DEFAULT_REQUESTED_TOKENS};
+use crate::interface::deps::{parse_source_risk, CliError, DEFAULT_REQUESTED_TOKENS};
 
 use super::{
     daemon_state::ServeDaemonState,

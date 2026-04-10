@@ -90,6 +90,15 @@
       "confidenceBand": "high",
       "reviewRecommended": false,
       "verdictExplanation": "Matched direct support in 3 page block(s). Review the attached snippets before reusing the claim.",
+      "matchSignals": {
+        "blockId": "b4",
+        "stableRef": "rmain:text:page-content",
+        "blockKind": "text",
+        "exactSupport": true,
+        "lexicalOverlap": 1.0,
+        "contextualOverlap": 1.0,
+        "numericAlignment": 1.0
+      },
       "checkedBlockRefs": [
         "rmain:text:page-content",
         "rmain:text:page-label",
@@ -122,6 +131,15 @@
       "reason": "needs-more-browsing",
       "reviewRecommended": true,
       "verdictExplanation": "The current page surfaced plausible evidence, but it still needs a more specific source or manual review.",
+      "matchSignals": {
+        "blockId": "b5",
+        "stableRef": "rmain:button:next",
+        "blockKind": "button",
+        "exactSupport": false,
+        "lexicalOverlap": 0.86,
+        "contextualOverlap": 0.86,
+        "numericAlignment": 0.0
+      },
       "checkedBlockRefs": [
         "rmain:button:next",
         "rmain:text:page-label",
@@ -154,6 +172,15 @@
       "reason": "needs-more-browsing",
       "reviewRecommended": true,
       "verdictExplanation": "Browse a more specific source page before answering.",
+      "matchSignals": {
+        "blockId": "b3",
+        "stableRef": "rmain:text:page-label",
+        "blockKind": "text",
+        "exactSupport": false,
+        "lexicalOverlap": 0.09,
+        "contextualOverlap": 0.09,
+        "numericAlignment": 1.0
+      },
       "checkedBlockRefs": [
         "rmain:text:page-label",
         "rmain:text:page-content",

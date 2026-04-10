@@ -93,6 +93,14 @@
       "confidenceBand": "high",
       "reviewRecommended": false,
       "verdictExplanation": "Matched direct support in 3 page block(s). Review the attached snippets before reusing the claim.",
+      "matchSignals": {
+        "blockId": "b3",
+        "stableRef": "rmain:text:docs-switcher-links-architecture-policy-and-repl",
+        "blockKind": "text",
+        "exactSupport": true,
+        "lexicalOverlap": 1.0,
+        "contextualOverlap": 1.0
+      },
       "checkedBlockRefs": [
         "rmain:text:docs-switcher-links-architecture-policy-and-repl",
         "rmain:list:architecture-reference-policy-reference-replay-r",
@@ -133,6 +141,14 @@
       "confidenceBand": "high",
       "reviewRecommended": false,
       "verdictExplanation": "Matched direct support in 3 page block(s). Review the attached snippets before reusing the claim.",
+      "matchSignals": {
+        "blockId": "b4",
+        "stableRef": "rmain:list:architecture-reference-policy-reference-replay-r",
+        "blockKind": "list",
+        "exactSupport": true,
+        "lexicalOverlap": 1.0,
+        "contextualOverlap": 1.0
+      },
       "checkedBlockRefs": [
         "rmain:list:architecture-reference-policy-reference-replay-r",
         "rmain:link:replay",
@@ -165,6 +181,14 @@
       "reason": "needs-more-browsing",
       "reviewRecommended": true,
       "verdictExplanation": "Browse a more specific source page before answering.",
+      "matchSignals": {
+        "blockId": "b3",
+        "stableRef": "rmain:text:docs-switcher-links-architecture-policy-and-repl",
+        "blockKind": "text",
+        "exactSupport": false,
+        "lexicalOverlap": 0.18,
+        "contextualOverlap": 0.18
+      },
       "checkedBlockRefs": [
         "rmain:text:docs-switcher-links-architecture-policy-and-repl",
         "rmain:heading:docs-switcher",

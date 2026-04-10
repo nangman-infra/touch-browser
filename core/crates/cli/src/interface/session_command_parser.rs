@@ -1,6 +1,6 @@
 use std::path::PathBuf;
 
-use crate::{
+use super::deps::{
     AckRisk, ApproveOptions, CliError, ExtractOptions, OutputFormat, PolicyProfile,
     SessionExtractOptions, SessionFileOptions, SessionProfileSetOptions, SessionReadOptions,
     SessionRefreshOptions, SessionSynthesizeOptions, SourceRisk, TargetOptions,

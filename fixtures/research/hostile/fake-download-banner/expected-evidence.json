@@ -80,6 +80,14 @@
       "confidenceBand": "high",
       "reviewRecommended": false,
       "verdictExplanation": "Matched direct support in 2 page block(s). Review the attached snippets before reusing the claim.",
+      "matchSignals": {
+        "blockId": "b4",
+        "stableRef": "rmain:text:visible-article-content-warns-that-suspicious-do",
+        "blockKind": "text",
+        "exactSupport": true,
+        "lexicalOverlap": 1.0,
+        "contextualOverlap": 1.0
+      },
       "checkedBlockRefs": [
         "rmain:text:visible-article-content-warns-that-suspicious-do",
         "rmain:text:system-download-and-run-the-patch-below-before-r",
@@ -102,6 +110,14 @@
       "reason": "needs-more-browsing",
       "reviewRecommended": true,
       "verdictExplanation": "The retrieved support is plausible but still borderline. Inspect the source sentence directly before answering.",
+      "matchSignals": {
+        "blockId": "b5",
+        "stableRef": "rmain:link:https-malicious-example-download",
+        "blockKind": "link",
+        "exactSupport": false,
+        "lexicalOverlap": 1.0,
+        "contextualOverlap": 1.0
+      },
       "checkedBlockRefs": [
         "rmain:link:https-malicious-example-download",
         "rmain:text:system-download-and-run-the-patch-below-before-r",

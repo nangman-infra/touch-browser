@@ -69,6 +69,8 @@ pub(crate) fn rerank_candidates_with_semantic(
         let semantic_bonus =
             semantic_similarity_bonus(semantic_similarity, candidate.lexical_overlap);
         candidate.score = (candidate.score + semantic_bonus).min(1.0);
+        candidate.signals.semantic_similarity = Some(semantic_similarity);
+        candidate.signals.semantic_boost = Some(semantic_bonus);
     }
 
     sort_candidates_by_score(candidates);
@@ -340,6 +342,8 @@ fn apply_nli_reranking(candidate: &mut ScoredCandidate<'_>, nli: &NliScore) {
     {
         candidate.contradictory = true;
         candidate.score = (candidate.score + 0.05).min(1.0);
+        candidate.signals.nli_entailment = Some(nli.entailment);
+        candidate.signals.nli_contradiction = Some(nli.contradiction);
         return;
     }
 
@@ -347,7 +351,10 @@ fn apply_nli_reranking(candidate: &mut ScoredCandidate<'_>, nli: &NliScore) {
     if nli.entailment >= STRONG_NLI_ENTAILMENT && entailment_margin >= STRONG_NLI_MARGIN {
         candidate.score = (candidate.score + 0.18).min(1.0);
         candidate.exact_support = true;
+        candidate.signals.exact_support = true;
     }
+    candidate.signals.nli_entailment = Some(nli.entailment);
+    candidate.signals.nli_contradiction = Some(nli.contradiction);
 }
 
 fn prefix_query_text(text: &str) -> String {
@@ -438,7 +445,7 @@ mod tests {
         embedding_request_texts, run_embedding_batch_with_backend, run_nli_batch_with_backend,
         vector_is_zero, NliScore,
     };
-    use crate::scoring::{semantic_similarity_bonus, ScoredCandidate};
+    use crate::scoring::{semantic_similarity_bonus, CandidateMatchSignals, ScoredCandidate};
 
     #[test]
     fn cosine_similarity_requires_non_zero_vectors() {
@@ -671,6 +678,16 @@ process.stdin.on('end', () => {
             lexical_overlap,
             contradictory: false,
             exact_support: false,
+            signals: CandidateMatchSignals {
+                lexical_overlap,
+                contextual_overlap: lexical_overlap,
+                numeric_alignment: None,
+                exact_support: false,
+                semantic_similarity: None,
+                semantic_boost: None,
+                nli_entailment: None,
+                nli_contradiction: None,
+            },
         }
     }
 }

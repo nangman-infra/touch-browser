@@ -1,12 +1,12 @@
 use serde::Serialize;
 use serde_json::Value;
 
-use crate::{
+use super::deps::{
     application, infrastructure, ApproveOptions, CliCommand, CliError, ClickOptions, ExpandOptions,
-    ExtractOptions, FollowOptions, SearchOpenResultOptions, SearchOpenTopOptions, SearchOptions,
-    SessionExtractOptions, SessionFileOptions, SessionProfileSetOptions, SessionReadOptions,
-    SessionRefreshOptions, SessionSynthesizeOptions, SubmitOptions, TargetOptions,
-    TelemetryRecentOptions, TypeOptions,
+    ExtractOptions, FollowOptions, PaginateOptions, SearchOpenResultOptions, SearchOpenTopOptions,
+    SearchOptions, SessionExtractOptions, SessionFileOptions, SessionProfileSetOptions,
+    SessionReadOptions, SessionRefreshOptions, SessionSynthesizeOptions, SubmitOptions,
+    TargetOptions, TelemetryRecentOptions, TypeOptions,
 };
 
 fn serialize_output<T: Serialize>(output: T) -> Result<Value, CliError> {
@@ -20,6 +20,7 @@ fn default_cli_ports() -> application::ports::CliPorts<'static> {
         fixtures: &infrastructure::app_ports::DEFAULT_FIXTURE_CATALOG,
         acquisition: &infrastructure::app_ports::DEFAULT_ACQUISITION_FACTORY,
         verifier: &infrastructure::app_ports::DEFAULT_EVIDENCE_VERIFIER,
+        telemetry: &infrastructure::app_ports::DEFAULT_TELEMETRY,
     }
 }
 
@@ -312,7 +313,7 @@ fn handle_submit(
 
 fn handle_paginate(
     ctx: &application::context::CliAppContext<'_>,
-    options: crate::PaginateOptions,
+    options: PaginateOptions,
 ) -> Result<Value, CliError> {
     serialize_output(application::browser_session_actions::handle_paginate(
         ctx, options,

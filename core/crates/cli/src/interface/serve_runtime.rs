@@ -3,7 +3,7 @@ use std::io::{self, BufRead, Write};
 use serde::Deserialize;
 use serde_json::Value;
 
-use crate::{
+use super::deps::{
     dispatch, log_telemetry_error, log_telemetry_success, telemetry_surface_label, CliCommand,
     CliError, TelemetryRecentOptions,
 };

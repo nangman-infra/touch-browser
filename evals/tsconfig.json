@@ -6,7 +6,9 @@
   },
   "include": [
     "src/**/*.ts",
+    "src/**/*.d.ts",
     "tests/**/*.ts",
+    "tests/**/*.d.ts",
     "vitest.config.ts",
     "vitest.shared.ts",
     "vitest.gate.config.ts",

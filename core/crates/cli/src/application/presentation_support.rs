@@ -8,8 +8,8 @@ use std::collections::BTreeSet;
 use self::{
     block_filters::{
         keep_app_main_read_view_block, keep_app_main_reading_block, keep_compact_block,
-        keep_main_read_view_block, keep_main_reading_block, keep_navigation_block,
-        keep_read_view_block,
+        keep_hub_summary_block, keep_main_read_view_block, keep_main_reading_block,
+        keep_navigation_block, keep_read_view_block,
     },
     compact_render::render_compact_block,
     layout_zones::{block_layout_zone, LayoutZone},
@@ -17,11 +17,8 @@ use self::{
 };
 use touch_browser_contracts::{
     CompactRefIndexEntry, SessionSynthesisClaim, SessionSynthesisReport, SnapshotBlock,
-    SnapshotBlockKind, SnapshotDocument,
+    SnapshotBlockKind, SnapshotBlockRole, SnapshotDocument,
 };
-
-#[cfg(test)]
-use touch_browser_contracts::SnapshotBlockRole;
 
 pub(crate) fn render_compact_snapshot(snapshot: &SnapshotDocument) -> String {
     let has_heading = snapshot
@@ -160,6 +157,36 @@ fn prefer_article_like_main_content(snapshot: &SnapshotDocument) -> bool {
         >= 2
 }
 
+fn prefer_hub_summary_content(snapshot: &SnapshotDocument) -> bool {
+    let content_text_blocks = snapshot
+        .blocks
+        .iter()
+        .filter(|block| {
+            matches!(block.kind, SnapshotBlockKind::Text)
+                && matches!(
+                    block.role,
+                    SnapshotBlockRole::Content | SnapshotBlockRole::Supporting
+                )
+                && block.text.trim().chars().count() >= 48
+        })
+        .count();
+    let cta_links = snapshot
+        .blocks
+        .iter()
+        .filter(|block| {
+            matches!(block.kind, SnapshotBlockKind::Link)
+                && matches!(block.role, SnapshotBlockRole::Cta)
+        })
+        .count();
+    let metadata_blocks = snapshot
+        .blocks
+        .iter()
+        .filter(|block| matches!(block.kind, SnapshotBlockKind::Metadata))
+        .count();
+
+    content_text_blocks >= 1 && cta_links >= 8 && metadata_blocks >= 1
+}
+
 pub(crate) fn render_reading_compact_snapshot(snapshot: &SnapshotDocument) -> String {
     let has_heading = snapshot
         .blocks
@@ -199,11 +226,18 @@ pub(crate) fn render_read_view_markdown(snapshot: &SnapshotDocument) -> String {
         .blocks
         .iter()
         .any(|block| matches!(block.kind, SnapshotBlockKind::Heading));
+    let prefer_hub_summary = prefer_hub_summary_content(snapshot);
 
     snapshot
         .blocks
         .iter()
-        .filter(|block| keep_read_view_block(block, has_heading))
+        .filter(|block| {
+            if prefer_hub_summary {
+                keep_hub_summary_block(block)
+            } else {
+                keep_read_view_block(block, has_heading)
+            }
+        })
         .map(render_markdown_block)
         .filter(|block| !block.is_empty())
         .collect::<Vec<_>>()
@@ -221,11 +255,15 @@ pub(crate) fn render_main_read_view_markdown(snapshot: &SnapshotDocument) -> Str
         .any(|block| block_layout_zone(block) == Some(LayoutZone::Main));
     let app_like_main_surface = has_main_zone && is_interactive_app_main_surface(snapshot);
     let prefer_article_like_main = has_main_zone && prefer_article_like_main_content(snapshot);
+    let prefer_hub_summary = !has_main_zone && prefer_hub_summary_content(snapshot);
 
     let rendered = snapshot
         .blocks
         .iter()
         .filter(|block| {
+            if prefer_hub_summary {
+                return keep_hub_summary_block(block);
+            }
             if app_like_main_surface {
                 keep_app_main_read_view_block(block, has_heading, has_main_zone)
             } else {
@@ -1657,5 +1695,229 @@ mod tests {
         assert!(markdown.contains("# Session Synthesis"));
         assert!(markdown.contains("## Evidence-Supported Claims"));
         assert!(markdown.contains("Citations: https://example.com/docs"));
+    }
+
+    #[test]
+    fn read_view_prefers_hub_summary_text_over_metadata_and_cta_cloud() {
+        let snapshot = SnapshotDocument {
+            version: CONTRACT_VERSION.to_string(),
+            stable_ref_version: STABLE_REF_VERSION.to_string(),
+            source: SnapshotSource {
+                source_url: "https://example.com/hub".to_string(),
+                source_type: SourceType::Http,
+                title: Some("Example Hub".to_string()),
+            },
+            budget: SnapshotBudget {
+                requested_tokens: 512,
+                estimated_tokens: 48,
+                emitted_tokens: 48,
+                truncated: false,
+            },
+            blocks: vec![
+                SnapshotBlock {
+                    version: CONTRACT_VERSION.to_string(),
+                    id: "b1".to_string(),
+                    kind: SnapshotBlockKind::Metadata,
+                    stable_ref: "rroot:metadata:title".to_string(),
+                    role: SnapshotBlockRole::Metadata,
+                    text: "Example Hub".to_string(),
+                    attributes: BTreeMap::new(),
+                    evidence: SnapshotEvidence {
+                        source_url: "https://example.com/hub".to_string(),
+                        source_type: SourceType::Http,
+                        dom_path_hint: Some("html > head > title".to_string()),
+                        byte_range_start: None,
+                        byte_range_end: None,
+                    },
+                },
+                SnapshotBlock {
+                    version: CONTRACT_VERSION.to_string(),
+                    id: "b2".to_string(),
+                    kind: SnapshotBlockKind::Text,
+                    stable_ref: "rcontent:text:summary".to_string(),
+                    role: SnapshotBlockRole::Content,
+                    text: "Community created roadmaps, articles, resources and journeys for developers to help you choose your path and grow in your career.".to_string(),
+                    attributes: BTreeMap::new(),
+                    evidence: SnapshotEvidence {
+                        source_url: "https://example.com/hub".to_string(),
+                        source_type: SourceType::Http,
+                        dom_path_hint: Some("html > body > section > p".to_string()),
+                        byte_range_start: None,
+                        byte_range_end: None,
+                    },
+                },
+                SnapshotBlock {
+                    version: CONTRACT_VERSION.to_string(),
+                    id: "b3".to_string(),
+                    kind: SnapshotBlockKind::Link,
+                    stable_ref: "rcontent:link:summary".to_string(),
+                    role: SnapshotBlockRole::Content,
+                    text: "roadmap.sh Community created roadmaps, articles, resources and journeys for developers to help you choose your path and grow in your career.".to_string(),
+                    attributes: BTreeMap::new(),
+                    evidence: SnapshotEvidence {
+                        source_url: "https://example.com/hub".to_string(),
+                        source_type: SourceType::Http,
+                        dom_path_hint: Some("html > body > section > a".to_string()),
+                        byte_range_start: None,
+                        byte_range_end: None,
+                    },
+                },
+                SnapshotBlock {
+                    version: CONTRACT_VERSION.to_string(),
+                    id: "b4".to_string(),
+                    kind: SnapshotBlockKind::Link,
+                    stable_ref: "rnav:link:cloud".to_string(),
+                    role: SnapshotBlockRole::Cta,
+                    text: "Cloud Native Ecosystem".to_string(),
+                    attributes: BTreeMap::new(),
+                    evidence: SnapshotEvidence {
+                        source_url: "https://example.com/hub".to_string(),
+                        source_type: SourceType::Http,
+                        dom_path_hint: Some("html > body > header > nav > a:nth-of-type(1)".to_string()),
+                        byte_range_start: None,
+                        byte_range_end: None,
+                    },
+                },
+                SnapshotBlock {
+                    version: CONTRACT_VERSION.to_string(),
+                    id: "b5".to_string(),
+                    kind: SnapshotBlockKind::Link,
+                    stable_ref: "rnav:link:containers".to_string(),
+                    role: SnapshotBlockRole::Cta,
+                    text: "Containers".to_string(),
+                    attributes: BTreeMap::new(),
+                    evidence: SnapshotEvidence {
+                        source_url: "https://example.com/hub".to_string(),
+                        source_type: SourceType::Http,
+                        dom_path_hint: Some("html > body > header > nav > a:nth-of-type(2)".to_string()),
+                        byte_range_start: None,
+                        byte_range_end: None,
+                    },
+                },
+                SnapshotBlock {
+                    version: CONTRACT_VERSION.to_string(),
+                    id: "b6".to_string(),
+                    kind: SnapshotBlockKind::Link,
+                    stable_ref: "rnav:link:linux".to_string(),
+                    role: SnapshotBlockRole::Cta,
+                    text: "Linux".to_string(),
+                    attributes: BTreeMap::new(),
+                    evidence: SnapshotEvidence {
+                        source_url: "https://example.com/hub".to_string(),
+                        source_type: SourceType::Http,
+                        dom_path_hint: Some("html > body > header > nav > a:nth-of-type(3)".to_string()),
+                        byte_range_start: None,
+                        byte_range_end: None,
+                    },
+                },
+                SnapshotBlock {
+                    version: CONTRACT_VERSION.to_string(),
+                    id: "b7".to_string(),
+                    kind: SnapshotBlockKind::Link,
+                    stable_ref: "rnav:link:ai".to_string(),
+                    role: SnapshotBlockRole::Cta,
+                    text: "AI".to_string(),
+                    attributes: BTreeMap::new(),
+                    evidence: SnapshotEvidence {
+                        source_url: "https://example.com/hub".to_string(),
+                        source_type: SourceType::Http,
+                        dom_path_hint: Some("html > body > nav > a:nth-of-type(4)".to_string()),
+                        byte_range_start: None,
+                        byte_range_end: None,
+                    },
+                },
+                SnapshotBlock {
+                    version: CONTRACT_VERSION.to_string(),
+                    id: "b8".to_string(),
+                    kind: SnapshotBlockKind::Link,
+                    stable_ref: "rnav:link:security".to_string(),
+                    role: SnapshotBlockRole::Cta,
+                    text: "Security".to_string(),
+                    attributes: BTreeMap::new(),
+                    evidence: SnapshotEvidence {
+                        source_url: "https://example.com/hub".to_string(),
+                        source_type: SourceType::Http,
+                        dom_path_hint: Some("html > body > nav > a:nth-of-type(5)".to_string()),
+                        byte_range_start: None,
+                        byte_range_end: None,
+                    },
+                },
+                SnapshotBlock {
+                    version: CONTRACT_VERSION.to_string(),
+                    id: "b9".to_string(),
+                    kind: SnapshotBlockKind::Link,
+                    stable_ref: "rnav:link:platform".to_string(),
+                    role: SnapshotBlockRole::Cta,
+                    text: "Platform".to_string(),
+                    attributes: BTreeMap::new(),
+                    evidence: SnapshotEvidence {
+                        source_url: "https://example.com/hub".to_string(),
+                        source_type: SourceType::Http,
+                        dom_path_hint: Some("html > body > nav > a:nth-of-type(6)".to_string()),
+                        byte_range_start: None,
+                        byte_range_end: None,
+                    },
+                },
+                SnapshotBlock {
+                    version: CONTRACT_VERSION.to_string(),
+                    id: "b10".to_string(),
+                    kind: SnapshotBlockKind::Link,
+                    stable_ref: "rnav:link:newsletter".to_string(),
+                    role: SnapshotBlockRole::Cta,
+                    text: "Newsletter".to_string(),
+                    attributes: BTreeMap::new(),
+                    evidence: SnapshotEvidence {
+                        source_url: "https://example.com/hub".to_string(),
+                        source_type: SourceType::Http,
+                        dom_path_hint: Some("html > body > nav > a:nth-of-type(7)".to_string()),
+                        byte_range_start: None,
+                        byte_range_end: None,
+                    },
+                },
+                SnapshotBlock {
+                    version: CONTRACT_VERSION.to_string(),
+                    id: "b11".to_string(),
+                    kind: SnapshotBlockKind::Link,
+                    stable_ref: "rnav:link:events".to_string(),
+                    role: SnapshotBlockRole::Cta,
+                    text: "Events".to_string(),
+                    attributes: BTreeMap::new(),
+                    evidence: SnapshotEvidence {
+                        source_url: "https://example.com/hub".to_string(),
+                        source_type: SourceType::Http,
+                        dom_path_hint: Some("html > body > nav > a:nth-of-type(8)".to_string()),
+                        byte_range_start: None,
+                        byte_range_end: None,
+                    },
+                },
+                SnapshotBlock {
+                    version: CONTRACT_VERSION.to_string(),
+                    id: "b12".to_string(),
+                    kind: SnapshotBlockKind::Link,
+                    stable_ref: "rfooter:link:about".to_string(),
+                    role: SnapshotBlockRole::Content,
+                    text: "About / Contact".to_string(),
+                    attributes: BTreeMap::new(),
+                    evidence: SnapshotEvidence {
+                        source_url: "https://example.com/hub".to_string(),
+                        source_type: SourceType::Http,
+                        dom_path_hint: Some("html > body > footer > a".to_string()),
+                        byte_range_start: None,
+                        byte_range_end: None,
+                    },
+                },
+            ],
+        };
+
+        let markdown = render_read_view_markdown(&snapshot);
+
+        assert!(
+            markdown.starts_with(
+                "Community created roadmaps, articles, resources and journeys for developers"
+            ),
+            "hub summary text should lead read-view output, got: {markdown}"
+        );
+        assert!(!markdown.contains("Cloud Native Ecosystem"));
+        assert!(!markdown.contains("About / Contact"));
     }
 }

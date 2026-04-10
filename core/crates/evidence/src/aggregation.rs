@@ -396,7 +396,7 @@ mod tests {
     };
 
     use super::support_requires_additional_confirmation;
-    use crate::scoring::ScoredCandidate;
+    use crate::scoring::{CandidateMatchSignals, ScoredCandidate};
 
     fn candidate(score: f64, exact_support: bool) -> ScoredCandidate<'static> {
         let block = Box::leak(Box::new(SnapshotBlock {
@@ -424,6 +424,16 @@ mod tests {
             lexical_overlap: score,
             contradictory: false,
             exact_support,
+            signals: CandidateMatchSignals {
+                lexical_overlap: score,
+                contextual_overlap: score,
+                numeric_alignment: None,
+                exact_support,
+                semantic_similarity: None,
+                semantic_boost: None,
+                nli_entailment: None,
+                nli_contradiction: None,
+            },
         }
     }
 

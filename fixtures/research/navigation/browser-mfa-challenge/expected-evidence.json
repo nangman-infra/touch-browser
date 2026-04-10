@@ -71,6 +71,14 @@
       "confidenceBand": "review",
       "reviewRecommended": true,
       "verdictExplanation": "Support is present but still borderline across 3 page block(s). Review the attached snippets before reusing the claim.",
+      "matchSignals": {
+        "blockId": "b3",
+        "stableRef": "rmain:text:enter-the-6-digit-verification-code-from-your-au",
+        "blockKind": "text",
+        "exactSupport": false,
+        "lexicalOverlap": 0.29,
+        "contextualOverlap": 0.29
+      },
       "checkedBlockRefs": [
         "rmain:text:enter-the-6-digit-verification-code-from-your-au",
         "rmain:text:status",
