@@ -238,28 +238,68 @@ fn downgrade_conflicting_supported_claims<F>(
 ) where
     F: Fn(&[(String, String)]) -> Option<Vec<NliScore>>,
 {
-    let supported_indices = claim_outcomes
+    let supported_indices = supported_claim_indices(claim_outcomes);
+    if supported_indices.len() < 2 {
+        return;
+    }
+
+    let conflicting_indices =
+        conflicting_supported_indices(claim_outcomes, &supported_indices, score_pairs);
+    for index in conflicting_indices {
+        downgrade_supported_claim(&mut claim_outcomes[index]);
+    }
+}
+
+fn supported_claim_indices(claim_outcomes: &[EvidenceClaimOutcome]) -> Vec<usize> {
+    claim_outcomes
         .iter()
         .enumerate()
         .filter_map(|(index, outcome)| {
             (outcome.verdict == EvidenceClaimVerdict::EvidenceSupported).then_some(index)
         })
-        .collect::<Vec<_>>();
-    if supported_indices.len() < 2 {
-        return;
-    }
+        .collect()
+}
 
+fn conflicting_supported_indices<F>(
+    claim_outcomes: &[EvidenceClaimOutcome],
+    supported_indices: &[usize],
+    score_pairs: F,
+) -> BTreeSet<usize>
+where
+    F: Fn(&[(String, String)]) -> Option<Vec<NliScore>>,
+{
     let mut conflicting_indices = BTreeSet::new();
     let mut directional_pairs = Vec::new();
     let mut directional_pair_indices = Vec::new();
 
+    collect_conflicting_pairs(
+        claim_outcomes,
+        supported_indices,
+        &mut conflicting_indices,
+        &mut directional_pairs,
+        &mut directional_pair_indices,
+    );
+    apply_nli_conflict_scores(
+        &score_pairs,
+        &directional_pairs,
+        &directional_pair_indices,
+        &mut conflicting_indices,
+    );
+    conflicting_indices
+}
+
+fn collect_conflicting_pairs(
+    claim_outcomes: &[EvidenceClaimOutcome],
+    supported_indices: &[usize],
+    conflicting_indices: &mut BTreeSet<usize>,
+    directional_pairs: &mut Vec<(String, String)>,
+    directional_pair_indices: &mut Vec<(usize, usize)>,
+) {
     for (offset, left_index) in supported_indices.iter().enumerate() {
         for right_index in supported_indices.iter().skip(offset + 1) {
             let left_statement = claim_outcomes[*left_index].statement.clone();
             let right_statement = claim_outcomes[*right_index].statement.clone();
-            if contradiction_detected(&normalize_text(&left_statement), &right_statement)
-                || contradiction_detected(&normalize_text(&right_statement), &left_statement)
-            {
+            if statements_conflict_via_pattern(&left_statement, &right_statement) {
                 conflicting_indices.insert(*left_index);
                 conflicting_indices.insert(*right_index);
                 continue;
@@ -274,46 +314,61 @@ fn downgrade_conflicting_supported_claims<F>(
             directional_pair_indices.push((*left_index, *right_index));
         }
     }
+}
 
-    if !directional_pairs.is_empty() {
-        if let Some(scores) = score_pairs(&directional_pairs) {
-            for ((left_index, right_index), score) in
-                directional_pair_indices.iter().zip(scores.iter())
-            {
-                if has_strong_nli_contradiction(score) {
-                    conflicting_indices.insert(*left_index);
-                    conflicting_indices.insert(*right_index);
-                }
-            }
-        }
+fn statements_conflict_via_pattern(left_statement: &str, right_statement: &str) -> bool {
+    contradiction_detected(&normalize_text(left_statement), right_statement)
+        || contradiction_detected(&normalize_text(right_statement), left_statement)
+}
+
+fn apply_nli_conflict_scores<F>(
+    score_pairs: &F,
+    directional_pairs: &[(String, String)],
+    directional_pair_indices: &[(usize, usize)],
+    conflicting_indices: &mut BTreeSet<usize>,
+) where
+    F: Fn(&[(String, String)]) -> Option<Vec<NliScore>>,
+{
+    if directional_pairs.is_empty() {
+        return;
     }
 
-    for index in conflicting_indices {
-        let outcome = &mut claim_outcomes[index];
-        outcome.verdict = EvidenceClaimVerdict::NeedsMoreBrowsing;
-        outcome.reason = Some(UnsupportedClaimReason::NeedsMoreBrowsing);
-        outcome.confidence_band = Some(EvidenceConfidenceBand::Review);
-        outcome.review_recommended = true;
-        if !outcome.guard_failures.iter().any(|failure| {
-            failure.kind == EvidenceGuardKind::Predicate
-                && failure
-                    .detail
-                    .contains("another supported claim in the same extract")
-        }) {
-            outcome.guard_failures.push(EvidenceGuardFailure {
-                kind: EvidenceGuardKind::Predicate,
-                detail:
-                    "This claim conflicts semantically with another supported claim in the same extract."
-                        .to_string(),
-            });
+    let Some(scores) = score_pairs(directional_pairs) else {
+        return;
+    };
+
+    for ((left_index, right_index), score) in directional_pair_indices.iter().zip(scores.iter()) {
+        if has_strong_nli_contradiction(score) {
+            conflicting_indices.insert(*left_index);
+            conflicting_indices.insert(*right_index);
         }
-        outcome.next_action_hint = Some(
-            "The extract surfaced another supported claim with conflicting meaning. Review the snippets or browse a more specific source before answering.".to_string(),
-        );
-        outcome.verdict_explanation = Some(
-            "Multiple supported claims in the same extract conflict semantically. Review the snippets or browse a more specific source before reusing either claim.".to_string(),
-        );
     }
+}
+
+fn downgrade_supported_claim(outcome: &mut EvidenceClaimOutcome) {
+    outcome.verdict = EvidenceClaimVerdict::NeedsMoreBrowsing;
+    outcome.reason = Some(UnsupportedClaimReason::NeedsMoreBrowsing);
+    outcome.confidence_band = Some(EvidenceConfidenceBand::Review);
+    outcome.review_recommended = true;
+    if !outcome.guard_failures.iter().any(|failure| {
+        failure.kind == EvidenceGuardKind::Predicate
+            && failure
+                .detail
+                .contains("another supported claim in the same extract")
+    }) {
+        outcome.guard_failures.push(EvidenceGuardFailure {
+            kind: EvidenceGuardKind::Predicate,
+            detail:
+                "This claim conflicts semantically with another supported claim in the same extract."
+                    .to_string(),
+        });
+    }
+    outcome.next_action_hint = Some(
+        "The extract surfaced another supported claim with conflicting meaning. Review the snippets or browse a more specific source before answering.".to_string(),
+    );
+    outcome.verdict_explanation = Some(
+        "Multiple supported claims in the same extract conflict semantically. Review the snippets or browse a more specific source before reusing either claim.".to_string(),
+    );
 }
 
 fn claim_pair_merits_nli_conflict_check(left_statement: &str, right_statement: &str) -> bool {

@@ -5,6 +5,7 @@ import { homedir } from "node:os";
 import { resolve } from "node:path";
 
 const repoRoot = process.cwd();
+const nodeExecutablePath = process.execPath;
 const embeddingRunnerPath = resolve(
   repoRoot,
   "scripts/evidence-embedding-runner.mjs",
@@ -56,7 +57,7 @@ assert.equal(nliResponse.results[0].entailment < 0.1, true);
 
 async function runJsonRunner(scriptPath, extraEnv, payload) {
   return new Promise((resolvePromise, reject) => {
-    const child = spawn("node", [scriptPath], {
+    const child = spawn(nodeExecutablePath, [scriptPath], {
       cwd: repoRoot,
       env: {
         ...process.env,
