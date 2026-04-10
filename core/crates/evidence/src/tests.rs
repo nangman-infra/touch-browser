@@ -218,6 +218,32 @@ fn link_block(
     )
 }
 
+fn single_text_snapshot(
+    url: &str,
+    source_type: SourceType,
+    title: &str,
+    stable_ref: &str,
+    text: &str,
+    dom_path_hint: &str,
+) -> SnapshotDocument {
+    snapshot_document(
+        url,
+        source_type.clone(),
+        title,
+        512,
+        32,
+        vec![text_block(
+            url,
+            source_type,
+            "b1",
+            stable_ref,
+            SnapshotBlockRole::Content,
+            text,
+            dom_path_hint,
+        )],
+    )
+}
+
 fn snapshot_document(
     url: &str,
     source_type: SourceType,
@@ -829,21 +855,13 @@ fn prefers_narrative_support_over_numeric_table_noise_for_date_claims() {
 
 #[test]
 fn supports_cjk_claims_when_main_subject_terms_are_present() {
-    let snapshot = snapshot_document(
+    let snapshot = single_text_snapshot(
         "https://ko.wikipedia.example/wiki/Python",
         SourceType::Http,
         "Python",
-        512,
-        64,
-        vec![text_block(
-            "https://ko.wikipedia.example/wiki/Python",
-            SourceType::Http,
-            "b1",
-            "rmain:text:python-origin",
-            SnapshotBlockRole::Content,
-            "파이썬은 1991년 귀도 반 로섬이 발표한 프로그래밍 언어이다.",
-            "html > body > main > p:nth-of-type(1)",
-        )],
+        "rmain:text:python-origin",
+        "파이썬은 1991년 귀도 반 로섬이 발표한 프로그래밍 언어이다.",
+        "html > body > main > p:nth-of-type(1)",
     );
 
     let report = extract_report(
@@ -862,21 +880,13 @@ fn supports_cjk_claims_when_main_subject_terms_are_present() {
 
 #[test]
 fn supports_japanese_claims_when_main_subject_terms_are_present() {
-    let snapshot = snapshot_document(
+    let snapshot = single_text_snapshot(
         "https://ja.wikipedia.example/wiki/明治維新",
         SourceType::Http,
         "明治維新",
-        512,
-        64,
-        vec![text_block(
-            "https://ja.wikipedia.example/wiki/明治維新",
-            SourceType::Http,
-            "b1",
-            "rmain:text:meiji",
-            SnapshotBlockRole::Content,
-            "明治維新は江戸幕府に対する倒幕運動から始まった日本の近代化改革である。",
-            "html > body > main > p:nth-of-type(1)",
-        )],
+        "rmain:text:meiji",
+        "明治維新は江戸幕府に対する倒幕運動から始まった日本の近代化改革である。",
+        "html > body > main > p:nth-of-type(1)",
     );
 
     let report = extract_report(
@@ -895,21 +905,13 @@ fn supports_japanese_claims_when_main_subject_terms_are_present() {
 
 #[test]
 fn supports_simplified_chinese_claims_against_traditional_snapshot_text() {
-    let snapshot = snapshot_document(
+    let snapshot = single_text_snapshot(
         "https://zh.wikipedia.example/wiki/%E4%B8%AD%E5%9B%BD",
         SourceType::Http,
         "中國",
-        512,
-        64,
-        vec![text_block(
-            "https://zh.wikipedia.example/wiki/%E4%B8%AD%E5%9B%BD",
-            SourceType::Http,
-            "b1",
-            "rmain:text:china-overview",
-            SnapshotBlockRole::Content,
-            "中國是以漢族為主體民族的國家。",
-            "html > body > main > p:nth-of-type(1)",
-        )],
+        "rmain:text:china-overview",
+        "中國是以漢族為主體民族的國家。",
+        "html > body > main > p:nth-of-type(1)",
     );
 
     let report = extract_report(
@@ -1233,21 +1235,13 @@ fn supports_availability_claims_from_selector_options() {
 #[test]
 fn rejects_low_signal_repetitive_claims() {
     let repetitive_claim = format!("파이썬은 {}좋은 언어이다", "매우 ".repeat(200));
-    let snapshot = snapshot_document(
+    let snapshot = single_text_snapshot(
         "https://www.python.org/",
         SourceType::Http,
         "Welcome to Python.org",
-        512,
-        32,
-        vec![text_block(
-            "https://www.python.org/",
-            SourceType::Http,
-            "b1",
-            "rmain:text:intro",
-            SnapshotBlockRole::Content,
-            "Python is a powerful programming language.",
-            "html > body > main > p",
-        )],
+        "rmain:text:intro",
+        "Python is a powerful programming language.",
+        "html > body > main > p",
     );
 
     let report = extract_report(
@@ -1263,21 +1257,13 @@ fn rejects_low_signal_repetitive_claims() {
 
 #[test]
 fn rejects_default_timeout_claim_when_support_only_states_maximum_timeout() {
-    let snapshot = snapshot_document(
+    let snapshot = single_text_snapshot(
         "https://docs.aws.example/lambda/limits",
         SourceType::Http,
         "Lambda quotas",
-        512,
-        32,
-        vec![text_block(
-            "https://docs.aws.example/lambda/limits",
-            SourceType::Http,
-            "b1",
-            "rmain:text:timeout",
-            SnapshotBlockRole::Content,
-            "The maximum timeout for a Lambda function is 900 seconds (15 minutes).",
-            "html > body > main > p:nth-of-type(1)",
-        )],
+        "rmain:text:timeout",
+        "The maximum timeout for a Lambda function is 900 seconds (15 minutes).",
+        "html > body > main > p:nth-of-type(1)",
     );
 
     let report = extract_report(
