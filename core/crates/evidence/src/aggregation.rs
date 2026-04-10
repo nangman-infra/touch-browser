@@ -61,6 +61,12 @@ pub(crate) fn contradiction_resolution<'a>(
         claim,
         contradictory_support,
         blocks,
+        &analysis.claim_sequence_tokens,
+        if analysis.claim_cross_lingual_tokens.is_empty() {
+            &analysis.claim_tokens
+        } else {
+            &analysis.claim_cross_lingual_tokens
+        },
         &analysis.claim_anchor_tokens,
         &analysis.claim_qualifier_tokens,
     );
@@ -96,6 +102,8 @@ pub(crate) fn assess_support_guards(
     claim: &ClaimRequest,
     top_support: &[ScoredCandidate<'_>],
     blocks: &[SnapshotBlock],
+    claim_tokens: &[String],
+    predicate_hint_tokens: &[String],
     claim_anchor_tokens: &[String],
     claim_qualifier_tokens: &[String],
 ) -> GuardAssessment {
@@ -103,6 +111,8 @@ pub(crate) fn assess_support_guards(
         claim,
         top_support,
         blocks,
+        claim_tokens,
+        predicate_hint_tokens,
         claim_anchor_tokens,
         claim_qualifier_tokens,
     )

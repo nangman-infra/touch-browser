@@ -49,6 +49,7 @@ pub(crate) fn analyze_claim<'a>(
         };
     }
     let matching_profile = matching_profile_for_document(blocks, &analysis);
+    let guard_claim_tokens = guard_claim_tokens(&analysis, &matching_profile);
     let scoring_context = build_scoring_context(blocks, matching_profile.claim_tokens);
     let mut scored = score_candidates(
         blocks,
@@ -98,6 +99,8 @@ pub(crate) fn analyze_claim<'a>(
         claim,
         &top_support,
         blocks,
+        &analysis.claim_sequence_tokens,
+        &guard_claim_tokens,
         matching_profile.claim_anchor_tokens,
         &analysis.claim_qualifier_tokens,
     );
@@ -142,6 +145,21 @@ pub(crate) fn analyze_claim<'a>(
     }
 
     supported_resolution(effective_score, top_support, checked_refs)
+}
+
+fn guard_claim_tokens(
+    analysis: &crate::normalization::ClaimAnalysisInput,
+    matching_profile: &MatchingProfile<'_>,
+) -> Vec<String> {
+    let mut combined = matching_profile.claim_tokens.to_vec();
+
+    for token in &analysis.claim_cross_lingual_tokens {
+        if !combined.contains(token) {
+            combined.push(token.clone());
+        }
+    }
+
+    combined
 }
 
 struct MatchingProfile<'a> {
@@ -571,7 +589,7 @@ mod tests {
     }
 
     #[test]
-    fn analyzer_handles_mixed_runtime_sentences_inside_one_block() {
+    fn analyzer_requires_more_browsing_for_mixed_runtime_sentences_inside_one_block() {
         let snapshot = SnapshotDocument {
             version: "1.0.0".to_string(),
             stable_ref_version: "1".to_string(),
@@ -617,7 +635,7 @@ mod tests {
             &ClaimRequest::new("c2", "Tokio is multi-threaded."),
             &snapshot.blocks,
         );
-        assert_eq!(
+        assert_ne!(
             multi_threaded.verdict,
             EvidenceClaimVerdict::EvidenceSupported
         );

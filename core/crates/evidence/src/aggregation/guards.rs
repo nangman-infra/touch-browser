@@ -92,6 +92,7 @@ struct PredicateOpposition {
     label: &'static str,
     positive: &'static [&'static str],
     negative: &'static [&'static str],
+    subordinate_targets: &'static [&'static str],
 }
 
 impl StatusProfile {
@@ -116,6 +117,8 @@ pub(super) fn assess_support_guards(
     claim: &ClaimRequest,
     top_support: &[ScoredCandidate<'_>],
     blocks: &[SnapshotBlock],
+    claim_tokens: &[String],
+    predicate_hint_tokens: &[String],
     claim_anchor_tokens: &[String],
     claim_qualifier_tokens: &[String],
 ) -> GuardAssessment {
@@ -159,7 +162,13 @@ pub(super) fn assess_support_guards(
     apply_guard_check(
         &mut contradiction_reason,
         &mut guard_failures,
-        predicate_guard_check(&claim.statement, top_support, blocks, claim_anchor_tokens),
+        predicate_guard_check(
+            claim_tokens,
+            predicate_hint_tokens,
+            top_support,
+            blocks,
+            claim_anchor_tokens,
+        ),
     );
     apply_guard_check(
         &mut contradiction_reason,
@@ -601,27 +610,40 @@ fn negation_guard_check(normalized_claim: &str, normalized_support: &str) -> Gua
 }
 
 fn predicate_guard_check(
-    claim_text: &str,
+    claim_tokens: &[String],
+    predicate_hint_tokens: &[String],
     top_support: &[ScoredCandidate<'_>],
     blocks: &[SnapshotBlock],
     claim_anchor_tokens: &[String],
 ) -> GuardCheck {
-    let claim_tokens = tokenize_all(claim_text);
-
     for opposition in PREDICATE_OPPOSITIONS {
-        let Some(claim_polarity) = claim_predicate_polarity(&claim_tokens, opposition) else {
+        let predicate_source_tokens =
+            if claim_predicate_polarity(claim_tokens, opposition).is_some() {
+                claim_tokens
+            } else {
+                predicate_hint_tokens
+            };
+        let Some(claim_polarity) = claim_predicate_polarity(predicate_source_tokens, opposition)
+        else {
             continue;
         };
-        let claim_context_tokens = predicate_context_tokens(
-            &claim_tokens,
-            predicate_terms_for_polarity(opposition, claim_polarity),
-        );
+        let claim_predicate_terms =
+            claim_specific_predicate_terms(predicate_source_tokens, opposition, claim_polarity);
+        let claim_context_tokens = {
+            let raw_context = predicate_context_tokens(claim_tokens, &claim_predicate_terms);
+            if raw_context.is_empty() {
+                predicate_context_tokens(predicate_hint_tokens, &claim_predicate_terms)
+            } else {
+                raw_context
+            }
+        };
         let subject_anchor_tokens =
             predicate_subject_anchor_tokens(claim_anchor_tokens, opposition);
         let matching_blocks = support_blocks_with_matching_predicate(
             top_support,
             opposition,
             claim_polarity,
+            &claim_predicate_terms,
             &claim_context_tokens,
         );
         let opposite_blocks = document_blocks_with_opposite_predicate(
@@ -698,19 +720,25 @@ fn support_blocks_with_matching_predicate(
     top_support: &[ScoredCandidate<'_>],
     opposition: &PredicateOpposition,
     claim_polarity: PredicatePolarity,
+    claim_predicate_terms: &[&str],
     claim_context_tokens: &[String],
 ) -> BTreeSet<String> {
-    let predicate_terms = predicate_terms_for_polarity(opposition, claim_polarity);
     top_support
         .iter()
         .filter_map(|candidate| {
-            let candidate_tokens = tokenize_all(&candidate.text);
+            let search_text = block_search_text(candidate.block);
+            let candidate_tokens = tokenize_all(&search_text);
             let candidate_polarity = detect_predicate_polarity(&candidate_tokens, opposition);
             if candidate_polarity != claim_polarity {
                 return None;
             }
-            if !predicate_context_matches(claim_context_tokens, &candidate_tokens, predicate_terms)
-            {
+            if !block_explicitly_asserts_predicate(
+                &candidate_tokens,
+                opposition,
+                claim_polarity,
+                claim_predicate_terms,
+                claim_context_tokens,
+            ) {
                 return None;
             }
             Some(candidate.block.id.clone())
@@ -1057,12 +1085,8 @@ fn detect_predicate_polarity(
     tokens: &[String],
     opposition: &PredicateOpposition,
 ) -> PredicatePolarity {
-    let has_positive = tokens
-        .iter()
-        .any(|token| opposition_matches_token(opposition.positive, token));
-    let has_negative = tokens
-        .iter()
-        .any(|token| opposition_matches_token(opposition.negative, token));
+    let has_positive = tokens_match_opposition_terms(tokens, opposition.positive);
+    let has_negative = tokens_match_opposition_terms(tokens, opposition.negative);
 
     match (has_positive, has_negative) {
         (true, false) => PredicatePolarity::Positive,
@@ -1093,10 +1117,27 @@ fn predicate_subject_anchor_tokens(
 
 fn opposition_matches_token(opposition_terms: &[&str], token: &str) -> bool {
     opposition_terms.iter().any(|term| {
-        token == *term
-            || token.starts_with(term)
-            || (token.len() >= 5 && term.starts_with(token))
-            || token.replace('-', "") == term.replace('-', "")
+        token == *term || token.starts_with(term) || token.replace('-', "") == term.replace('-', "")
+    })
+}
+
+fn tokens_match_opposition_terms(tokens: &[String], opposition_terms: &[&str]) -> bool {
+    opposition_terms
+        .iter()
+        .any(|term| token_sequence_position(tokens, term).is_some())
+}
+
+fn token_sequence_position(tokens: &[String], term: &str) -> Option<usize> {
+    let term_tokens = tokenize_all(term);
+    if term_tokens.is_empty() || tokens.len() < term_tokens.len() {
+        return None;
+    }
+
+    tokens.windows(term_tokens.len()).position(|window| {
+        window
+            .iter()
+            .zip(term_tokens.iter())
+            .all(|(token, expected)| tokens_match(token, expected))
     })
 }
 
@@ -1130,10 +1171,12 @@ fn document_blocks_with_opposite_predicate(
             if !predicate_polarities_conflict(claim_polarity, block_polarity) {
                 return None;
             }
-            if !predicate_context_matches(
-                claim_context_tokens,
+            if !block_explicitly_asserts_predicate(
                 &block_tokens,
+                opposition,
+                opposite_polarity(claim_polarity),
                 predicate_terms_for_polarity(opposition, opposite_polarity(claim_polarity)),
+                claim_context_tokens,
             ) {
                 return None;
             }
@@ -1169,6 +1212,71 @@ fn predicate_terms_for_polarity(
     }
 }
 
+fn claim_specific_predicate_terms<'a>(
+    claim_tokens: &[String],
+    opposition: &'a PredicateOpposition,
+    polarity: PredicatePolarity,
+) -> Vec<&'a str> {
+    let polarity_terms = predicate_terms_for_polarity(opposition, polarity);
+    let specific_terms = polarity_terms
+        .iter()
+        .copied()
+        .filter(|term| token_sequence_position(claim_tokens, term).is_some())
+        .collect::<Vec<_>>();
+
+    if specific_terms.is_empty() {
+        polarity_terms.to_vec()
+    } else {
+        specific_terms
+    }
+}
+
+fn block_explicitly_asserts_predicate(
+    block_tokens: &[String],
+    opposition: &PredicateOpposition,
+    _polarity: PredicatePolarity,
+    predicate_terms: &[&str],
+    claim_context_tokens: &[String],
+) -> bool {
+    if predicate_terms.is_empty() {
+        return false;
+    }
+
+    let Some(predicate_index) = predicate_terms
+        .iter()
+        .filter_map(|term| token_sequence_position(block_tokens, term))
+        .min()
+    else {
+        return false;
+    };
+
+    if predicate_has_subordinate_target(block_tokens, predicate_index, opposition) {
+        return false;
+    }
+
+    if claim_context_tokens.is_empty() {
+        return true;
+    }
+
+    predicate_context_matches(claim_context_tokens, block_tokens, predicate_terms)
+}
+
+fn predicate_has_subordinate_target(
+    block_tokens: &[String],
+    predicate_index: usize,
+    opposition: &PredicateOpposition,
+) -> bool {
+    if opposition.subordinate_targets.is_empty() {
+        return false;
+    }
+
+    block_tokens
+        .iter()
+        .skip(predicate_index + 1)
+        .take(4)
+        .any(|token| contains_token(token, opposition.subordinate_targets))
+}
+
 fn predicate_context_tokens(tokens: &[String], opposition_terms: &[&str]) -> Vec<String> {
     for (index, token) in tokens.iter().enumerate() {
         if !opposition_matches_token(opposition_terms, token) {
@@ -1178,7 +1286,7 @@ fn predicate_context_tokens(tokens: &[String], opposition_terms: &[&str]) -> Vec
         let context = tokens[index + 1..]
             .iter()
             .filter(|token| !PREDICATE_CONTEXT_STOP_WORDS.contains(&token.as_str()))
-            .take(6)
+            .take(10)
             .cloned()
             .collect::<Vec<_>>();
         if !context.is_empty() {
@@ -1264,12 +1372,14 @@ const THREAD_USAGE_OPPOSITION: PredicateOpposition = PredicateOpposition {
     label: "thread-usage",
     positive: &["uses threads"],
     negative: &["without threads"],
+    subordinate_targets: &[],
 };
 const PREDICATE_OPPOSITIONS: &[PredicateOpposition] = &[
     PredicateOpposition {
         label: "execution-model",
-        positive: &["compiled", "compile", "compil"],
-        negative: &["interpreted", "interpret"],
+        positive: &["compiled", "컴파일", "编译"],
+        negative: &["interpreted", "interpret", "인터프리", "해석", "解释"],
+        subordinate_targets: &["byte", "bytes", "bytecode", "code", "codes", "source"],
     },
     PredicateOpposition {
         label: "threading-model",
@@ -1285,11 +1395,26 @@ const PREDICATE_OPPOSITIONS: &[PredicateOpposition] = &[
             "multi_thread",
             "multithread",
         ],
+        subordinate_targets: &[],
     },
     PredicateOpposition {
         label: "runtime-behavior",
-        positive: &["synchronous", "blocking"],
-        negative: &["asynchronous", "non-blocking", "nonblocking"],
+        positive: &["synchronous", "synchronou", "동기"],
+        negative: &["asynchronous", "asynchronou", "비동기", "异步"],
+        subordinate_targets: &[
+            "method",
+            "methods",
+            "version",
+            "versions",
+            "callback",
+            "callbacks",
+            "operation",
+            "operations",
+            "library",
+            "libraries",
+            "api",
+            "apis",
+        ],
     },
 ];
 const PREDICATE_CONTEXT_STOP_WORDS: &[&str] = &[
