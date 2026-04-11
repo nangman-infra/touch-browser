@@ -244,8 +244,13 @@ fn serve_dispatch(request: ServeJsonRpcRequest, daemon_state: &mut ServeDaemonSt
 #[cfg(test)]
 mod tests {
     use serde_json::json;
+    use touch_browser_runtime::ReadOnlyRuntime;
 
     use super::{serve_dispatch, ServeDaemonState, ServeJsonRpcRequest};
+    use crate::{
+        build_browser_cli_session, save_browser_cli_session, SearchEngine, SearchReport,
+        SearchReportStatus, SearchResultItem, CONTRACT_VERSION, DEFAULT_OPENED_AT,
+    };
 
     #[test]
     fn runtime_status_returns_ready_envelope() {
@@ -294,6 +299,101 @@ mod tests {
             .as_str()
             .expect("error message")
             .contains("Unsupported serve method"));
+
+        daemon_state.cleanup().expect("cleanup");
+    }
+
+    #[test]
+    fn runtime_search_open_top_inherits_persisted_budget_and_flattens_diagnostics() {
+        let mut daemon_state = ServeDaemonState::new().expect("daemon state");
+        let created = serve_dispatch(
+            ServeJsonRpcRequest {
+                jsonrpc: "2.0".to_string(),
+                id: json!(1),
+                method: "runtime.session.create".to_string(),
+                params: json!({}),
+            },
+            &mut daemon_state,
+        );
+        let session_id = created["result"]["sessionId"]
+            .as_str()
+            .expect("session id")
+            .to_string();
+        let tab_id = created["result"]["activeTabId"]
+            .as_str()
+            .expect("active tab id")
+            .to_string();
+        let search_session_file = daemon_state
+            .session(&session_id)
+            .expect("session")
+            .tabs
+            .get(&tab_id)
+            .expect("tab")
+            .session_file
+            .clone();
+        let session = ReadOnlyRuntime::default().start_session("srvsearch001", DEFAULT_OPENED_AT);
+        let latest_search = SearchReport {
+            version: CONTRACT_VERSION.to_string(),
+            generated_at: DEFAULT_OPENED_AT.to_string(),
+            engine: SearchEngine::Google,
+            query: "fixture search".to_string(),
+            search_url: "https://www.google.com/search?q=fixture".to_string(),
+            final_url: "https://www.google.com/search?q=fixture".to_string(),
+            status: SearchReportStatus::Ready,
+            status_detail: None,
+            recovery: None,
+            result_count: 1,
+            results: vec![SearchResultItem {
+                rank: 1,
+                title: "Fixture docs".to_string(),
+                url: "fixture://research/navigation/browser-pagination".to_string(),
+                domain: "fixture.local".to_string(),
+                snippet: Some("Fixture search result".to_string()),
+                stable_ref: None,
+                official_likely: true,
+                selection_score: Some(1.0),
+                recommended_surface: Some("read-view".to_string()),
+            }],
+            recommended_result_ranks: vec![1],
+            next_action_hints: Vec::new(),
+        };
+        let persisted = build_browser_cli_session(
+            &session,
+            2048,
+            true,
+            None,
+            None,
+            None,
+            None,
+            Vec::new(),
+            Vec::new(),
+            Some(latest_search),
+        );
+        save_browser_cli_session(&search_session_file, &persisted)
+            .expect("search session should save");
+
+        let response = serve_dispatch(
+            ServeJsonRpcRequest {
+                jsonrpc: "2.0".to_string(),
+                id: json!(2),
+                method: "runtime.search.openTop".to_string(),
+                params: json!({
+                    "sessionId": session_id,
+                    "tabId": tab_id,
+                    "limit": 1
+                }),
+            },
+            &mut daemon_state,
+        );
+
+        assert_eq!(
+            response["result"]["openedTabs"][0]["diagnostics"]["requestedBudget"],
+            json!(2048)
+        );
+        assert_eq!(
+            response["result"]["openedTabs"][0]["result"]["result"]["diagnostics"]["requestedBudget"],
+            json!(2048)
+        );
 
         daemon_state.cleanup().expect("cleanup");
     }

@@ -84,6 +84,9 @@
               "browser": {
                 "type": "boolean"
               },
+              "budget": {
+                "type": "number"
+              },
               "headed": {
                 "type": "boolean"
               },
@@ -258,6 +261,9 @@
               "browser": {
                 "type": "boolean"
               },
+              "budget": {
+                "type": "number"
+              },
               "headed": {
                 "type": "boolean"
               },
@@ -314,6 +320,9 @@
               },
               "browser": {
                 "type": "boolean"
+              },
+              "budget": {
+                "type": "number"
               },
               "headed": {
                 "type": "boolean"

@@ -4,3 +4,4 @@
 - [adversarial benchmark](../doc/ADVERSARIAL_BENCHMARK_SPEC.md): numeric mismatch, contradiction, and `needs-more-browsing` cases on official docs
 - [public web benchmark](../doc/PUBLIC_WEB_BENCHMARK_SPEC.md): live public-doc coverage and token reduction
 - [real-user research benchmark](../doc/REAL_USER_RESEARCH_BENCHMARK_SPEC.md): MCP-driven multi-tab research proof
+- [AWS page-type benchmark](../doc/AWS_PAGE_TYPE_BENCHMARK_SPEC.md): AWS Docs page archetypes with auto vs browser capture, latency, and main-only usefulness

@@ -72,6 +72,14 @@ export type BrowserPageState = {
   readonly buttonCount: number;
   readonly inputCount: number;
   readonly links: Array<{ text: string; href: string | null }>;
+  readonly diagnostics: BrowserLoadDiagnostics;
+};
+
+export type BrowserLoadDiagnostics = {
+  readonly waitStrategy: string;
+  readonly waitBudgetMs: number | undefined;
+  readonly waitConsumedMs: number | undefined;
+  readonly waitStopReason: string | undefined;
 };
 
 export type TargetDescriptor = {
@@ -120,6 +128,9 @@ export const ACTION_SETTLE_IDLE_TIMEOUT_MS = 1_250;
 export const ACTION_SETTLE_EXTRA_WAIT_MS = 700;
 export const SEARCH_PROFILE_POST_LOAD_IDLE_MS = 3_000;
 export const SEARCH_PROFILE_POST_LOAD_WAIT_MS = 350;
+export const GENERIC_POST_LOAD_PROBE_INTERVAL_MS = 250;
+export const GENERIC_POST_LOAD_PROBE_BUDGET_MS = 2_000;
+export const GENERIC_POST_LOAD_PROBE_MAX_MS = 4_000;
 export const SEARCH_MANUAL_RECOVERY_TIMEOUT_MS = 300_000;
 export const SEARCH_MANUAL_RECOVERY_POLL_MS = 750;
 export const MAX_CAPTURED_LINKS = 50;

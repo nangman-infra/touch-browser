@@ -2,7 +2,7 @@ use serde_json::Value;
 
 use crate::interface::deps::{
     dispatch, load_browser_cli_session, parse_search_engine, CliCommand, CliError, SearchEngine,
-    SearchOptions, SearchReportStatus, SourceRisk, DEFAULT_REQUESTED_TOKENS, DEFAULT_SEARCH_TOKENS,
+    SearchOptions, SearchReportStatus, SourceRisk, DEFAULT_SEARCH_TOKENS,
 };
 
 use super::{
@@ -178,7 +178,7 @@ pub(crate) fn serve_search_open_top(
                 session_id: session_id.clone(),
                 requested_tab_id: Some(tab_id.clone()),
                 target: selected.url.clone(),
-                budget: DEFAULT_REQUESTED_TOKENS,
+                budget: persisted.requested_budget,
                 source_risk: Some(SourceRisk::Low),
                 source_label: None,
                 new_allowlisted_domains: Vec::new(),

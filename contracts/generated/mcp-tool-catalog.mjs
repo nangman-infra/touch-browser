@@ -40,6 +40,9 @@ export const toolCatalog = [
         "browser": {
           "type": "boolean"
         },
+        "budget": {
+          "type": "number"
+        },
         "headed": {
           "type": "boolean"
         },
@@ -172,6 +175,9 @@ export const toolCatalog = [
         "browser": {
           "type": "boolean"
         },
+        "budget": {
+          "type": "number"
+        },
         "headed": {
           "type": "boolean"
         },
@@ -217,6 +223,9 @@ export const toolCatalog = [
         },
         "browser": {
           "type": "boolean"
+        },
+        "budget": {
+          "type": "number"
         },
         "headed": {
           "type": "boolean"

@@ -3,18 +3,19 @@ use std::{fs, path::Path};
 use super::{
     context::CliAppContext,
     deps::{
-        current_policy_with_allowlist, current_timestamp, fail_action, is_fixture_target,
+        browser_capture_diagnostics, browser_fallback_reason, current_policy_with_allowlist,
+        current_timestamp, fail_action, http_capture_diagnostics, is_fixture_target,
         plan_memory_turn, repo_root, slot_timestamp, succeed_action, summarize_turns,
         verify_action_result_if_requested, ActionCommand, ActionFailureKind, ActionName,
         ActionResult, ActionStatus, BrowserCliSession, BrowserOrigin, BrowserSessionContext,
-        ClaimInput, CliError, CompactSnapshotOutput, ExtractCommandOutput, ExtractOptions,
-        MemorySummaryOutput, PolicyCommandOutput, ReadViewOutput, ReplayCommandOutput,
-        ReplayTranscript, RiskClass, SearchActionActor, SearchActionHint, SearchCommandOutput,
-        SearchEngine, SearchNextCommands, SearchOpenResultCommandOutput, SearchOpenResultOptions,
-        SearchOpenTopCommandOutput, SearchOpenTopItem, SearchOpenTopOptions, SearchOptions,
-        SearchRecovery, SearchRecoveryAttempt, SearchReport, SearchReportStatus, SearchResultItem,
-        SnapshotBlock, SnapshotBlockKind, SnapshotBlockRole, SnapshotDocument, SourceRisk,
-        SourceType, TargetOptions, CONTRACT_VERSION, DEFAULT_OPENED_AT,
+        CaptureSurface, ClaimInput, CliError, CompactSnapshotOutput, ExtractCommandOutput,
+        ExtractOptions, MemorySummaryOutput, PolicyCommandOutput, ReadViewOutput,
+        ReplayCommandOutput, ReplayTranscript, RiskClass, SearchActionActor, SearchActionHint,
+        SearchCommandOutput, SearchEngine, SearchNextCommands, SearchOpenResultCommandOutput,
+        SearchOpenResultOptions, SearchOpenTopCommandOutput, SearchOpenTopItem,
+        SearchOpenTopOptions, SearchOptions, SearchRecovery, SearchRecoveryAttempt, SearchReport,
+        SearchReportStatus, SearchResultItem, SourceRisk, TargetOptions, CONTRACT_VERSION,
+        DEFAULT_OPENED_AT,
     },
     search_support::{
         build_search_report, build_search_url, derived_search_result_session_file,
@@ -23,15 +24,6 @@ use super::{
     },
 };
 use serde::Serialize;
-
-const JS_PLACEHOLDER_HINTS: &[&str] = &[
-    "enable javascript",
-    "requires javascript",
-    "javascript to run this app",
-    "turn javascript on",
-    "javascript is disabled",
-    "you need to enable javascript",
-];
 
 #[derive(Serialize)]
 #[serde(rename_all = "camelCase")]
@@ -184,156 +176,6 @@ fn browser_fallback_extract_options(options: &ExtractOptions) -> ExtractOptions 
     let mut fallback = options.clone();
     fallback.browser = true;
     fallback
-}
-
-fn normalized_block_text(text: &str) -> String {
-    text.split_whitespace()
-        .collect::<Vec<_>>()
-        .join(" ")
-        .to_ascii_lowercase()
-}
-
-fn is_meaningful_snapshot_block(block: &SnapshotBlock) -> bool {
-    let char_count = block.text.trim().chars().count();
-    match block.kind {
-        SnapshotBlockKind::Heading => char_count >= 4,
-        SnapshotBlockKind::Text => char_count >= 32,
-        SnapshotBlockKind::List | SnapshotBlockKind::Table => char_count >= 24,
-        SnapshotBlockKind::Link => block.stable_ref.starts_with("rmain:") && char_count >= 48,
-        SnapshotBlockKind::Metadata
-        | SnapshotBlockKind::Form
-        | SnapshotBlockKind::Button
-        | SnapshotBlockKind::Input => false,
-    }
-}
-
-fn is_longform_content_block(block: &SnapshotBlock) -> bool {
-    let char_count = block.text.trim().chars().count();
-    match block.kind {
-        SnapshotBlockKind::Heading => {
-            !matches!(
-                block.role,
-                SnapshotBlockRole::PrimaryNav | SnapshotBlockRole::SecondaryNav
-            ) && char_count >= 8
-        }
-        SnapshotBlockKind::Text => char_count >= 80,
-        SnapshotBlockKind::List | SnapshotBlockKind::Table => char_count >= 64,
-        SnapshotBlockKind::Link => {
-            matches!(
-                block.role,
-                SnapshotBlockRole::Content | SnapshotBlockRole::Supporting
-            ) && char_count >= 72
-        }
-        SnapshotBlockKind::Metadata
-        | SnapshotBlockKind::Button
-        | SnapshotBlockKind::Form
-        | SnapshotBlockKind::Input => false,
-    }
-}
-
-fn is_shell_like_block(block: &SnapshotBlock) -> bool {
-    if matches!(
-        block.role,
-        SnapshotBlockRole::PrimaryNav
-            | SnapshotBlockRole::SecondaryNav
-            | SnapshotBlockRole::Cta
-            | SnapshotBlockRole::FormControl
-    ) {
-        return true;
-    }
-
-    match block.kind {
-        SnapshotBlockKind::Link
-        | SnapshotBlockKind::Button
-        | SnapshotBlockKind::Form
-        | SnapshotBlockKind::Input => true,
-        SnapshotBlockKind::List => block.text.split_whitespace().count() <= 12,
-        SnapshotBlockKind::Metadata
-        | SnapshotBlockKind::Heading
-        | SnapshotBlockKind::Text
-        | SnapshotBlockKind::Table => false,
-    }
-}
-
-fn snapshot_requires_browser_fallback(snapshot: &SnapshotDocument) -> bool {
-    if snapshot.source.source_type != SourceType::Http {
-        return false;
-    }
-
-    if snapshot.blocks.is_empty() {
-        return true;
-    }
-
-    let normalized_blocks = snapshot
-        .blocks
-        .iter()
-        .map(|block| normalized_block_text(&block.text))
-        .filter(|text| !text.is_empty())
-        .collect::<Vec<_>>();
-
-    if normalized_blocks
-        .iter()
-        .any(|text| JS_PLACEHOLDER_HINTS.iter().any(|hint| text.contains(hint)))
-    {
-        return true;
-    }
-
-    let meaningful_blocks = snapshot
-        .blocks
-        .iter()
-        .filter(|block| is_meaningful_snapshot_block(block))
-        .collect::<Vec<_>>();
-    let main_blocks = meaningful_blocks
-        .iter()
-        .filter(|block| block.stable_ref.starts_with("rmain:"))
-        .count();
-    let meaningful_chars = meaningful_blocks
-        .iter()
-        .map(|block| block.text.trim().chars().count())
-        .sum::<usize>();
-
-    if main_blocks == 0 && meaningful_blocks.len() <= 2 && meaningful_chars < 240 {
-        return true;
-    }
-
-    let longform_blocks = snapshot
-        .blocks
-        .iter()
-        .filter(|block| is_longform_content_block(block))
-        .count();
-    let shell_blocks = snapshot
-        .blocks
-        .iter()
-        .filter(|block| is_shell_like_block(block))
-        .count();
-    let content_headings = snapshot
-        .blocks
-        .iter()
-        .filter(|block| {
-            matches!(block.kind, SnapshotBlockKind::Heading)
-                && !matches!(
-                    block.role,
-                    SnapshotBlockRole::PrimaryNav | SnapshotBlockRole::SecondaryNav
-                )
-                && block.text.trim().chars().count() >= 4
-        })
-        .count();
-    let text_like_blocks = snapshot
-        .blocks
-        .iter()
-        .filter(|block| {
-            matches!(
-                block.kind,
-                SnapshotBlockKind::Text | SnapshotBlockKind::List | SnapshotBlockKind::Table
-            )
-        })
-        .count();
-
-    (longform_blocks == 0 && text_like_blocks <= 1 && shell_blocks >= 8)
-        || (longform_blocks <= 1
-            && meaningful_chars < 320
-            && shell_blocks >= 10
-            && content_headings <= 1)
 }
 
 pub(crate) fn selected_search_result(
@@ -685,7 +527,15 @@ pub(crate) fn handle_search_open_result(
         &persisted.allowlisted_domains,
         Some(latest_search.clone()),
     )?;
-    let opened = succeed_action(
+    let diagnostics = browser_capture_diagnostics(
+        &context.snapshot,
+        persisted.requested_budget,
+        false,
+        None,
+        &context.load_diagnostics,
+        CaptureSurface::Open,
+    );
+    let mut opened = succeed_action(
         ActionName::Open,
         "snapshot-document",
         context.snapshot,
@@ -696,6 +546,7 @@ pub(crate) fn handle_search_open_result(
             &refreshed.allowlisted_domains,
         ),
     )?;
+    opened.diagnostics = Some(diagnostics.clone());
 
     let session_extract_hint =
         if session_file == resolve_search_session_file(None, latest_search.engine) {
@@ -718,6 +569,7 @@ pub(crate) fn handle_search_open_result(
         requested_rank: options.rank,
         selection_strategy: selection_strategy.to_string(),
         result: opened,
+        diagnostics: Some(diagnostics),
         session_file: session_file.display().to_string(),
         next_commands: SearchNextCommands {
             session_extract: session_extract_hint,
@@ -800,7 +652,15 @@ pub(crate) fn handle_search_open_top(
                 &persisted.allowlisted_domains,
                 None,
             )?;
-            let opened = succeed_action(
+            let diagnostics = browser_capture_diagnostics(
+                &context.snapshot,
+                persisted.requested_budget,
+                false,
+                None,
+                &context.load_diagnostics,
+                CaptureSurface::Open,
+            );
+            let mut opened = succeed_action(
                 ActionName::Open,
                 "snapshot-document",
                 context.snapshot,
@@ -811,12 +671,14 @@ pub(crate) fn handle_search_open_top(
                     &refreshed.allowlisted_domains,
                 ),
             )?;
+            opened.diagnostics = Some(diagnostics.clone());
 
             Ok::<SearchOpenTopItem, CliError>(SearchOpenTopItem {
                 rank: selected.rank,
                 selected_result: selected,
                 session_file: result_session_file.display().to_string(),
                 result: opened,
+                diagnostics: Some(diagnostics),
             })
         })
         .collect::<Result<Vec<_>, _>>()?;
@@ -870,24 +732,38 @@ pub(crate) fn handle_open(
         options.source_label.clone(),
         &opened_at,
     )?;
-    if snapshot_requires_browser_fallback(&snapshot) {
-        return handle_browser_open(ctx, browser_fallback_target_options(&options));
+    if let Some(reason) = browser_fallback_reason(&snapshot) {
+        return handle_browser_open_with_fallback(
+            ctx,
+            browser_fallback_target_options(&options),
+            Some(reason),
+        );
     }
     let policy =
         current_policy_with_allowlist(&session, ctx.policy_kernel, &options.allowlisted_domains);
-
-    succeed_action(
+    let diagnostics = http_capture_diagnostics(&snapshot, options.budget, CaptureSurface::Open);
+    let mut result = succeed_action(
         ActionName::Open,
         "snapshot-document",
         snapshot,
         "Opened live document.",
         policy,
-    )
+    )?;
+    result.diagnostics = Some(diagnostics);
+    Ok(result)
 }
 
 pub(crate) fn handle_browser_open(
     ctx: &CliAppContext<'_>,
     options: TargetOptions,
+) -> Result<ActionResult, CliError> {
+    handle_browser_open_with_fallback(ctx, options, None)
+}
+
+fn handle_browser_open_with_fallback(
+    ctx: &CliAppContext<'_>,
+    options: TargetOptions,
+    fallback_reason: Option<&str>,
 ) -> Result<ActionResult, CliError> {
     let ports = ctx.ports;
     let opened_at = current_timestamp();
@@ -926,8 +802,15 @@ pub(crate) fn handle_browser_open(
             )
         })
         .transpose()?;
-
-    succeed_action(
+    let diagnostics = browser_capture_diagnostics(
+        &context.snapshot,
+        options.budget,
+        fallback_reason.is_some(),
+        fallback_reason,
+        &context.load_diagnostics,
+        CaptureSurface::Open,
+    );
+    let mut result = succeed_action(
         ActionName::Open,
         "snapshot-document",
         context.snapshot,
@@ -944,7 +827,9 @@ pub(crate) fn handle_browser_open(
                 &options.allowlisted_domains,
             ),
         },
-    )
+    )?;
+    result.diagnostics = Some(diagnostics);
+    Ok(result)
 }
 
 pub(crate) fn handle_compact_view(
@@ -1030,7 +915,7 @@ pub(crate) fn handle_compact_view(
         options.source_label.clone(),
         &opened_at,
     )?;
-    if snapshot_requires_browser_fallback(&snapshot) {
+    if browser_fallback_reason(&snapshot).is_some() {
         return handle_compact_view(ctx, browser_fallback_target_options(&options));
     }
 
@@ -1085,6 +970,14 @@ pub(crate) fn handle_read_view(
             })
             .transpose()?;
 
+        let diagnostics = browser_capture_diagnostics(
+            &context.snapshot,
+            options.budget,
+            false,
+            None,
+            &context.load_diagnostics,
+            CaptureSurface::ReadView,
+        );
         return Ok(ReadViewOutput::new(
             &context.snapshot,
             Some(
@@ -1095,7 +988,8 @@ pub(crate) fn handle_read_view(
             ),
             options.session_file.map(|path| path.display().to_string()),
             options.main_only,
-        ));
+        )
+        .with_diagnostics(diagnostics));
     }
 
     if is_fixture_target(&options.target) {
@@ -1124,16 +1018,88 @@ pub(crate) fn handle_read_view(
         options.source_label.clone(),
         &opened_at,
     )?;
-    if snapshot_requires_browser_fallback(&snapshot) {
-        return handle_read_view(ctx, browser_fallback_target_options(&options));
+    if let Some(reason) = browser_fallback_reason(&snapshot) {
+        return handle_browser_read_view_with_fallback(
+            ctx,
+            browser_fallback_target_options(&options),
+            Some(reason),
+        );
     }
-
+    let diagnostics =
+        http_capture_diagnostics(&snapshot, options.budget, CaptureSurface::ReadView);
     Ok(ReadViewOutput::new(
         &snapshot,
         Some(session.state),
         None,
         options.main_only,
-    ))
+    )
+    .with_diagnostics(diagnostics))
+}
+
+fn handle_browser_read_view_with_fallback(
+    ctx: &CliAppContext<'_>,
+    options: TargetOptions,
+    fallback_reason: Option<&str>,
+) -> Result<ReadViewOutput, CliError> {
+    let ports = ctx.ports;
+    let opened_at = current_timestamp();
+    let browser_context_dir = options
+        .session_file
+        .as_ref()
+        .map(|path| {
+            ports
+                .session_store
+                .browser_context_dir_for_session(path.as_path())
+        })
+        .map(|path: std::path::PathBuf| path.display().to_string());
+    let context = ports.browser.open_browser_session(
+        &options.target,
+        options.budget,
+        options.source_risk.clone(),
+        options.source_label.clone(),
+        options.headed,
+        browser_context_dir.clone(),
+        None,
+        "scliread001",
+        &opened_at,
+    )?;
+
+    let persisted = options
+        .session_file
+        .as_ref()
+        .map(|session_file| {
+            persist_browser_context(
+                ctx,
+                session_file,
+                &context,
+                &options.target,
+                options.headed,
+                &options.allowlisted_domains,
+                None,
+            )
+        })
+        .transpose()?;
+    let diagnostics = browser_capture_diagnostics(
+        &context.snapshot,
+        options.budget,
+        fallback_reason.is_some(),
+        fallback_reason,
+        &context.load_diagnostics,
+        CaptureSurface::ReadView,
+    );
+
+    Ok(ReadViewOutput::new(
+        &context.snapshot,
+        Some(
+            persisted
+                .as_ref()
+                .map(|session| session.session.state.clone())
+                .unwrap_or(context.session.state),
+        ),
+        options.session_file.map(|path| path.display().to_string()),
+        options.main_only,
+    )
+    .with_diagnostics(diagnostics))
 }
 
 pub(crate) fn handle_extract(
@@ -1180,7 +1146,15 @@ pub(crate) fn handle_extract(
                 )
             })
             .transpose()?;
-        let open_result = succeed_action(
+        let diagnostics = browser_capture_diagnostics(
+            &context.snapshot,
+            options.budget,
+            false,
+            None,
+            &context.load_diagnostics,
+            CaptureSurface::Extract,
+        );
+        let mut open_result = succeed_action(
             ActionName::Open,
             "snapshot-document",
             context.snapshot.clone(),
@@ -1198,6 +1172,7 @@ pub(crate) fn handle_extract(
                 ),
             },
         )?;
+        open_result.diagnostics = Some(diagnostics.clone());
         let mut session = persisted_session
             .as_ref()
             .map(|persisted| persisted.session.clone())
@@ -1238,6 +1213,7 @@ pub(crate) fn handle_extract(
         return Ok(ExtractCommandOutput {
             open: open_result,
             extract: extract_result,
+            diagnostics: Some(diagnostics),
             session_state: persisted
                 .as_ref()
                 .map(|persisted| persisted.session.state.clone())
@@ -1303,6 +1279,7 @@ pub(crate) fn handle_extract(
         return Ok(ExtractCommandOutput {
             open: open_result,
             extract: extract_result,
+            diagnostics: None,
             session_state: session.state,
         });
     }
@@ -1321,18 +1298,24 @@ pub(crate) fn handle_extract(
         options.source_label.clone(),
         &opened_at,
     )?;
-    if snapshot_requires_browser_fallback(&snapshot) {
-        return handle_extract(ctx, browser_fallback_extract_options(&options));
+    if let Some(reason) = browser_fallback_reason(&snapshot) {
+        return handle_browser_extract_with_fallback(
+            ctx,
+            browser_fallback_extract_options(&options),
+            Some(reason),
+        );
     }
     let open_policy =
         current_policy_with_allowlist(&session, ctx.policy_kernel, &options.allowlisted_domains);
-    let open_result = succeed_action(
+    let diagnostics = http_capture_diagnostics(&snapshot, options.budget, CaptureSurface::Extract);
+    let mut open_result = succeed_action(
         ActionName::Open,
         "snapshot-document",
         snapshot,
         "Opened live document.",
         open_policy.clone(),
     )?;
+    open_result.diagnostics = Some(diagnostics.clone());
 
     let extract_timestamp = current_timestamp();
     let report = ctx
@@ -1357,7 +1340,126 @@ pub(crate) fn handle_extract(
     Ok(ExtractCommandOutput {
         open: open_result,
         extract: extract_result,
+        diagnostics: Some(diagnostics),
         session_state: session.state,
+    })
+}
+
+fn handle_browser_extract_with_fallback(
+    ctx: &CliAppContext<'_>,
+    options: ExtractOptions,
+    fallback_reason: Option<&str>,
+) -> Result<ExtractCommandOutput, CliError> {
+    let ports = ctx.ports;
+    let claims = claim_inputs_from_statements(&options.claims)?;
+    let opened_at = current_timestamp();
+    let browser_context_dir = options
+        .session_file
+        .as_ref()
+        .map(|path| {
+            ports
+                .session_store
+                .browser_context_dir_for_session(path.as_path())
+        })
+        .map(|path: std::path::PathBuf| path.display().to_string());
+    let context = ports.browser.open_browser_session(
+        &options.target,
+        options.budget,
+        options.source_risk.clone(),
+        options.source_label.clone(),
+        options.headed,
+        browser_context_dir.clone(),
+        None,
+        "scliextract001",
+        &opened_at,
+    )?;
+    let persisted_session = options
+        .session_file
+        .as_ref()
+        .map(|session_file| {
+            persist_browser_context(
+                ctx,
+                session_file,
+                &context,
+                &options.target,
+                options.headed,
+                &options.allowlisted_domains,
+                None,
+            )
+        })
+        .transpose()?;
+    let diagnostics = browser_capture_diagnostics(
+        &context.snapshot,
+        options.budget,
+        fallback_reason.is_some(),
+        fallback_reason,
+        &context.load_diagnostics,
+        CaptureSurface::Extract,
+    );
+    let mut open_result = succeed_action(
+        ActionName::Open,
+        "snapshot-document",
+        context.snapshot.clone(),
+        "Opened browser-backed document.",
+        match persisted_session.as_ref() {
+            Some(persisted) => current_policy_with_allowlist(
+                &persisted.session,
+                ctx.policy_kernel,
+                &persisted.allowlisted_domains,
+            ),
+            None => current_policy_with_allowlist(
+                &context.session,
+                ctx.policy_kernel,
+                &options.allowlisted_domains,
+            ),
+        },
+    )?;
+    open_result.diagnostics = Some(diagnostics.clone());
+    let mut session = persisted_session
+        .as_ref()
+        .map(|persisted| persisted.session.clone())
+        .unwrap_or_else(|| context.session.clone());
+    let extract_timestamp = current_timestamp();
+    let report = context
+        .runtime
+        .extract(&mut session, claims.clone(), &extract_timestamp)?;
+    let extract_result = succeed_action(
+        ActionName::Extract,
+        "evidence-report",
+        report,
+        "Extracted evidence report from browser-backed snapshot.",
+        current_policy_with_allowlist(
+            &session,
+            ctx.policy_kernel,
+            &options.allowlisted_domains,
+        ),
+    );
+    let extract_result = verify_action_result_if_requested(
+        ports.verifier,
+        extract_result?,
+        &mut session,
+        &claims,
+        options.verifier_command.as_deref(),
+        &extract_timestamp,
+    )?;
+    let persisted = if let Some(session_file) = options.session_file.as_ref() {
+        let mut persisted =
+            persisted_session.expect("persisted browser session should exist when session file is provided");
+        persisted.session = session.clone();
+        ports.session_store.save_session(session_file, &persisted)?;
+        Some(persisted)
+    } else {
+        None
+    };
+
+    Ok(ExtractCommandOutput {
+        open: open_result,
+        extract: extract_result,
+        diagnostics: Some(diagnostics),
+        session_state: persisted
+            .as_ref()
+            .map(|persisted| persisted.session.state.clone())
+            .unwrap_or(session.state),
     })
 }
 
@@ -1439,7 +1541,7 @@ pub(crate) fn handle_policy(
         options.source_label.clone(),
         &opened_at,
     )?;
-    if snapshot_requires_browser_fallback(&snapshot) {
+    if browser_fallback_reason(&snapshot).is_some() {
         return handle_policy(ctx, browser_fallback_target_options(&options));
     }
     let report =

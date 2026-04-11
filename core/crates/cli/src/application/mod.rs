@@ -1,5 +1,6 @@
 pub(super) mod browser_session;
 pub(super) mod browser_session_actions;
+pub(super) mod capture_diagnostics;
 pub(super) mod context;
 pub(super) mod deps;
 pub(super) mod models;

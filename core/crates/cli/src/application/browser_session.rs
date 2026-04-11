@@ -14,8 +14,18 @@ pub(crate) struct BrowserSessionContext {
     pub(crate) source_risk: SourceRisk,
     pub(crate) source_label: Option<String>,
     pub(crate) browser_state: PersistedBrowserState,
+    pub(crate) load_diagnostics: BrowserLoadDiagnostics,
     pub(crate) browser_context_dir: Option<String>,
     pub(crate) browser_profile_dir: Option<String>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
+#[serde(rename_all = "camelCase")]
+pub(crate) struct BrowserLoadDiagnostics {
+    pub(crate) wait_strategy: String,
+    pub(crate) wait_budget_ms: Option<usize>,
+    pub(crate) wait_consumed_ms: Option<usize>,
+    pub(crate) wait_stop_reason: Option<String>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -78,6 +88,7 @@ pub(crate) struct ObservedBrowserDocument {
     pub(crate) source_risk: SourceRisk,
     pub(crate) source_label: Option<String>,
     pub(crate) browser_state: PersistedBrowserState,
+    pub(crate) load_diagnostics: BrowserLoadDiagnostics,
     pub(crate) browser_context_dir: Option<String>,
     pub(crate) browser_profile_dir: Option<String>,
 }

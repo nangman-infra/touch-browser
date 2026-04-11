@@ -18,6 +18,8 @@ fn dispatches_browser_backed_fixture_open() {
     assert_eq!(output["status"], "succeeded");
     assert_eq!(output["output"]["source"]["sourceType"], "playwright");
     assert_eq!(output["policy"]["decision"], "allow");
+    assert_eq!(output["diagnostics"]["captureMode"], "browser");
+    assert_eq!(output["diagnostics"]["recommendedNextStep"], "use-read-view");
 }
 
 #[test]
@@ -61,6 +63,11 @@ fn read_view_auto_falls_back_to_browser_for_js_shell_pages() {
         .expect("markdown text should be present");
     assert!(markdown.contains("Client Rendered Docs"));
     assert!(markdown.contains("The browser runtime can read JS apps."));
+    assert_eq!(output["diagnostics"]["captureMode"], "browser-fallback");
+    assert!(matches!(
+        output["diagnostics"]["fallbackReason"].as_str(),
+        Some("js-placeholder" | "missing-main-content")
+    ));
 }
 
 #[test]

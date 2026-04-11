@@ -9,6 +9,14 @@ fn to_value<T: Serialize>(value: T) -> Result<Value, CliError> {
     Ok(serde_json::to_value(value)?)
 }
 
+fn extract_result_diagnostics(result: &Value) -> Option<Value> {
+    result
+        .get("result")
+        .and_then(|value| value.get("diagnostics"))
+        .cloned()
+        .or_else(|| result.get("diagnostics").cloned())
+}
+
 #[derive(Serialize)]
 #[serde(rename_all = "camelCase")]
 struct JsonRpcResultEnvelope {
@@ -68,6 +76,8 @@ struct SearchOpenResultResponse {
     opened_tab_id: String,
     selection_strategy: String,
     selected_result: SearchResultItem,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    diagnostics: Option<Value>,
     result: Value,
 }
 
@@ -76,6 +86,8 @@ struct SearchOpenResultResponse {
 struct SearchOpenedTabResponse {
     tab_id: String,
     selected_result: SearchResultItem,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    diagnostics: Option<Value>,
     result: Value,
 }
 
@@ -259,6 +271,7 @@ pub(crate) fn present_search_open_result(
         opened_tab_id: opened_tab_id.into(),
         selection_strategy: selection_strategy.into(),
         selected_result,
+        diagnostics: extract_result_diagnostics(&result),
         result,
     })
 }
@@ -274,6 +287,7 @@ pub(crate) fn present_search_open_top(
             |(tab_id, selected_result, result)| SearchOpenedTabResponse {
                 tab_id,
                 selected_result,
+                diagnostics: extract_result_diagnostics(&result),
                 result,
             },
         )

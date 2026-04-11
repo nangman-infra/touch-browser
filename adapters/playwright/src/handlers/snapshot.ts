@@ -42,9 +42,9 @@ export async function handleSnapshot(
         searchIdentity,
         manualRecovery,
       ),
-      async (page) => {
+      async (page, loadDiagnostics) => {
         await maybeExpandEvidenceSelectors(page);
-        return capturePageState(page);
+        return capturePageState(page, loadDiagnostics);
       },
     );
     return success(request.id, {

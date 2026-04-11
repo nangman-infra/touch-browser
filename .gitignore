@@ -7,6 +7,8 @@ coverage/
 target/
 output/
 fixtures/scenarios/
+!fixtures/scenarios/aws-page-type-benchmark/
+!fixtures/scenarios/aws-page-type-benchmark/report.json
 sonar-reports/
 
 *.sqlite
@@ -34,6 +36,7 @@ doc/*.md
 !doc/DOC_LINK_INTEGRITY_SPEC.md
 !doc/TOOL_COMPARISON_BENCHMARK_SPEC.md
 !doc/ADVERSARIAL_BENCHMARK_SPEC.md
+!doc/AWS_PAGE_TYPE_BENCHMARK_SPEC.md
 !doc/CONTEXT_MAP.md
 !doc/UBIQUITOUS_LANGUAGE.md
 !doc/DDD_COMPLETION_CRITERIA.md

@@ -8,8 +8,8 @@ use touch_browser_storage_sqlite::{PilotTelemetryEvent, PilotTelemetrySummary};
 
 use super::{
     browser_session::{
-        BrowserActionSource, BrowserActionTraceEntry, BrowserCliSession, BrowserOrigin,
-        BrowserSessionContext, PersistedBrowserState,
+        BrowserActionSource, BrowserActionTraceEntry, BrowserCliSession, BrowserLoadDiagnostics,
+        BrowserOrigin, BrowserSessionContext, PersistedBrowserState,
     },
     deps::{
         ClaimInput, CliError, EvidenceReport, EvidenceVerificationReport, FixtureCatalog,
@@ -45,6 +45,8 @@ pub(crate) struct BrowserSnapshotCaptureRequest {
 pub(crate) struct BrowserSnapshotCaptureResult {
     pub(crate) final_url: String,
     pub(crate) html: String,
+    #[allow(dead_code)]
+    pub(crate) load_diagnostics: BrowserLoadDiagnostics,
 }
 
 #[derive(Debug, Clone)]

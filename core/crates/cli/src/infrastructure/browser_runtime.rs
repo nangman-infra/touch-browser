@@ -10,6 +10,7 @@ use serde::{Deserialize, Serialize};
 use serde_json::{json, Value};
 
 use super::browser_models::*;
+use crate::application::browser_session::BrowserLoadDiagnostics;
 use crate::application::{
     browser_session::{
         BrowserActionSource, BrowserActionTraceEntry, BrowserCliSession, BrowserOrigin,
@@ -97,6 +98,7 @@ pub(crate) fn open_browser_session(
         source_risk: observed.source_risk,
         source_label: observed.source_label,
         browser_state: observed.browser_state,
+        load_diagnostics: observed.load_diagnostics,
         browser_context_dir: observed.browser_context_dir,
         browser_profile_dir: observed.browser_profile_dir,
     })
@@ -137,6 +139,12 @@ pub(crate) fn browser_document(
                 current_url: capture.final_url,
                 current_html: capture.html,
             },
+            load_diagnostics: BrowserLoadDiagnostics {
+                wait_strategy: capture.diagnostics.wait_strategy,
+                wait_budget_ms: capture.diagnostics.wait_budget_ms,
+                wait_consumed_ms: capture.diagnostics.wait_consumed_ms,
+                wait_stop_reason: capture.diagnostics.wait_stop_reason,
+            },
             browser_context_dir,
             browser_profile_dir,
         });
@@ -162,6 +170,12 @@ pub(crate) fn browser_document(
         browser_state: PersistedBrowserState {
             current_url: capture.final_url,
             current_html: capture.html,
+        },
+        load_diagnostics: BrowserLoadDiagnostics {
+            wait_strategy: capture.diagnostics.wait_strategy,
+            wait_budget_ms: capture.diagnostics.wait_budget_ms,
+            wait_consumed_ms: capture.diagnostics.wait_consumed_ms,
+            wait_stop_reason: capture.diagnostics.wait_stop_reason,
         },
         browser_context_dir,
         browser_profile_dir,

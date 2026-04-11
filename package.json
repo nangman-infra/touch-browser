@@ -28,6 +28,7 @@
     "fixtures:release-readiness": "node scripts/generate-release-readiness.mjs",
     "fixtures:public-web": "node scripts/generate-public-web-benchmark.mjs",
     "fixtures:js-renderer": "node scripts/generate-js-renderer-benchmark.mjs",
+    "fixtures:aws-page-types": "node scripts/generate-aws-page-type-benchmark.mjs",
     "fixtures:doc-links": "node scripts/generate-doc-link-integrity.mjs",
     "fixtures:tool-comparison": "node scripts/generate-tool-comparison-benchmark.mjs",
     "fixtures:adversarial": "node scripts/generate-adversarial-benchmark.mjs",

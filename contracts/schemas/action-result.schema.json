@@ -41,6 +41,9 @@
     "output": {
       "type": ["object", "null"]
     },
+    "diagnostics": {
+      "type": ["object", "null"]
+    },
     "policy": {
       "$ref": "policy-report.schema.json"
     },

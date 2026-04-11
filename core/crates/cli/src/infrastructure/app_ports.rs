@@ -13,8 +13,8 @@ use touch_browser_storage_sqlite::{PilotTelemetryEvent, PilotTelemetrySummary};
 use crate::{
     application::{
         browser_session::{
-            BrowserActionSource, BrowserActionTraceEntry, BrowserCliSession, BrowserOrigin,
-            BrowserSessionContext, PersistedBrowserState,
+            BrowserActionSource, BrowserActionTraceEntry, BrowserCliSession, BrowserLoadDiagnostics,
+            BrowserOrigin, BrowserSessionContext, PersistedBrowserState,
         },
         ports::*,
     },
@@ -168,6 +168,12 @@ impl BrowserAutomationPort for DefaultBrowserAutomation {
         Ok(BrowserSnapshotCaptureResult {
             final_url: result.final_url,
             html: result.html,
+            load_diagnostics: BrowserLoadDiagnostics {
+                wait_strategy: result.diagnostics.wait_strategy,
+                wait_budget_ms: result.diagnostics.wait_budget_ms,
+                wait_consumed_ms: result.diagnostics.wait_consumed_ms,
+                wait_stop_reason: result.diagnostics.wait_stop_reason,
+            },
         })
     }
 

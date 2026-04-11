@@ -1,8 +1,12 @@
 #![allow(unused_imports)]
 
 pub(super) use super::browser_session::{
-    BrowserActionSource, BrowserActionTraceEntry, BrowserCliSession, BrowserOrigin,
-    BrowserSessionContext, PersistedBrowserState,
+    BrowserActionSource, BrowserActionTraceEntry, BrowserCliSession, BrowserLoadDiagnostics,
+    BrowserOrigin, BrowserSessionContext, PersistedBrowserState,
+};
+pub(super) use super::capture_diagnostics::{
+    browser_capture_diagnostics, browser_fallback_reason, http_capture_diagnostics,
+    CaptureSurface,
 };
 pub(super) use super::policy_support::{
     approved_risk_labels, checkpoint_approval_panel, checkpoint_candidates, checkpoint_playbook,
@@ -42,13 +46,14 @@ pub(super) use crate::interface::cli_support::{
 pub(super) use crate::DEFAULT_OPENED_AT;
 pub(super) use touch_browser_action_vm::ReadOnlyActionVm;
 pub(super) use touch_browser_contracts::{
-    ActionCommand, ActionFailureKind, ActionName, ActionResult, ActionStatus, EvidenceClaimOutcome,
-    EvidenceClaimVerdict, EvidenceReport, EvidenceVerificationReport, EvidenceVerificationVerdict,
-    PolicyProfile, PolicyReport, ReplayTranscript, RiskClass, SearchActionActor, SearchActionHint,
-    SearchEngine, SearchRecovery, SearchRecoveryAttempt, SearchReport, SearchReportStatus,
-    SearchResultItem, SessionSynthesisClaim, SessionSynthesisClaimStatus, SessionSynthesisReport,
-    SnapshotBlock, SnapshotBlockKind, SnapshotBlockRole, SnapshotDocument, SourceRisk, SourceType,
-    UnsupportedClaimReason, CONTRACT_VERSION,
+    ActionCommand, ActionFailureKind, ActionName, ActionResult, ActionStatus, CaptureDiagnostics,
+    EvidenceClaimOutcome, EvidenceClaimVerdict, EvidenceReport, EvidenceVerificationReport,
+    EvidenceVerificationVerdict, PolicyProfile, PolicyReport, ReplayTranscript, RiskClass,
+    SearchActionActor, SearchActionHint, SearchEngine, SearchRecovery, SearchRecoveryAttempt,
+    SearchReport, SearchReportStatus, SearchResultItem, SessionSynthesisClaim,
+    SessionSynthesisClaimStatus, SessionSynthesisReport, SnapshotBlock, SnapshotBlockKind,
+    SnapshotBlockRole, SnapshotDocument, SourceRisk, SourceType, UnsupportedClaimReason,
+    CONTRACT_VERSION,
 };
 pub(super) use touch_browser_memory::{plan_memory_turn, summarize_turns};
 pub(super) use touch_browser_observation::{

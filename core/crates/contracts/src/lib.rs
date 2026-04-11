@@ -50,6 +50,31 @@ pub struct SnapshotBudget {
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
 #[serde(rename_all = "camelCase")]
+pub struct CaptureDiagnostics {
+    pub requested_budget: usize,
+    pub effective_budget: usize,
+    pub capture_mode: String,
+    pub fallback_triggered: bool,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub fallback_reason: Option<String>,
+    pub wait_strategy: String,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub wait_budget_ms: Option<usize>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub wait_consumed_ms: Option<usize>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub wait_stop_reason: Option<String>,
+    pub quality_score: f64,
+    pub quality_label: String,
+    pub meaningful_block_count: usize,
+    pub main_block_count: usize,
+    pub shell_block_count: usize,
+    pub truncated: bool,
+    pub recommended_next_step: String,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
+#[serde(rename_all = "camelCase")]
 pub struct SnapshotBlock {
     pub version: String,
     pub id: String,
@@ -776,6 +801,8 @@ pub struct ActionResult {
     pub payload_type: String,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub output: Option<Value>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub diagnostics: Option<CaptureDiagnostics>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub policy: Option<PolicyReport>,
     #[serde(skip_serializing_if = "Option::is_none")]

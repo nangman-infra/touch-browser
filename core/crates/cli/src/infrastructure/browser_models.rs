@@ -1,4 +1,5 @@
 use serde::{Deserialize, Serialize};
+
 #[derive(Debug, Serialize)]
 #[serde(rename_all = "camelCase")]
 pub(crate) struct PlaywrightSnapshotParams {
@@ -16,6 +17,15 @@ pub(crate) struct PlaywrightSnapshotParams {
     pub(crate) search_identity: bool,
     #[serde(skip_serializing_if = "std::ops::Not::not")]
     pub(crate) manual_recovery: bool,
+}
+
+#[derive(Debug, Clone, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub(crate) struct PlaywrightLoadDiagnostics {
+    pub(crate) wait_strategy: String,
+    pub(crate) wait_budget_ms: Option<usize>,
+    pub(crate) wait_consumed_ms: Option<usize>,
+    pub(crate) wait_stop_reason: Option<String>,
 }
 
 #[derive(Debug, Deserialize)]
@@ -41,6 +51,7 @@ pub(crate) struct PlaywrightSnapshotResult {
     pub(crate) button_count: usize,
     #[allow(dead_code)]
     pub(crate) input_count: usize,
+    pub(crate) diagnostics: PlaywrightLoadDiagnostics,
 }
 
 #[derive(Debug, Serialize)]

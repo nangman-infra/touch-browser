@@ -7,9 +7,9 @@ use super::presentation_support::{
 };
 use serde::{Deserialize, Serialize};
 use touch_browser_contracts::{
-    ActionResult, CompactRefIndexEntry, PolicyProfile, PolicyReport, ReplayTranscript,
-    SearchEngine, SearchReport, SearchResultItem, SessionState, SessionSynthesisReport,
-    SnapshotDocument, SourceRisk,
+    ActionResult, CaptureDiagnostics, CompactRefIndexEntry, PolicyProfile, PolicyReport,
+    ReplayTranscript, SearchEngine, SearchReport, SearchResultItem, SessionState,
+    SessionSynthesisReport, SnapshotDocument, SourceRisk,
 };
 use touch_browser_memory::MemorySessionSummary;
 use touch_browser_storage_sqlite::{PilotTelemetryEvent, PilotTelemetrySummary};
@@ -269,6 +269,8 @@ pub(crate) struct SearchOpenResultCommandOutput {
     pub(crate) requested_rank: usize,
     pub(crate) selection_strategy: String,
     pub(crate) result: ActionResult,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub(crate) diagnostics: Option<CaptureDiagnostics>,
     pub(crate) session_file: String,
     pub(crate) next_commands: SearchNextCommands,
 }
@@ -295,6 +297,8 @@ pub(crate) struct SearchOpenTopItem {
     pub(crate) selected_result: SearchResultItem,
     pub(crate) session_file: String,
     pub(crate) result: ActionResult,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub(crate) diagnostics: Option<CaptureDiagnostics>,
 }
 
 #[derive(Debug, Clone, Serialize)]
@@ -348,6 +352,8 @@ pub(crate) struct UninstallResultValue {
 pub(crate) struct ExtractCommandOutput {
     pub(crate) open: ActionResult,
     pub(crate) extract: ActionResult,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub(crate) diagnostics: Option<CaptureDiagnostics>,
     pub(crate) session_state: SessionState,
 }
 
@@ -618,6 +624,8 @@ pub(crate) struct ReadViewOutput {
     #[serde(skip_serializing_if = "Option::is_none")]
     pub(crate) main_content_hint: Option<String>,
     #[serde(skip_serializing_if = "Option::is_none")]
+    pub(crate) diagnostics: Option<CaptureDiagnostics>,
+    #[serde(skip_serializing_if = "Option::is_none")]
     pub(crate) session_state: Option<SessionState>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub(crate) session_file: Option<String>,
@@ -665,11 +673,18 @@ impl ReadViewOutput {
             ref_index,
             main_content_quality,
             main_content_hint,
+            diagnostics: None,
             session_state,
             session_file,
         }
     }
+
+    pub(crate) fn with_diagnostics(mut self, diagnostics: CaptureDiagnostics) -> Self {
+        self.diagnostics = Some(diagnostics);
+        self
+    }
 }
+
 
 #[derive(Debug, Serialize)]
 #[serde(rename_all = "camelCase")]

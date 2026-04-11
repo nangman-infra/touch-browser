@@ -24,11 +24,15 @@ import {
 } from "./search-identity.js";
 import { describeUnknownValue, normalizeWhitespace } from "./shared.js";
 import {
+  type BrowserLoadDiagnostics,
   type BrowserPageState,
   type BrowserSource,
   CONTEXT_LOCK_RETRY_MS,
   CONTEXT_LOCK_STALE_MS,
   CONTEXT_LOCK_TIMEOUT_MS,
+  GENERIC_POST_LOAD_PROBE_BUDGET_MS,
+  GENERIC_POST_LOAD_PROBE_INTERVAL_MS,
+  GENERIC_POST_LOAD_PROBE_MAX_MS,
   MAX_CAPTURED_LINKS,
   PAGE_ACTION_TIMEOUT_MS,
   PAGE_NAVIGATION_TIMEOUT_MS,
@@ -60,7 +64,7 @@ export function browserSource(
 
 export async function withPage<T>(
   source: BrowserSource,
-  run: (page: Page) => Promise<T>,
+  run: (page: Page, loadDiagnostics: BrowserLoadDiagnostics) => Promise<T>,
 ): Promise<T> {
   const persistentDir = source.contextDir ?? source.profileDir;
 
@@ -82,16 +86,17 @@ export async function withPage<T>(
       try {
         const page = context.pages()[0] ?? (await context.newPage());
         applyPageTimeouts(page);
+        let loadDiagnostics = idleLoadDiagnostics("reuse-existing-page");
         const shouldLoad =
           !!effectiveSource.html ||
           page.url() === "about:blank" ||
           (effectiveSource.url !== undefined &&
             !sameResolvedUrl(page.url(), effectiveSource.url));
         if (shouldLoad) {
-          await loadPageSource(page, effectiveSource);
+          loadDiagnostics = await loadPageSource(page, effectiveSource);
         }
         await maybeAwaitManualSearchRecovery(page, effectiveSource);
-        return await run(page);
+        return await run(page, loadDiagnostics);
       } finally {
         await closeContextQuietly(context);
       }
@@ -110,9 +115,9 @@ export async function withPage<T>(
       try {
         const page = context.pages()[0] ?? (await context.newPage());
         applyPageTimeouts(page);
-        await loadPageSource(page, source);
+        const loadDiagnostics = await loadPageSource(page, source);
         await maybeAwaitManualSearchRecovery(page, source);
-        return await run(page);
+        return await run(page, loadDiagnostics);
       } finally {
         await closeContextQuietly(context);
       }
@@ -135,9 +140,9 @@ export async function withPage<T>(
     applyPageTimeouts(page);
 
     try {
-      await loadPageSource(page, source);
+      const loadDiagnostics = await loadPageSource(page, source);
       await maybeAwaitManualSearchRecovery(page, source);
-      return await run(page);
+      return await run(page, loadDiagnostics);
     } finally {
       await page.close();
       await context.close();
@@ -147,7 +152,10 @@ export async function withPage<T>(
   }
 }
 
-export async function capturePageState(page: Page): Promise<BrowserPageState> {
+export async function capturePageState(
+  page: Page,
+  loadDiagnostics: BrowserLoadDiagnostics = idleLoadDiagnostics("action-settle"),
+): Promise<BrowserPageState> {
   let lastError: unknown;
 
   for (let attempt = 0; attempt < 3; attempt += 1) {
@@ -176,6 +184,7 @@ export async function capturePageState(page: Page): Promise<BrowserPageState> {
         buttonCount,
         inputCount,
         links,
+        diagnostics: loadDiagnostics,
       };
     } catch (error) {
       lastError = error;
@@ -396,6 +405,24 @@ type SearchChallengeSnapshot = {
   visibleText: string;
 };
 
+const JS_PLACEHOLDER_HINTS = [
+  "enable javascript",
+  "requires javascript",
+  "javascript to run this app",
+  "turn javascript on",
+  "javascript is disabled",
+  "you need to enable javascript",
+] as const;
+
+type PageQualityProbe = {
+  ready: boolean;
+  placeholderDetected: boolean;
+  reason: string;
+  score: number;
+  mainBlockCount: number;
+  shellBlockCount: number;
+};
+
 async function maybeAwaitManualSearchRecovery(
   page: Page,
   source: BrowserSource,
@@ -497,26 +524,28 @@ function resolveSearchManualRecoveryTimeoutMs(): number {
 async function loadPageSource(
   page: Page,
   source: BrowserSource,
-): Promise<void> {
+): Promise<BrowserLoadDiagnostics> {
   if (source.html) {
     if (source.searchIdentity) {
       const dataUrl = `data:text/html;charset=utf-8,${encodeURIComponent(source.html)}`;
       await page.goto(dataUrl, {
-        waitUntil: "domcontentloaded",
+        waitUntil: "load",
         timeout: PAGE_NAVIGATION_TIMEOUT_MS,
       });
     } else {
       await page.setContent(source.html, {
-        waitUntil: "domcontentloaded",
+        waitUntil: "load",
         timeout: PAGE_NAVIGATION_TIMEOUT_MS,
       });
     }
+    return idleLoadDiagnostics("inline-load");
   } else if (source.url) {
     await page.goto(source.url, {
-      waitUntil: "domcontentloaded",
+      waitUntil: "load",
       timeout: PAGE_NAVIGATION_TIMEOUT_MS,
     });
     if (source.searchIdentity) {
+      const startedAt = Date.now();
       await ignoreNavigationSettleFailure(
         page.waitForLoadState("networkidle", {
           timeout: SEARCH_PROFILE_POST_LOAD_IDLE_MS,
@@ -527,8 +556,19 @@ async function loadPageSource(
         page.waitForTimeout(SEARCH_PROFILE_POST_LOAD_WAIT_MS),
         "loadPageSource search profile settle wait",
       );
+      return {
+        waitStrategy: "load+search-profile-settle",
+        waitBudgetMs:
+          SEARCH_PROFILE_POST_LOAD_IDLE_MS + SEARCH_PROFILE_POST_LOAD_WAIT_MS,
+        waitConsumedMs: Date.now() - startedAt,
+        waitStopReason: "search-profile-settled",
+      };
     }
+
+    return await settleForReadableContent(page);
   }
+
+  return idleLoadDiagnostics("no-load");
 }
 
 function sameResolvedUrl(left: string, right: string): boolean {
@@ -537,4 +577,161 @@ function sameResolvedUrl(left: string, right: string): boolean {
   } catch {
     return left === right;
   }
+}
+
+function idleLoadDiagnostics(waitStrategy: string): BrowserLoadDiagnostics {
+  return {
+    waitStrategy,
+    waitBudgetMs: 0,
+    waitConsumedMs: 0,
+    waitStopReason: "not-needed",
+  };
+}
+
+async function settleForReadableContent(
+  page: Page,
+): Promise<BrowserLoadDiagnostics> {
+  const startedAt = Date.now();
+  let waitBudgetMs = GENERIC_POST_LOAD_PROBE_BUDGET_MS;
+  let probe = await readPageQualityProbe(page);
+
+  if (probe.ready) {
+    return {
+      waitStrategy: "load+quality-probe",
+      waitBudgetMs,
+      waitConsumedMs: 0,
+      waitStopReason: probe.reason,
+    };
+  }
+
+  let extended = false;
+  let deadline = startedAt + waitBudgetMs;
+  while (Date.now() < deadline) {
+    await ignoreNavigationSettleFailure(
+      page.waitForTimeout(GENERIC_POST_LOAD_PROBE_INTERVAL_MS),
+      "loadPageSource quality probe wait",
+    );
+    probe = await readPageQualityProbe(page);
+    if (probe.ready) {
+      return {
+        waitStrategy: "load+quality-probe",
+        waitBudgetMs,
+        waitConsumedMs: Date.now() - startedAt,
+        waitStopReason: probe.reason,
+      };
+    }
+    if (
+      !extended &&
+      Date.now() - startedAt >= GENERIC_POST_LOAD_PROBE_BUDGET_MS &&
+      shouldExtendReadableProbe(probe)
+    ) {
+      extended = true;
+      waitBudgetMs = GENERIC_POST_LOAD_PROBE_MAX_MS;
+      deadline = startedAt + waitBudgetMs;
+    }
+  }
+
+  return {
+    waitStrategy: "load+quality-probe",
+    waitBudgetMs,
+    waitConsumedMs: Date.now() - startedAt,
+    waitStopReason: probe.reason,
+  };
+}
+
+function shouldExtendReadableProbe(probe: PageQualityProbe): boolean {
+  return (
+    !probe.placeholderDetected &&
+    probe.score >= 0.35 &&
+    (probe.mainBlockCount >= 1 || probe.shellBlockCount <= 12)
+  );
+}
+
+async function readPageQualityProbe(page: Page): Promise<PageQualityProbe> {
+  return await page.evaluate((placeholderHints) => {
+    const normalizeText = (value: string | null | undefined): string =>
+      (value ?? "").replace(/\s+/g, " ").trim();
+    const mainRoots = Array.from(
+      document.querySelectorAll("main, article, [role='main']"),
+    );
+    const roots = mainRoots.length > 0 ? mainRoots : [document.body];
+    const contentSelectors =
+      "p, li, blockquote, pre, code, table, h1, h2, h3, h4";
+    let mainBlockCount = 0;
+    let textLikeBlockCount = 0;
+    let mainTextLength = 0;
+
+    for (const root of roots) {
+      const blocks = Array.from(root.querySelectorAll(contentSelectors));
+      for (const block of blocks) {
+        const text = normalizeText(block.textContent);
+        if (!text) {
+          continue;
+        }
+        const tagName = block.tagName.toLowerCase();
+        const isHeading = /^h[1-4]$/.test(tagName);
+        if ((isHeading && text.length >= 4) || (!isHeading && text.length >= 32)) {
+          mainBlockCount += 1;
+          mainTextLength += text.length;
+        }
+        if (["p", "li", "blockquote", "pre", "code", "table"].includes(tagName)) {
+          textLikeBlockCount += 1;
+        }
+      }
+    }
+
+    const shellSelectors =
+      "nav a, nav button, header a, header button, footer a, aside a, aside button, [role='navigation'] a, [role='navigation'] button, form input, form button";
+    const shellBlockCount = Array.from(document.querySelectorAll(shellSelectors)).filter(
+      (element) => normalizeText(element.textContent).length > 0 || element.tagName === "INPUT",
+    ).length;
+
+    const bodyText = normalizeText(document.body?.innerText ?? document.body?.textContent ?? "");
+    const combined = `${document.title} ${bodyText}`.toLowerCase();
+    const placeholderDetected = placeholderHints.some((hint) =>
+      combined.includes(hint),
+    );
+    const shellHeavy =
+      shellBlockCount >= 10 && mainBlockCount <= 1 && mainTextLength < 220;
+    const ready =
+      !placeholderDetected &&
+      ((mainBlockCount >= 3 && mainTextLength >= 240) ||
+        (mainBlockCount >= 2 && mainTextLength >= 160 && !shellHeavy) ||
+        (textLikeBlockCount >= 5 && bodyText.length >= 700 && !shellHeavy));
+    const score = Math.max(
+      0,
+      Math.min(
+        1,
+        Number(
+          (
+            Math.min(mainBlockCount, 8) * 0.09 +
+            Math.min(textLikeBlockCount, 8) * 0.06 +
+            Math.min(mainTextLength, 1800) / 1800 * 0.42 -
+            Math.min(shellBlockCount, 18) / 18 * (mainBlockCount === 0 ? 0.38 : 0.22) -
+            (placeholderDetected ? 0.45 : 0)
+          ).toFixed(2),
+        ),
+      ),
+    );
+    const reason = ready
+      ? mainBlockCount >= 3
+        ? "main-content-ready"
+        : "body-content-ready"
+      : placeholderDetected
+        ? "js-placeholder"
+        : shellHeavy
+          ? "shell-heavy"
+          : mainBlockCount === 0
+            ? "no-main-content"
+            : "low-readable-content";
+
+    return {
+      ready,
+      placeholderDetected,
+      reason,
+      score,
+      mainBlockCount,
+      shellBlockCount,
+    } satisfies PageQualityProbe;
+  }, JS_PLACEHOLDER_HINTS);
 }
