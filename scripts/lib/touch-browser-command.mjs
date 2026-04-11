@@ -1,7 +1,7 @@
 import fs from "node:fs";
 import path from "node:path";
 
-const SHELL_SINGLE_QUOTE_ESCAPE = `'\"'\"'`;
+const SHELL_SINGLE_QUOTE_ESCAPE = ["'", '"', "'", '"', "'"].join("");
 
 const REPO_BINARY_CANDIDATES = [
   ["bin", "touch-browser"],
