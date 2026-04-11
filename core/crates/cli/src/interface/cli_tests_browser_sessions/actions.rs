@@ -41,6 +41,11 @@ fn refreshes_browser_session_from_current_live_state() {
 
     assert_eq!(refreshed["action"]["status"], "succeeded");
     assert_eq!(refreshed["action"]["action"], "read");
+    assert_eq!(
+        refreshed["action"]["diagnostics"]["surface"],
+        "session-refresh"
+    );
+    assert_eq!(refreshed["action"]["diagnostics"]["captureMode"], "browser");
 
     fs::remove_file(session_file).ok();
 }
@@ -121,7 +126,7 @@ fn follows_browser_session_and_can_extract_from_persisted_state() {
 
     let follow_output = dispatch(CliCommand::Follow(FollowOptions {
         session_file: session_file.clone(),
-        target_ref: follow_ref,
+        target_ref: follow_ref.clone(),
         headed: false,
     }))
     .expect("follow should succeed");
@@ -129,6 +134,15 @@ fn follows_browser_session_and_can_extract_from_persisted_state() {
     assert_eq!(follow_output["action"]["status"], "succeeded");
     assert_eq!(follow_output["action"]["action"], "follow");
     assert_eq!(follow_output["result"]["status"], "succeeded");
+    assert_eq!(follow_output["action"]["diagnostics"]["surface"], "follow");
+    assert_eq!(
+        follow_output["action"]["diagnostics"]["targetRef"],
+        follow_ref
+    );
+    assert_eq!(
+        follow_output["action"]["diagnostics"]["waitStrategy"],
+        "action-settle"
+    );
     assert!(follow_output["action"]["output"]["adapter"]["visibleText"]
         .as_str()
         .expect("visible text should be present")
@@ -312,7 +326,7 @@ fn types_into_browser_session_and_marks_session_interactive() {
 
     let type_output = dispatch(CliCommand::Type(TypeOptions {
         session_file: session_file.clone(),
-        target_ref: email_ref,
+        target_ref: email_ref.clone(),
         value: "agent@example.com".to_string(),
         headed: false,
         sensitive: false,
@@ -331,6 +345,9 @@ fn types_into_browser_session_and_marks_session_interactive() {
         type_output["action"]["output"]["adapter"]["typedLength"],
         17
     );
+    assert_eq!(type_output["action"]["diagnostics"]["surface"], "type");
+    assert_eq!(type_output["action"]["diagnostics"]["targetRef"], email_ref);
+    assert_eq!(type_output["action"]["diagnostics"]["sensitive"], false);
     assert!(type_output["action"]["output"]["adapter"]["visibleText"]
         .as_str()
         .expect("visible text should be present")
@@ -386,7 +403,7 @@ fn clicks_browser_session_button_after_interactive_typing() {
 
     let click_output = dispatch(CliCommand::Click(ClickOptions {
         session_file: session_file.clone(),
-        target_ref: button_ref,
+        target_ref: button_ref.clone(),
         headed: false,
         ack_risks: vec![AckRisk::Auth],
     }))
@@ -394,6 +411,11 @@ fn clicks_browser_session_button_after_interactive_typing() {
 
     assert_eq!(click_output["action"]["status"], "succeeded");
     assert_eq!(click_output["action"]["action"], "click");
+    assert_eq!(click_output["action"]["diagnostics"]["surface"], "click");
+    assert_eq!(
+        click_output["action"]["diagnostics"]["targetRef"],
+        button_ref
+    );
     assert!(click_output["action"]["output"]["adapter"]["visibleText"]
         .as_str()
         .expect("visible text should be present")

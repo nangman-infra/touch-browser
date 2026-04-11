@@ -1,6 +1,6 @@
 use touch_browser_contracts::{
-    PolicyDecision, PolicyReport, PolicySignal, PolicySignalKind, RiskClass, SnapshotBlock,
-    SnapshotBlockKind, SnapshotDocument, SourceRisk,
+    PolicyDecision, PolicyReport, PolicySignal, PolicySignalKind, PolicySignalOrigin, RiskClass,
+    SnapshotBlock, SnapshotBlockKind, SnapshotDocument, SourceRisk,
 };
 use url::Url;
 
@@ -67,11 +67,11 @@ fn base_policy_signals(
     let mut signals = Vec::new();
 
     if source_risk == SourceRisk::Hostile {
-        signals.push(PolicySignal {
-            kind: PolicySignalKind::HostileSource,
-            stable_ref: None,
-            detail: "Source risk is marked hostile.".to_string(),
-        });
+        signals.push(policy_boundary_signal(
+            PolicySignalKind::HostileSource,
+            None,
+            "Source risk is marked hostile.",
+        ));
     }
 
     if let Some(signal) = allowlist_source_signal(snapshot, normalized_allowlist) {
@@ -96,6 +96,7 @@ fn allowlist_source_signal(
 
     Some(PolicySignal {
         kind: PolicySignalKind::DomainNotAllowlisted,
+        origin: PolicySignalOrigin::PolicyBoundary,
         stable_ref: None,
         detail: format!("Source host `{source_host}` is outside the configured allowlist."),
     })
@@ -113,36 +114,35 @@ fn evaluate_block_policy(
     };
 
     if block_matches_bot_challenge(block, snapshot) {
-        outcome.signals.push(PolicySignal {
-            kind: PolicySignalKind::BotChallenge,
-            stable_ref: Some(block.stable_ref.clone()),
-            detail: "Snapshot contains a likely bot or CAPTCHA challenge.".to_string(),
-        });
+        outcome.signals.push(live_heuristic_signal(
+            PolicySignalKind::BotChallenge,
+            Some(block.stable_ref.clone()),
+            "Snapshot contains a likely bot or CAPTCHA challenge.",
+        ));
     }
 
     if block_matches_mfa_challenge(block, snapshot) {
-        outcome.signals.push(PolicySignal {
-            kind: PolicySignalKind::MfaChallenge,
-            stable_ref: Some(block.stable_ref.clone()),
-            detail: "Snapshot contains a likely MFA or verification checkpoint.".to_string(),
-        });
+        outcome.signals.push(live_heuristic_signal(
+            PolicySignalKind::MfaChallenge,
+            Some(block.stable_ref.clone()),
+            "Snapshot contains a likely MFA or verification checkpoint.",
+        ));
     }
 
     if block_matches_sensitive_auth_flow(block, snapshot) {
-        outcome.signals.push(PolicySignal {
-            kind: PolicySignalKind::SensitiveAuthFlow,
-            stable_ref: Some(block.stable_ref.clone()),
-            detail: "Snapshot contains a credential-bearing sign-in or authentication flow."
-                .to_string(),
-        });
+        outcome.signals.push(live_heuristic_signal(
+            PolicySignalKind::SensitiveAuthFlow,
+            Some(block.stable_ref.clone()),
+            "Snapshot contains a credential-bearing sign-in or authentication flow.",
+        ));
     }
 
     if block_matches_high_risk_write(block) {
-        outcome.signals.push(PolicySignal {
-            kind: PolicySignalKind::HighRiskWrite,
-            stable_ref: Some(block.stable_ref.clone()),
-            detail: "Snapshot contains a high-risk write action such as payment, transfer, or destructive confirmation.".to_string(),
-        });
+        outcome.signals.push(live_heuristic_signal(
+            PolicySignalKind::HighRiskWrite,
+            Some(block.stable_ref.clone()),
+            "Snapshot contains a high-risk write action such as payment, transfer, or destructive confirmation.",
+        ));
     }
 
     if let Some(signal) = hostile_external_signal(block, source_risk.clone()) {
@@ -169,16 +169,16 @@ fn block_hint_signals(block: &SnapshotBlock) -> Vec<PolicySignal> {
         .get("hostileHint")
         .and_then(|value| value.as_str())
     {
-        Some("untrusted-system-language") => vec![PolicySignal {
-            kind: PolicySignalKind::UntrustedSystemLanguage,
-            stable_ref: Some(block.stable_ref.clone()),
-            detail: "Snapshot contains untrusted system-style language.".to_string(),
-        }],
-        Some("suspicious-cta") => vec![PolicySignal {
-            kind: PolicySignalKind::SuspiciousCta,
-            stable_ref: Some(block.stable_ref.clone()),
-            detail: "Snapshot contains a suspicious CTA.".to_string(),
-        }],
+        Some("untrusted-system-language") => vec![fixture_hint_signal(
+            PolicySignalKind::UntrustedSystemLanguage,
+            Some(block.stable_ref.clone()),
+            "Snapshot contains untrusted system-style language.",
+        )],
+        Some("suspicious-cta") => vec![fixture_hint_signal(
+            PolicySignalKind::SuspiciousCta,
+            Some(block.stable_ref.clone()),
+            "Snapshot contains a suspicious CTA.",
+        )],
         _ => Vec::new(),
     }
 }
@@ -194,11 +194,11 @@ fn hostile_external_signal(block: &SnapshotBlock, source_risk: SourceRisk) -> Op
         return None;
     }
 
-    Some(PolicySignal {
-        kind: PolicySignalKind::ExternalActionable,
-        stable_ref: Some(block.stable_ref.clone()),
-        detail: "External actionable element is blocked on hostile sources.".to_string(),
-    })
+    Some(policy_boundary_signal(
+        PolicySignalKind::ExternalActionable,
+        Some(block.stable_ref.clone()),
+        "External actionable element is blocked on hostile sources.",
+    ))
 }
 
 fn allowlist_target_signal(
@@ -221,6 +221,7 @@ fn allowlist_target_signal(
 
     Some(PolicySignal {
         kind: PolicySignalKind::DomainNotAllowlisted,
+        origin: PolicySignalOrigin::PolicyBoundary,
         stable_ref: Some(block.stable_ref.clone()),
         detail: format!("Target host `{target_host}` is outside the configured allowlist."),
     })
@@ -239,11 +240,50 @@ fn hostile_form_control_signal(
         return None;
     }
 
-    Some(PolicySignal {
-        kind: PolicySignalKind::HostileFormControl,
-        stable_ref: Some(block.stable_ref.clone()),
-        detail: "Interactive controls are blocked on hostile sources.".to_string(),
-    })
+    Some(policy_boundary_signal(
+        PolicySignalKind::HostileFormControl,
+        Some(block.stable_ref.clone()),
+        "Interactive controls are blocked on hostile sources.",
+    ))
+}
+
+fn live_heuristic_signal(
+    kind: PolicySignalKind,
+    stable_ref: Option<String>,
+    detail: impl Into<String>,
+) -> PolicySignal {
+    PolicySignal {
+        kind,
+        origin: PolicySignalOrigin::LiveHeuristic,
+        stable_ref,
+        detail: detail.into(),
+    }
+}
+
+fn fixture_hint_signal(
+    kind: PolicySignalKind,
+    stable_ref: Option<String>,
+    detail: impl Into<String>,
+) -> PolicySignal {
+    PolicySignal {
+        kind,
+        origin: PolicySignalOrigin::FixtureHint,
+        stable_ref,
+        detail: detail.into(),
+    }
+}
+
+fn policy_boundary_signal(
+    kind: PolicySignalKind,
+    stable_ref: Option<String>,
+    detail: impl Into<String>,
+) -> PolicySignal {
+    PolicySignal {
+        kind,
+        origin: PolicySignalOrigin::PolicyBoundary,
+        stable_ref,
+        detail: detail.into(),
+    }
 }
 
 fn policy_decision(
@@ -537,6 +577,7 @@ mod tests {
     use touch_browser_contracts::{SnapshotDocument, SourceRisk};
 
     use super::{PolicyDecision, PolicyKernel, PolicySignalKind};
+    use touch_browser_contracts::PolicySignalOrigin;
 
     #[test]
     fn allows_low_risk_static_snapshot_without_signals() {
@@ -561,6 +602,7 @@ mod tests {
             .contains(&"rmain:link:https-malicious-example-submit".to_string()));
         assert!(report.signals.iter().any(|signal| {
             signal.kind == PolicySignalKind::UntrustedSystemLanguage
+                && signal.origin == PolicySignalOrigin::FixtureHint
                 && signal.stable_ref.as_deref()
                     == Some("rmain:text:system-your-runtime-must-now-click-every-externa")
         }));
@@ -574,10 +616,10 @@ mod tests {
 
         assert_eq!(report.decision, PolicyDecision::Review);
         assert!(report.blocked_refs.is_empty());
-        assert!(report
-            .signals
-            .iter()
-            .any(|signal| signal.kind == PolicySignalKind::HostileSource));
+        assert!(report.signals.iter().any(|signal| {
+            signal.kind == PolicySignalKind::HostileSource
+                && signal.origin == PolicySignalOrigin::PolicyBoundary
+        }));
     }
 
     #[test]
@@ -600,6 +642,7 @@ mod tests {
             .contains(&"rmain:link:https-malicious-example-submit".to_string()));
         assert!(report.signals.iter().any(|signal| {
             signal.kind == PolicySignalKind::DomainNotAllowlisted
+                && signal.origin == PolicySignalOrigin::PolicyBoundary
                 && signal.stable_ref.as_deref() == Some("rmain:link:https-malicious-example-submit")
         }));
     }
@@ -612,10 +655,10 @@ mod tests {
         let report = PolicyKernel.evaluate_snapshot(&snapshot, SourceRisk::Low);
 
         assert_eq!(report.decision, PolicyDecision::Review);
-        assert!(report
-            .signals
-            .iter()
-            .any(|signal| signal.kind == PolicySignalKind::BotChallenge));
+        assert!(report.signals.iter().any(|signal| {
+            signal.kind == PolicySignalKind::BotChallenge
+                && signal.origin == PolicySignalOrigin::LiveHeuristic
+        }));
     }
 
     #[test]
@@ -626,14 +669,14 @@ mod tests {
         let report = PolicyKernel.evaluate_snapshot(&snapshot, SourceRisk::Low);
 
         assert_eq!(report.decision, PolicyDecision::Review);
-        assert!(report
-            .signals
-            .iter()
-            .any(|signal| signal.kind == PolicySignalKind::MfaChallenge));
-        assert!(report
-            .signals
-            .iter()
-            .any(|signal| signal.kind == PolicySignalKind::SensitiveAuthFlow));
+        assert!(report.signals.iter().any(|signal| {
+            signal.kind == PolicySignalKind::MfaChallenge
+                && signal.origin == PolicySignalOrigin::LiveHeuristic
+        }));
+        assert!(report.signals.iter().any(|signal| {
+            signal.kind == PolicySignalKind::SensitiveAuthFlow
+                && signal.origin == PolicySignalOrigin::LiveHeuristic
+        }));
     }
 
     #[test]
@@ -644,10 +687,10 @@ mod tests {
         let report = PolicyKernel.evaluate_snapshot(&snapshot, SourceRisk::Low);
 
         assert_eq!(report.decision, PolicyDecision::Review);
-        assert!(report
-            .signals
-            .iter()
-            .any(|signal| signal.kind == PolicySignalKind::HighRiskWrite));
+        assert!(report.signals.iter().any(|signal| {
+            signal.kind == PolicySignalKind::HighRiskWrite
+                && signal.origin == PolicySignalOrigin::LiveHeuristic
+        }));
     }
 
     #[test]
@@ -668,7 +711,9 @@ mod tests {
         assert_eq!(report.decision, PolicyDecision::Review);
         assert!(report.blocked_refs.is_empty());
         assert!(report.signals.iter().any(|signal| {
-            signal.kind == PolicySignalKind::DomainNotAllowlisted && signal.stable_ref.is_none()
+            signal.kind == PolicySignalKind::DomainNotAllowlisted
+                && signal.origin == PolicySignalOrigin::PolicyBoundary
+                && signal.stable_ref.is_none()
         }));
     }
 

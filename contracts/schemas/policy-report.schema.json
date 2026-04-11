@@ -31,7 +31,7 @@
       "items": {
         "type": "object",
         "additionalProperties": false,
-        "required": ["kind", "detail"],
+        "required": ["kind", "origin", "detail"],
         "properties": {
           "kind": {
             "type": "string",
@@ -46,6 +46,14 @@
               "mfa-challenge",
               "sensitive-auth-flow",
               "high-risk-write"
+            ]
+          },
+          "origin": {
+            "type": "string",
+            "enum": [
+              "live-heuristic",
+              "fixture-hint",
+              "policy-boundary"
             ]
           },
           "stableRef": {

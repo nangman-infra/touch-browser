@@ -1,23 +1,23 @@
 use super::{
     context::CliAppContext,
     deps::{
-        approved_risk_labels, checkpoint_approval_panel, checkpoint_candidates,
-        checkpoint_playbook, checkpoint_provider_hints, current_policy_with_allowlist,
-        current_timestamp, is_fixture_target, is_search_results_target, policy_profile_label,
-        promoted_policy_profile_for_risks, recommend_requested_tokens, recommended_policy_profile,
-        required_ack_risks, resolve_latest_search_session_file, succeed_action,
-        verify_action_result_if_requested, ActionName, ApproveOptions, BrowserReplayCommandOutput,
-        ClaimInput, CliError, ClickOptions, CompactSnapshotOutput, ExpandOptions, FollowOptions,
-        OutputFormat, PaginateOptions, PaginationDirection, PersistedBrowserState, ReadViewOutput,
-        RuntimeError, SessionApprovalCommandOutput, SessionApprovalValue,
-        SessionCheckpointCommandOutput, SessionCheckpointReport, SessionCloseCommandOutput,
-        SessionCloseResultValue, SessionCommandOutput, SessionExtractCommandOutput,
-        SessionExtractOptions, SessionFileOptions, SessionPolicyCommandOutput,
-        SessionProfileCommandOutput, SessionProfileSetOptions, SessionProfileValue,
-        SessionReadOptions, SessionRefreshOptions, SessionSynthesisCommandOutput,
-        SessionSynthesizeOptions, SourceRisk, SubmitOptions, TargetOptions,
-        TelemetryRecentCommandOutput, TelemetryRecentOptions, TelemetrySummaryCommandOutput,
-        TypeOptions,
+        approved_risk_labels, browser_capture_diagnostics, checkpoint_approval_panel,
+        checkpoint_candidates, checkpoint_playbook, checkpoint_provider_hints,
+        current_policy_with_allowlist, current_timestamp, is_fixture_target,
+        is_search_results_target, policy_profile_label, promoted_policy_profile_for_risks,
+        recommend_requested_tokens, recommended_policy_profile, required_ack_risks,
+        resolve_latest_search_session_file, succeed_action, verify_action_result_if_requested,
+        ActionName, ApproveOptions, BrowserReplayCommandOutput, CaptureSurface, ClaimInput,
+        CliError, ClickOptions, CompactSnapshotOutput, ExpandOptions, FollowOptions, OutputFormat,
+        PaginateOptions, PaginationDirection, PersistedBrowserState, ReadViewOutput, RuntimeError,
+        SessionApprovalCommandOutput, SessionApprovalValue, SessionCheckpointCommandOutput,
+        SessionCheckpointReport, SessionCloseCommandOutput, SessionCloseResultValue,
+        SessionCommandOutput, SessionExtractCommandOutput, SessionExtractOptions,
+        SessionFileOptions, SessionPolicyCommandOutput, SessionProfileCommandOutput,
+        SessionProfileSetOptions, SessionProfileValue, SessionReadOptions, SessionRefreshOptions,
+        SessionSynthesisCommandOutput, SessionSynthesizeOptions, SourceRisk, SubmitOptions,
+        TargetOptions, TelemetryRecentCommandOutput, TelemetryRecentOptions,
+        TelemetrySummaryCommandOutput, TypeOptions,
     },
     ports::BrowserSnapshotCaptureRequest,
     presentation_support::{render_compact_snapshot, render_session_synthesis_markdown},
@@ -127,6 +127,7 @@ pub(crate) fn handle_session_refresh(
 ) -> Result<SessionCommandOutput, CliError> {
     let ports = ctx.ports;
     let mut persisted = ports.session_store.load_session(&options.session_file)?;
+    let requested_budget = persisted.requested_budget;
     let current_search_identity = persisted
         .session
         .current_snapshot_record()
@@ -139,18 +140,18 @@ pub(crate) fn handle_session_refresh(
             html: None,
             context_dir: persisted.browser_context_dir.clone(),
             profile_dir: persisted.browser_profile_dir.clone(),
-            budget: persisted.requested_budget,
+            budget: requested_budget,
             headless: !options.headed,
             search_identity: current_search_identity,
         })?;
     let (capture, effective_budget, snapshot) = match ports.browser.compile_snapshot(
         &primary_capture.final_url,
         &primary_capture.html,
-        recommend_requested_tokens(&primary_capture.html, persisted.requested_budget),
+        recommend_requested_tokens(&primary_capture.html, requested_budget),
     ) {
         Ok(snapshot) => {
             let effective_budget =
-                recommend_requested_tokens(&primary_capture.html, persisted.requested_budget);
+                recommend_requested_tokens(&primary_capture.html, requested_budget);
             (primary_capture, effective_budget, snapshot)
         }
         Err(_) => {
@@ -163,12 +164,12 @@ pub(crate) fn handle_session_refresh(
                         html: source.html,
                         context_dir: source.context_dir,
                         profile_dir: source.profile_dir,
-                        budget: persisted.requested_budget,
+                        budget: requested_budget,
                         headless: !options.headed,
                         search_identity: is_search_results_target(&source.source_url),
                     })?;
             let effective_budget =
-                recommend_requested_tokens(&fallback_capture.html, persisted.requested_budget);
+                recommend_requested_tokens(&fallback_capture.html, requested_budget);
             let snapshot = ports.browser.compile_snapshot(
                 &fallback_capture.final_url,
                 &fallback_capture.html,
@@ -195,6 +196,14 @@ pub(crate) fn handle_session_refresh(
         source_label,
         &timestamp,
     )?;
+    let diagnostics = browser_capture_diagnostics(
+        &snapshot,
+        requested_budget,
+        false,
+        None,
+        &capture.load_diagnostics,
+        CaptureSurface::SessionRefresh,
+    );
     persisted.requested_budget = effective_budget;
     persisted.browser_state = Some(PersistedBrowserState {
         current_url: capture.final_url.clone(),
@@ -204,7 +213,7 @@ pub(crate) fn handle_session_refresh(
         .session_store
         .save_session(&options.session_file, &persisted)?;
 
-    let action_result = succeed_action(
+    let mut action_result = succeed_action(
         ActionName::Read,
         "snapshot-document",
         snapshot,
@@ -215,6 +224,7 @@ pub(crate) fn handle_session_refresh(
             &persisted.allowlisted_domains,
         ),
     )?;
+    action_result.diagnostics = Some(diagnostics);
 
     Ok(SessionCommandOutput {
         action: action_result.clone(),

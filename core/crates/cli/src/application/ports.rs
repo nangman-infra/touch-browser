@@ -78,6 +78,7 @@ pub(crate) struct BrowserFollowResult {
     pub(crate) title: String,
     pub(crate) visible_text: String,
     pub(crate) html: String,
+    pub(crate) load_diagnostics: BrowserLoadDiagnostics,
 }
 
 #[derive(Debug, Clone)]
@@ -97,6 +98,7 @@ pub(crate) struct BrowserClickResult {
     pub(crate) title: String,
     pub(crate) visible_text: String,
     pub(crate) html: String,
+    pub(crate) load_diagnostics: BrowserLoadDiagnostics,
 }
 
 #[derive(Debug, Clone)]
@@ -116,6 +118,7 @@ pub(crate) struct BrowserTypeResult {
     pub(crate) title: String,
     pub(crate) visible_text: String,
     pub(crate) html: String,
+    pub(crate) load_diagnostics: BrowserLoadDiagnostics,
 }
 
 #[derive(Debug, Clone)]

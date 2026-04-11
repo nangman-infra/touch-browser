@@ -19,6 +19,10 @@ pub(crate) enum CaptureSurface {
     Open,
     ReadView,
     Extract,
+    SessionRefresh,
+    Follow,
+    Click,
+    Type,
 }
 
 #[derive(Debug, Clone)]
@@ -49,6 +53,8 @@ pub(crate) fn http_capture_diagnostics(
         Some("http-fetch"),
         None,
         surface,
+        None,
+        None,
     )
 }
 
@@ -73,6 +79,30 @@ pub(crate) fn browser_capture_diagnostics(
         Some(load_diagnostics.wait_strategy.as_str()),
         Some(load_diagnostics),
         surface,
+        None,
+        None,
+    )
+}
+
+pub(crate) fn browser_action_diagnostics(
+    snapshot: &SnapshotDocument,
+    requested_budget: usize,
+    load_diagnostics: &BrowserLoadDiagnostics,
+    surface: CaptureSurface,
+    target_ref: &str,
+    sensitive: Option<bool>,
+) -> CaptureDiagnostics {
+    build_capture_diagnostics(
+        snapshot,
+        requested_budget,
+        "browser",
+        false,
+        None,
+        Some(load_diagnostics.wait_strategy.as_str()),
+        Some(load_diagnostics),
+        surface,
+        Some(target_ref),
+        sensitive,
     )
 }
 
@@ -85,12 +115,15 @@ fn build_capture_diagnostics(
     wait_strategy: Option<&str>,
     load_diagnostics: Option<&BrowserLoadDiagnostics>,
     surface: CaptureSurface,
+    target_ref: Option<&str>,
+    sensitive: Option<bool>,
 ) -> CaptureDiagnostics {
     let assessment = snapshot_quality_assessment(snapshot);
     CaptureDiagnostics {
         requested_budget,
         effective_budget: snapshot.budget.requested_tokens,
         capture_mode: capture_mode.to_string(),
+        surface: capture_surface_label(surface).to_string(),
         fallback_triggered,
         fallback_reason: fallback_reason.map(ToString::to_string),
         wait_strategy: wait_strategy.unwrap_or("none").to_string(),
@@ -104,6 +137,20 @@ fn build_capture_diagnostics(
         shell_block_count: assessment.shell_block_count,
         truncated: snapshot.budget.truncated,
         recommended_next_step: recommended_next_step(snapshot, surface, &assessment).to_string(),
+        target_ref: target_ref.map(ToString::to_string),
+        sensitive,
+    }
+}
+
+fn capture_surface_label(surface: CaptureSurface) -> &'static str {
+    match surface {
+        CaptureSurface::Open => "open",
+        CaptureSurface::ReadView => "read-view",
+        CaptureSurface::Extract => "extract",
+        CaptureSurface::SessionRefresh => "session-refresh",
+        CaptureSurface::Follow => "follow",
+        CaptureSurface::Click => "click",
+        CaptureSurface::Type => "type",
     }
 }
 
@@ -122,6 +169,8 @@ fn recommended_next_step(
 
     match surface {
         CaptureSurface::Open => "use-read-view",
+        CaptureSurface::SessionRefresh => "use-read-view",
+        CaptureSurface::Follow => "use-read-view",
         CaptureSurface::ReadView => {
             if assessment.quality_score < 0.45 {
                 "continue"
@@ -129,6 +178,7 @@ fn recommended_next_step(
                 "use-extract"
             }
         }
+        CaptureSurface::Click | CaptureSurface::Type => "continue",
         CaptureSurface::Extract => "continue",
     }
 }
@@ -224,12 +274,11 @@ fn snapshot_quality_assessment(snapshot: &SnapshotDocument) -> SnapshotQualityAs
             + ((content_headings as f64) * 0.08)
             + ((meaningful_chars.min(2400) as f64) / 2400.0) * 0.34
             + ((text_like_blocks.min(8) as f64) / 8.0) * 0.18;
-        let shell_penalty =
-            ((shell_block_count.min(18) as f64) / 18.0) * if main_block_count == 0 { 0.36 } else { 0.22 };
+        let shell_penalty = ((shell_block_count.min(18) as f64) / 18.0)
+            * if main_block_count == 0 { 0.36 } else { 0.22 };
         let placeholder_penalty = if placeholder_detected { 0.45 } else { 0.0 };
         let truncation_penalty = if snapshot.budget.truncated { 0.08 } else { 0.0 };
-        (content_score - shell_penalty - placeholder_penalty - truncation_penalty)
-            .clamp(0.0, 1.0)
+        (content_score - shell_penalty - placeholder_penalty - truncation_penalty).clamp(0.0, 1.0)
     };
     let quality_label = if quality_score >= 0.75 {
         "high"

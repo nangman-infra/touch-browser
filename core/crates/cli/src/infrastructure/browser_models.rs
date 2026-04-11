@@ -95,6 +95,7 @@ pub(crate) struct PlaywrightFollowResult {
     pub(crate) title: String,
     pub(crate) visible_text: String,
     pub(crate) html: String,
+    pub(crate) diagnostics: PlaywrightLoadDiagnostics,
 }
 
 #[derive(Debug, Serialize)]
@@ -138,6 +139,7 @@ pub(crate) struct PlaywrightClickResult {
     pub(crate) title: String,
     pub(crate) visible_text: String,
     pub(crate) html: String,
+    pub(crate) diagnostics: PlaywrightLoadDiagnostics,
 }
 
 #[derive(Debug, Serialize)]
@@ -183,6 +185,7 @@ pub(crate) struct PlaywrightTypeResult {
     pub(crate) title: String,
     pub(crate) visible_text: String,
     pub(crate) html: String,
+    pub(crate) diagnostics: PlaywrightLoadDiagnostics,
 }
 
 #[derive(Debug, Serialize)]

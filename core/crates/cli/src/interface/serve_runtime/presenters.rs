@@ -55,6 +55,8 @@ struct RuntimeStatusResponse {
 struct SessionTabResultResponse {
     session_id: String,
     tab_id: String,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    diagnostics: Option<Value>,
     result: Value,
 }
 
@@ -237,6 +239,7 @@ pub(crate) fn present_session_tab_result(
     to_value(SessionTabResultResponse {
         session_id: session_id.into(),
         tab_id: tab_id.into(),
+        diagnostics: extract_result_diagnostics(&result),
         result,
     })
 }

@@ -435,7 +435,10 @@ fn search_open_result_preserves_latest_search_state() {
         .expect("session extract hint should exist")
         .contains("touch-browser session-extract"));
     assert_eq!(output["diagnostics"]["captureMode"], "browser");
-    assert_eq!(output["result"]["diagnostics"]["requestedBudget"], json!(512));
+    assert_eq!(
+        output["result"]["diagnostics"]["requestedBudget"],
+        json!(512)
+    );
 
     let refreshed =
         load_browser_cli_session(&session_file).expect("session should reload after open");
@@ -566,7 +569,10 @@ fn search_open_top_inherits_external_profile_directory() {
         headed: false,
     }))
     .expect("search-open-top should return diagnostics");
-    assert_eq!(output["opened"][0]["diagnostics"]["requestedBudget"], json!(512));
+    assert_eq!(
+        output["opened"][0]["diagnostics"]["requestedBudget"],
+        json!(512)
+    );
 
     dispatch(CliCommand::SessionClose(SessionFileOptions {
         session_file: result_session_file.clone(),

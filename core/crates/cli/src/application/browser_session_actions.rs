@@ -1,13 +1,14 @@
 use super::{
     context::CliAppContext,
     deps::{
-        current_policy_with_allowlist, preflight_interactive_action, preflight_ref_action,
-        preflight_session_block, reject_action, succeed_action, ActionFailureKind, ActionName,
-        BrowserActionPayload, BrowserActionTraceEntry, CliError, ClickAdapterOutput, ClickOptions,
-        ExpandAdapterOutput, ExpandOptions, FollowAdapterOutput, FollowOptions,
-        InteractivePreflightOptions, PaginateAdapterOutput, PaginateOptions, PaginationDirection,
-        PersistedBrowserState, SecretPrefill, SessionCommandOutput, SubmitAdapterOutput,
-        SubmitOptions, TypeAdapterOutput, TypeOptions,
+        browser_action_diagnostics, current_policy_with_allowlist, preflight_interactive_action,
+        preflight_ref_action, preflight_session_block, reject_action, succeed_action,
+        ActionFailureKind, ActionName, BrowserActionPayload, BrowserActionTraceEntry,
+        CaptureSurface, CliError, ClickAdapterOutput, ClickOptions, ExpandAdapterOutput,
+        ExpandOptions, FollowAdapterOutput, FollowOptions, InteractivePreflightOptions,
+        PaginateAdapterOutput, PaginateOptions, PaginationDirection, PersistedBrowserState,
+        SecretPrefill, SessionCommandOutput, SubmitAdapterOutput, SubmitOptions, TypeAdapterOutput,
+        TypeOptions,
     },
     ports::{
         BrowserClickRequest, BrowserExpandRequest, BrowserFollowRequest, BrowserPaginateRequest,
@@ -74,7 +75,15 @@ pub(crate) fn handle_follow(
         .session_store
         .save_session(&options.session_file, &persisted)?;
 
-    let action_result = succeed_action(
+    let diagnostics = browser_action_diagnostics(
+        &snapshot,
+        persisted.requested_budget,
+        &result.load_diagnostics,
+        CaptureSurface::Follow,
+        &options.target_ref,
+        None,
+    );
+    let mut action_result = succeed_action(
         ActionName::Follow,
         "browser-action-result",
         BrowserActionPayload {
@@ -96,6 +105,7 @@ pub(crate) fn handle_follow(
             &persisted.allowlisted_domains,
         ),
     )?;
+    action_result.diagnostics = Some(diagnostics);
 
     Ok(SessionCommandOutput {
         action: action_result.clone(),
@@ -172,7 +182,15 @@ pub(crate) fn handle_click(
         .session_store
         .save_session(&options.session_file, &persisted)?;
 
-    let action_result = succeed_action(
+    let diagnostics = browser_action_diagnostics(
+        &snapshot,
+        persisted.requested_budget,
+        &result.load_diagnostics,
+        CaptureSurface::Click,
+        &options.target_ref,
+        None,
+    );
+    let mut action_result = succeed_action(
         ActionName::Click,
         "browser-action-result",
         BrowserActionPayload {
@@ -194,6 +212,7 @@ pub(crate) fn handle_click(
             &persisted.allowlisted_domains,
         ),
     )?;
+    action_result.diagnostics = Some(diagnostics);
 
     Ok(SessionCommandOutput {
         action: action_result.clone(),
@@ -301,7 +320,15 @@ pub(crate) fn handle_type(
         .session_store
         .save_session(&options.session_file, &persisted)?;
 
-    let action_result = succeed_action(
+    let diagnostics = browser_action_diagnostics(
+        &snapshot,
+        persisted.requested_budget,
+        &result.load_diagnostics,
+        CaptureSurface::Type,
+        &options.target_ref,
+        Some(options.sensitive),
+    );
+    let mut action_result = succeed_action(
         ActionName::Type,
         "browser-action-result",
         BrowserActionPayload {
@@ -323,6 +350,7 @@ pub(crate) fn handle_type(
             &persisted.allowlisted_domains,
         ),
     )?;
+    action_result.diagnostics = Some(diagnostics);
 
     Ok(SessionCommandOutput {
         action: action_result.clone(),

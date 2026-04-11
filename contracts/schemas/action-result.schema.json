@@ -19,6 +19,8 @@
         "diff",
         "compact",
         "click",
+        "type",
+        "submit",
         "select-tab",
         "paginate",
         "expand"
@@ -35,7 +37,8 @@
         "snapshot-document",
         "evidence-report",
         "snapshot-diff",
-        "compaction-result"
+        "compaction-result",
+        "browser-action-result"
       ]
     },
     "output": {

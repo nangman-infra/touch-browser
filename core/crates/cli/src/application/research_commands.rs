@@ -1025,15 +1025,11 @@ pub(crate) fn handle_read_view(
             Some(reason),
         );
     }
-    let diagnostics =
-        http_capture_diagnostics(&snapshot, options.budget, CaptureSurface::ReadView);
-    Ok(ReadViewOutput::new(
-        &snapshot,
-        Some(session.state),
-        None,
-        options.main_only,
+    let diagnostics = http_capture_diagnostics(&snapshot, options.budget, CaptureSurface::ReadView);
+    Ok(
+        ReadViewOutput::new(&snapshot, Some(session.state), None, options.main_only)
+            .with_diagnostics(diagnostics),
     )
-    .with_diagnostics(diagnostics))
 }
 
 fn handle_browser_read_view_with_fallback(
@@ -1428,11 +1424,7 @@ fn handle_browser_extract_with_fallback(
         "evidence-report",
         report,
         "Extracted evidence report from browser-backed snapshot.",
-        current_policy_with_allowlist(
-            &session,
-            ctx.policy_kernel,
-            &options.allowlisted_domains,
-        ),
+        current_policy_with_allowlist(&session, ctx.policy_kernel, &options.allowlisted_domains),
     );
     let extract_result = verify_action_result_if_requested(
         ports.verifier,
@@ -1443,8 +1435,8 @@ fn handle_browser_extract_with_fallback(
         &extract_timestamp,
     )?;
     let persisted = if let Some(session_file) = options.session_file.as_ref() {
-        let mut persisted =
-            persisted_session.expect("persisted browser session should exist when session file is provided");
+        let mut persisted = persisted_session
+            .expect("persisted browser session should exist when session file is provided");
         persisted.session = session.clone();
         ports.session_store.save_session(session_file, &persisted)?;
         Some(persisted)

@@ -54,6 +54,7 @@ pub struct CaptureDiagnostics {
     pub requested_budget: usize,
     pub effective_budget: usize,
     pub capture_mode: String,
+    pub surface: String,
     pub fallback_triggered: bool,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub fallback_reason: Option<String>,
@@ -71,6 +72,10 @@ pub struct CaptureDiagnostics {
     pub shell_block_count: usize,
     pub truncated: bool,
     pub recommended_next_step: String,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub target_ref: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub sensitive: Option<bool>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
@@ -736,9 +741,18 @@ pub enum PolicySignalKind {
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
+#[serde(rename_all = "kebab-case")]
+pub enum PolicySignalOrigin {
+    LiveHeuristic,
+    FixtureHint,
+    PolicyBoundary,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
 #[serde(rename_all = "camelCase")]
 pub struct PolicySignal {
     pub kind: PolicySignalKind,
+    pub origin: PolicySignalOrigin,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub stable_ref: Option<String>,
     pub detail: String,

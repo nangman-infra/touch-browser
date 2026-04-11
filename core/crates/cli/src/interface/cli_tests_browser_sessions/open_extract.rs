@@ -19,7 +19,10 @@ fn dispatches_browser_backed_fixture_open() {
     assert_eq!(output["output"]["source"]["sourceType"], "playwright");
     assert_eq!(output["policy"]["decision"], "allow");
     assert_eq!(output["diagnostics"]["captureMode"], "browser");
-    assert_eq!(output["diagnostics"]["recommendedNextStep"], "use-read-view");
+    assert_eq!(
+        output["diagnostics"]["recommendedNextStep"],
+        "use-read-view"
+    );
 }
 
 #[test]

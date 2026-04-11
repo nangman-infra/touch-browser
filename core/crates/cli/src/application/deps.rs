@@ -5,8 +5,8 @@ pub(super) use super::browser_session::{
     BrowserOrigin, BrowserSessionContext, PersistedBrowserState,
 };
 pub(super) use super::capture_diagnostics::{
-    browser_capture_diagnostics, browser_fallback_reason, http_capture_diagnostics,
-    CaptureSurface,
+    browser_action_diagnostics, browser_capture_diagnostics, browser_fallback_reason,
+    http_capture_diagnostics, CaptureSurface,
 };
 pub(super) use super::policy_support::{
     approved_risk_labels, checkpoint_approval_panel, checkpoint_candidates, checkpoint_playbook,
