@@ -1829,6 +1829,9 @@ mod tests {
 
     #[test]
     fn default_search_session_hints_omit_session_file_flag() {
+        let _guard = crate::test_env_lock()
+            .lock()
+            .unwrap_or_else(|poisoned| poisoned.into_inner());
         let default_google_session = resolve_search_session_file(None, SearchEngine::Google)
             .display()
             .to_string();

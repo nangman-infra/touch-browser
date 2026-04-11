@@ -1,8 +1,17 @@
 #![cfg_attr(test, allow(unused_imports))]
 
+#[cfg(test)]
+use std::sync::{Mutex, OnceLock};
+
 pub(crate) mod application;
 pub(crate) mod infrastructure;
 pub(crate) mod interface;
+
+#[cfg(test)]
+pub(crate) fn test_env_lock() -> &'static Mutex<()> {
+    static LOCK: OnceLock<Mutex<()>> = OnceLock::new();
+    LOCK.get_or_init(|| Mutex::new(()))
+}
 
 #[cfg(test)]
 pub(crate) use application::browser_session::{BrowserCliSession, PersistedBrowserState};

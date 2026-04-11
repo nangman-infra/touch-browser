@@ -202,7 +202,7 @@ mod tests {
     use std::{
         fs,
         path::{Path, PathBuf},
-        sync::{Mutex, OnceLock},
+        sync::Mutex,
         time::{SystemTime, UNIX_EPOCH},
     };
 
@@ -210,11 +210,6 @@ mod tests {
         canonical_or_raw, data_root, data_root_from, is_bundled_runtime, node_executable,
         node_executable_from, resource_root, resource_root_from,
     };
-
-    fn env_lock() -> &'static Mutex<()> {
-        static LOCK: OnceLock<Mutex<()>> = OnceLock::new();
-        LOCK.get_or_init(|| Mutex::new(()))
-    }
 
     fn temporary_directory(prefix: &str) -> PathBuf {
         let unique = SystemTime::now()
@@ -305,5 +300,9 @@ mod tests {
     #[allow(dead_code)]
     fn _path_exists(path: &Path) -> bool {
         path.exists()
+    }
+
+    fn env_lock() -> &'static Mutex<()> {
+        crate::test_env_lock()
     }
 }

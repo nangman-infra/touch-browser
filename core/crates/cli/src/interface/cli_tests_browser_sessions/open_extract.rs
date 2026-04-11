@@ -356,6 +356,9 @@ fn session_extract_uses_latest_search_session_when_path_is_omitted() {
 
 #[test]
 fn session_extract_can_resolve_engine_default_search_session() {
+    let _guard = crate::test_env_lock()
+        .lock()
+        .unwrap_or_else(|poisoned| poisoned.into_inner());
     let google_session_file = default_search_session_file(SearchEngine::Google);
     let brave_session_file = default_search_session_file(SearchEngine::Brave);
     if let Some(parent) = google_session_file.parent() {

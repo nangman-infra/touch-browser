@@ -1060,7 +1060,7 @@ mod tests {
     use std::{
         fs,
         path::PathBuf,
-        sync::{Mutex, OnceLock},
+        sync::Mutex,
         time::{SystemTime, UNIX_EPOCH},
     };
 
@@ -1075,11 +1075,6 @@ mod tests {
         SearchReportStatus,
     };
     use crate::CONTRACT_VERSION;
-
-    fn env_lock() -> &'static Mutex<()> {
-        static LOCK: OnceLock<Mutex<()>> = OnceLock::new();
-        LOCK.get_or_init(|| Mutex::new(()))
-    }
 
     fn temporary_directory(prefix: &str) -> PathBuf {
         let unique = SystemTime::now()
@@ -1349,5 +1344,9 @@ mod tests {
         } else {
             std::env::remove_var(key);
         }
+    }
+
+    fn env_lock() -> &'static Mutex<()> {
+        crate::test_env_lock()
     }
 }
