@@ -18,8 +18,8 @@ use super::{
     },
     search_support::{
         build_search_report, build_search_url, derived_search_result_session_file,
-        load_preferred_search_engine, resolve_search_session_file, save_preferred_search_engine,
-        search_engine_source_label,
+        load_preferred_search_engine, record_search_profile_result, resolve_search_profile_dir,
+        resolve_search_session_file, save_preferred_search_engine, search_engine_source_label,
     },
 };
 use serde::Serialize;
@@ -417,7 +417,7 @@ fn google_challenge_hint(query: &str, google_session_file: &str) -> Vec<SearchAc
     vec![
         SearchActionHint {
             action: "retry-google-headed".to_string(),
-            detail: "If you specifically want Google, run the same Google search in headed mode once, clear the challenge manually, then reuse that saved Google session.".to_string(),
+            detail: "If you specifically want Google, run the same Google search in headed mode once, clear the challenge manually, then keep reusing that saved Google profile.".to_string(),
             actor: SearchActionActor::Human,
             engine: Some(SearchEngine::Google),
             command: Some(search_retry_command(
@@ -432,7 +432,7 @@ fn google_challenge_hint(query: &str, google_session_file: &str) -> Vec<SearchAc
         },
         SearchActionHint {
             action: "resume-google-search".to_string(),
-            detail: "After the manual Google challenge is cleared, rerun the same Google search without headed mode to keep using the saved Google session automatically.".to_string(),
+            detail: "After the manual Google challenge is cleared, rerun the same Google search without headed mode to keep using the warmed Google profile automatically.".to_string(),
             actor: SearchActionActor::Ai,
             engine: Some(SearchEngine::Google),
             command: Some(search_retry_command(
@@ -456,7 +456,7 @@ fn challenge_hints_for_engine(
     vec![
         SearchActionHint {
             action: "complete-challenge".to_string(),
-            detail: "The current search provider returned a challenge page. Re-run the same search in headed mode, clear the challenge manually once, then rerun it without headed mode.".to_string(),
+            detail: "The current search provider returned a challenge page. Re-run the same search in headed mode, clear the challenge manually once on the same saved profile, then rerun it without headed mode.".to_string(),
             actor: SearchActionActor::Human,
             engine: Some(engine),
             command: Some(search_retry_command(query, engine, true, session_file)),
@@ -466,7 +466,7 @@ fn challenge_hints_for_engine(
         },
         SearchActionHint {
             action: "resume-search".to_string(),
-            detail: "After the manual challenge is cleared, rerun the same search against the same saved session without headed mode.".to_string(),
+            detail: "After the manual challenge is cleared, rerun the same search against the same saved profile without headed mode.".to_string(),
             actor: SearchActionActor::Ai,
             engine: Some(engine),
             command: Some(search_retry_command(query, engine, false, session_file)),
@@ -543,21 +543,9 @@ fn execute_search(
     let ports = ctx.ports;
     let opened_at = current_timestamp();
     let search_url = build_search_url(engine, &options.query)?;
-    let browser_profile_dir = options
-        .profile_dir
-        .as_ref()
-        .map(|path| path.display().to_string());
-    let browser_context_dir = if browser_profile_dir.is_some() {
-        None
-    } else {
-        Some(
-            ports
-                .session_store
-                .browser_context_dir_for_session(&session_file)
-                .display()
-                .to_string(),
-        )
-    };
+    let resolved_profile_dir = resolve_search_profile_dir(options.profile_dir.as_ref(), engine);
+    let browser_profile_dir = Some(resolved_profile_dir.display().to_string());
+    let browser_context_dir = None;
     let context = ports.browser.open_browser_session(
         &search_url,
         options.budget,
@@ -578,6 +566,13 @@ fn execute_search(
         &context.browser_state.current_url,
         &opened_at,
     );
+    record_search_profile_result(
+        engine,
+        &resolved_profile_dir,
+        report.status,
+        options.headed,
+        &opened_at,
+    )?;
 
     ports.session_store.save_session(
         &session_file,

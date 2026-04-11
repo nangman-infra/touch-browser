@@ -6,7 +6,7 @@ use super::deps::{
     ExtractOptions, FollowOptions, PaginateOptions, SearchOpenResultOptions, SearchOpenTopOptions,
     SearchOptions, SessionExtractOptions, SessionFileOptions, SessionProfileSetOptions,
     SessionReadOptions, SessionRefreshOptions, SessionSynthesizeOptions, SubmitOptions,
-    TargetOptions, TelemetryRecentOptions, TypeOptions,
+    TargetOptions, TelemetryRecentOptions, TypeOptions, UninstallOptions, UpdateOptions,
 };
 
 fn serialize_output<T: Serialize>(output: T) -> Result<Value, CliError> {
@@ -39,6 +39,8 @@ pub(crate) fn dispatch(command: CliCommand) -> Result<Value, CliError> {
         CliCommand::Search(options) => handle_search(&ctx, options),
         CliCommand::SearchOpenResult(options) => handle_search_open_result(&ctx, options),
         CliCommand::SearchOpenTop(options) => handle_search_open_top(&ctx, options),
+        CliCommand::Update(options) => handle_update(&ctx, options),
+        CliCommand::Uninstall(options) => handle_uninstall(&ctx, options),
         CliCommand::Open(options) | CliCommand::Snapshot(options) => handle_open(&ctx, options),
         CliCommand::CompactView(options) => handle_compact_view(&ctx, options),
         CliCommand::ReadView(options) => handle_read_view(&ctx, options),
@@ -100,6 +102,89 @@ fn handle_search_open_top(
     serialize_output(application::research_commands::handle_search_open_top(
         ctx, options,
     )?)
+}
+
+fn handle_update(
+    _ctx: &application::context::CliAppContext<'_>,
+    options: UpdateOptions,
+) -> Result<Value, CliError> {
+    let current_install = infrastructure::installation::require_managed_install_manifest()?;
+    let release = infrastructure::installation::fetch_release_target(
+        &current_install,
+        options.version.as_deref(),
+    )?;
+    let update_available = release.version != current_install.version;
+
+    let result = if options.check || !update_available {
+        application::models::UpdateResultValue {
+            current_version: current_install.version.clone(),
+            target_version: release.version.clone(),
+            update_available,
+            checked_only: true,
+            installed: false,
+            release_url: release.html_url.clone(),
+            asset_name: release.tarball_asset.name.clone(),
+            command_link: current_install.command_link.clone(),
+            managed_bundle_root: current_install.managed_bundle_root.clone(),
+        }
+    } else {
+        let installed = infrastructure::installation::install_release(&current_install, &release)?;
+        application::models::UpdateResultValue {
+            current_version: current_install.version,
+            target_version: installed.manifest.version.clone(),
+            update_available: true,
+            checked_only: false,
+            installed: true,
+            release_url: installed.release.html_url.clone(),
+            asset_name: installed.release.tarball_asset.name.clone(),
+            command_link: installed.manifest.command_link.clone(),
+            managed_bundle_root: installed.manifest.managed_bundle_root.clone(),
+        }
+    };
+
+    serialize_output(application::models::UpdateCommandOutput {
+        current_version: result.current_version.clone(),
+        target_version: result.target_version.clone(),
+        update_available: result.update_available,
+        checked_only: result.checked_only,
+        installed: result.installed,
+        release_url: result.release_url.clone(),
+        asset_name: result.asset_name.clone(),
+        command_link: result.command_link.clone(),
+        managed_bundle_root: result.managed_bundle_root.clone(),
+        result,
+    })
+}
+
+fn handle_uninstall(
+    _ctx: &application::context::CliAppContext<'_>,
+    options: UninstallOptions,
+) -> Result<Value, CliError> {
+    if !options.yes {
+        return Err(CliError::Usage(
+            "uninstall is destructive. Re-run with `--yes` after reviewing the command."
+                .to_string(),
+        ));
+    }
+
+    let current_install = infrastructure::installation::require_managed_install_manifest()?;
+    let uninstalled = infrastructure::installation::uninstall_managed_install(
+        &current_install,
+        options.purge_data,
+        options.purge_all,
+    )?;
+    let result = application::models::UninstallResultValue {
+        removed_paths: uninstalled.removed_paths.clone(),
+        purged_data: options.purge_data,
+        purged_all: options.purge_all,
+    };
+
+    serialize_output(application::models::UninstallCommandOutput {
+        removed_paths: result.removed_paths.clone(),
+        purged_data: result.purged_data,
+        purged_all: result.purged_all,
+        result,
+    })
 }
 
 fn handle_open(

@@ -41,6 +41,8 @@ pub(crate) use interface::cli_models::{
     SessionRefreshOptions, SessionSynthesisCommandOutput, SessionSynthesizeOptions,
     SubmitAdapterOutput, SubmitOptions, TargetOptions, TelemetryRecentCommandOutput,
     TelemetryRecentOptions, TelemetrySummaryCommandOutput, TypeAdapterOutput, TypeOptions,
+    UninstallCommandOutput, UninstallOptions, UninstallResultValue, UpdateCommandOutput,
+    UpdateOptions, UpdateResultValue,
 };
 #[cfg(test)]
 pub(crate) use interface::cli_support::{

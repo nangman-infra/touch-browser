@@ -21,6 +21,16 @@ struct PreferredSearchEngineRecord {
     engine: SearchEngine,
 }
 
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
+pub(crate) struct SearchProfileStateRecord {
+    pub(crate) engine: SearchEngine,
+    pub(crate) profile_dir: String,
+    pub(crate) last_success_at: Option<String>,
+    pub(crate) last_challenge_at: Option<String>,
+    pub(crate) last_manual_recovery_at: Option<String>,
+    pub(crate) consecutive_challenges: usize,
+}
+
 pub(crate) fn build_search_url(engine: SearchEngine, query: &str) -> Result<String, CliError> {
     let base = match engine {
         SearchEngine::Google => "https://www.google.com/search",
@@ -53,6 +63,14 @@ pub(crate) fn default_search_session_file(engine: SearchEngine) -> PathBuf {
 
 pub(crate) fn default_search_output_dir() -> PathBuf {
     data_root().join("browser-search")
+}
+
+pub(crate) fn default_search_profile_root() -> PathBuf {
+    default_search_output_dir().join("profiles")
+}
+
+pub(crate) fn default_search_profile_dir(engine: SearchEngine) -> PathBuf {
+    default_search_profile_root().join(format!("{}-default", search_engine_slug(engine)))
 }
 
 fn source_checkout_root() -> Option<PathBuf> {
@@ -104,6 +122,14 @@ fn preferred_search_engine_file_in(search_output_dir: &Path) -> PathBuf {
 
 fn preferred_search_engine_file() -> PathBuf {
     preferred_search_engine_file_in(&default_search_output_dir())
+}
+
+fn search_profile_state_file_in(search_output_dir: &Path, engine: SearchEngine) -> PathBuf {
+    search_output_dir.join(format!("{}.profile-state.json", search_engine_slug(engine)))
+}
+
+fn search_profile_state_file(engine: SearchEngine) -> PathBuf {
+    search_profile_state_file_in(&default_search_output_dir(), engine)
 }
 
 fn infer_search_engine_from_session_file(path: &Path) -> Option<SearchEngine> {
@@ -163,6 +189,77 @@ fn save_preferred_search_engine_to(
         .map_err(|error| CliError::Usage(error.to_string()))?;
     fs::write(metadata_file, payload)?;
     Ok(())
+}
+
+pub(crate) fn resolve_search_profile_dir(
+    explicit_profile_dir: Option<&PathBuf>,
+    engine: SearchEngine,
+) -> PathBuf {
+    explicit_profile_dir
+        .cloned()
+        .unwrap_or_else(|| default_search_profile_dir(engine))
+}
+
+#[cfg_attr(not(test), allow(dead_code))]
+pub(crate) fn load_search_profile_state(
+    engine: SearchEngine,
+) -> Result<Option<SearchProfileStateRecord>, CliError> {
+    load_search_profile_state_from(&search_profile_state_file(engine))
+}
+
+fn load_search_profile_state_from(
+    metadata_file: &Path,
+) -> Result<Option<SearchProfileStateRecord>, CliError> {
+    if !metadata_file.is_file() {
+        return Ok(None);
+    }
+    let bytes = fs::read(metadata_file)?;
+    let record = serde_json::from_slice::<SearchProfileStateRecord>(&bytes).ok();
+    Ok(record)
+}
+
+pub(crate) fn record_search_profile_result(
+    engine: SearchEngine,
+    profile_dir: &Path,
+    status: SearchReportStatus,
+    headed: bool,
+    timestamp: &str,
+) -> Result<SearchProfileStateRecord, CliError> {
+    let metadata_file = search_profile_state_file(engine);
+    let mut record =
+        load_search_profile_state_from(&metadata_file)?.unwrap_or(SearchProfileStateRecord {
+            engine,
+            profile_dir: profile_dir.display().to_string(),
+            last_success_at: None,
+            last_challenge_at: None,
+            last_manual_recovery_at: None,
+            consecutive_challenges: 0,
+        });
+    record.engine = engine;
+    record.profile_dir = profile_dir.display().to_string();
+
+    match status {
+        SearchReportStatus::Challenge => {
+            record.last_challenge_at = Some(timestamp.to_string());
+            record.consecutive_challenges += 1;
+        }
+        SearchReportStatus::Ready | SearchReportStatus::NoResults => {
+            record.last_success_at = Some(timestamp.to_string());
+            record.consecutive_challenges = 0;
+            if headed {
+                record.last_manual_recovery_at = Some(timestamp.to_string());
+            }
+        }
+    }
+
+    if let Some(parent) = metadata_file.parent() {
+        fs::create_dir_all(parent)?;
+    }
+    fs::write(
+        &metadata_file,
+        serde_json::to_vec_pretty(&record).map_err(|error| CliError::Usage(error.to_string()))?,
+    )?;
+    Ok(record)
 }
 
 pub(crate) fn resolve_latest_search_session_file(
@@ -956,9 +1053,10 @@ mod tests {
 
     use super::{
         default_or_legacy_search_session_file_for, default_search_output_dir,
-        infer_search_engine_from_session_file, latest_search_session_file_for,
-        latest_search_session_file_in, load_preferred_search_engine_from,
-        save_preferred_search_engine_to, SearchEngine,
+        default_search_profile_dir, infer_search_engine_from_session_file,
+        latest_search_session_file_for, latest_search_session_file_in,
+        load_preferred_search_engine_from, load_search_profile_state, record_search_profile_result,
+        save_preferred_search_engine_to, SearchEngine, SearchReportStatus,
     };
 
     fn env_lock() -> &'static Mutex<()> {
@@ -1074,6 +1172,77 @@ mod tests {
                 .expect("preferred engine should reload"),
             Some(SearchEngine::Brave)
         );
+    }
+
+    #[test]
+    fn default_search_profile_dir_lives_under_data_root() {
+        let _guard = env_lock()
+            .lock()
+            .unwrap_or_else(|poisoned| poisoned.into_inner());
+        let data_root = temporary_directory("search-profile-root");
+        let previous = std::env::var_os("TOUCH_BROWSER_DATA_ROOT");
+        std::env::set_var("TOUCH_BROWSER_DATA_ROOT", &data_root);
+
+        assert_eq!(
+            default_search_profile_dir(SearchEngine::Google),
+            data_root
+                .canonicalize()
+                .unwrap_or(data_root.clone())
+                .join("browser-search/profiles/google-default")
+        );
+
+        restore_env("TOUCH_BROWSER_DATA_ROOT", previous);
+    }
+
+    #[test]
+    fn search_profile_state_tracks_challenge_then_manual_recovery() {
+        let _guard = env_lock()
+            .lock()
+            .unwrap_or_else(|poisoned| poisoned.into_inner());
+        let data_root = temporary_directory("search-profile-state");
+        let previous = std::env::var_os("TOUCH_BROWSER_DATA_ROOT");
+        std::env::set_var("TOUCH_BROWSER_DATA_ROOT", &data_root);
+        let profile_dir = data_root.join("browser-search/profiles/google-default");
+
+        let challenged = record_search_profile_result(
+            SearchEngine::Google,
+            &profile_dir,
+            SearchReportStatus::Challenge,
+            true,
+            "2026-04-11T01:00:00+09:00",
+        )
+        .expect("challenge state should save");
+        assert_eq!(challenged.consecutive_challenges, 1);
+        assert_eq!(
+            challenged.last_challenge_at.as_deref(),
+            Some("2026-04-11T01:00:00+09:00")
+        );
+
+        let recovered = record_search_profile_result(
+            SearchEngine::Google,
+            &profile_dir,
+            SearchReportStatus::Ready,
+            true,
+            "2026-04-11T01:05:00+09:00",
+        )
+        .expect("recovery state should save");
+        assert_eq!(recovered.consecutive_challenges, 0);
+        assert_eq!(
+            recovered.last_success_at.as_deref(),
+            Some("2026-04-11T01:05:00+09:00")
+        );
+        assert_eq!(
+            recovered.last_manual_recovery_at.as_deref(),
+            Some("2026-04-11T01:05:00+09:00")
+        );
+        assert_eq!(
+            load_search_profile_state(SearchEngine::Google)
+                .expect("profile state should reload")
+                .expect("profile state should exist"),
+            recovered
+        );
+
+        restore_env("TOUCH_BROWSER_DATA_ROOT", previous);
     }
 
     #[test]

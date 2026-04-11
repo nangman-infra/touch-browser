@@ -66,6 +66,7 @@ When a tagged release is published, download the matching tarball from [GitHub R
 ```bash
 ./touch-browser-<version>-<platform>-<arch>/install.sh
 touch-browser telemetry-summary
+touch-browser update --check
 ```
 
 To build the same portable bundle locally:
@@ -77,6 +78,7 @@ pnpm run build:standalone-bundle -- v0.1.0-rc1
 # Then install the bundled command into PATH
 ./dist/standalone/touch-browser-v0.1.0-rc1-<platform>-<arch>/install.sh
 touch-browser telemetry-summary
+touch-browser update --check
 ```
 
 The official user path is:
@@ -84,6 +86,14 @@ The official user path is:
 1. unpack a standalone bundle
 2. run `install.sh`
 3. use the installed `touch-browser` command for every CLI and serve operation
+
+The installer now performs a managed install:
+
+- managed versions live under `~/.touch-browser/install/versions/<bundle-name>`
+- the active version is `~/.touch-browser/install/current`
+- the PATH command points at `~/.touch-browser/install/current/bin/touch-browser`
+- `touch-browser update` swaps `current` to a newly verified release bundle
+- `touch-browser uninstall --purge-all --yes` removes the managed install and all stored data
 
 ## First Run
 
@@ -97,6 +107,12 @@ touch-browser session-extract --session-file /tmp/tb-first-run.json \
 touch-browser session-synthesize --session-file /tmp/tb-first-run.json --format markdown
 touch-browser session-close --session-file /tmp/tb-first-run.json
 ```
+
+Installed search now keeps an engine-level persistent trust profile by default:
+
+- Google: `~/.touch-browser/browser-search/profiles/google-default`
+- Brave: `~/.touch-browser/browser-search/profiles/brave-default`
+- profile state metadata: `~/.touch-browser/browser-search/<engine>.profile-state.json`
 
 ## Contributor Build From Source
 

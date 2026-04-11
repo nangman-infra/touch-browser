@@ -15,6 +15,7 @@ pub(super) use super::search_support::{
     is_search_results_target, resolve_latest_search_session_file,
 };
 pub(super) use super::session_reporting::verify_action_result_if_requested;
+pub(super) use crate::application::context::CliAppContext;
 pub(super) use crate::interface::cli_error::CliError;
 pub(super) use crate::interface::cli_models::{
     AckRisk, ApproveOptions, BrowserActionPayload, BrowserReplayCommandOutput, CheckpointAction,
@@ -32,7 +33,8 @@ pub(super) use crate::interface::cli_models::{
     SessionProfileValue, SessionReadOptions, SessionRefreshOptions, SessionSynthesisCommandOutput,
     SessionSynthesizeOptions, SubmitAdapterOutput, SubmitOptions, TargetOptions,
     TelemetryRecentCommandOutput, TelemetryRecentOptions, TelemetrySummaryCommandOutput,
-    TypeAdapterOutput, TypeOptions,
+    TypeAdapterOutput, TypeOptions, UninstallCommandOutput, UninstallOptions, UninstallResultValue,
+    UpdateCommandOutput, UpdateOptions, UpdateResultValue,
 };
 pub(super) use crate::interface::cli_support::{
     current_timestamp, is_fixture_target, repo_root, slot_timestamp,

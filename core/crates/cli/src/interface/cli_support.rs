@@ -46,6 +46,11 @@ pub(crate) fn resource_root() -> PathBuf {
     resource_root_from(None, bundled_resource_root(), repo_root())
 }
 
+#[cfg_attr(not(test), allow(dead_code))]
+pub(crate) fn is_bundled_runtime() -> bool {
+    bundled_resource_root().is_some()
+}
+
 pub(crate) fn data_root() -> PathBuf {
     if let Some(explicit_root) =
         env::var_os("TOUCH_BROWSER_DATA_ROOT").filter(|value| !value.is_empty())
@@ -153,6 +158,8 @@ pub(crate) fn usage() -> String {
         "  touch-browser search <query> [--engine google|brave] [--headed] [--profile-dir <path>] [--budget <tokens>] [--session-file <path>]",
         "  touch-browser search-open-result --rank <number> [--prefer-official] [--engine google|brave] [--session-file <path>] [--headed]",
         "  touch-browser search-open-top [--limit <count>] [--engine google|brave] [--session-file <path>] [--headed]",
+        "  touch-browser update [--check] [--version <tag>]",
+        "  touch-browser uninstall [--purge-data] [--purge-all] --yes",
         "  touch-browser open <target> [--browser] [--headed] [--budget <tokens>] [--session-file <path>] [--source-risk low|medium|hostile] [--source-label <label>] [--allow-domain <host> ...]",
         "  touch-browser snapshot <target> [--browser] [--headed] [--budget <tokens>] [--session-file <path>] [--source-risk low|medium|hostile] [--source-label <label>] [--allow-domain <host> ...]",
         "  touch-browser compact-view <target> [--browser] [--headed] [--budget <tokens>] [--session-file <path>] [--source-risk low|medium|hostile] [--source-label <label>] [--allow-domain <host> ...]",
@@ -199,8 +206,8 @@ mod tests {
     };
 
     use super::{
-        canonical_or_raw, data_root, data_root_from, node_executable, node_executable_from,
-        resource_root, resource_root_from,
+        canonical_or_raw, data_root, data_root_from, is_bundled_runtime, node_executable,
+        node_executable_from, resource_root, resource_root_from,
     };
 
     fn env_lock() -> &'static Mutex<()> {
@@ -261,6 +268,19 @@ mod tests {
         assert_eq!(data_root(), canonical_or_raw(temp_dir.clone()));
 
         restore_env("TOUCH_BROWSER_DATA_ROOT", previous);
+    }
+
+    #[test]
+    fn bundled_runtime_flag_is_false_without_bundle_env() {
+        let _guard = env_lock()
+            .lock()
+            .unwrap_or_else(|poisoned| poisoned.into_inner());
+        let previous = std::env::var_os("TOUCH_BROWSER_RESOURCE_ROOT");
+        std::env::remove_var("TOUCH_BROWSER_RESOURCE_ROOT");
+
+        assert!(!is_bundled_runtime());
+
+        restore_env("TOUCH_BROWSER_RESOURCE_ROOT", previous);
     }
 
     #[test]

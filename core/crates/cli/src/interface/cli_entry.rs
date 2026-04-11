@@ -33,6 +33,14 @@ fn emit_read_view_quality_notice(output: &Value) {
     }
 }
 
+fn should_log_telemetry_operation(operation: &str) -> bool {
+    operation != "uninstall"
+}
+
+fn should_log_telemetry_command(command: &CliCommand) -> bool {
+    !matches!(command, CliCommand::Uninstall(_))
+}
+
 pub(crate) fn preprocess_cli_args(raw_args: Vec<String>) -> ProcessedCliArgs {
     let mut json_errors = false;
     let mut args = Vec::with_capacity(raw_args.len());
@@ -116,13 +124,15 @@ pub(crate) fn run_cli(raw_args: Vec<String>) -> i32 {
     let command = match parse_command(&args) {
         Ok(command) => command,
         Err(error) => {
-            let _ = log_telemetry_error(
-                &telemetry_surface_label("cli"),
-                &operation,
-                &error.to_string(),
-                None,
-                &Value::Null,
-            );
+            if should_log_telemetry_operation(&operation) {
+                let _ = log_telemetry_error(
+                    &telemetry_surface_label("cli"),
+                    &operation,
+                    &error.to_string(),
+                    None,
+                    &Value::Null,
+                );
+            }
             emit_cli_error(&error, json_errors);
             return 1;
         }
@@ -137,6 +147,7 @@ pub(crate) fn run_cli(raw_args: Vec<String>) -> i32 {
     }
 
     let stdout_mode = stdout_mode_for_command(&command);
+    let should_log_telemetry = should_log_telemetry_command(&command);
     match dispatch(command).and_then(|output| {
         match stdout_mode {
             CliStdoutMode::Json => println!(
@@ -154,24 +165,57 @@ pub(crate) fn run_cli(raw_args: Vec<String>) -> i32 {
         Ok(output)
     }) {
         Ok(output) => {
-            let _ = log_telemetry_success(
-                &telemetry_surface_label("cli"),
-                &operation,
-                &output,
-                &Value::Null,
-            );
+            if should_log_telemetry {
+                let _ = log_telemetry_success(
+                    &telemetry_surface_label("cli"),
+                    &operation,
+                    &output,
+                    &Value::Null,
+                );
+            }
             0
         }
         Err(error) => {
-            let _ = log_telemetry_error(
-                &telemetry_surface_label("cli"),
-                &operation,
-                &error.to_string(),
-                None,
-                &Value::Null,
-            );
+            if should_log_telemetry {
+                let _ = log_telemetry_error(
+                    &telemetry_surface_label("cli"),
+                    &operation,
+                    &error.to_string(),
+                    None,
+                    &Value::Null,
+                );
+            }
             emit_cli_error(&error, json_errors);
             1
         }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::{should_log_telemetry_command, should_log_telemetry_operation};
+    use crate::{CliCommand, SearchEngine, SearchOptions, UninstallOptions, DEFAULT_SEARCH_TOKENS};
+
+    #[test]
+    fn telemetry_logging_skips_uninstall_lifecycle() {
+        assert!(!should_log_telemetry_operation("uninstall"));
+        assert!(!should_log_telemetry_command(&CliCommand::Uninstall(
+            UninstallOptions {
+                purge_data: true,
+                purge_all: true,
+                yes: true,
+            }
+        )));
+        assert!(should_log_telemetry_command(&CliCommand::Search(
+            SearchOptions {
+                query: "iana example domains".to_string(),
+                engine: SearchEngine::Brave,
+                engine_explicit: true,
+                budget: DEFAULT_SEARCH_TOKENS,
+                headed: false,
+                profile_dir: None,
+                session_file: None,
+            }
+        )));
     }
 }

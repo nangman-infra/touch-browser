@@ -125,7 +125,9 @@ cp "${REPO_ROOT}/scripts/evidence-embedding-runner.mjs" "${RUNTIME_ROOT}/scripts
 cp "${REPO_ROOT}/scripts/evidence-nli-runner.mjs" "${RUNTIME_ROOT}/scripts/evidence-nli-runner.mjs"
 cp "${REPO_ROOT}/scripts/lib/model-runner.mjs" "${RUNTIME_ROOT}/scripts/lib/model-runner.mjs"
 cp "${REPO_ROOT}/scripts/install-standalone-bundle.sh" "${BUNDLE_ROOT}/install.sh"
+cp "${REPO_ROOT}/scripts/uninstall-standalone-bundle.sh" "${BUNDLE_ROOT}/uninstall.sh"
 chmod +x "${BUNDLE_ROOT}/install.sh"
+chmod +x "${BUNDLE_ROOT}/uninstall.sh"
 
 if [[ "${TOUCH_BROWSER_BUNDLE_SKIP_MODEL_WARMUP:-0}" == "1" ]]; then
   mkdir -p "${EMBEDDING_MODEL_ROOT}" "${NLI_MODEL_ROOT}"

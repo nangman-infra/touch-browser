@@ -10,7 +10,7 @@ pub(crate) use super::cli_models::{
     SearchOpenResultOptions, SearchOpenTopOptions, SearchOptions, SecretPrefill,
     SessionExtractOptions, SessionFileOptions, SessionProfileSetOptions, SessionReadOptions,
     SessionRefreshOptions, SessionSynthesizeOptions, SubmitOptions, TargetOptions,
-    TelemetryRecentOptions, TypeOptions,
+    TelemetryRecentOptions, TypeOptions, UninstallOptions, UpdateOptions,
 };
 pub(crate) use super::cli_support::{current_timestamp, repo_root, slot_timestamp, usage};
 pub(crate) use super::command_parser::{

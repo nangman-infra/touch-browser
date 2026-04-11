@@ -211,6 +211,56 @@ fn parses_search_open_top_command() {
 }
 
 #[test]
+fn parses_update_command_with_check_and_version() {
+    let command = parse_command(&[
+        "update".to_string(),
+        "--check".to_string(),
+        "--version".to_string(),
+        "v0.1.2".to_string(),
+    ])
+    .expect("update command should parse");
+
+    assert_eq!(
+        command,
+        CliCommand::Update(UpdateOptions {
+            check: true,
+            version: Some("v0.1.2".to_string()),
+        })
+    );
+}
+
+#[test]
+fn rejects_update_command_with_blank_version() {
+    let error = parse_command(&[
+        "update".to_string(),
+        "--version".to_string(),
+        "   ".to_string(),
+    ])
+    .expect_err("blank update version should be rejected");
+
+    assert_eq!(error.to_string(), "--version requires a non-empty value.");
+}
+
+#[test]
+fn parses_uninstall_command_with_purge_all_and_confirmation() {
+    let command = parse_command(&[
+        "uninstall".to_string(),
+        "--purge-all".to_string(),
+        "--yes".to_string(),
+    ])
+    .expect("uninstall command should parse");
+
+    assert_eq!(
+        command,
+        CliCommand::Uninstall(UninstallOptions {
+            purge_data: true,
+            purge_all: true,
+            yes: true,
+        })
+    );
+}
+
+#[test]
 fn parses_extract_command_with_verifier_hook() {
     let command = parse_command(&[
         "extract".to_string(),

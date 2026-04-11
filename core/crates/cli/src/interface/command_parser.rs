@@ -1,7 +1,9 @@
 use super::deps::{
     usage, AckRisk, CliCommand, CliError, OutputFormat, PolicyProfile, SearchEngine, SourceRisk,
 };
-use super::{browser_session_parser, search_command_parser, session_command_parser};
+use super::{
+    browser_session_parser, install_command_parser, search_command_parser, session_command_parser,
+};
 
 pub(crate) fn parse_command(args: &[String]) -> Result<CliCommand, CliError> {
     let Some(command_name) = args.first().map(String::as_str) else {
@@ -17,6 +19,12 @@ pub(crate) fn parse_command(args: &[String]) -> Result<CliCommand, CliError> {
         )),
         "search-open-top" => Ok(CliCommand::SearchOpenTop(
             search_command_parser::parse_search_open_top_options(&args[1..])?,
+        )),
+        "update" => Ok(CliCommand::Update(
+            install_command_parser::parse_update_options(&args[1..])?,
+        )),
+        "uninstall" => Ok(CliCommand::Uninstall(
+            install_command_parser::parse_uninstall_options(&args[1..])?,
         )),
         "open" => Ok(CliCommand::Open(
             session_command_parser::parse_target_options(&args[1..])?,

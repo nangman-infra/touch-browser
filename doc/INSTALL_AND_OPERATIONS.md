@@ -23,9 +23,11 @@ After downloading and unpacking a release asset from [GitHub Releases](https://g
 ```bash
 ./touch-browser-<version>-<platform>-<arch>/install.sh
 touch-browser telemetry-summary
+touch-browser update --check
 ```
 
 This installed `touch-browser` command is the official user-facing runtime path for all CLI and serve operations.
+The installer copies the bundle into a managed location under `~/.touch-browser/install/versions/<bundle-name>`, points `~/.touch-browser/install/current` at the active version, and links the PATH command to `~/.touch-browser/install/current/bin/touch-browser`.
 
 ### Build the standalone bundle locally
 
@@ -41,6 +43,7 @@ pnpm run build:standalone-bundle -- v0.1.0-rc1
 
 # Then use the installed command directly
 touch-browser telemetry-summary
+touch-browser update --check
 ```
 
 ### Build from source
@@ -98,6 +101,13 @@ touch-browser session-synthesize --session-file /tmp/tb-first-run.json --format 
 touch-browser session-close --session-file /tmp/tb-first-run.json
 ```
 
+Installed search defaults to engine trust profiles under the active data root:
+
+- Google: `~/.touch-browser/browser-search/profiles/google-default`
+- Brave: `~/.touch-browser/browser-search/profiles/brave-default`
+- profile state metadata: `~/.touch-browser/browser-search/<engine>.profile-state.json`
+- saved search sessions: `~/.touch-browser/browser-search/<engine>.search-session.json`
+
 Read a real page:
 
 ```bash
@@ -138,6 +148,36 @@ Serve daemon:
 
 ```bash
 touch-browser serve
+```
+
+Check for a new standalone release:
+
+```bash
+touch-browser update --check
+```
+
+Install the latest matching release into the managed install:
+
+```bash
+touch-browser update
+```
+
+Install a specific release tag into the managed install:
+
+```bash
+touch-browser update --version v0.1.1
+```
+
+Remove the managed install but keep user data:
+
+```bash
+touch-browser uninstall --yes
+```
+
+Remove the managed install and all stored data:
+
+```bash
+touch-browser uninstall --purge-all --yes
 ```
 
 MCP bridge (repo checkout integration asset):
@@ -195,6 +235,14 @@ pnpm run pilot:real-user-research
   - inspect provider hints and the recommended profile in `checkpoint.approvalPanel` and `checkpoint.playbook`
   - use `--sensitive` or the daemon secret store for secret input
   - confirm no other CLI process is holding the same `--session-file`
+- update command fails:
+  - confirm the current install came from `install.sh` and `~/.touch-browser/install/install-manifest.json` exists
+  - confirm outbound HTTPS access to GitHub Releases
+  - rerun `touch-browser update --check` to inspect the target asset before install
+- uninstall command fails:
+  - rerun with `--yes`
+  - stop any long-running process that still uses the managed install path
+  - if the command path is already gone, run `~/.touch-browser/install/current/uninstall.sh --purge-all --yes` or remove the paths listed below manually
 
 ## 6. Notes
 
@@ -202,6 +250,11 @@ pnpm run pilot:real-user-research
 - `read-view` prefers main-content blocks by default; `--main-only` makes the filter explicit for especially noisy page chrome
 - `session-synthesize --format markdown` emits raw Markdown in direct CLI mode
 - `serve` and MCP keep returning structured JSON
+- managed standalone install paths:
+  - `~/.touch-browser/install/versions/<bundle-name>`
+  - `~/.touch-browser/install/current`
+  - `~/.touch-browser/install/install-manifest.json`
+  - `~/.touch-browser/install/install-manifest.env`
 - `extract` emits four-state claim outcomes: `evidence-supported`, `contradicted`, `insufficient-evidence`, and `needs-more-browsing`
 - verifier hooks can adjudicate the final claim verdict, but they still run on top of the same base evidence collector
 - `reviewRecommended` and `confidenceBand=review` are the primary escalation signals for verifier-driven operation
@@ -210,6 +263,12 @@ pnpm run pilot:real-user-research
 - anti-bot, MFA, payment, and other high-risk write actions are handled as supervised flows, not bypass flows
 - the default supervised operating procedure is `checkpoint -> approve -> headed continuation -> refresh`
 - pilot telemetry defaults to `~/.touch-browser/pilot/telemetry.sqlite` in an installed bundle and `output/pilot/telemetry.sqlite` in a repo checkout
+- complete clean removal from the default installed path means deleting:
+  - `~/.touch-browser/install`
+  - `~/.touch-browser/browser-search`
+  - `~/.touch-browser/pilot`
+  - `~/.touch-browser/models` when `--purge-all` is used
+  - the PATH command symlink such as `~/.local/bin/touch-browser`, `~/bin/touch-browser`, `/usr/local/bin/touch-browser`, or `/opt/homebrew/bin/touch-browser`
 
 ## 7. License
 

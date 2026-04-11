@@ -41,6 +41,8 @@ pub(crate) enum CliError {
     Acquisition(#[from] AcquisitionError),
     #[error("telemetry error: {0}")]
     Telemetry(#[from] TelemetryError),
+    #[error("network error: {0}")]
+    Network(#[from] reqwest::Error),
     #[error("adapter error: {0}")]
     Adapter(String),
     #[error("verifier error: {0}")]
@@ -105,6 +107,12 @@ pub(crate) fn build_cli_error_payload(error: &CliError) -> CliErrorPayload {
             message: error.to_string(),
             hint: None,
         },
+        CliError::Network(_) => CliErrorPayload {
+            error: "network-error".to_string(),
+            kind: "runtime-error".to_string(),
+            message: error.to_string(),
+            hint: None,
+        },
         CliError::Io(_) | CliError::IoPath { .. } => CliErrorPayload {
             error: "io-error".to_string(),
             kind: "runtime-error".to_string(),
@@ -165,6 +173,12 @@ fn usage_error_details(message: &str) -> (&'static str, Option<String>) {
         return (
             "missing-risk",
             Some("provide the required risk acknowledgement value.".to_string()),
+        );
+    }
+    if message.contains("uninstall is destructive") {
+        return (
+            "confirmation-required",
+            Some("re-run uninstall with --yes after reviewing the command.".to_string()),
         );
     }
     ("usage-error", None)

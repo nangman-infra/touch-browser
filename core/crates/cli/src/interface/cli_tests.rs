@@ -33,7 +33,8 @@ use crate::{
     SearchOpenTopOptions, SearchOptions, SearchReportStatus, SessionExtractOptions,
     SessionFileOptions, SessionProfileSetOptions, SessionReadOptions, SessionRefreshOptions,
     SessionSynthesizeOptions, SubmitOptions, TargetOptions, TelemetryRecentOptions, TypeOptions,
-    DEFAULT_OPENED_AT, DEFAULT_REQUESTED_TOKENS, DEFAULT_SEARCH_TOKENS,
+    UninstallOptions, UpdateOptions, DEFAULT_OPENED_AT, DEFAULT_REQUESTED_TOKENS,
+    DEFAULT_SEARCH_TOKENS,
 };
 
 mod cli_tests_browser_sessions;

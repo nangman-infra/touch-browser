@@ -19,6 +19,8 @@ pub(crate) enum CliCommand {
     Search(SearchOptions),
     SearchOpenResult(SearchOpenResultOptions),
     SearchOpenTop(SearchOpenTopOptions),
+    Update(UpdateOptions),
+    Uninstall(UninstallOptions),
     Open(TargetOptions),
     Snapshot(TargetOptions),
     CompactView(TargetOptions),
@@ -90,6 +92,19 @@ pub(crate) struct SearchOpenTopOptions {
     pub(crate) session_file: Option<PathBuf>,
     pub(crate) limit: usize,
     pub(crate) headed: bool,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub(crate) struct UpdateOptions {
+    pub(crate) check: bool,
+    pub(crate) version: Option<String>,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub(crate) struct UninstallOptions {
+    pub(crate) purge_data: bool,
+    pub(crate) purge_all: bool,
+    pub(crate) yes: bool,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -279,6 +294,52 @@ pub(crate) struct SearchOpenTopItem {
     pub(crate) selected_result: SearchResultItem,
     pub(crate) session_file: String,
     pub(crate) result: ActionResult,
+}
+
+#[derive(Debug, Clone, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub(crate) struct UpdateCommandOutput {
+    pub(crate) current_version: String,
+    pub(crate) target_version: String,
+    pub(crate) update_available: bool,
+    pub(crate) checked_only: bool,
+    pub(crate) installed: bool,
+    pub(crate) release_url: String,
+    pub(crate) asset_name: String,
+    pub(crate) command_link: String,
+    pub(crate) managed_bundle_root: String,
+    pub(crate) result: UpdateResultValue,
+}
+
+#[derive(Debug, Clone, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub(crate) struct UpdateResultValue {
+    pub(crate) current_version: String,
+    pub(crate) target_version: String,
+    pub(crate) update_available: bool,
+    pub(crate) checked_only: bool,
+    pub(crate) installed: bool,
+    pub(crate) release_url: String,
+    pub(crate) asset_name: String,
+    pub(crate) command_link: String,
+    pub(crate) managed_bundle_root: String,
+}
+
+#[derive(Debug, Clone, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub(crate) struct UninstallCommandOutput {
+    pub(crate) removed_paths: Vec<String>,
+    pub(crate) purged_data: bool,
+    pub(crate) purged_all: bool,
+    pub(crate) result: UninstallResultValue,
+}
+
+#[derive(Debug, Clone, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub(crate) struct UninstallResultValue {
+    pub(crate) removed_paths: Vec<String>,
+    pub(crate) purged_data: bool,
+    pub(crate) purged_all: bool,
 }
 
 #[derive(Debug, Serialize)]
