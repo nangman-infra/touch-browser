@@ -8,6 +8,8 @@
       "sonar-reports/**",
       "adapters/playwright/dist-runtime/**",
       "contracts/generated/manifest.json",
+      "contracts/generated/mcp-tool-catalog.json",
+      "contracts/generated/mcp-tool-catalog.mjs",
       "fixtures/scenarios/**/*.json"
     ],
     "ignoreUnknown": true
