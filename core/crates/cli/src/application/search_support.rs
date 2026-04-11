@@ -211,7 +211,7 @@ pub(crate) fn resolve_search_profile_dir(
         .unwrap_or_else(|| default_search_profile_dir(engine))
 }
 
-#[cfg_attr(not(test), allow(dead_code))]
+#[allow(dead_code)]
 pub(crate) fn load_search_profile_state(
     engine: SearchEngine,
 ) -> Result<Option<SearchProfileStateRecord>, CliError> {
@@ -1070,8 +1070,9 @@ mod tests {
         default_or_legacy_search_session_file_for, default_search_output_dir,
         default_search_profile_dir, infer_search_engine_from_session_file,
         latest_search_session_file_for, latest_search_session_file_in,
-        load_preferred_search_engine_from, load_search_profile_state, record_search_profile_result,
-        save_preferred_search_engine_to, SearchEngine, SearchReportStatus,
+        load_preferred_search_engine_from, load_search_profile_state_from,
+        record_search_profile_result, save_preferred_search_engine_to, SearchEngine,
+        SearchReportStatus,
     };
     use crate::CONTRACT_VERSION;
 
@@ -1245,6 +1246,7 @@ mod tests {
         let previous = std::env::var_os("TOUCH_BROWSER_DATA_ROOT");
         std::env::set_var("TOUCH_BROWSER_DATA_ROOT", &data_root);
         let profile_dir = data_root.join("browser-search/profiles/google-default");
+        let metadata_file = data_root.join("browser-search/google.profile-state.json");
 
         let challenged = record_search_profile_result(
             SearchEngine::Google,
@@ -1278,7 +1280,7 @@ mod tests {
             Some("2026-04-11T01:05:00+09:00")
         );
         assert_eq!(
-            load_search_profile_state(SearchEngine::Google)
+            load_search_profile_state_from(&metadata_file)
                 .expect("profile state should reload")
                 .expect("profile state should exist"),
             recovered
@@ -1309,7 +1311,7 @@ mod tests {
         )
         .expect("legacy profile state should be written");
 
-        let loaded = load_search_profile_state(SearchEngine::Google)
+        let loaded = load_search_profile_state_from(&metadata_file)
             .expect("legacy profile state should load")
             .expect("legacy profile state should exist");
         assert_eq!(loaded.version, CONTRACT_VERSION);

@@ -106,6 +106,7 @@ pub(crate) fn browser_action_diagnostics(
     )
 }
 
+#[allow(clippy::too_many_arguments)]
 fn build_capture_diagnostics(
     snapshot: &SnapshotDocument,
     requested_budget: usize,

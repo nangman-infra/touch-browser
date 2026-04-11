@@ -154,7 +154,9 @@ export async function withPage<T>(
 
 export async function capturePageState(
   page: Page,
-  loadDiagnostics: BrowserLoadDiagnostics = idleLoadDiagnostics("action-settle"),
+  loadDiagnostics: BrowserLoadDiagnostics = idleLoadDiagnostics(
+    "action-settle",
+  ),
 ): Promise<BrowserPageState> {
   let lastError: unknown;
 
@@ -539,7 +541,9 @@ async function loadPageSource(
       });
     }
     return idleLoadDiagnostics("inline-load");
-  } else if (source.url) {
+  }
+
+  if (source.url) {
     await page.goto(source.url, {
       waitUntil: "load",
       timeout: PAGE_NAVIGATION_TIMEOUT_MS,
@@ -670,11 +674,16 @@ async function readPageQualityProbe(page: Page): Promise<PageQualityProbe> {
         }
         const tagName = block.tagName.toLowerCase();
         const isHeading = /^h[1-4]$/.test(tagName);
-        if ((isHeading && text.length >= 4) || (!isHeading && text.length >= 32)) {
+        if (
+          (isHeading && text.length >= 4) ||
+          (!isHeading && text.length >= 32)
+        ) {
           mainBlockCount += 1;
           mainTextLength += text.length;
         }
-        if (["p", "li", "blockquote", "pre", "code", "table"].includes(tagName)) {
+        if (
+          ["p", "li", "blockquote", "pre", "code", "table"].includes(tagName)
+        ) {
           textLikeBlockCount += 1;
         }
       }
@@ -682,11 +691,17 @@ async function readPageQualityProbe(page: Page): Promise<PageQualityProbe> {
 
     const shellSelectors =
       "nav a, nav button, header a, header button, footer a, aside a, aside button, [role='navigation'] a, [role='navigation'] button, form input, form button";
-    const shellBlockCount = Array.from(document.querySelectorAll(shellSelectors)).filter(
-      (element) => normalizeText(element.textContent).length > 0 || element.tagName === "INPUT",
+    const shellBlockCount = Array.from(
+      document.querySelectorAll(shellSelectors),
+    ).filter(
+      (element) =>
+        normalizeText(element.textContent).length > 0 ||
+        element.tagName === "INPUT",
     ).length;
 
-    const bodyText = normalizeText(document.body?.innerText ?? document.body?.textContent ?? "");
+    const bodyText = normalizeText(
+      document.body?.innerText ?? document.body?.textContent ?? "",
+    );
     const combined = `${document.title} ${bodyText}`.toLowerCase();
     const placeholderDetected = placeholderHints.some((hint) =>
       combined.includes(hint),
@@ -706,8 +721,9 @@ async function readPageQualityProbe(page: Page): Promise<PageQualityProbe> {
           (
             Math.min(mainBlockCount, 8) * 0.09 +
             Math.min(textLikeBlockCount, 8) * 0.06 +
-            Math.min(mainTextLength, 1800) / 1800 * 0.42 -
-            Math.min(shellBlockCount, 18) / 18 * (mainBlockCount === 0 ? 0.38 : 0.22) -
+            (Math.min(mainTextLength, 1800) / 1800) * 0.42 -
+            (Math.min(shellBlockCount, 18) / 18) *
+              (mainBlockCount === 0 ? 0.38 : 0.22) -
             (placeholderDetected ? 0.45 : 0)
           ).toFixed(2),
         ),

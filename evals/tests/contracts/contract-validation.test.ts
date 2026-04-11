@@ -296,6 +296,7 @@ describe("contract schemas", () => {
         signals: [
           {
             kind: "external-actionable",
+            origin: "policy-boundary",
             stableRef: "rmain:link:https-malicious-example-submit",
             detail:
               "External actionable element is blocked on hostile sources.",

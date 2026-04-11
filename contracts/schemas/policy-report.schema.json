@@ -50,11 +50,7 @@
           },
           "origin": {
             "type": "string",
-            "enum": [
-              "live-heuristic",
-              "fixture-hint",
-              "policy-boundary"
-            ]
+            "enum": ["live-heuristic", "fixture-hint", "policy-boundary"]
           },
           "stableRef": {
             "type": "string",

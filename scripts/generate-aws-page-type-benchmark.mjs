@@ -22,7 +22,11 @@ const samples = [
     id: "s3-listobjectsv2-api",
     pageType: "api-reference",
     url: "https://docs.aws.amazon.com/AmazonS3/latest/API/API_ListObjectsV2.html",
-    mustContainTexts: ["ListObjectsV2", "up to 1,000", "General purpose bucket"],
+    mustContainTexts: [
+      "ListObjectsV2",
+      "up to 1,000",
+      "General purpose bucket",
+    ],
   },
   {
     id: "sdk-js-s3-examples",
