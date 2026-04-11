@@ -180,6 +180,12 @@ Remove the managed install and all stored data:
 touch-browser uninstall --purge-all --yes
 ```
 
+Installed MCP bridge:
+
+```bash
+touch-browser mcp
+```
+
 MCP bridge (repo checkout integration asset):
 
 ```bash

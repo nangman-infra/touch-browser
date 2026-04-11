@@ -158,6 +158,7 @@ pub(crate) fn usage() -> String {
         "  touch-browser search <query> [--engine google|brave] [--headed] [--profile-dir <path>] [--budget <tokens>] [--session-file <path>]",
         "  touch-browser search-open-result --rank <number> [--prefer-official] [--engine google|brave] [--session-file <path>] [--headed]",
         "  touch-browser search-open-top [--limit <count>] [--engine google|brave] [--session-file <path>] [--headed]",
+        "  touch-browser mcp",
         "  touch-browser update [--check] [--version <tag>]",
         "  touch-browser uninstall [--purge-data] [--purge-all] --yes",
         "  touch-browser open <target> [--browser] [--headed] [--budget <tokens>] [--session-file <path>] [--source-risk low|medium|hostile] [--source-label <label>] [--allow-domain <host> ...]",

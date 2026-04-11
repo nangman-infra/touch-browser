@@ -1,6 +1,6 @@
 #![allow(unused_imports)]
 
-pub(crate) use super::cli_dispatch::{dispatch, run_serve};
+pub(crate) use super::cli_dispatch::{dispatch, run_mcp, run_serve};
 #[cfg(test)]
 pub(crate) use super::cli_error::build_cli_error_payload;
 pub(crate) use super::cli_error::{emit_cli_error, CliError};
@@ -12,7 +12,9 @@ pub(crate) use super::cli_models::{
     SessionRefreshOptions, SessionSynthesizeOptions, SubmitOptions, TargetOptions,
     TelemetryRecentOptions, TypeOptions, UninstallOptions, UpdateOptions,
 };
-pub(crate) use super::cli_support::{current_timestamp, repo_root, slot_timestamp, usage};
+pub(crate) use super::cli_support::{
+    current_timestamp, node_executable, repo_root, resource_root, slot_timestamp, usage,
+};
 pub(crate) use super::command_parser::{
     parse_ack_risk, parse_command, parse_output_format, parse_policy_profile, parse_search_engine,
     parse_source_risk,

@@ -179,7 +179,22 @@ Safety and audit surfaces:
 
 ## MCP Example
 
-Minimal MCP bridge setup from the repository root:
+Minimal MCP bridge setup for an installed standalone command:
+
+```json
+{
+  "mcpServers": {
+    "touch-browser": {
+      "command": "touch-browser",
+      "args": ["mcp"]
+    }
+  }
+}
+```
+
+The bridge starts `touch-browser serve` underneath and exposes tools like `tb_search`, `tb_search_open_top`, `tb_open`, `tb_read_view`, `tb_extract`, `tb_tab_open`, and `tb_session_synthesize`.
+
+Repository checkout integration asset:
 
 ```json
 {
@@ -192,9 +207,7 @@ Minimal MCP bridge setup from the repository root:
 }
 ```
 
-The bridge starts `touch-browser serve` underneath and exposes tools like `tb_search`, `tb_search_open_top`, `tb_open`, `tb_read_view`, `tb_extract`, `tb_tab_open`, and `tb_session_synthesize`.
-
-The standalone bundle ships `touch-browser serve`. The checked-in MCP bridge launcher remains a repository integration asset and is run from a repo checkout or container image, not from the installed standalone command alone.
+The standalone bundle now ships `touch-browser mcp` and `touch-browser serve`. The checked-in Node launcher remains a repository integration asset for repo checkouts or container images.
 
 By default the bridge prefers an explicit `TOUCH_BROWSER_SERVE_COMMAND`, then an explicit binary path, then an installed or packaged `touch-browser` binary, then repo-local `target/{release,debug}` binaries. If none are available, it fails fast with an install/build instruction instead of dropping back to `cargo run`.
 

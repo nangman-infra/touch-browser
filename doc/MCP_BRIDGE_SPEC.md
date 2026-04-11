@@ -16,9 +16,23 @@ Provided file:
 
 Run:
 
+- installed standalone command: `touch-browser mcp`
 - repo checkout: `pnpm run mcp:bridge`
 
-Minimal setup:
+Minimal installed setup:
+
+```json
+{
+  "mcpServers": {
+    "touch-browser": {
+      "command": "touch-browser",
+      "args": ["mcp"]
+    }
+  }
+}
+```
+
+Repository checkout setup:
 
 ```json
 {
@@ -117,7 +131,7 @@ Serve-to-MCP mapping:
 - search responses also carry `status`, `statusDetail`, and structured `nextActionHints.actor/canAutoRun/headedRequired`, so an MCP client can decide whether to open ranked tabs, re-run headed for a CAPTCHA, or hand the step back to a human
 - interactive tools only make sense inside allowlisted daemon sessions and still require risk acknowledgement when challenge, MFA, auth, or high-risk-write signals appear
 - the bridge starts `touch-browser serve` as an internal child process and injects `TOUCH_BROWSER_TELEMETRY_SURFACE=mcp`
-- the standalone bundle ships `touch-browser serve`; the checked-in bridge launcher itself remains a repository integration asset
+- the standalone bundle ships both `touch-browser mcp` and `touch-browser serve`; the checked-in Node launcher itself remains a repository integration asset
 - child-process resolution order is `TOUCH_BROWSER_SERVE_COMMAND` -> `TOUCH_BROWSER_SERVE_BINARY` -> installed `touch-browser` on `PATH` -> packaged binaries under `bin/`, `dist/standalone/*/bin`, or repo-local `target/{release,debug}`
 - if no binary can be resolved, the bridge fails fast and tells the operator to install a standalone bundle or build the repo once
 - set `TOUCH_BROWSER_SERVE_COMMAND` to force a specific built binary or wrapper command

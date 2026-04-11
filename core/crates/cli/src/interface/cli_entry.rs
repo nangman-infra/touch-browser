@@ -1,8 +1,8 @@
 use serde_json::Value;
 
 use super::deps::{
-    dispatch, emit_cli_error, log_telemetry_error, log_telemetry_success, parse_command, run_serve,
-    telemetry_surface_label, usage, CliCommand, CliError, OutputFormat,
+    dispatch, emit_cli_error, log_telemetry_error, log_telemetry_success, parse_command, run_mcp,
+    run_serve, telemetry_surface_label, usage, CliCommand, CliError, OutputFormat,
 };
 
 #[derive(Debug, Clone, Default)]
@@ -74,11 +74,12 @@ pub(crate) fn preprocess_cli_args(raw_args: Vec<String>) -> ProcessedCliArgs {
 }
 
 pub(crate) fn command_usage(command_name: &str) -> Option<String> {
-    let prefix = format!("  touch-browser {command_name} ");
+    let exact = format!("  touch-browser {command_name}");
+    let prefix = format!("{exact} ");
     let usage_text = usage();
     let lines = usage_text
         .lines()
-        .filter(|line| line.starts_with(&prefix))
+        .filter(|line| *line == exact || line.starts_with(&prefix))
         .collect::<Vec<_>>();
     if lines.is_empty() {
         None
@@ -138,8 +139,13 @@ pub(crate) fn run_cli(raw_args: Vec<String>) -> i32 {
         }
     };
 
-    if matches!(command, CliCommand::Serve) {
-        if let Err(error) = run_serve() {
+    if matches!(command, CliCommand::Serve | CliCommand::Mcp) {
+        let result = match command {
+            CliCommand::Serve => run_serve(),
+            CliCommand::Mcp => run_mcp(),
+            _ => Ok(()),
+        };
+        if let Err(error) = result {
             emit_cli_error(&error, json_errors);
             return 1;
         }
@@ -193,7 +199,7 @@ pub(crate) fn run_cli(raw_args: Vec<String>) -> i32 {
 
 #[cfg(test)]
 mod tests {
-    use super::{should_log_telemetry_command, should_log_telemetry_operation};
+    use super::{command_usage, should_log_telemetry_command, should_log_telemetry_operation};
     use crate::{CliCommand, SearchEngine, SearchOptions, UninstallOptions, DEFAULT_SEARCH_TOKENS};
 
     #[test]
@@ -217,5 +223,14 @@ mod tests {
                 session_file: None,
             }
         )));
+    }
+
+    #[test]
+    fn command_usage_supports_commands_without_positional_arguments() {
+        let serve_usage = command_usage("serve").expect("serve usage should exist");
+        let mcp_usage = command_usage("mcp").expect("mcp usage should exist");
+
+        assert_eq!(serve_usage, "Usage:\n  touch-browser serve");
+        assert_eq!(mcp_usage, "Usage:\n  touch-browser mcp");
     }
 }

@@ -106,6 +106,7 @@ rm -rf "${BUNDLE_ROOT}"
 mkdir -p \
   "${BUNDLE_ROOT}/bin" \
   "${RUNTIME_ROOT}/adapters/playwright" \
+  "${RUNTIME_ROOT}/integrations/mcp/bridge" \
   "${RUNTIME_ROOT}/scripts/lib"
 
 (
@@ -120,10 +121,15 @@ chmod +x "${RUNTIME_ROOT}/touch-browser-bin"
 rsync -a "${NODE_PREFIX}/" "${RUNTIME_ROOT}/node/"
 rsync -a "${REPO_ROOT}/node_modules/" "${RUNTIME_ROOT}/node_modules/"
 rsync -a "${REPO_ROOT}/adapters/playwright/dist-runtime/src/" "${RUNTIME_ROOT}/adapters/playwright/"
+rsync -a "${REPO_ROOT}/integrations/mcp/bridge/" "${RUNTIME_ROOT}/integrations/mcp/bridge/"
 
 cp "${REPO_ROOT}/scripts/evidence-embedding-runner.mjs" "${RUNTIME_ROOT}/scripts/evidence-embedding-runner.mjs"
 cp "${REPO_ROOT}/scripts/evidence-nli-runner.mjs" "${RUNTIME_ROOT}/scripts/evidence-nli-runner.mjs"
+cp "${REPO_ROOT}/scripts/touch-browser-mcp-bridge.mjs" "${RUNTIME_ROOT}/scripts/touch-browser-mcp-bridge.mjs"
 cp "${REPO_ROOT}/scripts/lib/model-runner.mjs" "${RUNTIME_ROOT}/scripts/lib/model-runner.mjs"
+cp "${REPO_ROOT}/scripts/lib/serve-rpc-client.mjs" "${RUNTIME_ROOT}/scripts/lib/serve-rpc-client.mjs"
+cp "${REPO_ROOT}/scripts/lib/shell-command.mjs" "${RUNTIME_ROOT}/scripts/lib/shell-command.mjs"
+cp "${REPO_ROOT}/scripts/lib/touch-browser-command.mjs" "${RUNTIME_ROOT}/scripts/lib/touch-browser-command.mjs"
 cp "${REPO_ROOT}/scripts/install-standalone-bundle.sh" "${BUNDLE_ROOT}/install.sh"
 cp "${REPO_ROOT}/scripts/uninstall-standalone-bundle.sh" "${BUNDLE_ROOT}/uninstall.sh"
 chmod +x "${BUNDLE_ROOT}/install.sh"

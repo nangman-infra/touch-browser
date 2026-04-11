@@ -1,12 +1,18 @@
 # MCP Integration
 
-Minimal bridge command:
+Installed standalone command:
+
+```bash
+touch-browser mcp
+```
+
+Repository integration asset:
 
 ```bash
 node integrations/mcp/bridge/index.mjs
 ```
 
-This launcher is a repository integration asset. The standalone installed bundle ships `touch-browser serve`, not a separate installed MCP bridge command.
+The standalone installed bundle ships both `touch-browser mcp` and `touch-browser serve`. The checked-in Node launcher remains the repo-local integration asset.
 
 The checked-in desktop-style config example is:
 
@@ -15,7 +21,6 @@ The checked-in desktop-style config example is:
 Supported MCP tools include:
 
 - `tb_read_view`
-- `tb_compact_view`
 - `tb_extract`
 - `tb_status`
 

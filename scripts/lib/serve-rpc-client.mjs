@@ -1,8 +1,7 @@
-import { repoRoot } from "./live-sample-server.mjs";
 import { spawnShell } from "./shell-command.mjs";
 
 export function createServeRpcClient({
-  cwd = repoRoot,
+  cwd = process.cwd(),
   serveCommand = "target/debug/touch-browser serve",
   requestTimeoutMs = 120_000,
 } = {}) {

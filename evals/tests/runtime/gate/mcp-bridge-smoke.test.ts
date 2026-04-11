@@ -177,6 +177,51 @@ describe("mcp bridge smoke", () => {
     expect(status.structuredContent.daemon).toBe(true);
   }, 40_000);
 
+  it("exposes the same MCP bridge through the touch-browser mcp command", async () => {
+    const child = spawnShellCommand(
+      "cargo run -q -p touch-browser-cli -- mcp",
+      {
+        cwd: repoRoot,
+        stdio: ["pipe", "pipe", "pipe"],
+      },
+    ) as ChildProcessWithoutNullStreams;
+    clients.push(child);
+
+    const call = createRpcCaller(child);
+
+    const initialize = await call<{ protocolVersion: string }>("initialize", {
+      protocolVersion: "2025-06-18",
+      capabilities: {},
+      clientInfo: {
+        name: "vitest",
+        version: "0.0.0",
+      },
+    });
+    expect(initialize.protocolVersion).toBe("2025-06-18");
+
+    const tools = await call<{ tools: Array<{ readonly name: string }> }>(
+      "tools/list",
+      {},
+    );
+    expect(
+      tools.tools.some(
+        (tool: { readonly name: string }) => tool.name === "tb_status",
+      ),
+    ).toBe(true);
+
+    const status = await call<{
+      structuredContent: {
+        status: string;
+        daemon: boolean;
+      };
+    }>("tools/call", {
+      name: "tb_status",
+      arguments: {},
+    });
+    expect(status.structuredContent.status).toBe("ready");
+    expect(status.structuredContent.daemon).toBe(true);
+  }, 40_000);
+
   it("returns MCP protocol errors on stdout without polluting stderr", async () => {
     const child = spawnShellCommand("node integrations/mcp/bridge/index.mjs", {
       cwd: repoRoot,

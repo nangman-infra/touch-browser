@@ -78,6 +78,13 @@ describe("standalone lifecycle smoke", () => {
       );
 
       const commandPath = path.join(installDir, "touch-browser");
+      const mcpStatus = await runMcpStatus(
+        `${shellQuote(commandPath)} mcp`,
+        env,
+      );
+      expect(mcpStatus.status).toBe("ready");
+      expect(mcpStatus.daemon).toBe(true);
+
       const preflight = JSON.parse(
         await runShell(
           `${shellQuote(commandPath)} update --check --version 0.1.1`,
@@ -390,4 +397,128 @@ async function runShell(command: string, env: NodeJS.ProcessEnv) {
   }
 
   return Buffer.concat(stdout).toString("utf8").trim();
+}
+
+async function runMcpStatus(
+  bridgeCommand: string,
+  env: NodeJS.ProcessEnv,
+): Promise<{ status: string; daemon: boolean }> {
+  const child = spawnShellCommand(bridgeCommand, {
+    cwd: repoRoot,
+    env,
+    stdio: ["pipe", "pipe", "pipe"],
+  });
+
+  const stderrChunks: Buffer[] = [];
+  let stdoutBuffer = "";
+
+  child.stdout.setEncoding("utf8");
+  child.stderr.on("data", (chunk) => stderrChunks.push(chunk));
+
+  const result = await new Promise<{ status: string; daemon: boolean }>(
+    (resolve, reject) => {
+      let initialized = false;
+
+      const onData = (chunk: string) => {
+        stdoutBuffer += chunk;
+        const lines = stdoutBuffer.split("\n");
+        stdoutBuffer = lines.pop() ?? "";
+
+        for (const line of lines) {
+          if (!line.trim()) {
+            continue;
+          }
+
+          const payload = JSON.parse(line) as {
+            readonly id?: number;
+            readonly error?: { readonly message: string };
+            readonly result?: unknown;
+          };
+          if (payload.error) {
+            cleanup();
+            reject(new Error(payload.error.message));
+            return;
+          }
+
+          if (!initialized && payload.id === 1) {
+            initialized = true;
+            child.stdin.write(
+              `${JSON.stringify({
+                jsonrpc: "2.0",
+                id: 2,
+                method: "tools/call",
+                params: {
+                  name: "tb_status",
+                  arguments: {},
+                },
+              })}\n`,
+            );
+            continue;
+          }
+
+          if (initialized && payload.id === 2) {
+            cleanup();
+            const statusPayload = payload.result as {
+              readonly structuredContent: {
+                readonly status: string;
+                readonly daemon: boolean;
+              };
+            };
+            resolve(statusPayload.structuredContent);
+            return;
+          }
+        }
+      };
+
+      const onError = (error: Error) => {
+        cleanup();
+        reject(error);
+      };
+
+      const onClose = (code: number | null) => {
+        cleanup();
+        reject(
+          new Error(
+            `mcp command exited with code ${code ?? -1}: ${Buffer.concat(
+              stderrChunks,
+            ).toString("utf8")}`,
+          ),
+        );
+      };
+
+      const cleanup = () => {
+        child.stdout.off("data", onData);
+        child.off("error", onError);
+        child.off("close", onClose);
+      };
+
+      child.stdout.on("data", onData);
+      child.on("error", onError);
+      child.on("close", onClose);
+      child.stdin.write(
+        `${JSON.stringify({
+          jsonrpc: "2.0",
+          id: 1,
+          method: "initialize",
+          params: {
+            protocolVersion: "2025-06-18",
+            capabilities: {},
+            clientInfo: { name: "vitest", version: "0.0.0" },
+          },
+        })}\n`,
+      );
+    },
+  );
+
+  child.stdin.end();
+  await new Promise<void>((resolve) => {
+    child.once("close", () => resolve());
+    setTimeout(() => {
+      if (child.exitCode === null) {
+        child.kill("SIGTERM");
+      }
+    }, 250);
+  });
+
+  return result;
 }

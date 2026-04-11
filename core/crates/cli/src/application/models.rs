@@ -19,6 +19,7 @@ pub(crate) enum CliCommand {
     Search(SearchOptions),
     SearchOpenResult(SearchOpenResultOptions),
     SearchOpenTop(SearchOpenTopOptions),
+    Mcp,
     Update(UpdateOptions),
     Uninstall(UninstallOptions),
     Open(TargetOptions),

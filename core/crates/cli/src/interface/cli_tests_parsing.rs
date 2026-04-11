@@ -230,6 +230,13 @@ fn parses_update_command_with_check_and_version() {
 }
 
 #[test]
+fn parses_mcp_command() {
+    let command = parse_command(&["mcp".to_string()]).expect("mcp command should parse");
+
+    assert_eq!(command, CliCommand::Mcp);
+}
+
+#[test]
 fn rejects_update_command_with_blank_version() {
     let error = parse_command(&[
         "update".to_string(),

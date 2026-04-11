@@ -20,6 +20,7 @@ pub(crate) fn parse_command(args: &[String]) -> Result<CliCommand, CliError> {
         "search-open-top" => Ok(CliCommand::SearchOpenTop(
             search_command_parser::parse_search_open_top_options(&args[1..])?,
         )),
+        "mcp" => Ok(CliCommand::Mcp),
         "update" => Ok(CliCommand::Update(
             install_command_parser::parse_update_options(&args[1..])?,
         )),

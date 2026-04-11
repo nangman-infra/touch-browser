@@ -39,6 +39,9 @@ pub(crate) fn dispatch(command: CliCommand) -> Result<Value, CliError> {
         CliCommand::Search(options) => handle_search(&ctx, options),
         CliCommand::SearchOpenResult(options) => handle_search_open_result(&ctx, options),
         CliCommand::SearchOpenTop(options) => handle_search_open_top(&ctx, options),
+        CliCommand::Mcp => Err(CliError::Usage(
+            "mcp is handled directly and should not be dispatched.".to_string(),
+        )),
         CliCommand::Update(options) => handle_update(&ctx, options),
         CliCommand::Uninstall(options) => handle_uninstall(&ctx, options),
         CliCommand::Open(options) | CliCommand::Snapshot(options) => handle_open(&ctx, options),
@@ -77,6 +80,10 @@ pub(crate) fn dispatch(command: CliCommand) -> Result<Value, CliError> {
 
 pub(crate) fn run_serve() -> Result<(), CliError> {
     crate::interface::serve_runtime::handle_serve()
+}
+
+pub(crate) fn run_mcp() -> Result<(), CliError> {
+    crate::interface::mcp_runtime::handle_mcp()
 }
 
 fn handle_search(
