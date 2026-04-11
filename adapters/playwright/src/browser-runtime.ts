@@ -653,8 +653,6 @@ function shouldExtendReadableProbe(probe: PageQualityProbe): boolean {
 
 async function readPageQualityProbe(page: Page): Promise<PageQualityProbe> {
   return await page.evaluate((placeholderHints) => {
-    const normalizeText = (value: string | null | undefined): string =>
-      (value ?? "").replace(/\s+/g, " ").trim();
     const mainRoots = Array.from(
       document.querySelectorAll("main, article, [role='main']"),
     );
@@ -668,7 +666,7 @@ async function readPageQualityProbe(page: Page): Promise<PageQualityProbe> {
     for (const root of roots) {
       const blocks = Array.from(root.querySelectorAll(contentSelectors));
       for (const block of blocks) {
-        const text = normalizeText(block.textContent);
+        const text = (block.textContent ?? "").replace(/\s+/g, " ").trim();
         if (!text) {
           continue;
         }
@@ -695,13 +693,17 @@ async function readPageQualityProbe(page: Page): Promise<PageQualityProbe> {
       document.querySelectorAll(shellSelectors),
     ).filter(
       (element) =>
-        normalizeText(element.textContent).length > 0 ||
+        (element.textContent ?? "").replace(/\s+/g, " ").trim().length > 0 ||
         element.tagName === "INPUT",
     ).length;
 
-    const bodyText = normalizeText(
-      document.body?.innerText ?? document.body?.textContent ?? "",
-    );
+    const bodyText = (
+      document.body?.innerText ??
+      document.body?.textContent ??
+      ""
+    )
+      .replace(/\s+/g, " ")
+      .trim();
     const combined = `${document.title} ${bodyText}`.toLowerCase();
     const placeholderDetected = placeholderHints.some((hint) =>
       combined.includes(hint),

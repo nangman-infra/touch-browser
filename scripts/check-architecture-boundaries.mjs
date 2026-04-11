@@ -32,9 +32,12 @@ const requiredDocs = [
     requiredText: [
       "1 | Explicit Context Map",
       "6 | Continuous Quality Gate",
+      "Sonar Official Verification",
       "SonarQube",
       "quality:ci",
+      "quality:full",
       "architecture:check",
+      ".env.sonar.local",
     ],
   },
 ];
@@ -301,6 +304,7 @@ async function main() {
   const requiredScripts = [
     "architecture:check",
     "quality:ci",
+    "quality:full",
     "quality:sonar-reports",
   ];
   for (const scriptName of requiredScripts) {

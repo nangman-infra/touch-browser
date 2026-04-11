@@ -33,9 +33,9 @@
 | 1 | Explicit Context Map | bounded context와 integration pattern이 문서화되어 있어야 한다 | `pnpm run architecture:check`가 `doc/CONTEXT_MAP.md` 존재와 핵심 context 용어를 검사 |
 | 2 | Ubiquitous Language | 핵심 용어와 presentation 용어가 분리돼 있어야 한다 | `pnpm run architecture:check`가 `doc/UBIQUITOUS_LANGUAGE.md` 존재와 필수 용어를 검사 |
 | 3 | Application Purity | application은 infrastructure concrete type, shell spawn, raw JSON 조립을 직접 가지지 않는다 | `pnpm run architecture:check`가 `crate::infrastructure::`, `default_cli_ports(`, `Command::new(`, `Stdio::`, `json!(`, `use crate::*;`를 차단 |
-| 4 | Invariant Ownership | 세션, evidence, policy, action 관련 핵심 규칙은 도메인 또는 typed application service에 귀속된다 | `pnpm run quality:ci`와 `pnpm run test`가 replay, policy, evidence, session 회귀를 강제 |
+| 4 | Invariant Ownership | 세션, evidence, policy, action 관련 핵심 규칙은 도메인 또는 typed application service에 귀속된다 | 빠른 merge gate는 `pnpm run quality:ci`, 로컬 확장 검증은 `pnpm run quality:full`이 replay, policy, evidence, session 회귀를 강제 |
 | 5 | Published Language Separation | contracts는 published language만 유지하고 presentation policy는 application으로 분리한다 | `pnpm run contracts:check`, `pnpm run contracts:manifest`, `pnpm run architecture:check`가 contracts의 public renderer 재유입을 차단 |
-| 6 | Continuous Quality Gate | 품질 완료는 SonarQube quality gate 통과로 정의한다 | GitHub Actions `sonar.yml`이 `pnpm run quality:ci` 후 `sonar.qualitygate.wait=true`로 SonarQube 결과를 기다린다 |
+| 6 | Continuous Quality Gate | 품질 완료는 SonarQube quality gate 통과로 정의한다 | GitHub Actions `sonar.yml`은 `pnpm run quality:ci`만 merge-blocking으로 실행하고, Sonar는 그 뒤 `sonar.qualitygate.wait=true`로 최신 분석 결과를 기다린다 |
 
 ## 4. Automation Map
 
@@ -45,17 +45,35 @@
 
 ```bash
 pnpm run architecture:check
-pnpm run quality:ci
+pnpm run quality:full
 ```
 
 ### 4.2 CI Gate
 
 CI 기준:
 
-1. `quality-checks` job이 `pnpm run quality:ci`를 통과해야 합니다.
-2. 그 다음 `sonarqube` job이 `pnpm run quality:sonar-reports`로 Clippy JSON report를 생성합니다.
-3. Sonar scan은 `sonar.qualitygate.wait=true`로 품질 게이트 결과를 기다립니다.
-4. Quality Gate가 실패하면 DDD-lite 완료 기준 6번이 실패합니다.
+1. `quality-checks` job은 merge를 막아야 하는 필수 검증만 담은 `pnpm run quality:ci`를 통과해야 합니다.
+2. 이 빠른 gate에는 `lint`, `fmt`, `typecheck`, `clippy`, 전체 Rust 테스트, Playwright adapter gate, 최소 `serve/MCP/CLI` smoke 검증만 포함됩니다.
+3. 문서 문구 검증, fixture-heavy eval, proof/benchmark 계열 검증은 로컬 `pnpm run quality:full`에서 확인합니다.
+4. 그 다음 `sonarqube` job이 `pnpm run quality:sonar-reports`로 Clippy JSON report를 생성합니다.
+5. Sonar scan은 `sonar.qualitygate.wait=true`로 품질 게이트 결과를 기다립니다.
+6. Quality Gate가 실패하면 DDD-lite 완료 기준 6번이 실패합니다.
+
+## 4.3 Sonar Official Verification
+
+- Default shell env is not assumed to contain Sonar credentials.
+- Load local ignored credentials from `/Volumes/WD/Developments/nangman-infra/.env.sonar.local` when available.
+- Query:
+  - quality gate
+  - latest analysis revision
+  - unresolved issues
+  - hotspots
+- Not done until:
+  - latest analysis revision == pushed SHA
+  - Quality Gate == OK
+  - new_violations == 0
+  - unresolved issues == 0
+  - hotspots == 0
 
 ## 5. Human And AI Ownership
 
@@ -80,7 +98,8 @@ AI가 자동화할 것:
 2. [UBIQUITOUS_LANGUAGE.md](UBIQUITOUS_LANGUAGE.md)가 최신 핵심 용어를 반영한다.
 3. `pnpm run architecture:check`가 통과한다.
 4. `pnpm run quality:ci`가 통과한다.
-5. SonarQube scan이 실행되고 quality gate가 통과한다.
+5. 로컬 확장 검증이 필요할 때 `pnpm run quality:full`로 문서/fixture-heavy 검증까지 확인한다.
+6. SonarQube scan이 실행되고 `latest analysis revision == pushed SHA`, `Quality Gate == OK`, `new_violations == 0`, `unresolved issues == 0`, `hotspots == 0`를 만족한다.
 
 ## 7. Sources
 

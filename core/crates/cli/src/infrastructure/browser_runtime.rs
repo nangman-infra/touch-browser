@@ -703,18 +703,18 @@ fn build_playwright_adapter_command(
         return Ok(command);
     }
 
-    if let Some(compiled_entry) = resolve_compiled_playwright_adapter(repo_root) {
-        let mut command = Command::new(node_executable());
-        command.arg(compiled_entry).current_dir(repo_root);
-        return Ok(command);
-    }
-
     let source_entry = repo_root.join("adapters/playwright/src/index.ts");
     if source_entry.is_file() {
         let mut command = Command::new("pnpm");
         command
             .args(["exec", "tsx", "adapters/playwright/src/index.ts"])
             .current_dir(repo_root);
+        return Ok(command);
+    }
+
+    if let Some(compiled_entry) = resolve_compiled_playwright_adapter(repo_root) {
+        let mut command = Command::new(node_executable());
+        command.arg(compiled_entry).current_dir(repo_root);
         return Ok(command);
     }
 
@@ -810,5 +810,43 @@ mod tests {
         let error = build_playwright_adapter_command(&repo_root, &runtime_root)
             .expect_err("missing adapter should be rejected");
         assert!(matches!(error, CliError::Adapter(_)));
+    }
+
+    #[test]
+    fn adapter_command_prefers_source_entry_over_compiled_entry_in_repo_root() {
+        let repo_root = temporary_directory("adapter-priority");
+        let runtime_root = temporary_directory("adapter-runtime");
+        let source_entry = repo_root.join("adapters/playwright/src/index.ts");
+        let compiled_entry = repo_root.join("adapters/playwright/dist-runtime/src/index.js");
+
+        fs::create_dir_all(
+            source_entry
+                .parent()
+                .expect("source adapter parent should exist"),
+        )
+        .expect("source adapter parent should be created");
+        fs::write(&source_entry, "export {};\n").expect("source adapter should exist");
+
+        fs::create_dir_all(
+            compiled_entry
+                .parent()
+                .expect("compiled adapter parent should exist"),
+        )
+        .expect("compiled adapter parent should be created");
+        fs::write(&compiled_entry, "export {};\n").expect("compiled adapter should exist");
+
+        let command = build_playwright_adapter_command(&repo_root, &runtime_root)
+            .expect("source adapter command should resolve");
+        let program = command.get_program().to_string_lossy().into_owned();
+        let args = command
+            .get_args()
+            .map(|value| value.to_string_lossy().into_owned())
+            .collect::<Vec<_>>();
+
+        assert_eq!(program, "pnpm");
+        assert_eq!(
+            args,
+            vec!["exec", "tsx", "adapters/playwright/src/index.ts"]
+        );
     }
 }
