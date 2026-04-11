@@ -112,10 +112,12 @@ SAFE 결론:
 - `core/crates/cli/src/interface/search_command_parser.rs`
 - `core/crates/cli/src/infrastructure/browser_models.rs`
 - `core/crates/cli/src/interface/session_command_parser.rs`
+- `core/crates/runtime/src/tests.rs`
 
 사유:
 
 - 이 파일들은 command parser / adapter action wrapper / browser DTO bridge 성격입니다.
+- `core/crates/runtime/src/tests.rs`는 runtime smoke와 synthesis 회귀를 시나리오 대칭으로 고정하는 테스트 파일입니다.
 - 의도적으로 대칭적인 surface를 제공하므로, Sonar CPD가 중복으로 보는 라인 상당수가 실제로는 public surface symmetry입니다.
 - 이 영역의 중복은 domain logic duplication이 아니라 transport symmetry입니다.
 

@@ -35,6 +35,19 @@ struct SnapshotQualityAssessment {
     shell_block_count: usize,
 }
 
+#[derive(Debug, Clone, Copy)]
+struct SnapshotQualityInputs {
+    placeholder_detected: bool,
+    meaningful_block_count: usize,
+    main_block_count: usize,
+    meaningful_chars: usize,
+    longform_blocks: usize,
+    shell_block_count: usize,
+    content_headings: usize,
+    text_like_blocks: usize,
+    truncated: bool,
+}
+
 pub(crate) fn browser_fallback_reason(snapshot: &SnapshotDocument) -> Option<&'static str> {
     snapshot_quality_assessment(snapshot).fallback_reason
 }
@@ -186,16 +199,36 @@ fn recommended_next_step(
 
 fn snapshot_quality_assessment(snapshot: &SnapshotDocument) -> SnapshotQualityAssessment {
     if snapshot.source.source_type != SourceType::Fixture && snapshot.blocks.is_empty() {
-        return SnapshotQualityAssessment {
-            fallback_reason: Some("empty-snapshot"),
-            quality_score: 0.0,
-            quality_label: "low",
-            meaningful_block_count: 0,
-            main_block_count: 0,
-            shell_block_count: 0,
-        };
+        return empty_snapshot_quality_assessment();
     }
 
+    let quality_inputs = snapshot_quality_inputs(snapshot);
+    let fallback_reason = snapshot_fallback_reason(snapshot, &quality_inputs);
+    let quality_score = snapshot_quality_score(&quality_inputs);
+    let quality_label = snapshot_quality_label(quality_score);
+
+    SnapshotQualityAssessment {
+        fallback_reason,
+        quality_score: (quality_score * 100.0).round() / 100.0,
+        quality_label,
+        meaningful_block_count: quality_inputs.meaningful_block_count,
+        main_block_count: quality_inputs.main_block_count,
+        shell_block_count: quality_inputs.shell_block_count,
+    }
+}
+
+fn empty_snapshot_quality_assessment() -> SnapshotQualityAssessment {
+    SnapshotQualityAssessment {
+        fallback_reason: Some("empty-snapshot"),
+        quality_score: 0.0,
+        quality_label: "low",
+        meaningful_block_count: 0,
+        main_block_count: 0,
+        shell_block_count: 0,
+    }
+}
+
+fn snapshot_quality_inputs(snapshot: &SnapshotDocument) -> SnapshotQualityInputs {
     let normalized_blocks = snapshot
         .blocks
         .iter()
@@ -210,92 +243,117 @@ fn snapshot_quality_assessment(snapshot: &SnapshotDocument) -> SnapshotQualityAs
         .iter()
         .filter(|block| is_meaningful_snapshot_block(block))
         .collect::<Vec<_>>();
-    let meaningful_block_count = meaningful_blocks.len();
-    let main_block_count = meaningful_blocks
-        .iter()
-        .filter(|block| block.stable_ref.starts_with("rmain:"))
-        .count();
-    let meaningful_chars = meaningful_blocks
-        .iter()
-        .map(|block| block.text.trim().chars().count())
-        .sum::<usize>();
-    let longform_blocks = snapshot
-        .blocks
-        .iter()
-        .filter(|block| is_longform_content_block(block))
-        .count();
-    let shell_block_count = snapshot
-        .blocks
-        .iter()
-        .filter(|block| is_shell_like_block(block))
-        .count();
-    let content_headings = snapshot
-        .blocks
-        .iter()
-        .filter(|block| {
-            matches!(block.kind, SnapshotBlockKind::Heading)
-                && !matches!(
-                    block.role,
-                    SnapshotBlockRole::PrimaryNav | SnapshotBlockRole::SecondaryNav
-                )
-                && block.text.trim().chars().count() >= 4
-        })
-        .count();
-    let text_like_blocks = snapshot
-        .blocks
-        .iter()
-        .filter(|block| {
-            matches!(
-                block.kind,
-                SnapshotBlockKind::Text | SnapshotBlockKind::List | SnapshotBlockKind::Table
-            )
-        })
-        .count();
 
-    let fallback_reason = if snapshot.source.source_type != SourceType::Http {
-        None
-    } else if placeholder_detected {
-        Some("js-placeholder")
-    } else if main_block_count == 0 && meaningful_block_count <= 2 && meaningful_chars < 240 {
-        Some("missing-main-content")
-    } else if (longform_blocks == 0 && text_like_blocks <= 1 && shell_block_count >= 8)
-        || (longform_blocks <= 1
-            && meaningful_chars < 320
-            && shell_block_count >= 10
-            && content_headings <= 1)
+    SnapshotQualityInputs {
+        placeholder_detected,
+        meaningful_block_count: meaningful_blocks.len(),
+        main_block_count: meaningful_blocks
+            .iter()
+            .filter(|block| block.stable_ref.starts_with("rmain:"))
+            .count(),
+        meaningful_chars: meaningful_blocks
+            .iter()
+            .map(|block| block.text.trim().chars().count())
+            .sum::<usize>(),
+        longform_blocks: snapshot
+            .blocks
+            .iter()
+            .filter(|block| is_longform_content_block(block))
+            .count(),
+        shell_block_count: snapshot
+            .blocks
+            .iter()
+            .filter(|block| is_shell_like_block(block))
+            .count(),
+        content_headings: snapshot
+            .blocks
+            .iter()
+            .filter(|block| {
+                matches!(block.kind, SnapshotBlockKind::Heading)
+                    && !matches!(
+                        block.role,
+                        SnapshotBlockRole::PrimaryNav | SnapshotBlockRole::SecondaryNav
+                    )
+                    && block.text.trim().chars().count() >= 4
+            })
+            .count(),
+        text_like_blocks: snapshot
+            .blocks
+            .iter()
+            .filter(|block| {
+                matches!(
+                    block.kind,
+                    SnapshotBlockKind::Text | SnapshotBlockKind::List | SnapshotBlockKind::Table
+                )
+            })
+            .count(),
+        truncated: snapshot.budget.truncated,
+    }
+}
+
+fn snapshot_fallback_reason(
+    snapshot: &SnapshotDocument,
+    quality_inputs: &SnapshotQualityInputs,
+) -> Option<&'static str> {
+    if snapshot.source.source_type != SourceType::Http {
+        return None;
+    }
+
+    if quality_inputs.placeholder_detected {
+        return Some("js-placeholder");
+    }
+
+    if quality_inputs.main_block_count == 0
+        && quality_inputs.meaningful_block_count <= 2
+        && quality_inputs.meaningful_chars < 240
     {
+        return Some("missing-main-content");
+    }
+
+    let primary_shell_heavy = quality_inputs.longform_blocks == 0
+        && quality_inputs.text_like_blocks <= 1
+        && quality_inputs.shell_block_count >= 8;
+    let secondary_shell_heavy = quality_inputs.longform_blocks <= 1
+        && quality_inputs.meaningful_chars < 320
+        && quality_inputs.shell_block_count >= 10
+        && quality_inputs.content_headings <= 1;
+
+    if primary_shell_heavy || secondary_shell_heavy {
         Some("shell-heavy")
     } else {
         None
-    };
+    }
+}
 
-    let quality_score = {
-        let content_score = ((main_block_count as f64) * 0.12)
-            + ((longform_blocks as f64) * 0.16)
-            + ((content_headings as f64) * 0.08)
-            + ((meaningful_chars.min(2400) as f64) / 2400.0) * 0.34
-            + ((text_like_blocks.min(8) as f64) / 8.0) * 0.18;
-        let shell_penalty = ((shell_block_count.min(18) as f64) / 18.0)
-            * if main_block_count == 0 { 0.36 } else { 0.22 };
-        let placeholder_penalty = if placeholder_detected { 0.45 } else { 0.0 };
-        let truncation_penalty = if snapshot.budget.truncated { 0.08 } else { 0.0 };
-        (content_score - shell_penalty - placeholder_penalty - truncation_penalty).clamp(0.0, 1.0)
+fn snapshot_quality_score(quality_inputs: &SnapshotQualityInputs) -> f64 {
+    let content_score = ((quality_inputs.main_block_count as f64) * 0.12)
+        + ((quality_inputs.longform_blocks as f64) * 0.16)
+        + ((quality_inputs.content_headings as f64) * 0.08)
+        + ((quality_inputs.meaningful_chars.min(2400) as f64) / 2400.0) * 0.34
+        + ((quality_inputs.text_like_blocks.min(8) as f64) / 8.0) * 0.18;
+    let shell_penalty = ((quality_inputs.shell_block_count.min(18) as f64) / 18.0)
+        * if quality_inputs.main_block_count == 0 {
+            0.36
+        } else {
+            0.22
+        };
+    let placeholder_penalty = if quality_inputs.placeholder_detected {
+        0.45
+    } else {
+        0.0
     };
-    let quality_label = if quality_score >= 0.75 {
+    let truncation_penalty = if quality_inputs.truncated { 0.08 } else { 0.0 };
+
+    (content_score - shell_penalty - placeholder_penalty - truncation_penalty).clamp(0.0, 1.0)
+}
+
+fn snapshot_quality_label(quality_score: f64) -> &'static str {
+    if quality_score >= 0.75 {
         "high"
     } else if quality_score >= 0.45 {
         "medium"
     } else {
         "low"
-    };
-
-    SnapshotQualityAssessment {
-        fallback_reason,
-        quality_score: (quality_score * 100.0).round() / 100.0,
-        quality_label,
-        meaningful_block_count,
-        main_block_count,
-        shell_block_count,
     }
 }
 

@@ -425,6 +425,15 @@ type PageQualityProbe = {
   shellBlockCount: number;
 };
 
+type PageQualityProbeStats = {
+  bodyTextLength: number;
+  mainBlockCount: number;
+  mainTextLength: number;
+  placeholderDetected: boolean;
+  shellBlockCount: number;
+  textLikeBlockCount: number;
+};
+
 async function maybeAwaitManualSearchRecovery(
   page: Page,
   source: BrowserSource,
@@ -652,7 +661,7 @@ function shouldExtendReadableProbe(probe: PageQualityProbe): boolean {
 }
 
 async function readPageQualityProbe(page: Page): Promise<PageQualityProbe> {
-  return await page.evaluate((placeholderHints) => {
+  const stats = await page.evaluate((placeholderHints) => {
     const mainRoots = Array.from(
       document.querySelectorAll("main, article, [role='main']"),
     );
@@ -666,7 +675,7 @@ async function readPageQualityProbe(page: Page): Promise<PageQualityProbe> {
     for (const root of roots) {
       const blocks = Array.from(root.querySelectorAll(contentSelectors));
       for (const block of blocks) {
-        const text = (block.textContent ?? "").replace(/\s+/g, " ").trim();
+        const text = (block.textContent ?? "").replaceAll(/\s+/g, " ").trim();
         if (!text) {
           continue;
         }
@@ -693,7 +702,7 @@ async function readPageQualityProbe(page: Page): Promise<PageQualityProbe> {
       document.querySelectorAll(shellSelectors),
     ).filter(
       (element) =>
-        (element.textContent ?? "").replace(/\s+/g, " ").trim().length > 0 ||
+        (element.textContent ?? "").replaceAll(/\s+/g, " ").trim().length > 0 ||
         element.tagName === "INPUT",
     ).length;
 
@@ -702,54 +711,91 @@ async function readPageQualityProbe(page: Page): Promise<PageQualityProbe> {
       document.body?.textContent ??
       ""
     )
-      .replace(/\s+/g, " ")
+      .replaceAll(/\s+/g, " ")
       .trim();
     const combined = `${document.title} ${bodyText}`.toLowerCase();
     const placeholderDetected = placeholderHints.some((hint) =>
       combined.includes(hint),
     );
-    const shellHeavy =
-      shellBlockCount >= 10 && mainBlockCount <= 1 && mainTextLength < 220;
-    const ready =
-      !placeholderDetected &&
-      ((mainBlockCount >= 3 && mainTextLength >= 240) ||
-        (mainBlockCount >= 2 && mainTextLength >= 160 && !shellHeavy) ||
-        (textLikeBlockCount >= 5 && bodyText.length >= 700 && !shellHeavy));
-    const score = Math.max(
-      0,
-      Math.min(
-        1,
-        Number(
-          (
-            Math.min(mainBlockCount, 8) * 0.09 +
-            Math.min(textLikeBlockCount, 8) * 0.06 +
-            (Math.min(mainTextLength, 1800) / 1800) * 0.42 -
-            (Math.min(shellBlockCount, 18) / 18) *
-              (mainBlockCount === 0 ? 0.38 : 0.22) -
-            (placeholderDetected ? 0.45 : 0)
-          ).toFixed(2),
-        ),
-      ),
-    );
-    const reason = ready
-      ? mainBlockCount >= 3
-        ? "main-content-ready"
-        : "body-content-ready"
-      : placeholderDetected
-        ? "js-placeholder"
-        : shellHeavy
-          ? "shell-heavy"
-          : mainBlockCount === 0
-            ? "no-main-content"
-            : "low-readable-content";
 
     return {
-      ready,
-      placeholderDetected,
-      reason,
-      score,
+      bodyTextLength: bodyText.length,
       mainBlockCount,
+      mainTextLength,
+      placeholderDetected,
       shellBlockCount,
-    } satisfies PageQualityProbe;
+      textLikeBlockCount,
+    } satisfies PageQualityProbeStats;
   }, JS_PLACEHOLDER_HINTS);
+
+  const shellHeavy = isShellHeavyPageQualityProbe(stats);
+  const ready = isReadyPageQualityProbe(stats, shellHeavy);
+
+  return {
+    ready,
+    placeholderDetected: stats.placeholderDetected,
+    reason: pageQualityProbeReason(stats, ready, shellHeavy),
+    score: pageQualityProbeScore(stats),
+    mainBlockCount: stats.mainBlockCount,
+    shellBlockCount: stats.shellBlockCount,
+  };
+}
+
+function isShellHeavyPageQualityProbe(stats: PageQualityProbeStats): boolean {
+  return (
+    stats.shellBlockCount >= 10 &&
+    stats.mainBlockCount <= 1 &&
+    stats.mainTextLength < 220
+  );
+}
+
+function isReadyPageQualityProbe(
+  stats: PageQualityProbeStats,
+  shellHeavy: boolean,
+): boolean {
+  if (stats.placeholderDetected || shellHeavy) {
+    return false;
+  }
+
+  return (
+    (stats.mainBlockCount >= 3 && stats.mainTextLength >= 240) ||
+    (stats.mainBlockCount >= 2 && stats.mainTextLength >= 160) ||
+    (stats.textLikeBlockCount >= 5 && stats.bodyTextLength >= 700)
+  );
+}
+
+function pageQualityProbeScore(stats: PageQualityProbeStats): number {
+  const score =
+    Math.min(stats.mainBlockCount, 8) * 0.09 +
+    Math.min(stats.textLikeBlockCount, 8) * 0.06 +
+    (Math.min(stats.mainTextLength, 1800) / 1800) * 0.42 -
+    (Math.min(stats.shellBlockCount, 18) / 18) *
+      (stats.mainBlockCount === 0 ? 0.38 : 0.22) -
+    (stats.placeholderDetected ? 0.45 : 0);
+
+  return Math.max(0, Math.min(1, Number(score.toFixed(2))));
+}
+
+function pageQualityProbeReason(
+  stats: PageQualityProbeStats,
+  ready: boolean,
+  shellHeavy: boolean,
+): string {
+  if (ready) {
+    return stats.mainBlockCount >= 3
+      ? "main-content-ready"
+      : "body-content-ready";
+  }
+
+  if (stats.placeholderDetected) {
+    return "js-placeholder";
+  }
+
+  if (shellHeavy) {
+    return "shell-heavy";
+  }
+
+  return stats.mainBlockCount === 0
+    ? "no-main-content"
+    : "low-readable-content";
 }
