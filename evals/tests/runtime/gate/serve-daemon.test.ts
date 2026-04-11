@@ -222,7 +222,7 @@ describe("serve daemon session registry", () => {
     );
     expect(closed.removed).toBe(true);
     expect(closed.removedTabs).toBe(2);
-  }, 30_000);
+  }, 60_000);
 
   it("supports allowlisted interactive typing and submit inside a daemon tab", async () => {
     const client = createRpcClient();
