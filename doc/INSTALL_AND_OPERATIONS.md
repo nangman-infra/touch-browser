@@ -21,8 +21,11 @@ Each bundle contains:
 After downloading and unpacking a release asset from [GitHub Releases](https://github.com/nangman-infra/touch-browser/releases), run:
 
 ```bash
-./touch-browser-<version>-<platform>-<arch>/bin/touch-browser telemetry-summary
+./touch-browser-<version>-<platform>-<arch>/install.sh
+touch-browser telemetry-summary
 ```
+
+This installed `touch-browser` command is the official user-facing runtime path for all CLI and serve operations.
 
 ### Build the standalone bundle locally
 
@@ -32,6 +35,12 @@ pnpm run build:standalone-bundle -- v0.1.0-rc1
 
 # Output:
 # dist/standalone/touch-browser-v0.1.0-rc1-<platform>-<arch>/
+
+# Install the command into PATH
+./dist/standalone/touch-browser-v0.1.0-rc1-<platform>-<arch>/install.sh
+
+# Then use the installed command directly
+touch-browser telemetry-summary
 ```
 
 ### Build from source
@@ -47,6 +56,8 @@ Bootstrap:
 ```bash
 bash scripts/bootstrap-local.sh
 cargo build --release -p touch-browser-cli
+pnpm run build:standalone-bundle -- local-dev
+./dist/standalone/touch-browser-local-dev-<platform>-<arch>/install.sh
 ```
 
 `bootstrap-local.sh` also installs the default semantic models under:
@@ -70,12 +81,27 @@ pnpm typecheck
 pnpm test
 ```
 
+Build-from-source is a contributor path. The runtime examples below still assume the installed `touch-browser` command so the user-facing path stays identical between release and local verification.
+
 ## 2. Core Commands
+
+### First-run proof path
+
+Use this path to verify a fresh install from the user point of view:
+
+```bash
+touch-browser open https://www.iana.org/help/example-domains --browser --session-file /tmp/tb-first-run.json
+touch-browser session-read --session-file /tmp/tb-first-run.json --main-only
+touch-browser session-extract --session-file /tmp/tb-first-run.json \
+  --claim "As described in RFC 2606 and RFC 6761, a number of domains such as example.com and example.org are maintained for documentation purposes."
+touch-browser session-synthesize --session-file /tmp/tb-first-run.json --format markdown
+touch-browser session-close --session-file /tmp/tb-first-run.json
+```
 
 Read a real page:
 
 ```bash
-./target/release/touch-browser read-view https://www.iana.org/help/example-domains
+touch-browser read-view https://www.iana.org/help/example-domains
 ```
 
 For navigation-heavy pages, add `--main-only` to keep the Markdown output centered on the primary content region.
@@ -83,13 +109,13 @@ For navigation-heavy pages, add `--main-only` to keep the Markdown output center
 Generate the low-token agent view:
 
 ```bash
-./target/release/touch-browser compact-view https://www.iana.org/help/example-domains
+touch-browser compact-view https://www.iana.org/help/example-domains
 ```
 
 Extract evidence with an optional verifier hook:
 
 ```bash
-./target/release/touch-browser extract https://www.iana.org/help/example-domains \
+touch-browser extract https://www.iana.org/help/example-domains \
   --claim "As described in RFC 2606 and RFC 6761, a number of domains such as example.com and example.org are maintained for documentation purposes." \
   --verifier-command 'node scripts/example-verifier.mjs'
 ```
@@ -105,16 +131,16 @@ Evidence operating rule of thumb:
 Render a multi-page session as Markdown:
 
 ```bash
-./target/release/touch-browser session-synthesize --session-file /tmp/tb-session.json --format markdown
+touch-browser session-synthesize --session-file /tmp/tb-session.json --format markdown
 ```
 
 Serve daemon:
 
 ```bash
-target/release/touch-browser serve
+touch-browser serve
 ```
 
-MCP bridge:
+MCP bridge (repo checkout integration asset):
 
 ```bash
 node integrations/mcp/bridge/index.mjs
@@ -155,8 +181,9 @@ pnpm run pilot:real-user-research
 - public benchmark failure:
   - check network access and remote site availability
 - MCP bridge failure:
-  - verify either `touch-browser serve` or `target/release/touch-browser serve` works on its own
-  - the bridge prefers `TOUCH_BROWSER_SERVE_COMMAND`, then an installed or packaged `touch-browser` binary, then falls back to `cargo run -q -p touch-browser-cli -- serve` for source checkouts
+  - verify `touch-browser serve` works on its own
+  - the bridge prefers `TOUCH_BROWSER_SERVE_COMMAND`, then `TOUCH_BROWSER_SERVE_BINARY`, then an installed or packaged `touch-browser` binary, then repo-local `target/{release,debug}` binaries
+  - if no binary can be resolved, install a standalone bundle with `install.sh`; source-checkout operators can also build once so `target/release` or `target/debug` contains `touch-browser`
   - set `TOUCH_BROWSER_SERVE_COMMAND="target/debug/touch-browser serve"` if you want to force a specific built binary or wrapper
 - verifier hook failure:
   - run the verifier command directly and confirm it returns JSON with an `outcomes` array
@@ -182,7 +209,7 @@ pnpm run pilot:real-user-research
 - sensitive values are replayed only through the direct CLI secret sidecar or the daemon in-memory secret store
 - anti-bot, MFA, payment, and other high-risk write actions are handled as supervised flows, not bypass flows
 - the default supervised operating procedure is `checkpoint -> approve -> headed continuation -> refresh`
-- pilot telemetry is stored in `output/pilot/telemetry.sqlite` by default
+- pilot telemetry defaults to `~/.touch-browser/pilot/telemetry.sqlite` in an installed bundle and `output/pilot/telemetry.sqlite` in a repo checkout
 
 ## 7. License
 

@@ -32,7 +32,18 @@ write_wrapper() {
 #!/usr/bin/env bash
 set -euo pipefail
 
-SCRIPT_DIR="$(CDPATH= cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)"
+SOURCE_PATH="${BASH_SOURCE[0]}"
+while [[ -h "${SOURCE_PATH}" ]]; do
+  LINK_DIR="$(CDPATH= cd -- "$(dirname -- "${SOURCE_PATH}")" && pwd)"
+  LINK_TARGET="$(readlink "${SOURCE_PATH}")"
+  if [[ "${LINK_TARGET}" == /* ]]; then
+    SOURCE_PATH="${LINK_TARGET}"
+  else
+    SOURCE_PATH="${LINK_DIR}/${LINK_TARGET}"
+  fi
+done
+
+SCRIPT_DIR="$(CDPATH= cd -- "$(dirname -- "${SOURCE_PATH}")" && pwd)"
 BUNDLE_ROOT="$(CDPATH= cd -- "${SCRIPT_DIR}/.." && pwd)"
 RUNTIME_ROOT="${BUNDLE_ROOT}/runtime"
 
@@ -71,6 +82,9 @@ require_command rsync
 require_command tar
 
 REPO_ROOT="$(CDPATH= cd -- "$(dirname -- "${BASH_SOURCE[0]}")/.." && pwd)"
+if [[ "${1:-}" == "--" ]]; then
+  shift
+fi
 VERSION="${1:-${TOUCH_BROWSER_BUNDLE_VERSION:-$(git -C "${REPO_ROOT}" describe --tags --always 2>/dev/null || echo dev)}}"
 PLATFORM="${TOUCH_BROWSER_BUNDLE_PLATFORM:-$(normalize_platform)}"
 ARCH="${TOUCH_BROWSER_BUNDLE_ARCH:-$(normalize_arch)}"
@@ -110,6 +124,8 @@ rsync -a "${REPO_ROOT}/adapters/playwright/dist-runtime/src/" "${RUNTIME_ROOT}/a
 cp "${REPO_ROOT}/scripts/evidence-embedding-runner.mjs" "${RUNTIME_ROOT}/scripts/evidence-embedding-runner.mjs"
 cp "${REPO_ROOT}/scripts/evidence-nli-runner.mjs" "${RUNTIME_ROOT}/scripts/evidence-nli-runner.mjs"
 cp "${REPO_ROOT}/scripts/lib/model-runner.mjs" "${RUNTIME_ROOT}/scripts/lib/model-runner.mjs"
+cp "${REPO_ROOT}/scripts/install-standalone-bundle.sh" "${BUNDLE_ROOT}/install.sh"
+chmod +x "${BUNDLE_ROOT}/install.sh"
 
 if [[ "${TOUCH_BROWSER_BUNDLE_SKIP_MODEL_WARMUP:-0}" == "1" ]]; then
   mkdir -p "${EMBEDDING_MODEL_ROOT}" "${NLI_MODEL_ROOT}"

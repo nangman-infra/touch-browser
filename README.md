@@ -64,7 +64,8 @@ Tagged `v*` pushes now build standalone macOS and Linux bundles in the `Standalo
 When a tagged release is published, download the matching tarball from [GitHub Releases](https://github.com/nangman-infra/touch-browser/releases), unpack it, and run:
 
 ```bash
-./touch-browser-<version>-<platform>-<arch>/bin/touch-browser telemetry-summary
+./touch-browser-<version>-<platform>-<arch>/install.sh
+touch-browser telemetry-summary
 ```
 
 To build the same portable bundle locally:
@@ -73,30 +74,42 @@ To build the same portable bundle locally:
 pnpm install --frozen-lockfile
 pnpm run build:standalone-bundle -- v0.1.0-rc1
 
-# Then run the bundled command from dist/standalone/<bundle-name>/bin
-./dist/standalone/touch-browser-v0.1.0-rc1-<platform>-<arch>/bin/touch-browser telemetry-summary
+# Then install the bundled command into PATH
+./dist/standalone/touch-browser-v0.1.0-rc1-<platform>-<arch>/install.sh
+touch-browser telemetry-summary
 ```
 
-## Build From Source
+The official user path is:
+
+1. unpack a standalone bundle
+2. run `install.sh`
+3. use the installed `touch-browser` command for every CLI and serve operation
+
+## First Run
+
+This is the command-only proof path that matches the installed user experience:
+
+```bash
+touch-browser open https://www.iana.org/help/example-domains --browser --session-file /tmp/tb-first-run.json
+touch-browser session-read --session-file /tmp/tb-first-run.json --main-only
+touch-browser session-extract --session-file /tmp/tb-first-run.json \
+  --claim "As described in RFC 2606 and RFC 6761, a number of domains such as example.com and example.org are maintained for documentation purposes."
+touch-browser session-synthesize --session-file /tmp/tb-first-run.json --format markdown
+touch-browser session-close --session-file /tmp/tb-first-run.json
+```
+
+## Contributor Build From Source
 
 Prerequisites: [rustup](https://rustup.rs), Node.js 18+, `pnpm`.
 
 ```bash
 bash scripts/bootstrap-local.sh
 cargo build --release -p touch-browser-cli
-
-# Verify a claim against a public page
-./target/release/touch-browser extract https://www.iana.org/help/example-domains \
-  --claim "As described in RFC 2606 and RFC 6761, a number of domains such as example.com and example.org are maintained for documentation purposes."
-
-# Read the same page as Markdown
-./target/release/touch-browser read-view https://www.iana.org/help/example-domains
-
-# Produce the low-token agent view
-./target/release/touch-browser compact-view https://www.iana.org/help/example-domains
+pnpm run build:standalone-bundle -- local-dev
+./dist/standalone/touch-browser-local-dev-<platform>-<arch>/install.sh
 ```
 
-For the inner development loop, `cargo run -q -p touch-browser-cli -- ...` still works, but the user-facing command is `touch-browser`.
+Source checkout is a contributor workflow. Release and operations docs still assume the installed `touch-browser` command from the standalone bundle.
 
 `bootstrap-local.sh` installs the default semantic models under:
 
@@ -165,7 +178,9 @@ Minimal MCP bridge setup from the repository root:
 
 The bridge starts `touch-browser serve` underneath and exposes tools like `tb_search`, `tb_search_open_top`, `tb_open`, `tb_read_view`, `tb_extract`, `tb_tab_open`, and `tb_session_synthesize`.
 
-By default the bridge prefers an explicit `TOUCH_BROWSER_SERVE_COMMAND`, then a packaged or installed `touch-browser` binary, and only falls back to `cargo run -q -p touch-browser-cli -- serve` when no binary is available.
+The standalone bundle ships `touch-browser serve`. The checked-in MCP bridge launcher remains a repository integration asset and is run from a repo checkout or container image, not from the installed standalone command alone.
+
+By default the bridge prefers an explicit `TOUCH_BROWSER_SERVE_COMMAND`, then an explicit binary path, then an installed or packaged `touch-browser` binary, then repo-local `target/{release,debug}` binaries. If none are available, it fails fast with an install/build instruction instead of dropping back to `cargo run`.
 
 Use `TOUCH_BROWSER_SERVE_COMMAND` if you want to force a specific built binary or wrapper command.
 

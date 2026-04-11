@@ -469,13 +469,10 @@ describe("serve daemon session registry", () => {
 });
 
 function createRpcClient(): RpcClient {
-  const child = spawnShellCommand(
-    "cargo run -q -p touch-browser-cli -- serve",
-    {
-      cwd: repoRoot,
-      stdio: ["pipe", "pipe", "pipe"],
-    },
-  ) as ChildProcessWithoutNullStreams;
+  const child = spawnShellCommand("target/debug/touch-browser serve", {
+    cwd: repoRoot,
+    stdio: ["pipe", "pipe", "pipe"],
+  }) as ChildProcessWithoutNullStreams;
 
   const pending = new Map<
     number,

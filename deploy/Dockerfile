@@ -32,10 +32,12 @@ COPY --from=builder /app /app
 
 ENV PATH="/app/node_modules/.bin:${PATH}"
 ENV TOUCH_BROWSER_TELEMETRY_DB="/data/telemetry.sqlite"
-ENV TOUCH_BROWSER_HEALTHCHECK_COMMAND="target/release/touch-browser serve"
+ENV TOUCH_BROWSER_HEALTHCHECK_COMMAND="touch-browser serve"
 
 VOLUME ["/data"]
 
+RUN ln -sf /app/target/release/touch-browser /usr/local/bin/touch-browser
+
 HEALTHCHECK --interval=30s --timeout=10s --start-period=10s --retries=3 CMD ["node", "scripts/pilot-healthcheck.mjs"]
 
-CMD ["target/release/touch-browser", "serve"]
+CMD ["touch-browser", "serve"]

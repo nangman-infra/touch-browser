@@ -42,7 +42,7 @@ docker run --rm -i \
   -e TOUCH_BROWSER_TELEMETRY_SURFACE=serve \
   -v "$(pwd)/output/pilot:/data" \
   touch-browser:pilot \
-  target/release/touch-browser serve
+  touch-browser serve
 ```
 
 Compose example:
@@ -66,14 +66,14 @@ Healthcheck:
 
 ## 4. Telemetry Retention And Audit
 
-- the default telemetry path is `telemetry.sqlite` and can be overridden with `TOUCH_BROWSER_TELEMETRY_DB`
+- the default telemetry path is `/data/telemetry.sqlite` in the container example; outside the container, the installed bundle defaults to `~/.touch-browser/pilot/telemetry.sqlite`
 - the default pilot retention policy is short-lived local retention with optional export before rotation
 - minimum audit access paths:
   - `touch-browser telemetry-summary`
   - `touch-browser telemetry-recent --limit <count>`
   - serve `runtime.telemetry.summary`
   - MCP `tb_telemetry_summary`
-- copy `telemetry.sqlite` while the service is stopped if a backup is required
+- copy the active telemetry database file while the service is stopped if a backup is required
 - retention and export policy should be made explicit in the operator runbook for each environment
 
 ## 5. Upgrade And Rollback
@@ -81,7 +81,7 @@ Healthcheck:
 Before upgrade:
 
 - record the current image or binary tag
-- back up `telemetry.sqlite`
+- back up the active telemetry database file
 - keep a copy of the current pilot env file
 - run `pnpm test` or at least the minimum smoke gate
 
@@ -94,7 +94,7 @@ Upgrade:
 Rollback:
 
 - return immediately to the previous image or binary
-- reconnect the saved `telemetry.sqlite` backup or keep the existing file if that is the safer path
+- reconnect the saved telemetry database backup or keep the existing file if that is the safer path
 - re-run the `touch-browser serve` healthcheck
 
 ## 6. Hardening Baseline

@@ -5,13 +5,10 @@ import { spawnShellCommand } from "../support/shell.js";
 
 describe("serve mode smoke", () => {
   it("serves stdio JSON-RPC for pilot integrations", async () => {
-    const child = spawnShellCommand(
-      "cargo run -q -p touch-browser-cli -- serve",
-      {
-        cwd: repoRoot,
-        stdio: ["pipe", "pipe", "pipe"],
-      },
-    );
+    const child = spawnShellCommand("target/debug/touch-browser serve", {
+      cwd: repoRoot,
+      stdio: ["pipe", "pipe", "pipe"],
+    });
 
     const lines: string[] = [];
     child.stdout.setEncoding("utf8");
@@ -76,13 +73,10 @@ describe("serve mode smoke", () => {
   }, 20_000);
 
   it("keeps JSON-RPC error payloads on stdout and reserves stderr for process failures", async () => {
-    const child = spawnShellCommand(
-      "cargo run -q -p touch-browser-cli -- serve",
-      {
-        cwd: repoRoot,
-        stdio: ["pipe", "pipe", "pipe"],
-      },
-    );
+    const child = spawnShellCommand("target/debug/touch-browser serve", {
+      cwd: repoRoot,
+      stdio: ["pipe", "pipe", "pipe"],
+    });
 
     let stdoutBuffer = "";
     let stderrBuffer = "";

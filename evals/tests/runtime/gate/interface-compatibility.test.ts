@@ -191,13 +191,10 @@ async function runServeCall<T>(
   method: string,
   params: Record<string, unknown>,
 ): Promise<T> {
-  const child = spawnShellCommand(
-    "cargo run -q -p touch-browser-cli -- serve",
-    {
-      cwd: repoRoot,
-      stdio: ["pipe", "pipe", "pipe"],
-    },
-  );
+  const child = spawnShellCommand("target/debug/touch-browser serve", {
+    cwd: repoRoot,
+    stdio: ["pipe", "pipe", "pipe"],
+  });
 
   const result = await new Promise<T>((resolve, reject) => {
     let stdoutBuffer = "";

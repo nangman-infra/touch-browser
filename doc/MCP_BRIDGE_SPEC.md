@@ -16,7 +16,7 @@ Provided file:
 
 Run:
 
-- `pnpm run mcp:bridge`
+- repo checkout: `pnpm run mcp:bridge`
 
 Minimal setup:
 
@@ -103,9 +103,9 @@ Serve-to-MCP mapping:
 
 ## 4. Validation
 
-- [mcp-bridge-smoke.test.ts](../evals/src/runtime/mcp-bridge-smoke.test.ts)
-- [interface-compatibility.test.ts](../evals/src/runtime/interface-compatibility.test.ts)
-- [serve-daemon.test.ts](../evals/src/runtime/serve-daemon.test.ts)
+- [mcp-bridge-smoke.test.ts](../evals/tests/runtime/gate/mcp-bridge-smoke.test.ts)
+- [interface-compatibility.test.ts](../evals/tests/runtime/gate/interface-compatibility.test.ts)
+- [serve-daemon.test.ts](../evals/tests/runtime/gate/serve-daemon.test.ts)
 - round-trip validation for `initialize -> tools/list -> tools/call(tb_status)`
 - daemon-path validation for search tool presence, read, extract, session synthesis, and supervised interaction flows
 
@@ -117,6 +117,8 @@ Serve-to-MCP mapping:
 - search responses also carry `status`, `statusDetail`, and structured `nextActionHints.actor/canAutoRun/headedRequired`, so an MCP client can decide whether to open ranked tabs, re-run headed for a CAPTCHA, or hand the step back to a human
 - interactive tools only make sense inside allowlisted daemon sessions and still require risk acknowledgement when challenge, MFA, auth, or high-risk-write signals appear
 - the bridge starts `touch-browser serve` as an internal child process and injects `TOUCH_BROWSER_TELEMETRY_SURFACE=mcp`
-- child-process resolution order is `TOUCH_BROWSER_SERVE_COMMAND` -> `TOUCH_BROWSER_SERVE_BINARY` -> installed `touch-browser` on `PATH` -> packaged binaries under `bin/`, `dist/`, or `target/{release,debug}/` -> `cargo run -q -p touch-browser-cli -- serve`
+- the standalone bundle ships `touch-browser serve`; the checked-in bridge launcher itself remains a repository integration asset
+- child-process resolution order is `TOUCH_BROWSER_SERVE_COMMAND` -> `TOUCH_BROWSER_SERVE_BINARY` -> installed `touch-browser` on `PATH` -> packaged binaries under `bin/`, `dist/standalone/*/bin`, or repo-local `target/{release,debug}`
+- if no binary can be resolved, the bridge fails fast and tells the operator to install a standalone bundle or build the repo once
 - set `TOUCH_BROWSER_SERVE_COMMAND` to force a specific built binary or wrapper command
 - use `verifierCommand` to let a second-pass judge adjudicate the final verdict without replacing the base evidence collector

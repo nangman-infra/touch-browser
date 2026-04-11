@@ -36,7 +36,7 @@ Generated report:
 
 ## 4. Validation
 
-- [reference-workflow-smoke.test.ts](../evals/src/runtime/reference-workflow-smoke.test.ts)
+- [reference-workflow-smoke.test.ts](../evals/tests/runtime/gate/reference-workflow-smoke.test.ts)
 - MCP-backed reference workflow artifact generation
 - core claim extraction validation on the generated artifact
 

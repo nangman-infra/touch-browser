@@ -4,7 +4,7 @@ services:
       context: ..
       dockerfile: deploy/Dockerfile
     image: touch-browser:pilot
-    command: ["target/release/touch-browser", "serve"]
+    command: ["touch-browser", "serve"]
     stdin_open: true
     tty: true
     env_file:

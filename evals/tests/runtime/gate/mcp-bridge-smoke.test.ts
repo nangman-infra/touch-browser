@@ -206,7 +206,7 @@ describe("mcp bridge smoke", () => {
   it("restarts the serve daemon after a crash on the next call", async () => {
     const serve = createBridgeServeClient({
       cwd: repoRoot,
-      serveCommand: "cargo run -q -p touch-browser-cli -- serve",
+      serveCommand: "target/debug/touch-browser serve",
     });
     serveClients.push(serve);
 
@@ -225,7 +225,7 @@ describe("mcp bridge smoke", () => {
     expect(serve.child.pid).not.toBe(firstPid);
   }, 20_000);
 
-  it("prefers a packaged touch-browser binary before falling back to cargo run", () => {
+  it("prefers a packaged touch-browser binary before repo-local binaries", () => {
     const tempRoot = fs.mkdtempSync(
       path.join(os.tmpdir(), "touch-browser-mcp-"),
     );
@@ -251,6 +251,25 @@ describe("mcp bridge smoke", () => {
 
     expect(command).toContain("target/release/touch-browser");
     expect(command.endsWith(" serve")).toBe(true);
+  });
+
+  it("fails fast when no touch-browser binary can be resolved", () => {
+    const tempRoot = fs.mkdtempSync(
+      path.join(os.tmpdir(), "touch-browser-missing-"),
+    );
+
+    expect(() =>
+      resolveServeCommand({
+        cwd: tempRoot,
+        env: {
+          ...process.env,
+          TOUCH_BROWSER_SERVE_COMMAND: "",
+          TOUCH_BROWSER_SERVE_BINARY: "",
+          TOUCH_BROWSER_BINARY: "",
+          PATH: "",
+        },
+      }),
+    ).toThrow("Could not resolve a touch-browser binary");
   });
 });
 

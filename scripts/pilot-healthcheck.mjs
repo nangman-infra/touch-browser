@@ -1,8 +1,9 @@
 import { createServeRpcClient } from "./lib/serve-rpc-client.mjs";
+import { resolveTouchBrowserServeCommand } from "./lib/touch-browser-command.mjs";
 
 const serveCommand =
-  process.env.TOUCH_BROWSER_HEALTHCHECK_COMMAND ??
-  "cargo run -q -p touch-browser-cli -- serve";
+  process.env.TOUCH_BROWSER_HEALTHCHECK_COMMAND?.trim() ||
+  resolveTouchBrowserServeCommand();
 const requestTimeoutMs = Number(
   process.env.TOUCH_BROWSER_HEALTHCHECK_TIMEOUT_MS ?? "5000",
 );

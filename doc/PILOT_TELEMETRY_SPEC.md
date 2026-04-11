@@ -19,7 +19,9 @@ Goals:
 ## 2. Storage
 
 - crate: [storage-sqlite](../core/crates/storage-sqlite/src/lib.rs)
-- default path: `output/pilot/telemetry.sqlite`
+- default path:
+  - installed bundle: `~/.touch-browser/pilot/telemetry.sqlite`
+  - repo checkout: `output/pilot/telemetry.sqlite`
 - overrides:
   - `TOUCH_BROWSER_TELEMETRY_DB`
   - `TOUCH_BROWSER_TELEMETRY_SURFACE`
@@ -60,8 +62,8 @@ MCP:
 
 ## 4. Validation
 
-- [telemetry-smoke.test.ts](../evals/src/runtime/telemetry-smoke.test.ts)
-- [serve-daemon.test.ts](../evals/src/runtime/serve-daemon.test.ts)
+- [telemetry-smoke.test.ts](../evals/tests/runtime/gate/telemetry-smoke.test.ts)
+- [serve-daemon.test.ts](../evals/tests/runtime/gate/serve-daemon.test.ts)
 - direct CLI validation for telemetry summary and recent queries
 - serve daemon validation for telemetry summary queries
 - MCP bridge exposes telemetry tools and delegates to the serve surface

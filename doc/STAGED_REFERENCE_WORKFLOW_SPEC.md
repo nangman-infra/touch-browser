@@ -38,7 +38,7 @@ Generated report:
 
 ## 4. Validation
 
-- [staged-reference-workflow-smoke.test.ts](../evals/src/runtime/staged-reference-workflow-smoke.test.ts)
+- [staged-reference-workflow-smoke.test.ts](../evals/tests/runtime/proof/staged-reference-workflow-smoke.test.ts)
 - mixed public/trusted workflow artifact generation
 - validation of `tb_tab_list`, `tb_tab_select`, and `tb_tab_close` on the artifact path itself
 
