@@ -41,6 +41,100 @@ fn should_log_telemetry_command(command: &CliCommand) -> bool {
     !matches!(command, CliCommand::Uninstall(_))
 }
 
+fn parse_command_or_exit(
+    args: &[String],
+    operation: &str,
+    json_errors: bool,
+) -> Result<CliCommand, i32> {
+    parse_command(args).map_err(|error| {
+        if should_log_telemetry_operation(operation) {
+            let _ = log_telemetry_error(
+                &telemetry_surface_label("cli"),
+                operation,
+                &error.to_string(),
+                None,
+                &Value::Null,
+            );
+        }
+        emit_cli_error(&error, json_errors);
+        1
+    })
+}
+
+fn run_direct_command(command: &CliCommand, json_errors: bool) -> Option<i32> {
+    let result = match command {
+        CliCommand::Serve => Some(run_serve()),
+        CliCommand::Mcp => Some(run_mcp()),
+        _ => None,
+    }?;
+
+    Some(match result {
+        Ok(()) => 0,
+        Err(error) => {
+            emit_cli_error(&error, json_errors);
+            1
+        }
+    })
+}
+
+fn emit_command_output(stdout_mode: CliStdoutMode, output: &Value) -> Result<(), CliError> {
+    match stdout_mode {
+        CliStdoutMode::Json => println!(
+            "{}",
+            serde_json::to_string_pretty(output).expect("cli output should serialize")
+        ),
+        CliStdoutMode::ReadMarkdown => {
+            emit_read_view_quality_notice(output);
+            println!("{}", required_output_string(output, "markdownText")?)
+        }
+        CliStdoutMode::SynthesisMarkdown => {
+            println!("{}", required_output_string(output, "markdown")?)
+        }
+    }
+    Ok(())
+}
+
+fn emit_command_failure(
+    operation: &str,
+    error: &CliError,
+    json_errors: bool,
+    should_log_telemetry: bool,
+) -> i32 {
+    if should_log_telemetry {
+        let _ = log_telemetry_error(
+            &telemetry_surface_label("cli"),
+            operation,
+            &error.to_string(),
+            None,
+            &Value::Null,
+        );
+    }
+    emit_cli_error(error, json_errors);
+    1
+}
+
+fn dispatch_command(command: CliCommand, operation: &str, json_errors: bool) -> i32 {
+    let stdout_mode = stdout_mode_for_command(&command);
+    let should_log_telemetry = should_log_telemetry_command(&command);
+    match dispatch(command).and_then(|output| {
+        emit_command_output(stdout_mode, &output)?;
+        Ok(output)
+    }) {
+        Ok(output) => {
+            if should_log_telemetry {
+                let _ = log_telemetry_success(
+                    &telemetry_surface_label("cli"),
+                    operation,
+                    &output,
+                    &Value::Null,
+                );
+            }
+            0
+        }
+        Err(error) => emit_command_failure(operation, &error, json_errors, should_log_telemetry),
+    }
+}
+
 pub(crate) fn preprocess_cli_args(raw_args: Vec<String>) -> ProcessedCliArgs {
     let mut json_errors = false;
     let mut args = Vec::with_capacity(raw_args.len());
@@ -122,79 +216,16 @@ pub(crate) fn run_cli(raw_args: Vec<String>) -> i32 {
         .first()
         .cloned()
         .unwrap_or_else(|| "unknown".to_string());
-    let command = match parse_command(&args) {
+    let command = match parse_command_or_exit(&args, &operation, json_errors) {
         Ok(command) => command,
-        Err(error) => {
-            if should_log_telemetry_operation(&operation) {
-                let _ = log_telemetry_error(
-                    &telemetry_surface_label("cli"),
-                    &operation,
-                    &error.to_string(),
-                    None,
-                    &Value::Null,
-                );
-            }
-            emit_cli_error(&error, json_errors);
-            return 1;
-        }
+        Err(exit_code) => return exit_code,
     };
 
-    if matches!(command, CliCommand::Serve | CliCommand::Mcp) {
-        let result = match command {
-            CliCommand::Serve => run_serve(),
-            CliCommand::Mcp => run_mcp(),
-            _ => Ok(()),
-        };
-        if let Err(error) = result {
-            emit_cli_error(&error, json_errors);
-            return 1;
-        }
-        return 0;
+    if let Some(exit_code) = run_direct_command(&command, json_errors) {
+        return exit_code;
     }
 
-    let stdout_mode = stdout_mode_for_command(&command);
-    let should_log_telemetry = should_log_telemetry_command(&command);
-    match dispatch(command).and_then(|output| {
-        match stdout_mode {
-            CliStdoutMode::Json => println!(
-                "{}",
-                serde_json::to_string_pretty(&output).expect("cli output should serialize")
-            ),
-            CliStdoutMode::ReadMarkdown => {
-                emit_read_view_quality_notice(&output);
-                println!("{}", required_output_string(&output, "markdownText")?)
-            }
-            CliStdoutMode::SynthesisMarkdown => {
-                println!("{}", required_output_string(&output, "markdown")?)
-            }
-        }
-        Ok(output)
-    }) {
-        Ok(output) => {
-            if should_log_telemetry {
-                let _ = log_telemetry_success(
-                    &telemetry_surface_label("cli"),
-                    &operation,
-                    &output,
-                    &Value::Null,
-                );
-            }
-            0
-        }
-        Err(error) => {
-            if should_log_telemetry {
-                let _ = log_telemetry_error(
-                    &telemetry_surface_label("cli"),
-                    &operation,
-                    &error.to_string(),
-                    None,
-                    &Value::Null,
-                );
-            }
-            emit_cli_error(&error, json_errors);
-            1
-        }
-    }
+    dispatch_command(command, &operation, json_errors)
 }
 
 #[cfg(test)]
