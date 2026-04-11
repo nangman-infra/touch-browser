@@ -1,6 +1,8 @@
 import fs from "node:fs";
 import path from "node:path";
 
+const SHELL_SINGLE_QUOTE_ESCAPE = `'\"'\"'`;
+
 const REPO_BINARY_CANDIDATES = [
   ["bin", "touch-browser"],
   ["dist", "touch-browser"],
@@ -148,5 +150,6 @@ function isFile(targetPath) {
 }
 
 function shellEscape(value) {
-  return `'${String(value).replaceAll("'", `'\"'\"'`)}'`;
+  const escapedValue = String(value).replaceAll("'", SHELL_SINGLE_QUOTE_ESCAPE);
+  return `'${escapedValue}'`;
 }
