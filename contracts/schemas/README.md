@@ -13,6 +13,7 @@ Initial priority order:
 7. `session-state.schema.json`
 8. `replay-transcript.schema.json`
 9. JSON-RPC envelopes
+10. `mcp-tool-catalog.schema.json`
 
 Notes:
 

@@ -1,0 +1,1032 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "mcp-tool-catalog.schema.json",
+  "title": "McpToolCatalog",
+  "type": "array",
+  "minItems": 28,
+  "maxItems": 28,
+  "prefixItems": [
+    {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["name", "title", "description", "inputSchema"],
+      "properties": {
+        "name": {
+          "const": "tb_status"
+        },
+        "title": {
+          "const": "Touch Browser Status"
+        },
+        "description": {
+          "const": "Return runtime and daemon capability status."
+        },
+        "inputSchema": {
+          "const": {
+            "type": "object",
+            "properties": {}
+          }
+        }
+      }
+    },
+    {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["name", "title", "description", "inputSchema"],
+      "properties": {
+        "name": {
+          "const": "tb_session_create"
+        },
+        "title": {
+          "const": "Create Browser Session"
+        },
+        "description": {
+          "const": "Create a long-lived touch-browser daemon session with an active tab."
+        },
+        "inputSchema": {
+          "const": {
+            "type": "object",
+            "properties": {
+              "headed": {
+                "type": "boolean"
+              },
+              "allowDomains": {
+                "type": "array",
+                "items": {
+                  "type": "string"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["name", "title", "description", "inputSchema"],
+      "properties": {
+        "name": {
+          "const": "tb_open"
+        },
+        "title": {
+          "const": "Open Target"
+        },
+        "description": {
+          "const": "Open a target either statelessly or inside a daemon session/tab."
+        },
+        "inputSchema": {
+          "const": {
+            "type": "object",
+            "properties": {
+              "target": {
+                "type": "string"
+              },
+              "browser": {
+                "type": "boolean"
+              },
+              "headed": {
+                "type": "boolean"
+              },
+              "sourceRisk": {
+                "type": "string"
+              },
+              "sourceLabel": {
+                "type": "string"
+              },
+              "verifierCommand": {
+                "type": "string"
+              },
+              "allowDomains": {
+                "type": "array",
+                "items": {
+                  "type": "string"
+                }
+              },
+              "sessionId": {
+                "type": "string"
+              },
+              "tabId": {
+                "type": "string"
+              }
+            },
+            "required": ["target"]
+          }
+        }
+      }
+    },
+    {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["name", "title", "description", "inputSchema"],
+      "properties": {
+        "name": {
+          "const": "tb_search"
+        },
+        "title": {
+          "const": "Search The Web"
+        },
+        "description": {
+          "const": "Run a Google or Brave search inside touch-browser and structure the search results for follow-up browsing."
+        },
+        "inputSchema": {
+          "const": {
+            "type": "object",
+            "properties": {
+              "sessionId": {
+                "type": "string"
+              },
+              "tabId": {
+                "type": "string"
+              },
+              "query": {
+                "type": "string"
+              },
+              "engine": {
+                "type": "string"
+              },
+              "headed": {
+                "type": "boolean"
+              },
+              "budget": {
+                "type": "number"
+              }
+            },
+            "required": ["sessionId", "query"]
+          }
+        }
+      }
+    },
+    {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["name", "title", "description", "inputSchema"],
+      "properties": {
+        "name": {
+          "const": "tb_search_open_result"
+        },
+        "title": {
+          "const": "Open One Search Result"
+        },
+        "description": {
+          "const": "Open one structured search result into a new tab within the daemon session."
+        },
+        "inputSchema": {
+          "const": {
+            "type": "object",
+            "properties": {
+              "sessionId": {
+                "type": "string"
+              },
+              "tabId": {
+                "type": "string"
+              },
+              "rank": {
+                "type": "number"
+              },
+              "headed": {
+                "type": "boolean"
+              }
+            },
+            "required": ["sessionId", "rank"]
+          }
+        }
+      }
+    },
+    {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["name", "title", "description", "inputSchema"],
+      "properties": {
+        "name": {
+          "const": "tb_search_open_top"
+        },
+        "title": {
+          "const": "Open Top Search Results"
+        },
+        "description": {
+          "const": "Open the top recommended search results into new tabs for multi-page research."
+        },
+        "inputSchema": {
+          "const": {
+            "type": "object",
+            "properties": {
+              "sessionId": {
+                "type": "string"
+              },
+              "tabId": {
+                "type": "string"
+              },
+              "limit": {
+                "type": "number"
+              },
+              "headed": {
+                "type": "boolean"
+              }
+            },
+            "required": ["sessionId"]
+          }
+        }
+      }
+    },
+    {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["name", "title", "description", "inputSchema"],
+      "properties": {
+        "name": {
+          "const": "tb_extract"
+        },
+        "title": {
+          "const": "Extract Evidence"
+        },
+        "description": {
+          "const": "Extract evidence-supported and insufficient-evidence claims from the current target or daemon tab."
+        },
+        "inputSchema": {
+          "const": {
+            "type": "object",
+            "properties": {
+              "target": {
+                "type": "string"
+              },
+              "claims": {
+                "type": "array",
+                "items": {
+                  "type": "string"
+                }
+              },
+              "browser": {
+                "type": "boolean"
+              },
+              "headed": {
+                "type": "boolean"
+              },
+              "mainOnly": {
+                "type": "boolean"
+              },
+              "verifierCommand": {
+                "type": "string"
+              },
+              "sourceRisk": {
+                "type": "string"
+              },
+              "sourceLabel": {
+                "type": "string"
+              },
+              "allowDomains": {
+                "type": "array",
+                "items": {
+                  "type": "string"
+                }
+              },
+              "sessionId": {
+                "type": "string"
+              },
+              "tabId": {
+                "type": "string"
+              }
+            },
+            "required": ["claims"]
+          }
+        }
+      }
+    },
+    {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["name", "title", "description", "inputSchema"],
+      "properties": {
+        "name": {
+          "const": "tb_read_view"
+        },
+        "title": {
+          "const": "Read View"
+        },
+        "description": {
+          "const": "Return a readable Markdown view of a target or daemon tab for higher-level verification."
+        },
+        "inputSchema": {
+          "const": {
+            "type": "object",
+            "properties": {
+              "target": {
+                "type": "string"
+              },
+              "browser": {
+                "type": "boolean"
+              },
+              "headed": {
+                "type": "boolean"
+              },
+              "mainOnly": {
+                "type": "boolean"
+              },
+              "sourceRisk": {
+                "type": "string"
+              },
+              "sourceLabel": {
+                "type": "string"
+              },
+              "allowDomains": {
+                "type": "array",
+                "items": {
+                  "type": "string"
+                }
+              },
+              "sessionId": {
+                "type": "string"
+              },
+              "tabId": {
+                "type": "string"
+              }
+            }
+          }
+        }
+      }
+    },
+    {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["name", "title", "description", "inputSchema"],
+      "properties": {
+        "name": {
+          "const": "tb_policy"
+        },
+        "title": {
+          "const": "Policy Report"
+        },
+        "description": {
+          "const": "Return the policy evaluation for a target or daemon tab."
+        },
+        "inputSchema": {
+          "const": {
+            "type": "object",
+            "properties": {
+              "target": {
+                "type": "string"
+              },
+              "browser": {
+                "type": "boolean"
+              },
+              "headed": {
+                "type": "boolean"
+              },
+              "sourceRisk": {
+                "type": "string"
+              },
+              "sourceLabel": {
+                "type": "string"
+              },
+              "allowDomains": {
+                "type": "array",
+                "items": {
+                  "type": "string"
+                }
+              },
+              "sessionId": {
+                "type": "string"
+              },
+              "tabId": {
+                "type": "string"
+              }
+            }
+          }
+        }
+      }
+    },
+    {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["name", "title", "description", "inputSchema"],
+      "properties": {
+        "name": {
+          "const": "tb_tab_open"
+        },
+        "title": {
+          "const": "Open New Tab"
+        },
+        "description": {
+          "const": "Create a new daemon tab and optionally open a target into it."
+        },
+        "inputSchema": {
+          "const": {
+            "type": "object",
+            "properties": {
+              "sessionId": {
+                "type": "string"
+              },
+              "target": {
+                "type": "string"
+              },
+              "headed": {
+                "type": "boolean"
+              },
+              "sourceRisk": {
+                "type": "string"
+              },
+              "sourceLabel": {
+                "type": "string"
+              },
+              "allowDomains": {
+                "type": "array",
+                "items": {
+                  "type": "string"
+                }
+              }
+            },
+            "required": ["sessionId"]
+          }
+        }
+      }
+    },
+    {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["name", "title", "description", "inputSchema"],
+      "properties": {
+        "name": {
+          "const": "tb_tab_list"
+        },
+        "title": {
+          "const": "List Session Tabs"
+        },
+        "description": {
+          "const": "List all daemon tabs registered for a session."
+        },
+        "inputSchema": {
+          "const": {
+            "type": "object",
+            "properties": {
+              "sessionId": {
+                "type": "string"
+              }
+            },
+            "required": ["sessionId"]
+          }
+        }
+      }
+    },
+    {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["name", "title", "description", "inputSchema"],
+      "properties": {
+        "name": {
+          "const": "tb_tab_select"
+        },
+        "title": {
+          "const": "Select Active Tab"
+        },
+        "description": {
+          "const": "Set the active daemon tab for a session."
+        },
+        "inputSchema": {
+          "const": {
+            "type": "object",
+            "properties": {
+              "sessionId": {
+                "type": "string"
+              },
+              "tabId": {
+                "type": "string"
+              }
+            },
+            "required": ["sessionId", "tabId"]
+          }
+        }
+      }
+    },
+    {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["name", "title", "description", "inputSchema"],
+      "properties": {
+        "name": {
+          "const": "tb_tab_close"
+        },
+        "title": {
+          "const": "Close Session Tab"
+        },
+        "description": {
+          "const": "Close one daemon tab and update the active tab if needed."
+        },
+        "inputSchema": {
+          "const": {
+            "type": "object",
+            "properties": {
+              "sessionId": {
+                "type": "string"
+              },
+              "tabId": {
+                "type": "string"
+              }
+            },
+            "required": ["sessionId", "tabId"]
+          }
+        }
+      }
+    },
+    {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["name", "title", "description", "inputSchema"],
+      "properties": {
+        "name": {
+          "const": "tb_checkpoint"
+        },
+        "title": {
+          "const": "Session Checkpoint"
+        },
+        "description": {
+          "const": "Return the current supervised checkpoint guidance for a daemon session/tab."
+        },
+        "inputSchema": {
+          "const": {
+            "type": "object",
+            "properties": {
+              "sessionId": {
+                "type": "string"
+              },
+              "tabId": {
+                "type": "string"
+              }
+            },
+            "required": ["sessionId"]
+          }
+        }
+      }
+    },
+    {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["name", "title", "description", "inputSchema"],
+      "properties": {
+        "name": {
+          "const": "tb_profile"
+        },
+        "title": {
+          "const": "Get Session Policy Profile"
+        },
+        "description": {
+          "const": "Return the active policy profile for a daemon session/tab."
+        },
+        "inputSchema": {
+          "const": {
+            "type": "object",
+            "properties": {
+              "sessionId": {
+                "type": "string"
+              },
+              "tabId": {
+                "type": "string"
+              }
+            },
+            "required": ["sessionId"]
+          }
+        }
+      }
+    },
+    {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["name", "title", "description", "inputSchema"],
+      "properties": {
+        "name": {
+          "const": "tb_profile_set"
+        },
+        "title": {
+          "const": "Set Session Policy Profile"
+        },
+        "description": {
+          "const": "Set the active policy profile for a daemon session/tab."
+        },
+        "inputSchema": {
+          "const": {
+            "type": "object",
+            "properties": {
+              "sessionId": {
+                "type": "string"
+              },
+              "tabId": {
+                "type": "string"
+              },
+              "profile": {
+                "type": "string"
+              }
+            },
+            "required": ["sessionId", "profile"]
+          }
+        }
+      }
+    },
+    {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["name", "title", "description", "inputSchema"],
+      "properties": {
+        "name": {
+          "const": "tb_click"
+        },
+        "title": {
+          "const": "Click Interactive Target"
+        },
+        "description": {
+          "const": "Click an interactive target inside an existing daemon session/tab."
+        },
+        "inputSchema": {
+          "const": {
+            "type": "object",
+            "properties": {
+              "sessionId": {
+                "type": "string"
+              },
+              "tabId": {
+                "type": "string"
+              },
+              "targetRef": {
+                "type": "string"
+              },
+              "headed": {
+                "type": "boolean"
+              },
+              "ackRisks": {
+                "type": "array",
+                "items": {
+                  "type": "string"
+                }
+              }
+            },
+            "required": ["sessionId", "targetRef"]
+          }
+        }
+      }
+    },
+    {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["name", "title", "description", "inputSchema"],
+      "properties": {
+        "name": {
+          "const": "tb_type"
+        },
+        "title": {
+          "const": "Type Into Interactive Field"
+        },
+        "description": {
+          "const": "Type into an interactive field inside an existing daemon session/tab."
+        },
+        "inputSchema": {
+          "const": {
+            "type": "object",
+            "properties": {
+              "sessionId": {
+                "type": "string"
+              },
+              "tabId": {
+                "type": "string"
+              },
+              "targetRef": {
+                "type": "string"
+              },
+              "value": {
+                "type": "string"
+              },
+              "headed": {
+                "type": "boolean"
+              },
+              "sensitive": {
+                "type": "boolean"
+              },
+              "ackRisks": {
+                "type": "array",
+                "items": {
+                  "type": "string"
+                }
+              }
+            },
+            "required": ["sessionId", "targetRef", "value"]
+          }
+        }
+      }
+    },
+    {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["name", "title", "description", "inputSchema"],
+      "properties": {
+        "name": {
+          "const": "tb_approve"
+        },
+        "title": {
+          "const": "Approve Supervised Risks"
+        },
+        "description": {
+          "const": "Persist supervised approval risks for the current daemon session so repeated ack flags are not required."
+        },
+        "inputSchema": {
+          "const": {
+            "type": "object",
+            "properties": {
+              "sessionId": {
+                "type": "string"
+              },
+              "ackRisks": {
+                "type": "array",
+                "items": {
+                  "type": "string"
+                }
+              }
+            },
+            "required": ["sessionId", "ackRisks"]
+          }
+        }
+      }
+    },
+    {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["name", "title", "description", "inputSchema"],
+      "properties": {
+        "name": {
+          "const": "tb_secret_store"
+        },
+        "title": {
+          "const": "Store Session Secret"
+        },
+        "description": {
+          "const": "Store a sensitive value only in daemon memory for a specific target ref."
+        },
+        "inputSchema": {
+          "const": {
+            "type": "object",
+            "properties": {
+              "sessionId": {
+                "type": "string"
+              },
+              "targetRef": {
+                "type": "string"
+              },
+              "value": {
+                "type": "string"
+              }
+            },
+            "required": ["sessionId", "targetRef", "value"]
+          }
+        }
+      }
+    },
+    {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["name", "title", "description", "inputSchema"],
+      "properties": {
+        "name": {
+          "const": "tb_secret_clear"
+        },
+        "title": {
+          "const": "Clear Session Secret"
+        },
+        "description": {
+          "const": "Clear one stored daemon secret or all secrets for a session."
+        },
+        "inputSchema": {
+          "const": {
+            "type": "object",
+            "properties": {
+              "sessionId": {
+                "type": "string"
+              },
+              "targetRef": {
+                "type": "string"
+              }
+            },
+            "required": ["sessionId"]
+          }
+        }
+      }
+    },
+    {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["name", "title", "description", "inputSchema"],
+      "properties": {
+        "name": {
+          "const": "tb_type_secret"
+        },
+        "title": {
+          "const": "Type Stored Secret"
+        },
+        "description": {
+          "const": "Type a previously stored daemon secret into a sensitive field without persisting it to disk."
+        },
+        "inputSchema": {
+          "const": {
+            "type": "object",
+            "properties": {
+              "sessionId": {
+                "type": "string"
+              },
+              "tabId": {
+                "type": "string"
+              },
+              "targetRef": {
+                "type": "string"
+              },
+              "headed": {
+                "type": "boolean"
+              },
+              "ackRisks": {
+                "type": "array",
+                "items": {
+                  "type": "string"
+                }
+              }
+            },
+            "required": ["sessionId", "targetRef"]
+          }
+        }
+      }
+    },
+    {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["name", "title", "description", "inputSchema"],
+      "properties": {
+        "name": {
+          "const": "tb_submit"
+        },
+        "title": {
+          "const": "Submit Interactive Form"
+        },
+        "description": {
+          "const": "Submit a form or submit control inside an existing daemon session/tab."
+        },
+        "inputSchema": {
+          "const": {
+            "type": "object",
+            "properties": {
+              "sessionId": {
+                "type": "string"
+              },
+              "tabId": {
+                "type": "string"
+              },
+              "targetRef": {
+                "type": "string"
+              },
+              "headed": {
+                "type": "boolean"
+              },
+              "ackRisks": {
+                "type": "array",
+                "items": {
+                  "type": "string"
+                }
+              }
+            },
+            "required": ["sessionId", "targetRef"]
+          }
+        }
+      }
+    },
+    {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["name", "title", "description", "inputSchema"],
+      "properties": {
+        "name": {
+          "const": "tb_refresh"
+        },
+        "title": {
+          "const": "Refresh Live Session"
+        },
+        "description": {
+          "const": "Re-capture the current persistent browser page after a manual checkpoint or out-of-band change."
+        },
+        "inputSchema": {
+          "const": {
+            "type": "object",
+            "properties": {
+              "sessionId": {
+                "type": "string"
+              },
+              "tabId": {
+                "type": "string"
+              },
+              "headed": {
+                "type": "boolean"
+              }
+            },
+            "required": ["sessionId"]
+          }
+        }
+      }
+    },
+    {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["name", "title", "description", "inputSchema"],
+      "properties": {
+        "name": {
+          "const": "tb_telemetry_summary"
+        },
+        "title": {
+          "const": "Pilot Telemetry Summary"
+        },
+        "description": {
+          "const": "Return the aggregated pilot telemetry summary for the current runtime."
+        },
+        "inputSchema": {
+          "const": {
+            "type": "object",
+            "properties": {}
+          }
+        }
+      }
+    },
+    {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["name", "title", "description", "inputSchema"],
+      "properties": {
+        "name": {
+          "const": "tb_telemetry_recent"
+        },
+        "title": {
+          "const": "Recent Pilot Telemetry"
+        },
+        "description": {
+          "const": "Return recent pilot telemetry events for the current runtime."
+        },
+        "inputSchema": {
+          "const": {
+            "type": "object",
+            "properties": {
+              "limit": {
+                "type": "integer",
+                "minimum": 1
+              }
+            }
+          }
+        }
+      }
+    },
+    {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["name", "title", "description", "inputSchema"],
+      "properties": {
+        "name": {
+          "const": "tb_session_synthesize"
+        },
+        "title": {
+          "const": "Synthesize Session"
+        },
+        "description": {
+          "const": "Aggregate visited tabs inside a daemon session into a citation-ready synthesis report."
+        },
+        "inputSchema": {
+          "const": {
+            "type": "object",
+            "properties": {
+              "sessionId": {
+                "type": "string"
+              },
+              "noteLimit": {
+                "type": "integer"
+              }
+            },
+            "required": ["sessionId"]
+          }
+        }
+      }
+    },
+    {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["name", "title", "description", "inputSchema"],
+      "properties": {
+        "name": {
+          "const": "tb_session_close"
+        },
+        "title": {
+          "const": "Close Session"
+        },
+        "description": {
+          "const": "Close a daemon session and clean up all tab state."
+        },
+        "inputSchema": {
+          "const": {
+            "type": "object",
+            "properties": {
+              "sessionId": {
+                "type": "string"
+              }
+            },
+            "required": ["sessionId"]
+          }
+        }
+      }
+    }
+  ]
+}

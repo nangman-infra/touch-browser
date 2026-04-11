@@ -14,7 +14,7 @@ describe("contract schemas", () => {
   it("loads and compiles the initial schema set", async () => {
     const registry = await loadContractSchemas();
 
-    expect(registry.schemas.size).toBe(14);
+    expect(registry.schemas.size).toBe(15);
     expect([...registry.schemas.keys()]).toEqual([
       "acquisition-record.schema.json",
       "action-command.schema.json",
@@ -23,6 +23,7 @@ describe("contract schemas", () => {
       "evidence-report.schema.json",
       "json-rpc-request.schema.json",
       "json-rpc-response.schema.json",
+      "mcp-tool-catalog.schema.json",
       "policy-report.schema.json",
       "replay-transcript.schema.json",
       "session-state.schema.json",
@@ -48,6 +49,7 @@ describe("contract schemas", () => {
       "replay-transcript.schema.json",
       "json-rpc-request.schema.json",
       "json-rpc-response.schema.json",
+      "mcp-tool-catalog.schema.json",
       "snapshot-document.schema.json",
     ];
 
@@ -60,6 +62,22 @@ describe("contract schemas", () => {
       );
       expect(schema.$id).toBe(schemaFile);
     }
+  });
+
+  it("keeps the generated MCP tool catalog in sync with the canonical schema", async () => {
+    const registry = await loadContractSchemas();
+    const generatedCatalogPath = path.join(
+      path.dirname(contractsManifestPath),
+      "mcp-tool-catalog.json",
+    );
+    const generatedCatalog = await readJsonFile(generatedCatalogPath);
+
+    expect(
+      requireValidator(
+        registry,
+        "mcp-tool-catalog.schema.json",
+      )(generatedCatalog),
+    ).toBe(true);
   });
 
   it("accepts valid example payloads", async () => {
@@ -470,6 +488,7 @@ describe("contract schemas", () => {
       "evidence-report.schema.json",
       "json-rpc-request.schema.json",
       "json-rpc-response.schema.json",
+      "mcp-tool-catalog.schema.json",
       "policy-report.schema.json",
       "replay-transcript.schema.json",
       "session-state.schema.json",

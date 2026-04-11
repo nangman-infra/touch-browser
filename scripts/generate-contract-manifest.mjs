@@ -1,6 +1,8 @@
 import { mkdir, readdir, writeFile } from "node:fs/promises";
 import path from "node:path";
 
+import { generateMcpToolCatalog } from "./generate-mcp-tool-catalog.mjs";
+
 async function collectSchemaFiles(directory, prefix = "") {
   const entries = await readdir(directory, { withFileTypes: true });
   const files = [];
@@ -28,6 +30,7 @@ async function main() {
   const generatedDir = path.join(root, "contracts", "generated");
   const manifestPath = path.join(generatedDir, "manifest.json");
   const schemas = await collectSchemaFiles(schemaDir);
+  const mcpCatalog = await generateMcpToolCatalog(root);
 
   await mkdir(generatedDir, { recursive: true });
   await writeFile(
@@ -48,6 +51,9 @@ async function main() {
         status: "ok",
         manifest: path.relative(root, manifestPath),
         schemaCount: schemas.length,
+        generated: {
+          mcpToolCatalog: mcpCatalog,
+        },
       },
       null,
       2,

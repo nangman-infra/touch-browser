@@ -16,13 +16,21 @@ use super::deps::{
 };
 use crate::interface::cli_support::data_root;
 
+fn search_metadata_version() -> String {
+    CONTRACT_VERSION.to_string()
+}
+
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
 struct PreferredSearchEngineRecord {
+    #[serde(default = "search_metadata_version")]
+    version: String,
     engine: SearchEngine,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
 pub(crate) struct SearchProfileStateRecord {
+    #[serde(default = "search_metadata_version")]
+    pub(crate) version: String,
     pub(crate) engine: SearchEngine,
     pub(crate) profile_dir: String,
     pub(crate) last_success_at: Option<String>,
@@ -185,8 +193,11 @@ fn save_preferred_search_engine_to(
     if let Some(parent) = metadata_file.parent() {
         fs::create_dir_all(parent)?;
     }
-    let payload = serde_json::to_vec_pretty(&PreferredSearchEngineRecord { engine })
-        .map_err(|error| CliError::Usage(error.to_string()))?;
+    let payload = serde_json::to_vec_pretty(&PreferredSearchEngineRecord {
+        version: search_metadata_version(),
+        engine,
+    })
+    .map_err(|error| CliError::Usage(error.to_string()))?;
     fs::write(metadata_file, payload)?;
     Ok(())
 }
@@ -228,6 +239,7 @@ pub(crate) fn record_search_profile_result(
     let metadata_file = search_profile_state_file(engine);
     let mut record =
         load_search_profile_state_from(&metadata_file)?.unwrap_or(SearchProfileStateRecord {
+            version: search_metadata_version(),
             engine,
             profile_dir: profile_dir.display().to_string(),
             last_success_at: None,
@@ -235,6 +247,7 @@ pub(crate) fn record_search_profile_result(
             last_manual_recovery_at: None,
             consecutive_challenges: 0,
         });
+    record.version = search_metadata_version();
     record.engine = engine;
     record.profile_dir = profile_dir.display().to_string();
 
@@ -1051,6 +1064,8 @@ mod tests {
         time::{SystemTime, UNIX_EPOCH},
     };
 
+    use serde_json::Value;
+
     use super::{
         default_or_legacy_search_session_file_for, default_search_output_dir,
         default_search_profile_dir, infer_search_engine_from_session_file,
@@ -1058,6 +1073,7 @@ mod tests {
         load_preferred_search_engine_from, load_search_profile_state, record_search_profile_result,
         save_preferred_search_engine_to, SearchEngine, SearchReportStatus,
     };
+    use crate::CONTRACT_VERSION;
 
     fn env_lock() -> &'static Mutex<()> {
         static LOCK: OnceLock<Mutex<()>> = OnceLock::new();
@@ -1172,6 +1188,32 @@ mod tests {
                 .expect("preferred engine should reload"),
             Some(SearchEngine::Brave)
         );
+        let raw = fs::read_to_string(&metadata_file).expect("metadata file should be readable");
+        let payload: Value = serde_json::from_str(&raw).expect("metadata should be valid json");
+        assert_eq!(
+            payload.get("version").and_then(Value::as_str),
+            Some(CONTRACT_VERSION)
+        );
+    }
+
+    #[test]
+    fn preferred_search_engine_loads_legacy_unversioned_metadata() {
+        let data_root = temporary_directory("search-preferred-engine-legacy");
+        let metadata_file = data_root.join("browser-search/preferred-engine.json");
+        fs::create_dir_all(
+            metadata_file
+                .parent()
+                .expect("metadata parent directory should exist"),
+        )
+        .expect("metadata parent directory should be created");
+        fs::write(&metadata_file, "{\n  \"engine\": \"google\"\n}")
+            .expect("legacy metadata should be written");
+
+        assert_eq!(
+            load_preferred_search_engine_from(&metadata_file)
+                .expect("legacy preferred engine should load"),
+            Some(SearchEngine::Google)
+        );
     }
 
     #[test]
@@ -1241,6 +1283,39 @@ mod tests {
                 .expect("profile state should exist"),
             recovered
         );
+        assert_eq!(recovered.version, CONTRACT_VERSION);
+
+        restore_env("TOUCH_BROWSER_DATA_ROOT", previous);
+    }
+
+    #[test]
+    fn search_profile_state_loads_legacy_unversioned_metadata() {
+        let _guard = env_lock()
+            .lock()
+            .unwrap_or_else(|poisoned| poisoned.into_inner());
+        let data_root = temporary_directory("search-profile-state-legacy");
+        let previous = std::env::var_os("TOUCH_BROWSER_DATA_ROOT");
+        std::env::set_var("TOUCH_BROWSER_DATA_ROOT", &data_root);
+        let metadata_file = data_root.join("browser-search/google.profile-state.json");
+        fs::create_dir_all(
+            metadata_file
+                .parent()
+                .expect("metadata parent directory should exist"),
+        )
+        .expect("metadata parent directory should be created");
+        fs::write(
+            &metadata_file,
+            "{\n  \"engine\": \"google\",\n  \"profile_dir\": \"/tmp/google-default\",\n  \"last_success_at\": null,\n  \"last_challenge_at\": \"2026-04-11T01:00:00+09:00\",\n  \"last_manual_recovery_at\": null,\n  \"consecutive_challenges\": 1\n}",
+        )
+        .expect("legacy profile state should be written");
+
+        let loaded = load_search_profile_state(SearchEngine::Google)
+            .expect("legacy profile state should load")
+            .expect("legacy profile state should exist");
+        assert_eq!(loaded.version, CONTRACT_VERSION);
+        assert_eq!(loaded.engine, SearchEngine::Google);
+        assert_eq!(loaded.profile_dir, "/tmp/google-default");
+        assert_eq!(loaded.consecutive_challenges, 1);
 
         restore_env("TOUCH_BROWSER_DATA_ROOT", previous);
     }

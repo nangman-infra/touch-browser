@@ -18,5 +18,7 @@ Current workflow:
 Expected generated artifacts:
 
 - `contracts/generated/manifest.json`
+- `contracts/generated/mcp-tool-catalog.json`
+- `contracts/generated/mcp-tool-catalog.mjs`
 - `contracts/generated/ts/*`
 - `contracts/generated/rust/*`

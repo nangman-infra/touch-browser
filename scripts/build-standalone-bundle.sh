@@ -106,6 +106,7 @@ rm -rf "${BUNDLE_ROOT}"
 mkdir -p \
   "${BUNDLE_ROOT}/bin" \
   "${RUNTIME_ROOT}/adapters/playwright" \
+  "${RUNTIME_ROOT}/contracts/generated" \
   "${RUNTIME_ROOT}/integrations/mcp/bridge" \
   "${RUNTIME_ROOT}/scripts/lib"
 
@@ -121,6 +122,7 @@ chmod +x "${RUNTIME_ROOT}/touch-browser-bin"
 rsync -a "${NODE_PREFIX}/" "${RUNTIME_ROOT}/node/"
 rsync -a "${REPO_ROOT}/node_modules/" "${RUNTIME_ROOT}/node_modules/"
 rsync -a "${REPO_ROOT}/adapters/playwright/dist-runtime/src/" "${RUNTIME_ROOT}/adapters/playwright/"
+rsync -a "${REPO_ROOT}/contracts/generated/" "${RUNTIME_ROOT}/contracts/generated/"
 rsync -a "${REPO_ROOT}/integrations/mcp/bridge/" "${RUNTIME_ROOT}/integrations/mcp/bridge/"
 
 cp "${REPO_ROOT}/scripts/evidence-embedding-runner.mjs" "${RUNTIME_ROOT}/scripts/evidence-embedding-runner.mjs"

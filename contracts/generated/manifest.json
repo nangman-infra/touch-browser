@@ -1,5 +1,5 @@
 {
-  "generatedAt": "2026-04-10T14:52:55.533Z",
+  "generatedAt": "2026-04-11T11:45:32.622Z",
   "schemas": [
     "acquisition-record.schema.json",
     "action-command.schema.json",
@@ -8,6 +8,7 @@
     "evidence-report.schema.json",
     "json-rpc-request.schema.json",
     "json-rpc-response.schema.json",
+    "mcp-tool-catalog.schema.json",
     "policy-report.schema.json",
     "replay-transcript.schema.json",
     "session-state.schema.json",
