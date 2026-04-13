@@ -25,10 +25,14 @@ fn is_help_flag(value: &str) -> bool {
 
 fn emit_read_view_quality_notice(output: &Value) {
     let quality = output.get("mainContentQuality").and_then(Value::as_str);
+    let reason = output.get("mainContentReason").and_then(Value::as_str);
     let hint = output.get("mainContentHint").and_then(Value::as_str);
     if matches!(quality, Some("uncertain" | "poor")) {
         if let Some(hint) = hint {
-            eprintln!("touch-browser note: {hint}");
+            match reason {
+                Some(reason) => eprintln!("touch-browser note [{reason}]: {hint}"),
+                None => eprintln!("touch-browser note: {hint}"),
+            }
         }
     }
 }

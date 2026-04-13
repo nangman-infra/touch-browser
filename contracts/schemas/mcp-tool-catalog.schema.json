@@ -129,7 +129,7 @@
           "const": "Search The Web"
         },
         "description": {
-          "const": "Run a Google or Brave search inside touch-browser and structure the search results for follow-up browsing."
+          "const": "Run touch-browser search and structure the result page for follow-up browsing. Leave engine unset unless you need an explicit override, then follow tb_search_open_top before read-view or extract."
         },
         "inputSchema": {
           "const": {
@@ -142,9 +142,6 @@
                 "type": "string"
               },
               "query": {
-                "type": "string"
-              },
-              "engine": {
                 "type": "string"
               },
               "headed": {
@@ -171,7 +168,7 @@
           "const": "Open One Search Result"
         },
         "description": {
-          "const": "Open one structured search result into a new tab within the daemon session."
+          "const": "Open one structured search result into a new tab within the daemon session. Use this when you must override the recommended top-result order."
         },
         "inputSchema": {
           "const": {
@@ -207,7 +204,7 @@
           "const": "Open Top Search Results"
         },
         "description": {
-          "const": "Open the top recommended search results into new tabs for multi-page research."
+          "const": "Open the top recommended search results into new tabs for multi-page research. Prefer this immediately after tb_search before read-view or extract."
         },
         "inputSchema": {
           "const": {
@@ -243,7 +240,7 @@
           "const": "Extract Evidence"
         },
         "description": {
-          "const": "Extract evidence-supported and insufficient-evidence claims from the current target or daemon tab."
+          "const": "Extract evidence-supported and insufficient-evidence claims from the current target or daemon tab. Use this after the tab scope looks right from search or read-view."
         },
         "inputSchema": {
           "const": {
@@ -309,7 +306,7 @@
           "const": "Read View"
         },
         "description": {
-          "const": "Return a readable Markdown view of a target or daemon tab for higher-level verification."
+          "const": "Return a readable Markdown view of a target or daemon tab for higher-level verification. Use this after opening candidate tabs to confirm scope before extracting claims."
         },
         "inputSchema": {
           "const": {

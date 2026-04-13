@@ -1,6 +1,7 @@
 use std::{
     collections::BTreeSet,
     env, fs,
+    net::IpAddr,
     path::{Path, PathBuf},
 };
 
@@ -391,6 +392,31 @@ pub(crate) fn is_search_results_target(target: &str) -> bool {
     };
     let path = url.path();
     (is_google_host(host) || is_brave_host(host)) && path == "/search"
+}
+
+pub(crate) fn should_use_browser_research_identity(target: &str) -> bool {
+    let Ok(url) = Url::parse(target) else {
+        return false;
+    };
+    if !matches!(url.scheme(), "http" | "https") {
+        return false;
+    }
+
+    let Some(host) = url.host_str() else {
+        return false;
+    };
+    if host.eq_ignore_ascii_case("localhost") {
+        return false;
+    }
+    if host
+        .parse::<IpAddr>()
+        .map(|address| address.is_loopback())
+        .unwrap_or(false)
+    {
+        return false;
+    }
+
+    true
 }
 
 pub(crate) fn build_search_report(
@@ -796,7 +822,126 @@ fn canonicalize_search_result_url(mut resolved: Url) -> Option<String> {
         return Some(resolved.to_string());
     }
 
+    canonicalize_known_docs_url(&mut resolved, &host);
     Some(resolved.to_string())
+}
+
+fn canonicalize_known_docs_url(resolved: &mut Url, host: &str) {
+    if host == "developer.mozilla.org" {
+        canonicalize_mdn_docs_url(resolved);
+        strip_query_params(
+            resolved,
+            &[
+                "retiredLocale",
+                "redirectlocale",
+                "utm_source",
+                "utm_medium",
+                "utm_campaign",
+                "utm_term",
+                "utm_content",
+            ],
+        );
+    }
+
+    if host == "developers.google.com" {
+        strip_query_params(
+            resolved,
+            &[
+                "hl",
+                "authuser",
+                "utm_source",
+                "utm_medium",
+                "utm_campaign",
+                "utm_term",
+                "utm_content",
+            ],
+        );
+    }
+}
+
+fn canonicalize_mdn_docs_url(resolved: &mut Url) {
+    let Some(segments) = resolved
+        .path_segments()
+        .map(|parts| parts.collect::<Vec<_>>())
+    else {
+        return;
+    };
+
+    let canonical_segments = if segments.first().copied() == Some("docs") {
+        let mut rewritten = vec!["en-US".to_string(), "docs".to_string()];
+        rewritten.extend(
+            segments
+                .iter()
+                .skip(1)
+                .map(|segment| (*segment).to_string()),
+        );
+        Some(rewritten)
+    } else if segments.len() >= 2
+        && is_locale_path_segment(segments[0])
+        && segments[1].eq_ignore_ascii_case("docs")
+    {
+        let mut rewritten = vec!["en-US".to_string(), "docs".to_string()];
+        rewritten.extend(
+            segments
+                .iter()
+                .skip(2)
+                .map(|segment| (*segment).to_string()),
+        );
+        Some(rewritten)
+    } else {
+        None
+    };
+
+    if let Some(segments) = canonical_segments {
+        resolved.set_path(&format!("/{}", segments.join("/")));
+    }
+}
+
+fn is_locale_path_segment(segment: &str) -> bool {
+    let mut parts = segment.split('-');
+    let Some(language) = parts.next() else {
+        return false;
+    };
+    if !(language.len() == 2 || language.len() == 3)
+        || !language
+            .chars()
+            .all(|character| character.is_ascii_alphabetic())
+    {
+        return false;
+    }
+
+    parts.all(|part| {
+        (part.len() == 2 || part.len() == 4)
+            && part
+                .chars()
+                .all(|character| character.is_ascii_alphanumeric())
+    })
+}
+
+fn strip_query_params(resolved: &mut Url, blocked_keys: &[&str]) {
+    let Some(_) = resolved.query() else {
+        return;
+    };
+
+    let retained = resolved
+        .query_pairs()
+        .filter(|(key, _)| {
+            let lowered = key.to_ascii_lowercase();
+            !blocked_keys.iter().any(|blocked| lowered == *blocked) && !lowered.starts_with("utm_")
+        })
+        .map(|(key, value)| (key.into_owned(), value.into_owned()))
+        .collect::<Vec<_>>();
+
+    if retained.is_empty() {
+        resolved.set_query(None);
+        return;
+    }
+
+    let mut serializer = form_urlencoded::Serializer::new(String::new());
+    for (key, value) in retained {
+        serializer.append_pair(&key, &value);
+    }
+    resolved.set_query(Some(&serializer.finish()));
 }
 
 fn search_result_identity_key(url: &str) -> String {
@@ -847,6 +992,107 @@ fn official_likely(query: &str, domain: &str) -> bool {
             .any(|token| token.len() >= 4 && lowered_domain.contains(token))
 }
 
+fn query_authority_hints(query: &str) -> Vec<&'static str> {
+    let lowered = query.to_ascii_lowercase();
+    let mut hints = Vec::new();
+
+    push_query_authority_hint_if(
+        &mut hints,
+        lowered.contains("nodejs") || lowered.contains("node.js") || lowered.contains("node:"),
+        "nodejs.org",
+    );
+    push_query_authority_hint_if(&mut hints, lowered.contains("mdn"), "developer.mozilla.org");
+    push_query_authority_hint_if(&mut hints, lowered.contains("iana"), "iana.org");
+    push_query_authority_hint_if(&mut hints, lowered.contains("rfc"), "rfc-editor.org");
+    push_query_authority_hint_if(&mut hints, lowered.contains("react"), "react.dev");
+    push_query_authority_hint_if(
+        &mut hints,
+        lowered.contains("nextjs") || lowered.contains("next.js"),
+        "nextjs.org",
+    );
+    push_query_authority_hint_if(&mut hints, lowered.contains("tailwind"), "tailwindcss.com");
+    push_query_authority_hint_if(
+        &mut hints,
+        lowered.contains("material ui") || lowered.contains("mui"),
+        "mui.com",
+    );
+    push_query_authority_hint_if(
+        &mut hints,
+        lowered.contains("whatwg"),
+        "url.spec.whatwg.org",
+    );
+
+    hints
+}
+
+fn push_query_authority_hint_if(
+    hints: &mut Vec<&'static str>,
+    condition: bool,
+    domain: &'static str,
+) {
+    if condition && !hints.contains(&domain) {
+        hints.push(domain);
+    }
+}
+
+fn domain_matches_hint(domain: &str, hint: &str) -> bool {
+    let normalized_domain = domain.trim_start_matches("www.");
+    let normalized_hint = hint.trim_start_matches("www.");
+    normalized_domain == normalized_hint
+        || normalized_domain.ends_with(&format!(".{normalized_hint}"))
+}
+
+fn query_prefers_authoritative_docs(query: &str) -> bool {
+    let lowered = query.to_ascii_lowercase();
+    [
+        "api",
+        "docs",
+        "documentation",
+        "reference",
+        "official",
+        "manual",
+    ]
+    .iter()
+    .any(|keyword| lowered.contains(keyword))
+}
+
+fn authority_domain_bonus(query: &str, result: &SearchResultItem) -> f64 {
+    let hints = query_authority_hints(query);
+    if hints.is_empty() {
+        return 0.0;
+    }
+
+    let domain = result.domain.to_ascii_lowercase();
+    let prefers_authoritative_docs = query_prefers_authoritative_docs(query);
+    if let Some(index) = hints
+        .iter()
+        .position(|hint| domain_matches_hint(&domain, hint))
+    {
+        let base_bonus = match index {
+            0 => 0.45,
+            1 => 0.08,
+            2 => 0.04,
+            _ => 0.02,
+        };
+        let secondary_authority_penalty = if index > 0 && prefers_authoritative_docs {
+            0.12
+        } else {
+            0.0
+        };
+        return base_bonus - secondary_authority_penalty;
+    }
+
+    if result.official_likely {
+        if prefers_authoritative_docs {
+            -0.16
+        } else {
+            -0.12
+        }
+    } else {
+        0.0
+    }
+}
+
 fn selection_score_for_result(query: &str, result: &SearchResultItem) -> f64 {
     let lowered_title = result.title.to_ascii_lowercase();
     let lowered_url = result.url.to_ascii_lowercase();
@@ -878,12 +1124,16 @@ fn selection_score_for_result(query: &str, result: &SearchResultItem) -> f64 {
     if result.official_likely {
         score += 0.25;
     }
+    score += authority_domain_bonus(query, result);
     if detail_keywords.iter().any(|keyword| {
         lowered_title.contains(keyword)
             || lowered_url.contains(keyword)
             || lowered_snippet.contains(keyword)
     }) {
         score += if numeric_intent { 0.22 } else { 0.10 };
+    }
+    if lowered_url.contains("/en-us/docs/") {
+        score += 0.04;
     }
     if overview_keywords.iter().any(|keyword| {
         lowered_title.contains(keyword)
@@ -1065,14 +1315,16 @@ mod tests {
     };
 
     use serde_json::Value;
+    use url::Url;
 
     use super::{
+        authority_domain_bonus, canonicalize_search_result_url,
         default_or_legacy_search_session_file_for, default_search_output_dir,
         default_search_profile_dir, infer_search_engine_from_session_file,
         latest_search_session_file_for, latest_search_session_file_in,
         load_preferred_search_engine_from, load_search_profile_state_from,
-        record_search_profile_result, save_preferred_search_engine_to, SearchEngine,
-        SearchReportStatus,
+        record_search_profile_result, save_preferred_search_engine_to, selection_score_for_result,
+        should_use_browser_research_identity, SearchEngine, SearchReportStatus, SearchResultItem,
     };
     use crate::CONTRACT_VERSION;
 
@@ -1283,6 +1535,118 @@ mod tests {
         assert_eq!(recovered.version, CONTRACT_VERSION);
 
         restore_env("TOUCH_BROWSER_DATA_ROOT", previous);
+    }
+
+    #[test]
+    fn canonicalize_search_result_url_normalizes_mdn_locale_pages_to_en_us() {
+        let url = Url::parse(
+            "https://developer.mozilla.org/ko/docs/Web/API/AbortController?utm_source=test",
+        )
+        .expect("url should parse");
+
+        assert_eq!(
+            canonicalize_search_result_url(url),
+            Some("https://developer.mozilla.org/en-US/docs/Web/API/AbortController".to_string())
+        );
+    }
+
+    #[test]
+    fn query_authority_bonus_prefers_nodejs_docs_over_secondary_official_hosts() {
+        let node_result = SearchResultItem {
+            rank: 3,
+            title: "Node.js URL API".to_string(),
+            url: "https://nodejs.org/api/url.html".to_string(),
+            domain: "nodejs.org".to_string(),
+            snippet: Some("The WHATWG URL API in Node.js.".to_string()),
+            stable_ref: None,
+            official_likely: true,
+            selection_score: None,
+            recommended_surface: None,
+        };
+        let whatwg_result = SearchResultItem {
+            rank: 1,
+            title: "URL Standard".to_string(),
+            url: "https://url.spec.whatwg.org/".to_string(),
+            domain: "url.spec.whatwg.org".to_string(),
+            snippet: Some("The living WHATWG URL specification.".to_string()),
+            stable_ref: None,
+            official_likely: true,
+            selection_score: None,
+            recommended_surface: None,
+        };
+        let query = "WHATWG URL API Node.js docs official";
+
+        assert!(
+            authority_domain_bonus(query, &node_result)
+                > authority_domain_bonus(query, &whatwg_result),
+            "Node.js authority hints should outrank the broader WHATWG spec for a Node.js docs query"
+        );
+        assert!(
+            selection_score_for_result(query, &node_result)
+                > selection_score_for_result(query, &whatwg_result),
+            "selection score should open the Node.js doc ahead of the broader spec page"
+        );
+    }
+
+    #[test]
+    fn query_authority_bonus_prefers_primary_spec_when_query_targets_whatwg() {
+        let node_result = SearchResultItem {
+            rank: 1,
+            title: "Node.js URL API".to_string(),
+            url: "https://nodejs.org/api/url.html".to_string(),
+            domain: "nodejs.org".to_string(),
+            snippet: Some("The WHATWG URL API in Node.js.".to_string()),
+            stable_ref: None,
+            official_likely: true,
+            selection_score: None,
+            recommended_surface: None,
+        };
+        let whatwg_result = SearchResultItem {
+            rank: 2,
+            title: "URL Standard".to_string(),
+            url: "https://url.spec.whatwg.org/".to_string(),
+            domain: "url.spec.whatwg.org".to_string(),
+            snippet: Some("The living WHATWG URL specification.".to_string()),
+            stable_ref: None,
+            official_likely: true,
+            selection_score: None,
+            recommended_surface: None,
+        };
+        let query = "WHATWG URL standard official";
+
+        assert!(
+            authority_domain_bonus(query, &whatwg_result)
+                > authority_domain_bonus(query, &node_result),
+            "The WHATWG spec should be the primary authority when the query targets the standard"
+        );
+        assert!(
+            selection_score_for_result(query, &whatwg_result)
+                > selection_score_for_result(query, &node_result),
+            "selection score should keep the WHATWG spec ahead when the query explicitly targets it"
+        );
+    }
+
+    #[test]
+    fn browser_research_identity_applies_to_remote_docs_hosts() {
+        assert!(should_use_browser_research_identity(
+            "https://developer.mozilla.org/ko/docs/Web/API/AbortController"
+        ));
+        assert!(should_use_browser_research_identity(
+            "https://www.google.com/search?q=abortcontroller"
+        ));
+    }
+
+    #[test]
+    fn browser_research_identity_skips_local_and_non_http_targets() {
+        assert!(!should_use_browser_research_identity(
+            "http://127.0.0.1:4173/docs-shell"
+        ));
+        assert!(!should_use_browser_research_identity(
+            "http://localhost:4173/spa"
+        ));
+        assert!(!should_use_browser_research_identity(
+            "fixture://docs-shell"
+        ));
     }
 
     #[test]

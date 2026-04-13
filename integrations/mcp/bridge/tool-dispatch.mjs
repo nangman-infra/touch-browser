@@ -19,7 +19,10 @@ export async function handleToolCall(id, params, serve) {
       );
       break;
     case "tb_search":
-      result = await serve.call("runtime.search", args);
+      result = await serve.call("runtime.search", {
+        ...args,
+        engine: undefined,
+      });
       break;
     case "tb_search_open_result":
       result = await serve.call("runtime.search.openResult", args);

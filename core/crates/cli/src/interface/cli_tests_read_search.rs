@@ -90,6 +90,10 @@ fn read_view_output_changes_when_main_only_is_enabled() {
         Some("high"),
         "expected article-like main content to be trusted"
     );
+    assert_eq!(
+        main.main_content_reason.as_deref(),
+        Some("main-region-confirmed")
+    );
 }
 
 #[test]
@@ -178,11 +182,87 @@ fn read_view_main_only_reports_poor_quality_for_navigation_heavy_output() {
     let main = ReadViewOutput::new(&snapshot, None, None, true);
 
     assert_eq!(main.main_content_quality.as_deref(), Some("poor"));
+    assert_eq!(
+        main.main_content_reason.as_deref(),
+        Some("page-structure-low-confidence")
+    );
     assert!(
         main.main_content_hint
             .as_deref()
-            .is_some_and(|hint| hint.contains("noisy")),
-        "expected noisy-shell guidance"
+            .is_some_and(|hint| hint.contains("main-region signals conflict")),
+        "expected cause-based poor guidance"
+    );
+}
+
+#[test]
+fn read_view_main_only_reports_filter_rejection_reason_when_content_exists() {
+    let source_url = "https://example.com/filter-mismatch";
+    let snapshot = test_snapshot_document(
+        source_url,
+        SourceType::Http,
+        "Filter Mismatch",
+        128,
+        24,
+        vec![
+            test_snapshot_block(
+                source_url,
+                SourceType::Http,
+                "b1",
+                SnapshotBlockKind::Input,
+                "rmain:input:query",
+                SnapshotBlockRole::FormControl,
+                "Search",
+                "html > body > main > article > input",
+            ),
+            test_snapshot_block(
+                source_url,
+                SourceType::Http,
+                "b2",
+                SnapshotBlockKind::Input,
+                "rmain:input:filters",
+                SnapshotBlockRole::FormControl,
+                "Filters",
+                "html > body > main > article > input:nth-of-type(2)",
+            ),
+            test_snapshot_block(
+                source_url,
+                SourceType::Http,
+                "b3",
+                SnapshotBlockKind::Button,
+                "rmain:button:submit",
+                SnapshotBlockRole::Cta,
+                "Run",
+                "html > body > main > article > button",
+            ),
+            test_snapshot_block(
+                source_url,
+                SourceType::Http,
+                "b4",
+                SnapshotBlockKind::Text,
+                "rfooter:text:body",
+                SnapshotBlockRole::Content,
+                "This page still contains readable text, but it lives outside the preferred main-content region.",
+                "html > body > footer > p",
+            ),
+        ],
+    );
+
+    let main = ReadViewOutput::new(&snapshot, None, None, true);
+
+    assert!(
+        !main.markdown_text.is_empty(),
+        "full read view should still have content"
+    );
+    assert_eq!(main.main_content_quality.as_deref(), Some("poor"));
+    assert_eq!(
+        main.main_content_reason.as_deref(),
+        Some("content-present-but-main-filter-rejected")
+    );
+    assert!(
+        main.main_content_hint
+            .as_deref()
+            .is_some_and(|hint| hint.contains("Readable content exists")),
+        "expected filter-rejection guidance"
     );
 }
 

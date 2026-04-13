@@ -622,6 +622,8 @@ pub(crate) struct ReadViewOutput {
     #[serde(skip_serializing_if = "Option::is_none")]
     pub(crate) main_content_quality: Option<String>,
     #[serde(skip_serializing_if = "Option::is_none")]
+    pub(crate) main_content_reason: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
     pub(crate) main_content_hint: Option<String>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub(crate) diagnostics: Option<CaptureDiagnostics>,
@@ -657,10 +659,16 @@ impl ReadViewOutput {
         let char_count = markdown_text.chars().count();
         let approx_tokens = char_count.div_ceil(4).max(1);
         let ref_index = compact_ref_index(snapshot);
-        let (main_content_quality, main_content_hint) =
+        let (main_content_quality, main_content_reason, main_content_hint) =
             assess_main_read_view_quality(snapshot, &quality_markdown)
-                .map(|(quality, hint)| (Some(quality.as_str().to_string()), Some(hint)))
-                .unwrap_or((None, None));
+                .map(|(quality, reason, hint)| {
+                    (
+                        Some(quality.as_str().to_string()),
+                        Some(reason.as_str().to_string()),
+                        Some(hint),
+                    )
+                })
+                .unwrap_or((None, None, None));
 
         Self {
             source_url: snapshot.source.source_url.clone(),
@@ -672,6 +680,7 @@ impl ReadViewOutput {
             approx_tokens,
             ref_index,
             main_content_quality,
+            main_content_reason,
             main_content_hint,
             diagnostics: None,
             session_state,

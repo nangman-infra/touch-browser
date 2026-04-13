@@ -17,6 +17,7 @@ pub(super) use super::policy_support::{
 };
 pub(super) use super::search_support::{
     is_search_results_target, resolve_latest_search_session_file,
+    should_use_browser_research_identity,
 };
 pub(super) use super::session_reporting::verify_action_result_if_requested;
 pub(super) use crate::application::context::CliAppContext;

@@ -216,7 +216,7 @@ pub(crate) fn selected_search_result(
 }
 
 fn should_auto_recover_search(options: &SearchOptions) -> bool {
-    !options.engine_explicit && options.session_file.is_none()
+    !options.engine_explicit
 }
 
 fn alternate_search_engine(engine: SearchEngine) -> SearchEngine {
@@ -473,7 +473,7 @@ pub(crate) fn handle_search(
         ctx,
         &options,
         fallback_engine,
-        resolve_search_session_file(None, fallback_engine),
+        resolve_search_session_file(options.session_file.as_ref(), fallback_engine),
     )?;
     let fallback_attempt = recovery_attempt_from_report(&fallback.result);
     remember_successful_search_engine(fallback.engine, fallback.result.status)?;
@@ -1904,5 +1904,23 @@ mod tests {
             .next_action_hints
             .iter()
             .all(|hint| hint.action != "retry-google-headed"));
+    }
+
+    #[test]
+    fn implicit_session_search_keeps_auto_recovery_policy_enabled() {
+        let options = SearchOptions {
+            query: "node path docs".to_string(),
+            engine: SearchEngine::Google,
+            engine_explicit: false,
+            budget: 600,
+            headed: false,
+            profile_dir: None,
+            session_file: Some("/tmp/daemon-tab.json".into()),
+        };
+
+        assert!(
+            should_auto_recover_search(&options),
+            "serve and MCP session searches should keep the automatic recovery policy when the engine was not explicitly requested"
+        );
     }
 }

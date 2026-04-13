@@ -72,7 +72,10 @@ describe("mcp bridge smoke", () => {
 
     const call = createRpcCaller(child);
 
-    const initialize = await call<{ protocolVersion: string }>("initialize", {
+    const initialize = await call<{
+      protocolVersion: string;
+      instructions: string;
+    }>("initialize", {
       protocolVersion: "2025-06-18",
       capabilities: {},
       clientInfo: {
@@ -81,11 +84,17 @@ describe("mcp bridge smoke", () => {
       },
     });
     expect(initialize.protocolVersion).toBe("2025-06-18");
+    expect(initialize.instructions).toContain("Do not set engine");
+    expect(initialize.instructions).toContain("Headed mode is strongly restricted");
 
-    const tools = await call<{ tools: Array<{ readonly name: string }> }>(
-      "tools/list",
-      {},
-    );
+    const tools = await call<{
+      tools: Array<{
+        readonly name: string;
+        readonly inputSchema?: {
+          readonly properties?: Record<string, unknown>;
+        };
+      }>;
+    }>("tools/list", {});
     expect(
       tools.tools.some(
         (tool: { readonly name: string }) => tool.name === "tb_open",
@@ -96,6 +105,11 @@ describe("mcp bridge smoke", () => {
         (tool: { readonly name: string }) => tool.name === "tb_search",
       ),
     ).toBe(true);
+    const searchTool = tools.tools.find(
+      (tool: { readonly name: string }) => tool.name === "tb_search",
+    );
+    expect(searchTool).toBeDefined();
+    expect(searchTool?.inputSchema?.properties).not.toHaveProperty("engine");
     expect(
       tools.tools.some(
         (tool: { readonly name: string }) =>
@@ -270,19 +284,36 @@ describe("mcp bridge smoke", () => {
     expect(serve.child.pid).not.toBe(firstPid);
   }, 20_000);
 
-  it("prefers a packaged touch-browser binary before repo-local binaries", () => {
+  it("prefers repo-local debug binaries before packaged standalone bundles in a repo checkout", () => {
     const tempRoot = fs.mkdtempSync(
       path.join(os.tmpdir(), "touch-browser-mcp-"),
     );
-    const binaryPath = path.join(
+    fs.writeFileSync(path.join(tempRoot, "Cargo.toml"), "[workspace]\n");
+    fs.writeFileSync(path.join(tempRoot, "package.json"), "{}\n");
+    fs.mkdirSync(path.join(tempRoot, "core"), { recursive: true });
+    fs.mkdirSync(path.join(tempRoot, "integrations"), { recursive: true });
+
+    const debugBinaryPath = path.join(
       tempRoot,
       "target",
-      "release",
+      "debug",
       "touch-browser",
     );
-    fs.mkdirSync(path.dirname(binaryPath), { recursive: true });
-    fs.writeFileSync(binaryPath, "#!/bin/sh\nexit 0\n");
-    fs.chmodSync(binaryPath, 0o755);
+    fs.mkdirSync(path.dirname(debugBinaryPath), { recursive: true });
+    fs.writeFileSync(debugBinaryPath, "#!/bin/sh\nexit 0\n");
+    fs.chmodSync(debugBinaryPath, 0o755);
+
+    const packagedBinaryPath = path.join(
+      tempRoot,
+      "dist",
+      "standalone",
+      "touch-browser-local-test",
+      "bin",
+      "touch-browser",
+    );
+    fs.mkdirSync(path.dirname(packagedBinaryPath), { recursive: true });
+    fs.writeFileSync(packagedBinaryPath, "#!/bin/sh\nexit 0\n");
+    fs.chmodSync(packagedBinaryPath, 0o755);
 
     const command = resolveServeCommand({
       cwd: tempRoot,
@@ -294,7 +325,7 @@ describe("mcp bridge smoke", () => {
       },
     });
 
-    expect(command).toContain("target/release/touch-browser");
+    expect(command).toContain("target/debug/touch-browser");
     expect(command.endsWith(" serve")).toBe(true);
   });
 

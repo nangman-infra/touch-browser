@@ -7,7 +7,10 @@ use crate::interface::deps::{
 
 use super::{
     daemon_state::ServeDaemonState,
-    params::{json_bool, json_usize, optional_json_string, required_json_string},
+    params::{
+        ensure_research_headed_allowed, json_bool, json_usize, optional_json_string,
+        required_json_string,
+    },
     presenters,
     session_handlers::{serve_session_open_internal, ServeSessionOpenRequest},
 };
@@ -43,6 +46,7 @@ pub(crate) fn serve_search(
         (session.headless, tab.session_file.clone())
     };
     let headed = json_bool(params, "headed").unwrap_or(!headless);
+    ensure_research_headed_allowed(headed, "runtime.search")?;
     let result = dispatch(CliCommand::Search(SearchOptions {
         query,
         engine,
@@ -71,6 +75,7 @@ pub(crate) fn serve_search_open_result(
     }
     let prefer_official = json_bool(params, "preferOfficial").unwrap_or(false);
     let headed = json_bool(params, "headed");
+    ensure_research_headed_allowed(headed.unwrap_or(false), "runtime.search.openResult")?;
     let (resolved_search_tab_id, search_session_file) =
         daemon_state.opened_tab_file(&session_id, search_tab_id.as_deref())?;
     let persisted = load_browser_cli_session(&search_session_file)?;
@@ -106,6 +111,7 @@ pub(crate) fn serve_search_open_result(
             source_label: None,
             new_allowlisted_domains: Vec::new(),
             headed,
+            headed_operation: "runtime.search.openResult",
             browser: true,
         },
     )?;
@@ -128,6 +134,7 @@ pub(crate) fn serve_search_open_top(
     let search_tab_id = optional_json_string(params, "tabId");
     let limit = json_usize(params, "limit").unwrap_or(3).max(1);
     let headed = json_bool(params, "headed");
+    ensure_research_headed_allowed(headed.unwrap_or(false), "runtime.search.openTop")?;
     let (resolved_search_tab_id, search_session_file) =
         daemon_state.opened_tab_file(&session_id, search_tab_id.as_deref())?;
     let persisted = load_browser_cli_session(&search_session_file)?;
@@ -183,6 +190,7 @@ pub(crate) fn serve_search_open_top(
                 source_label: None,
                 new_allowlisted_domains: Vec::new(),
                 headed,
+                headed_operation: "runtime.search.openTop",
                 browser: true,
             },
         )?;

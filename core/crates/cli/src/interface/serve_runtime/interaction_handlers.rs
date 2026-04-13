@@ -7,7 +7,10 @@ use crate::interface::deps::{
 
 use super::{
     daemon_state::ServeDaemonState,
-    params::{json_ack_risks, json_bool, optional_json_string, required_json_string},
+    params::{
+        ensure_recovery_headed_allowed, ensure_research_headed_allowed, json_ack_risks, json_bool,
+        optional_json_string, required_json_string,
+    },
     presenters,
 };
 
@@ -25,6 +28,7 @@ pub(crate) fn serve_session_follow(
     let context = resolve_serve_tab_context(params, daemon_state)?;
     let target_ref = required_json_string(params, "targetRef")?;
     let headed = json_bool(params, "headed").unwrap_or(false);
+    ensure_research_headed_allowed(headed, "runtime.session.follow")?;
     let result = dispatch(CliCommand::Follow(FollowOptions {
         session_file: context.session_file.clone(),
         target_ref,
@@ -43,6 +47,7 @@ pub(crate) fn serve_session_click(
     let ack_risks = json_ack_risks(params, "ackRisks")?;
     let merged_ack_risks =
         merged_ack_risks_for_session(daemon_state, &context.session_id, &ack_risks)?;
+    ensure_recovery_headed_allowed(headed, "runtime.session.click", &merged_ack_risks)?;
     let result = dispatch(CliCommand::Click(ClickOptions {
         session_file: context.session_file.clone(),
         target_ref,
@@ -64,6 +69,7 @@ pub(crate) fn serve_session_type(
     let ack_risks = json_ack_risks(params, "ackRisks")?;
     let merged_ack_risks =
         merged_ack_risks_for_session(daemon_state, &context.session_id, &ack_risks)?;
+    ensure_recovery_headed_allowed(headed, "runtime.session.type", &merged_ack_risks)?;
     if sensitive {
         let session = daemon_state.session_mut(&context.session_id)?;
         session
@@ -91,6 +97,7 @@ pub(crate) fn serve_session_type_secret(
     let ack_risks = json_ack_risks(params, "ackRisks")?;
     let merged_ack_risks =
         merged_ack_risks_for_session(daemon_state, &context.session_id, &ack_risks)?;
+    ensure_recovery_headed_allowed(headed, "runtime.session.typeSecret", &merged_ack_risks)?;
     let value = daemon_secret_value(daemon_state, &context.session_id, &target_ref)?;
     let result = dispatch(CliCommand::Type(TypeOptions {
         session_file: context.session_file.clone(),
@@ -113,6 +120,7 @@ pub(crate) fn serve_session_submit(
     let ack_risks = json_ack_risks(params, "ackRisks")?;
     let merged_ack_risks =
         merged_ack_risks_for_session(daemon_state, &context.session_id, &ack_risks)?;
+    ensure_recovery_headed_allowed(headed, "runtime.session.submit", &merged_ack_risks)?;
     let extra_prefill = daemon_secret_prefills(daemon_state, &context.session_id)?;
     let result = dispatch(CliCommand::Submit(SubmitOptions {
         session_file: context.session_file.clone(),
@@ -169,6 +177,7 @@ pub(crate) fn serve_session_paginate(
         }
     };
     let headed = json_bool(params, "headed").unwrap_or(false);
+    ensure_research_headed_allowed(headed, "runtime.session.paginate")?;
     let result = dispatch(CliCommand::Paginate(PaginateOptions {
         session_file: context.session_file.clone(),
         direction,
@@ -184,6 +193,7 @@ pub(crate) fn serve_session_expand(
     let context = resolve_serve_tab_context(params, daemon_state)?;
     let target_ref = required_json_string(params, "targetRef")?;
     let headed = json_bool(params, "headed").unwrap_or(false);
+    ensure_research_headed_allowed(headed, "runtime.session.expand")?;
     let result = dispatch(CliCommand::Expand(ExpandOptions {
         session_file: context.session_file.clone(),
         target_ref,

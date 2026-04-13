@@ -460,4 +460,89 @@ mod tests {
 
         daemon_state.cleanup().expect("cleanup");
     }
+
+    #[test]
+    fn runtime_session_create_rejects_headed_mode() {
+        let mut daemon_state = ServeDaemonState::new().expect("daemon state");
+        let response = serve_dispatch(
+            ServeJsonRpcRequest {
+                jsonrpc: "2.0".to_string(),
+                id: json!(1),
+                method: "runtime.session.create".to_string(),
+                params: json!({
+                    "headed": true
+                }),
+            },
+            &mut daemon_state,
+        );
+
+        assert_eq!(response["error"]["code"], json!(-32602));
+        assert!(response["error"]["message"]
+            .as_str()
+            .expect("error message")
+            .contains("serve/MCP headed mode is restricted"));
+
+        daemon_state.cleanup().expect("cleanup");
+    }
+
+    #[test]
+    fn runtime_session_click_rejects_headed_without_recovery_ack() {
+        let mut daemon_state = ServeDaemonState::new().expect("daemon state");
+        let created = serve_dispatch(
+            ServeJsonRpcRequest {
+                jsonrpc: "2.0".to_string(),
+                id: json!(1),
+                method: "runtime.session.create".to_string(),
+                params: json!({}),
+            },
+            &mut daemon_state,
+        );
+        let session_id = created["result"]["sessionId"]
+            .as_str()
+            .expect("session id")
+            .to_string();
+        let tab_id = created["result"]["activeTabId"]
+            .as_str()
+            .expect("tab id")
+            .to_string();
+
+        let response = serve_dispatch(
+            ServeJsonRpcRequest {
+                jsonrpc: "2.0".to_string(),
+                id: json!(2),
+                method: "runtime.session.open".to_string(),
+                params: json!({
+                    "sessionId": session_id,
+                    "tabId": tab_id,
+                    "target": "fixture://research/navigation/browser-follow",
+                    "browser": true
+                }),
+            },
+            &mut daemon_state,
+        );
+        assert_eq!(response["result"]["result"]["status"], json!("succeeded"));
+
+        let response = serve_dispatch(
+            ServeJsonRpcRequest {
+                jsonrpc: "2.0".to_string(),
+                id: json!(3),
+                method: "runtime.session.click".to_string(),
+                params: json!({
+                    "sessionId": session_id,
+                    "tabId": tab_id,
+                    "targetRef": "rmain:link:test",
+                    "headed": true
+                }),
+            },
+            &mut daemon_state,
+        );
+
+        assert_eq!(response["error"]["code"], json!(-32602));
+        assert!(response["error"]["message"]
+            .as_str()
+            .expect("error message")
+            .contains("allowed only for challenge/auth/MFA"));
+
+        daemon_state.cleanup().expect("cleanup");
+    }
 }

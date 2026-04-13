@@ -3,10 +3,10 @@ use super::{
     deps::{
         approved_risk_labels, browser_capture_diagnostics, checkpoint_approval_panel,
         checkpoint_candidates, checkpoint_playbook, checkpoint_provider_hints,
-        current_policy_with_allowlist, current_timestamp, is_fixture_target,
-        is_search_results_target, policy_profile_label, promoted_policy_profile_for_risks,
-        recommend_requested_tokens, recommended_policy_profile, required_ack_risks,
-        resolve_latest_search_session_file, succeed_action, verify_action_result_if_requested,
+        current_policy_with_allowlist, current_timestamp, is_fixture_target, policy_profile_label,
+        promoted_policy_profile_for_risks, recommend_requested_tokens, recommended_policy_profile,
+        required_ack_risks, resolve_latest_search_session_file,
+        should_use_browser_research_identity, succeed_action, verify_action_result_if_requested,
         ActionName, ApproveOptions, BrowserReplayCommandOutput, CaptureSurface, ClaimInput,
         CliError, ClickOptions, CompactSnapshotOutput, ExpandOptions, FollowOptions, OutputFormat,
         PaginateOptions, PaginationDirection, PersistedBrowserState, ReadViewOutput, RuntimeError,
@@ -128,10 +128,10 @@ pub(crate) fn handle_session_refresh(
     let ports = ctx.ports;
     let mut persisted = ports.session_store.load_session(&options.session_file)?;
     let requested_budget = persisted.requested_budget;
-    let current_search_identity = persisted
+    let current_browser_identity = persisted
         .session
         .current_snapshot_record()
-        .map(|record| is_search_results_target(&record.snapshot.source.source_url))
+        .map(|record| should_use_browser_research_identity(&record.snapshot.source.source_url))
         .unwrap_or(false);
     let primary_capture = ports
         .browser
@@ -142,7 +142,7 @@ pub(crate) fn handle_session_refresh(
             profile_dir: persisted.browser_profile_dir.clone(),
             budget: requested_budget,
             headless: !options.headed,
-            search_identity: current_search_identity,
+            search_identity: current_browser_identity,
         })?;
     let (capture, effective_budget, snapshot) = match ports.browser.compile_snapshot(
         &primary_capture.final_url,
@@ -166,7 +166,7 @@ pub(crate) fn handle_session_refresh(
                         profile_dir: source.profile_dir,
                         budget: requested_budget,
                         headless: !options.headed,
-                        search_identity: is_search_results_target(&source.source_url),
+                        search_identity: should_use_browser_research_identity(&source.source_url),
                     })?;
             let effective_budget =
                 recommend_requested_tokens(&fallback_capture.html, requested_budget);

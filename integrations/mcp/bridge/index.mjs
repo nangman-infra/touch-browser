@@ -61,7 +61,7 @@ async function handleRequest(request) {
         },
         serverInfo: implementation,
         instructions:
-          "Use the tb_* tools to drive touch-browser. Stateful browsing is available through tb_session_create, tb_search, tb_search_open_top, tb_tab_open, tb_tab_list, tb_tab_select, tb_tab_close, and tb_session_synthesize.",
+          "Use the tb_* tools to drive touch-browser. Prefer the workflow tb_search -> tb_search_open_top -> tb_read_view -> tb_extract. Do not set engine unless you are explicitly overriding the default search policy. Keep search, open, read-view, follow, paginate, expand, and refresh flows headless. Headed mode is strongly restricted and is only for supervised challenge/auth/MFA recovery interactions with explicit ackRisks. Treat mainContentReason and nextActionHints as the recovery signal before asking for headed mode. Prefer official or documentation-like domains before answering. Stateful browsing is available through tb_session_create, tb_search, tb_search_open_top, tb_tab_open, tb_tab_list, tb_tab_select, tb_tab_close, and tb_session_synthesize.",
       });
     case "notifications/initialized":
       return null;

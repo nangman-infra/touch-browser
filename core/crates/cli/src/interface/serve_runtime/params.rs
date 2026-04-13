@@ -9,6 +9,9 @@ use crate::interface::deps::{
 };
 
 pub(crate) fn json_target_options(params: &Value) -> Result<TargetOptions, CliError> {
+    let headed = json_bool(params, "headed").unwrap_or(false);
+    ensure_research_headed_allowed(headed, "runtime.open/readView/extract/policy/compactView")?;
+
     Ok(TargetOptions {
         target: required_json_string(params, "target")?,
         budget: json_usize(params, "budget").unwrap_or(DEFAULT_REQUESTED_TOKENS),
@@ -18,7 +21,7 @@ pub(crate) fn json_target_options(params: &Value) -> Result<TargetOptions, CliEr
         source_label: optional_json_string(params, "sourceLabel"),
         allowlisted_domains: json_string_array(params, "allowDomains")?,
         browser: json_bool(params, "browser").unwrap_or(false),
-        headed: json_bool(params, "headed").unwrap_or(false),
+        headed,
         main_only: json_bool(params, "mainOnly").unwrap_or(false),
         session_file: optional_json_string(params, "sessionFile").map(PathBuf::from),
     })
@@ -32,6 +35,9 @@ pub(crate) fn json_extract_options(params: &Value) -> Result<ExtractOptions, Cli
         ));
     }
 
+    let headed = json_bool(params, "headed").unwrap_or(false);
+    ensure_research_headed_allowed(headed, "runtime.open/readView/extract/policy/compactView")?;
+
     Ok(ExtractOptions {
         target: required_json_string(params, "target")?,
         budget: json_usize(params, "budget").unwrap_or(DEFAULT_REQUESTED_TOKENS),
@@ -41,7 +47,7 @@ pub(crate) fn json_extract_options(params: &Value) -> Result<ExtractOptions, Cli
         source_label: optional_json_string(params, "sourceLabel"),
         allowlisted_domains: json_string_array(params, "allowDomains")?,
         browser: json_bool(params, "browser").unwrap_or(false),
-        headed: json_bool(params, "headed").unwrap_or(false),
+        headed,
         session_file: optional_json_string(params, "sessionFile").map(PathBuf::from),
         claims,
         verifier_command: optional_json_string(params, "verifierCommand"),
@@ -114,4 +120,68 @@ pub(crate) fn json_usize(params: &Value, field: &str) -> Option<usize> {
         .get(field)
         .and_then(Value::as_u64)
         .and_then(|value| usize::try_from(value).ok())
+}
+
+pub(crate) fn ensure_research_headed_allowed(
+    headed_requested: bool,
+    operation: &str,
+) -> Result<(), CliError> {
+    if !headed_requested {
+        return Ok(());
+    }
+
+    Err(CliError::Usage(format!(
+        "serve/MCP headed mode is restricted for `{operation}`. Keep browsing, search, open, read-view, and refresh flows headless. Headed mode is reserved for supervised challenge/auth/MFA recovery interactions."
+    )))
+}
+
+pub(crate) fn ensure_recovery_headed_allowed(
+    headed_requested: bool,
+    operation: &str,
+    ack_risks: &[AckRisk],
+) -> Result<(), CliError> {
+    if !headed_requested {
+        return Ok(());
+    }
+
+    if ack_risks
+        .iter()
+        .any(|risk| matches!(risk, AckRisk::Challenge | AckRisk::Mfa | AckRisk::Auth))
+    {
+        return Ok(());
+    }
+
+    Err(CliError::Usage(format!(
+        "serve/MCP headed mode is restricted for `{operation}`. Headed recovery is allowed only for challenge/auth/MFA handling with explicit ackRisks."
+    )))
+}
+
+#[cfg(test)]
+mod tests {
+    use super::{ensure_recovery_headed_allowed, ensure_research_headed_allowed};
+    use crate::interface::deps::AckRisk;
+
+    #[test]
+    fn research_headed_is_rejected() {
+        let error = ensure_research_headed_allowed(true, "runtime.search")
+            .expect_err("research headed should be rejected");
+        assert!(error
+            .to_string()
+            .contains("serve/MCP headed mode is restricted"));
+    }
+
+    #[test]
+    fn recovery_headed_requires_explicit_recovery_risk() {
+        let error = ensure_recovery_headed_allowed(true, "runtime.session.click", &[])
+            .expect_err("headed recovery should require ack risks");
+        assert!(error
+            .to_string()
+            .contains("allowed only for challenge/auth/MFA"));
+    }
+
+    #[test]
+    fn recovery_headed_allows_auth_ack() {
+        ensure_recovery_headed_allowed(true, "runtime.session.click", &[AckRisk::Auth])
+            .expect("auth ack should allow headed recovery");
+    }
 }

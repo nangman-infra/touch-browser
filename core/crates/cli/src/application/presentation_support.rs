@@ -310,10 +310,33 @@ impl MainContentQuality {
     }
 }
 
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub(crate) enum MainContentReason {
+    MainRegionConfirmed,
+    MainRegionPlausible,
+    NoMainContentDetected,
+    ContentPresentButMainFilterRejected,
+    PageStructureLowConfidence,
+}
+
+impl MainContentReason {
+    pub(crate) fn as_str(self) -> &'static str {
+        match self {
+            MainContentReason::MainRegionConfirmed => "main-region-confirmed",
+            MainContentReason::MainRegionPlausible => "main-region-plausible",
+            MainContentReason::NoMainContentDetected => "no-main-content-detected",
+            MainContentReason::ContentPresentButMainFilterRejected => {
+                "content-present-but-main-filter-rejected"
+            }
+            MainContentReason::PageStructureLowConfidence => "page-structure-low-confidence",
+        }
+    }
+}
+
 pub(crate) fn assess_main_read_view_quality(
     snapshot: &SnapshotDocument,
     markdown_text: &str,
-) -> Option<(MainContentQuality, String)> {
+) -> Option<(MainContentQuality, MainContentReason, String)> {
     let has_heading = snapshot
         .blocks
         .iter()
@@ -338,10 +361,19 @@ pub(crate) fn assess_main_read_view_quality(
         .filter(|block| !prefer_article_like_main || block_matches_preferred_main_content(block))
         .collect::<Vec<_>>();
 
-    if markdown_text.trim().is_empty() || filtered_blocks.is_empty() {
+    let has_any_markdown = !markdown_text.trim().is_empty();
+    if !has_any_markdown && filtered_blocks.is_empty() {
         return Some((
             MainContentQuality::Poor,
-            "Main-content extraction produced almost no readable body text. Open a more specific page or compare the first heading before using this output.".to_string(),
+            MainContentReason::NoMainContentDetected,
+            "Main-content extraction did not find a readable body section. This usually means the page is a shell, index, or non-article surface. Open a more specific URL before escalating to headed mode.".to_string(),
+        ));
+    }
+    if has_any_markdown && filtered_blocks.is_empty() {
+        return Some((
+            MainContentQuality::Poor,
+            MainContentReason::ContentPresentButMainFilterRejected,
+            "Readable content exists, but the current main-content filter rejected it. Compare the first heading and try a more specific document URL; headed mode is not the default fix for this case.".to_string(),
         ));
     }
 
@@ -366,18 +398,47 @@ pub(crate) fn assess_main_read_view_quality(
         .iter()
         .map(|block| block.text.trim().chars().count())
         .sum::<usize>();
+    let body_text_block_count = filtered_blocks
+        .iter()
+        .filter(|block| {
+            matches!(
+                block.kind,
+                SnapshotBlockKind::Text | SnapshotBlockKind::List | SnapshotBlockKind::Table
+            )
+        })
+        .count();
     let has_heading_block = filtered_blocks
         .iter()
         .any(|block| matches!(block.kind, SnapshotBlockKind::Heading));
 
     let strong_main_signal = has_main_zone || prefer_article_like_main;
-    let quality = if strong_main_signal
+    let document_like_without_main_zone = !strong_main_signal
+        && has_heading_block
+        && body_text_block_count >= 1
+        && content_chars >= 120
+        && chrome_zone_count <= 1;
+    let (quality, reason) = if strong_main_signal
         && main_zone_count >= 1
         && has_heading_block
         && content_chars >= 8
         && chrome_zone_count <= main_zone_count
     {
-        MainContentQuality::High
+        (
+            MainContentQuality::High,
+            MainContentReason::MainRegionConfirmed,
+        )
+    } else if document_like_without_main_zone {
+        if content_chars >= 800 || body_text_block_count >= 2 {
+            (
+                MainContentQuality::High,
+                MainContentReason::MainRegionPlausible,
+            )
+        } else {
+            (
+                MainContentQuality::Uncertain,
+                MainContentReason::MainRegionPlausible,
+            )
+        }
     } else if markdown_text.trim().is_empty()
         || content_chars < 8
         || (!has_heading_block && filtered_blocks.len() <= 3 && content_chars < 32)
@@ -388,24 +449,44 @@ pub(crate) fn assess_main_read_view_quality(
             ))
         || (main_zone_count == 0 && chrome_zone_count > 0)
     {
-        MainContentQuality::Poor
+        let reason = if content_chars < 8 && body_text_block_count == 0 {
+            MainContentReason::NoMainContentDetected
+        } else {
+            MainContentReason::PageStructureLowConfidence
+        };
+        (MainContentQuality::Poor, reason)
     } else {
-        MainContentQuality::Uncertain
+        (
+            MainContentQuality::Uncertain,
+            MainContentReason::MainRegionPlausible,
+        )
     };
 
-    let hint = match quality {
-        MainContentQuality::High => {
+    let hint = match (quality, reason) {
+        (MainContentQuality::High, MainContentReason::MainRegionConfirmed) => {
             "Main-content extraction looks reliable. The first heading and primary body blocks agree with the page's main region.".to_string()
         }
-        MainContentQuality::Uncertain => {
+        (MainContentQuality::High | MainContentQuality::Uncertain, MainContentReason::MainRegionPlausible) => {
             "Main-content extraction looks plausible but not decisive. Verify the first heading and primary paragraph before relying on this output.".to_string()
         }
-        MainContentQuality::Poor => {
-            "Main-content extraction looks noisy. Open a more specific page or browse the page in the real browser before relying on this output.".to_string()
+        (MainContentQuality::Poor, MainContentReason::NoMainContentDetected) => {
+            "The page did not expose a readable body section in main-only mode. Open a more specific page or article URL; headed mode is not the default fix here.".to_string()
+        }
+        (MainContentQuality::Poor, MainContentReason::ContentPresentButMainFilterRejected) => {
+            "Readable content exists, but the main-content filter rejected it. Compare the first heading and try a more specific document URL before considering supervised recovery.".to_string()
+        }
+        (MainContentQuality::Poor, MainContentReason::PageStructureLowConfidence) => {
+            "The page contains content, but the main-region signals conflict. Verify the first heading and primary paragraph; do not treat headed mode as the automatic next step.".to_string()
+        }
+        (MainContentQuality::Poor, _) => {
+            "Main-content extraction could not produce a trustworthy body region. Verify the first heading and page scope before escalating to supervised recovery.".to_string()
+        }
+        (MainContentQuality::High | MainContentQuality::Uncertain, _) => {
+            "Main-content extraction looks plausible but not decisive. Verify the first heading and primary paragraph before relying on this output.".to_string()
         }
     };
 
-    Some((quality, hint))
+    Some((quality, reason, hint))
 }
 
 pub(crate) fn compact_ref_index(snapshot: &SnapshotDocument) -> Vec<CompactRefIndexEntry> {
@@ -516,10 +597,10 @@ fn render_session_claim_markdown(claim: &SessionSynthesisClaim) -> String {
 #[cfg(test)]
 mod tests {
     use super::{
-        compact_ref_index, render_compact_snapshot, render_main_read_view_markdown,
-        render_read_view_markdown, render_reading_compact_snapshot,
-        render_session_synthesis_markdown, SnapshotBlock, SnapshotBlockKind, SnapshotBlockRole,
-        SnapshotDocument,
+        assess_main_read_view_quality, compact_ref_index, render_compact_snapshot,
+        render_main_read_view_markdown, render_read_view_markdown, render_reading_compact_snapshot,
+        render_session_synthesis_markdown, MainContentQuality, SnapshotBlock, SnapshotBlockKind,
+        SnapshotBlockRole, SnapshotDocument,
     };
     use serde_json::json;
     use std::collections::BTreeMap;
@@ -1577,6 +1658,81 @@ mod tests {
         assert!(markdown.contains("provides an interface for fetching resources"));
         assert!(!markdown.contains("Help improve MDN"));
         assert!(!markdown.contains("last modified"));
+    }
+
+    #[test]
+    fn document_like_pages_without_main_zone_are_not_marked_poor() {
+        let snapshot = SnapshotDocument {
+            version: CONTRACT_VERSION.to_string(),
+            stable_ref_version: STABLE_REF_VERSION.to_string(),
+            source: SnapshotSource {
+                source_url: "https://www.rfc-editor.org/rfc/rfc9309.html".to_string(),
+                source_type: SourceType::Playwright,
+                title: Some("RFC 9309: Robots Exclusion Protocol".to_string()),
+            },
+            budget: SnapshotBudget {
+                requested_tokens: 512,
+                estimated_tokens: 48,
+                emitted_tokens: 48,
+                truncated: false,
+            },
+            blocks: vec![
+                SnapshotBlock {
+                    version: CONTRACT_VERSION.to_string(),
+                    id: "b1".to_string(),
+                    kind: SnapshotBlockKind::Heading,
+                    stable_ref: "rhead:heading:rfc-9309".to_string(),
+                    role: SnapshotBlockRole::Content,
+                    text: "RFC 9309: Robots Exclusion Protocol".to_string(),
+                    attributes: BTreeMap::new(),
+                    evidence: SnapshotEvidence {
+                        source_url: "https://www.rfc-editor.org/rfc/rfc9309.html".to_string(),
+                        source_type: SourceType::Playwright,
+                        dom_path_hint: Some("html > body > pre > span:nth-of-type(1)".to_string()),
+                        byte_range_start: None,
+                        byte_range_end: None,
+                    },
+                },
+                SnapshotBlock {
+                    version: CONTRACT_VERSION.to_string(),
+                    id: "b2".to_string(),
+                    kind: SnapshotBlockKind::Text,
+                    stable_ref: "rmain:text:rfc-9309-summary".to_string(),
+                    role: SnapshotBlockRole::Content,
+                    text: "This document specifies and extends the Robots Exclusion Protocol used by crawlers.".to_string(),
+                    attributes: BTreeMap::new(),
+                    evidence: SnapshotEvidence {
+                        source_url: "https://www.rfc-editor.org/rfc/rfc9309.html".to_string(),
+                        source_type: SourceType::Playwright,
+                        dom_path_hint: Some("html > body > pre > span:nth-of-type(2)".to_string()),
+                        byte_range_start: None,
+                        byte_range_end: None,
+                    },
+                },
+                SnapshotBlock {
+                    version: CONTRACT_VERSION.to_string(),
+                    id: "b3".to_string(),
+                    kind: SnapshotBlockKind::Text,
+                    stable_ref: "rmain:text:rfc-9309-body".to_string(),
+                    role: SnapshotBlockRole::Content,
+                    text: "It adds definition language for the protocol, instructions for handling errors, and instructions for caching.".to_string(),
+                    attributes: BTreeMap::new(),
+                    evidence: SnapshotEvidence {
+                        source_url: "https://www.rfc-editor.org/rfc/rfc9309.html".to_string(),
+                        source_type: SourceType::Playwright,
+                        dom_path_hint: Some("html > body > pre > span:nth-of-type(3)".to_string()),
+                        byte_range_start: None,
+                        byte_range_end: None,
+                    },
+                },
+            ],
+        };
+
+        let markdown = render_main_read_view_markdown(&snapshot);
+        let (quality, _, _) = assess_main_read_view_quality(&snapshot, &markdown)
+            .expect("quality should be assessed");
+
+        assert_ne!(quality, MainContentQuality::Poor);
     }
 
     #[test]

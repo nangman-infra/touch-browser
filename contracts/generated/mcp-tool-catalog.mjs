@@ -76,7 +76,7 @@ export const toolCatalog = [
   {
     "name": "tb_search",
     "title": "Search The Web",
-    "description": "Run a Google or Brave search inside touch-browser and structure the search results for follow-up browsing.",
+    "description": "Run touch-browser search and structure the result page for follow-up browsing. Leave engine unset unless you need an explicit override, then follow tb_search_open_top before read-view or extract.",
     "inputSchema": {
       "type": "object",
       "properties": {
@@ -87,9 +87,6 @@ export const toolCatalog = [
           "type": "string"
         },
         "query": {
-          "type": "string"
-        },
-        "engine": {
           "type": "string"
         },
         "headed": {
@@ -108,7 +105,7 @@ export const toolCatalog = [
   {
     "name": "tb_search_open_result",
     "title": "Open One Search Result",
-    "description": "Open one structured search result into a new tab within the daemon session.",
+    "description": "Open one structured search result into a new tab within the daemon session. Use this when you must override the recommended top-result order.",
     "inputSchema": {
       "type": "object",
       "properties": {
@@ -134,7 +131,7 @@ export const toolCatalog = [
   {
     "name": "tb_search_open_top",
     "title": "Open Top Search Results",
-    "description": "Open the top recommended search results into new tabs for multi-page research.",
+    "description": "Open the top recommended search results into new tabs for multi-page research. Prefer this immediately after tb_search before read-view or extract.",
     "inputSchema": {
       "type": "object",
       "properties": {
@@ -159,7 +156,7 @@ export const toolCatalog = [
   {
     "name": "tb_extract",
     "title": "Extract Evidence",
-    "description": "Extract evidence-supported and insufficient-evidence claims from the current target or daemon tab.",
+    "description": "Extract evidence-supported and insufficient-evidence claims from the current target or daemon tab. Use this after the tab scope looks right from search or read-view.",
     "inputSchema": {
       "type": "object",
       "properties": {
@@ -214,7 +211,7 @@ export const toolCatalog = [
   {
     "name": "tb_read_view",
     "title": "Read View",
-    "description": "Return a readable Markdown view of a target or daemon tab for higher-level verification.",
+    "description": "Return a readable Markdown view of a target or daemon tab for higher-level verification. Use this after opening candidate tabs to confirm scope before extracting claims.",
     "inputSchema": {
       "type": "object",
       "properties": {

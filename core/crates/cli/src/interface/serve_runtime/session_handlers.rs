@@ -16,8 +16,8 @@ use crate::interface::deps::{
 use super::{
     daemon_state::ServeDaemonState,
     params::{
-        json_ack_risks, json_bool, json_string_array, json_usize, optional_json_string,
-        required_json_string,
+        ensure_research_headed_allowed, json_ack_risks, json_bool, json_string_array, json_usize,
+        optional_json_string, required_json_string,
     },
     presenters,
 };
@@ -32,6 +32,7 @@ pub(crate) struct ServeSessionOpenRequest {
     pub(crate) source_label: Option<String>,
     pub(crate) new_allowlisted_domains: Vec<String>,
     pub(crate) headed: Option<bool>,
+    pub(crate) headed_operation: &'static str,
     pub(crate) browser: bool,
 }
 
@@ -39,7 +40,9 @@ pub(crate) fn serve_session_create(
     params: &Value,
     daemon_state: &mut ServeDaemonState,
 ) -> Result<Value, CliError> {
-    let headless = !json_bool(params, "headed").unwrap_or(false);
+    let headed = json_bool(params, "headed").unwrap_or(false);
+    ensure_research_headed_allowed(headed, "runtime.session.create")?;
+    let headless = !headed;
     let allowlisted_domains = json_string_array(params, "allowDomains")?;
     let (session_id, active_tab_id) =
         daemon_state.create_session(headless, allowlisted_domains.clone())?;
@@ -73,6 +76,7 @@ pub(crate) fn serve_session_open(
             source_label,
             new_allowlisted_domains: allowlisted_domains,
             headed,
+            headed_operation: "runtime.session.open",
             browser,
         },
     )
@@ -129,6 +133,7 @@ pub(crate) fn serve_session_refresh(
     let session_id = required_json_string(params, "sessionId")?;
     let tab_id = optional_json_string(params, "tabId");
     let headed = json_bool(params, "headed").unwrap_or(false);
+    ensure_research_headed_allowed(headed, "runtime.session.refresh")?;
     let (resolved_tab_id, session_file) =
         daemon_state.opened_tab_file(&session_id, tab_id.as_deref())?;
     let result = dispatch(CliCommand::SessionRefresh(SessionRefreshOptions {
@@ -338,6 +343,7 @@ pub(crate) fn serve_session_open_internal(
     daemon_state: &mut ServeDaemonState,
     request: ServeSessionOpenRequest,
 ) -> Result<Value, CliError> {
+    ensure_research_headed_allowed(request.headed.unwrap_or(false), request.headed_operation)?;
     let ServeSessionOpenRequest {
         session_id,
         requested_tab_id,
@@ -347,6 +353,7 @@ pub(crate) fn serve_session_open_internal(
         source_label,
         new_allowlisted_domains,
         headed,
+        headed_operation: _,
         browser,
     } = request;
 

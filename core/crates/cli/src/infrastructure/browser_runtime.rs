@@ -16,7 +16,7 @@ use crate::application::{
         BrowserActionSource, BrowserActionTraceEntry, BrowserCliSession, BrowserOrigin,
         BrowserSessionContext, ObservedBrowserDocument, PersistedBrowserState,
     },
-    search_support::is_search_results_target,
+    search_support::{is_search_results_target, should_use_browser_research_identity},
 };
 use crate::infrastructure::fixtures::load_fixture_catalog;
 use crate::interface::{
@@ -157,7 +157,7 @@ pub(crate) fn browser_document(
         profile_dir: browser_profile_dir.clone(),
         budget: requested_budget,
         headless: !headed,
-        search_identity: is_search_results_target(target),
+        search_identity: should_use_browser_research_identity(target),
         manual_recovery: headed && is_search_results_target(target),
     })?;
     let effective_budget = recommend_requested_tokens(&capture.html, requested_budget);

@@ -10,6 +10,13 @@ const REPO_BINARY_CANDIDATES = [
   ["target", "debug", "touch-browser"],
 ];
 
+const REPO_CHECKOUT_BINARY_CANDIDATES = [
+  ["target", "debug", "touch-browser"],
+  ["target", "release", "touch-browser"],
+  ["bin", "touch-browser"],
+  ["dist", "touch-browser"],
+];
+
 export function resolveTouchBrowserBinaryPath({
   cwd = process.cwd(),
   env = process.env,
@@ -17,6 +24,13 @@ export function resolveTouchBrowserBinaryPath({
   const explicitBinary = resolveExplicitBinary(env);
   if (explicitBinary && isFile(explicitBinary)) {
     return explicitBinary;
+  }
+
+  if (looksLikeRepoCheckout(cwd)) {
+    const repoBinary = resolveRepoBinary(cwd, REPO_CHECKOUT_BINARY_CANDIDATES);
+    if (repoBinary) {
+      return repoBinary;
+    }
   }
 
   const pathMatch = resolveBinaryFromPath(env.PATH);
@@ -30,8 +44,8 @@ export function resolveTouchBrowserBinaryPath({
   }
 
   for (const candidate of REPO_BINARY_CANDIDATES) {
-    const absolutePath = path.resolve(cwd, ...candidate);
-    if (isFile(absolutePath)) {
+    const absolutePath = resolveRepoBinary(cwd, [candidate]);
+    if (absolutePath) {
       return absolutePath;
     }
   }
@@ -113,6 +127,25 @@ function resolveStandaloneBundleBinary(cwd) {
   }
 
   return null;
+}
+
+function resolveRepoBinary(cwd, candidates) {
+  for (const candidate of candidates) {
+    const absolutePath = path.resolve(cwd, ...candidate);
+    if (isFile(absolutePath)) {
+      return absolutePath;
+    }
+  }
+  return null;
+}
+
+function looksLikeRepoCheckout(cwd) {
+  return (
+    isFile(path.resolve(cwd, "Cargo.toml")) &&
+    isFile(path.resolve(cwd, "package.json")) &&
+    isDirectory(path.resolve(cwd, "core")) &&
+    isDirectory(path.resolve(cwd, "integrations"))
+  );
 }
 
 function compareByModifiedTimeDesc(left, right) {

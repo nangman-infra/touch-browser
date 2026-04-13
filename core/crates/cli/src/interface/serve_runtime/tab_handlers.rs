@@ -39,6 +39,7 @@ pub(crate) fn serve_tab_open(
                 source_label,
                 new_allowlisted_domains: allowlisted_domains,
                 headed,
+                headed_operation: "runtime.tab.open",
                 browser,
             },
         );
