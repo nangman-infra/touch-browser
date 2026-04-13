@@ -1,0 +1,39 @@
+{
+  "name": "@nangman-infra/touch-browser-mcp",
+  "version": "0.1.7",
+  "description": "Headless MCP entrypoint for touch-browser public docs and research web workflows.",
+  "license": "MPL-2.0",
+  "type": "module",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/nangman-infra/touch-browser.git",
+    "directory": "packages/mcp"
+  },
+  "homepage": "https://github.com/nangman-infra/touch-browser",
+  "bugs": {
+    "url": "https://github.com/nangman-infra/touch-browser/issues"
+  },
+  "publishConfig": {
+    "access": "public"
+  },
+  "bin": {
+    "touch-browser-mcp": "./bin/touch-browser-mcp.mjs"
+  },
+  "files": ["README.md", "server.json", "bin", "src"],
+  "engines": {
+    "node": ">=18"
+  },
+  "os": ["darwin", "linux"],
+  "cpu": ["x64", "arm64"],
+  "keywords": [
+    "mcp",
+    "model-context-protocol",
+    "touch-browser",
+    "research",
+    "evidence"
+  ],
+  "mcpName": "io.github.nangman-infra/touch-browser",
+  "dependencies": {
+    "tar": "^7.4.3"
+  }
+}

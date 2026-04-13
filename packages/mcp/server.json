@@ -1,0 +1,21 @@
+{
+  "$schema": "https://static.modelcontextprotocol.io/schemas/2025-12-11/server.schema.json",
+  "name": "io.github.nangman-infra/touch-browser",
+  "title": "touch-browser",
+  "description": "Evidence-first MCP server for public docs and research web workflows.",
+  "version": "0.1.7",
+  "repository": {
+    "url": "https://github.com/nangman-infra/touch-browser",
+    "source": "github"
+  },
+  "packages": [
+    {
+      "registryType": "npm",
+      "identifier": "@nangman-infra/touch-browser-mcp",
+      "version": "0.1.7",
+      "transport": {
+        "type": "stdio"
+      }
+    }
+  ]
+}
