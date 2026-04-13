@@ -40,15 +40,12 @@
           "const": "Create Browser Session"
         },
         "description": {
-          "const": "Create a long-lived touch-browser daemon session with an active tab."
+          "const": "Create a headless research session for public docs and reference workflows."
         },
         "inputSchema": {
           "const": {
             "type": "object",
             "properties": {
-              "headed": {
-                "type": "boolean"
-              },
               "allowDomains": {
                 "type": "array",
                 "items": {
@@ -72,7 +69,7 @@
           "const": "Open Target"
         },
         "description": {
-          "const": "Open a target either statelessly or inside a daemon session/tab."
+          "const": "Open a public web document or official reference page headlessly, either statelessly or inside a daemon session/tab. Use this for direct URLs after narrowing scope."
         },
         "inputSchema": {
           "const": {
@@ -86,9 +83,6 @@
               },
               "budget": {
                 "type": "number"
-              },
-              "headed": {
-                "type": "boolean"
               },
               "sourceRisk": {
                 "type": "string"
@@ -129,7 +123,7 @@
           "const": "Search The Web"
         },
         "description": {
-          "const": "Run touch-browser search and structure the result page for follow-up browsing. Leave engine unset unless you need an explicit override, then follow tb_search_open_top before read-view or extract."
+          "const": "Search the public docs/research web headlessly and structure the result page for follow-up browsing. Search engine selection is automatic; follow tb_search_open_top before read-view or extract."
         },
         "inputSchema": {
           "const": {
@@ -143,9 +137,6 @@
               },
               "query": {
                 "type": "string"
-              },
-              "headed": {
-                "type": "boolean"
               },
               "budget": {
                 "type": "number"
@@ -168,7 +159,7 @@
           "const": "Open One Search Result"
         },
         "description": {
-          "const": "Open one structured search result into a new tab within the daemon session. Use this when you must override the recommended top-result order."
+          "const": "Open one structured search result into a new research tab when you must override the recommended order after tb_search."
         },
         "inputSchema": {
           "const": {
@@ -182,9 +173,6 @@
               },
               "rank": {
                 "type": "number"
-              },
-              "headed": {
-                "type": "boolean"
               }
             },
             "required": ["sessionId", "rank"]
@@ -204,7 +192,7 @@
           "const": "Open Top Search Results"
         },
         "description": {
-          "const": "Open the top recommended search results into new tabs for multi-page research. Prefer this immediately after tb_search before read-view or extract."
+          "const": "Open the top recommended search results into new research tabs. Prefer this immediately after tb_search, then inspect tabs with tb_read_view before tb_extract."
         },
         "inputSchema": {
           "const": {
@@ -218,9 +206,6 @@
               },
               "limit": {
                 "type": "number"
-              },
-              "headed": {
-                "type": "boolean"
               }
             },
             "required": ["sessionId"]
@@ -240,7 +225,7 @@
           "const": "Extract Evidence"
         },
         "description": {
-          "const": "Extract evidence-supported and insufficient-evidence claims from the current target or daemon tab. Use this after the tab scope looks right from search or read-view."
+          "const": "Extract evidence-supported and insufficient-evidence claims from the current target or daemon tab. Use this after tb_read_view confirms the tab scope on public docs or reference pages."
         },
         "inputSchema": {
           "const": {
@@ -260,9 +245,6 @@
               },
               "budget": {
                 "type": "number"
-              },
-              "headed": {
-                "type": "boolean"
               },
               "mainOnly": {
                 "type": "boolean"
@@ -306,7 +288,7 @@
           "const": "Read View"
         },
         "description": {
-          "const": "Return a readable Markdown view of a target or daemon tab for higher-level verification. Use this after opening candidate tabs to confirm scope before extracting claims."
+          "const": "Return a readable Markdown view of a target or daemon tab for scope checking on public docs and reference pages. Inspect mainContentQuality and mainContentReason before extracting claims."
         },
         "inputSchema": {
           "const": {
@@ -320,9 +302,6 @@
               },
               "budget": {
                 "type": "number"
-              },
-              "headed": {
-                "type": "boolean"
               },
               "mainOnly": {
                 "type": "boolean"
@@ -362,7 +341,7 @@
           "const": "Policy Report"
         },
         "description": {
-          "const": "Return the policy evaluation for a target or daemon tab."
+          "const": "Return the policy evaluation for a target or daemon tab on the public docs/research web surface."
         },
         "inputSchema": {
           "const": {
@@ -372,9 +351,6 @@
                 "type": "string"
               },
               "browser": {
-                "type": "boolean"
-              },
-              "headed": {
                 "type": "boolean"
               },
               "sourceRisk": {
@@ -412,7 +388,7 @@
           "const": "Open New Tab"
         },
         "description": {
-          "const": "Create a new daemon tab and optionally open a target into it."
+          "const": "Create a new headless research tab, optionally opening a narrowed public web target immediately."
         },
         "inputSchema": {
           "const": {
@@ -423,9 +399,6 @@
               },
               "target": {
                 "type": "string"
-              },
-              "headed": {
-                "type": "boolean"
               },
               "sourceRisk": {
                 "type": "string"
@@ -652,9 +625,6 @@
               "targetRef": {
                 "type": "string"
               },
-              "headed": {
-                "type": "boolean"
-              },
               "ackRisks": {
                 "type": "array",
                 "items": {
@@ -696,9 +666,6 @@
               },
               "value": {
                 "type": "string"
-              },
-              "headed": {
-                "type": "boolean"
               },
               "sensitive": {
                 "type": "boolean"
@@ -838,9 +805,6 @@
               "targetRef": {
                 "type": "string"
               },
-              "headed": {
-                "type": "boolean"
-              },
               "ackRisks": {
                 "type": "array",
                 "items": {
@@ -880,9 +844,6 @@
               "targetRef": {
                 "type": "string"
               },
-              "headed": {
-                "type": "boolean"
-              },
               "ackRisks": {
                 "type": "array",
                 "items": {
@@ -907,7 +868,7 @@
           "const": "Refresh Live Session"
         },
         "description": {
-          "const": "Re-capture the current persistent browser page after a manual checkpoint or out-of-band change."
+          "const": "Refresh the current headless research tab after query or filter changes."
         },
         "inputSchema": {
           "const": {
@@ -918,9 +879,6 @@
               },
               "tabId": {
                 "type": "string"
-              },
-              "headed": {
-                "type": "boolean"
               }
             },
             "required": ["sessionId"]

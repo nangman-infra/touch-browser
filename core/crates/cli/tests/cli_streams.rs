@@ -214,7 +214,7 @@ fn poor_main_only_read_view_emits_quality_note_on_stderr() {
 
     assert!(output.status.success());
     assert!(
-        String::from_utf8_lossy(&output.stderr).contains("touch-browser note:"),
+        String::from_utf8_lossy(&output.stderr).contains("touch-browser note ["),
         "expected stderr quality note, got: {}",
         String::from_utf8_lossy(&output.stderr)
     );

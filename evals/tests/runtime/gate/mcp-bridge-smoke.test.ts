@@ -84,8 +84,12 @@ describe("mcp bridge smoke", () => {
       },
     });
     expect(initialize.protocolVersion).toBe("2025-06-18");
-    expect(initialize.instructions).toContain("Do not set engine");
-    expect(initialize.instructions).toContain("Headed mode is strongly restricted");
+    expect(initialize.instructions).toContain(
+      "public docs and research web workflows",
+    );
+    expect(initialize.instructions).toContain(
+      "MCP does not expose engine or headed controls",
+    );
 
     const tools = await call<{
       tools: Array<{
@@ -108,8 +112,36 @@ describe("mcp bridge smoke", () => {
     const searchTool = tools.tools.find(
       (tool: { readonly name: string }) => tool.name === "tb_search",
     );
+    const openTool = tools.tools.find(
+      (tool: { readonly name: string }) => tool.name === "tb_open",
+    );
+    const sessionCreateTool = tools.tools.find(
+      (tool: { readonly name: string }) => tool.name === "tb_session_create",
+    );
+    const readViewTool = tools.tools.find(
+      (tool: { readonly name: string }) => tool.name === "tb_read_view",
+    );
+    const extractTool = tools.tools.find(
+      (tool: { readonly name: string }) => tool.name === "tb_extract",
+    );
+    const refreshTool = tools.tools.find(
+      (tool: { readonly name: string }) => tool.name === "tb_refresh",
+    );
     expect(searchTool).toBeDefined();
+    expect(openTool).toBeDefined();
+    expect(sessionCreateTool).toBeDefined();
+    expect(readViewTool).toBeDefined();
+    expect(extractTool).toBeDefined();
+    expect(refreshTool).toBeDefined();
     expect(searchTool?.inputSchema?.properties).not.toHaveProperty("engine");
+    expect(searchTool?.inputSchema?.properties).not.toHaveProperty("headed");
+    expect(openTool?.inputSchema?.properties).not.toHaveProperty("headed");
+    expect(sessionCreateTool?.inputSchema?.properties).not.toHaveProperty(
+      "headed",
+    );
+    expect(readViewTool?.inputSchema?.properties).not.toHaveProperty("headed");
+    expect(extractTool?.inputSchema?.properties).not.toHaveProperty("headed");
+    expect(refreshTool?.inputSchema?.properties).not.toHaveProperty("headed");
     expect(
       tools.tools.some(
         (tool: { readonly name: string }) =>
@@ -189,6 +221,53 @@ describe("mcp bridge smoke", () => {
     });
     expect(status.structuredContent.status).toBe("ready");
     expect(status.structuredContent.daemon).toBe(true);
+  }, 40_000);
+
+  it("rejects managed engine or headed MCP arguments instead of forwarding them", async () => {
+    const child = spawnShellCommand("node integrations/mcp/bridge/index.mjs", {
+      cwd: repoRoot,
+      stdio: ["pipe", "pipe", "pipe"],
+    }) as ChildProcessWithoutNullStreams;
+    clients.push(child);
+
+    const call = createRpcCaller(child);
+
+    await call("initialize", {
+      protocolVersion: "2025-06-18",
+      capabilities: {},
+      clientInfo: {
+        name: "vitest",
+        version: "0.0.0",
+      },
+    });
+
+    const headedError = await callError(child, "tools/call", {
+      name: "tb_open",
+      arguments: {
+        target: "fixture://research/static-docs/getting-started",
+        headed: true,
+      },
+    });
+    expect(headedError.message).toContain("does not accept `headed` over MCP");
+
+    const created = await call<{
+      structuredContent: {
+        sessionId: string;
+      };
+    }>("tools/call", {
+      name: "tb_session_create",
+      arguments: {},
+    });
+
+    const engineError = await callError(child, "tools/call", {
+      name: "tb_search",
+      arguments: {
+        sessionId: created.structuredContent.sessionId,
+        query: "MDN AbortController official",
+        engine: "google",
+      },
+    });
+    expect(engineError.message).toContain("does not accept `engine` over MCP");
   }, 40_000);
 
   it("exposes the same MCP bridge through the touch-browser mcp command", async () => {

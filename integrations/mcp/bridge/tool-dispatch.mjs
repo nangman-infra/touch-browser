@@ -1,8 +1,46 @@
 import { errorResponse, successResponse } from "./protocol.mjs";
 
+function rejectManagedMcpArguments(id, toolName, args) {
+  if (!args || typeof args !== "object") {
+    return null;
+  }
+
+  if ("headed" in args) {
+    return errorResponse(
+      id,
+      -32602,
+      `Tool ${toolName} does not accept \`headed\` over MCP. touch-browser MCP is headless-only; request supervised recovery instead.`,
+    );
+  }
+
+  if ("engine" in args) {
+    return errorResponse(
+      id,
+      -32602,
+      `Tool ${toolName} does not accept \`engine\` over MCP. Search engine selection is automatic on the public docs/research web surface.`,
+    );
+  }
+
+  return null;
+}
+
+function sanitizeMcpArgs(args) {
+  if (!args || typeof args !== "object") {
+    return {};
+  }
+
+  const { headed: _headed, engine: _engine, ...rest } = args;
+  return rest;
+}
+
 export async function handleToolCall(id, params, serve) {
   const toolName = params?.name;
-  const args = params?.arguments ?? {};
+  const rawArgs = params?.arguments ?? {};
+  const rejected = rejectManagedMcpArguments(id, toolName, rawArgs);
+  if (rejected) {
+    return rejected;
+  }
+  const args = sanitizeMcpArgs(rawArgs);
   let result;
 
   switch (toolName) {
