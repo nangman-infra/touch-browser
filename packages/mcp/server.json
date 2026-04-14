@@ -3,7 +3,7 @@
   "name": "io.github.nangman-infra/touch-browser",
   "title": "touch-browser",
   "description": "Evidence-first MCP server for public docs and research web workflows.",
-  "version": "0.1.7",
+  "version": "0.1.8",
   "repository": {
     "url": "https://github.com/nangman-infra/touch-browser",
     "source": "github"
@@ -12,7 +12,7 @@
     {
       "registryType": "npm",
       "identifier": "@nangman-infra/touch-browser-mcp",
-      "version": "0.1.7",
+      "version": "0.1.8",
       "transport": {
         "type": "stdio"
       }
