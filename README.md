@@ -52,6 +52,31 @@ The extractor returns four verdicts:
 
 `confidenceBand`, `reviewRecommended`, `supportSnippets`, `verdictExplanation`, and `matchSignals` are there so an agent can decide what to do next without blindly trusting the first match.
 
+## MCP Package
+
+Primary local-host MCP path:
+
+- npm package: `@nangman-infra/touch-browser-mcp`
+- scope: public docs and research web
+- MCP contract: headless-only, automatic search-engine selection, supervised recovery handoff for challenge/auth/MFA
+
+Recommended host config:
+
+```json
+{
+  "mcpServers": {
+    "touch-browser": {
+      "command": "npx",
+      "args": ["-y", "@nangman-infra/touch-browser-mcp"]
+    }
+  }
+}
+```
+
+On first launch, the package downloads the matching standalone runtime bundle from [GitHub Releases](https://github.com/nangman-infra/touch-browser/releases), verifies the published `.sha256`, installs it under `~/.touch-browser/npm-mcp/versions/`, and then starts `touch-browser mcp`.
+
+Use this package when you want a local MCP host such as Claude Desktop, Cursor, or Codex to attach without a separate manual runtime install.
+
 ## Standalone Bundle
 
 Tagged `v*` pushes now build standalone macOS and Linux bundles in the `Standalone Release` workflow. Each bundle includes:
@@ -81,7 +106,7 @@ touch-browser telemetry-summary
 touch-browser update --check
 ```
 
-The official user path is:
+The standalone path is still the official CLI, operations, offline, and fallback install path:
 
 1. unpack a standalone bundle
 2. run `install.sh`
@@ -179,7 +204,28 @@ Safety and audit surfaces:
 
 ## MCP Example
 
-Minimal MCP bridge setup for an installed standalone command:
+Recommended MCP setup for local hosts:
+
+```json
+{
+  "mcpServers": {
+    "touch-browser": {
+      "command": "npx",
+      "args": ["-y", "@nangman-infra/touch-browser-mcp"]
+    }
+  }
+}
+```
+
+The MCP package is intentionally narrower than the full CLI:
+
+- scope is public docs and research web
+- recommended loop is `tb_search -> tb_search_open_top -> tb_read_view -> tb_extract`
+- `engine` is not exposed over MCP
+- `headed` is not exposed over MCP
+- if the page indicates challenge, auth, MFA, or other supervised recovery, stop and hand off to a human instead of retrying with different browser settings
+
+Alternative MCP bridge setup for an installed standalone command:
 
 ```json
 {
@@ -207,7 +253,7 @@ Repository checkout integration asset:
 }
 ```
 
-The standalone bundle now ships `touch-browser mcp` and `touch-browser serve`. The checked-in Node launcher remains a repository integration asset for repo checkouts or container images.
+The standalone bundle ships `touch-browser mcp` and `touch-browser serve`. The checked-in Node launcher remains a repository integration asset for repo checkouts or container images.
 
 By default the bridge prefers an explicit `TOUCH_BROWSER_SERVE_COMMAND`, then an explicit binary path, then an installed or packaged `touch-browser` binary, then repo-local `target/{release,debug}` binaries. If none are available, it fails fast with an install/build instruction instead of dropping back to `cargo run`.
 
@@ -232,6 +278,7 @@ Query / URL / fixture / browser tab
 - quick start and operations: [doc/INSTALL_AND_OPERATIONS.md](doc/INSTALL_AND_OPERATIONS.md)
 - command surface: [doc/CLI_SURFACE_SPEC.md](doc/CLI_SURFACE_SPEC.md)
 - evidence operating model: [doc/EVIDENCE_OPERATING_MODEL.md](doc/EVIDENCE_OPERATING_MODEL.md)
+- npm MCP package: [packages/mcp/README.md](packages/mcp/README.md)
 - examples: [examples/README.md](examples/README.md)
 - integrations: [integrations/README.md](integrations/README.md)
 - benchmarks and positioning: [doc/README.md](doc/README.md)

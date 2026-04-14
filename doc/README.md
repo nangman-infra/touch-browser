@@ -11,6 +11,7 @@ This directory is the usage and operations index for the uploaded repository.
 | install and run the project | [INSTALL_AND_OPERATIONS.md](INSTALL_AND_OPERATIONS.md) |
 | understand the CLI surface | [CLI_SURFACE_SPEC.md](CLI_SURFACE_SPEC.md) |
 | connect an external agent over MCP | [MCP_BRIDGE_SPEC.md](MCP_BRIDGE_SPEC.md) |
+| install the npm MCP package for local hosts | [../packages/mcp/README.md](../packages/mcp/README.md) |
 | run the pilot package | [PILOT_PACKAGE_SPEC.md](PILOT_PACKAGE_SPEC.md) |
 | deploy the self-hosted operations package | [OPERATIONS_SECURITY_PACKAGE_SPEC.md](OPERATIONS_SECURITY_PACKAGE_SPEC.md) |
 | understand MPL-2.0 terms | [../LICENSE-POLICY.md](../LICENSE-POLICY.md) |

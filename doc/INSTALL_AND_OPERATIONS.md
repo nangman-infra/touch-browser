@@ -2,10 +2,29 @@
 
 - Status: `Active`
 - Version: `v1`
-- Last Updated: `2026-04-05`
+- Last Updated: `2026-04-14`
 - Scope: `local bootstrap, validation, and day-to-day operation`
 
 ## 1. Distribution Paths
+
+### npm MCP package
+
+Primary local-host MCP distribution:
+
+```bash
+npx -y @nangman-infra/touch-browser-mcp
+```
+
+Or install it globally:
+
+```bash
+npm install -g @nangman-infra/touch-browser-mcp
+touch-browser-mcp
+```
+
+This package is the recommended path for local MCP hosts. It is scoped to public docs and research web workflows, stays headless over MCP, chooses search engines automatically, and hands challenge/auth/MFA cases to supervised recovery instead of exposing `--headed` or engine controls through MCP.
+
+On first launch, it downloads the matching standalone runtime bundle from GitHub Releases, verifies the published `.sha256`, installs it under `~/.touch-browser/npm-mcp/versions/`, and then starts `touch-browser mcp`.
 
 ### Standalone release bundle
 
@@ -26,7 +45,7 @@ touch-browser telemetry-summary
 touch-browser update --check
 ```
 
-This installed `touch-browser` command is the official user-facing runtime path for all CLI and serve operations.
+This installed `touch-browser` command is the official user-facing runtime path for CLI, operations, offline fallback, and manual verification.
 The installer copies the bundle into a managed location under `~/.touch-browser/install/versions/<bundle-name>`, points `~/.touch-browser/install/current` at the active version, and links the PATH command to `~/.touch-browser/install/current/bin/touch-browser`.
 
 ### Build the standalone bundle locally
@@ -180,7 +199,13 @@ Remove the managed install and all stored data:
 touch-browser uninstall --purge-all --yes
 ```
 
-Installed MCP bridge:
+Installed MCP package:
+
+```bash
+npx -y @nangman-infra/touch-browser-mcp
+```
+
+Installed standalone MCP bridge:
 
 ```bash
 touch-browser mcp
@@ -227,6 +252,8 @@ pnpm run pilot:real-user-research
 - public benchmark failure:
   - check network access and remote site availability
 - MCP bridge failure:
+  - if you are using the npm MCP package, start with `npx -y @nangman-infra/touch-browser-mcp doctor`
+  - the npm package installs its managed runtime under `~/.touch-browser/npm-mcp/versions/`
   - verify `touch-browser serve` works on its own
   - the bridge prefers `TOUCH_BROWSER_SERVE_COMMAND`, then `TOUCH_BROWSER_SERVE_BINARY`, then an installed or packaged `touch-browser` binary, then repo-local `target/{release,debug}` binaries
   - if no binary can be resolved, install a standalone bundle with `install.sh`; source-checkout operators can also build once so `target/release` or `target/debug` contains `touch-browser`
@@ -236,7 +263,7 @@ pnpm run pilot:real-user-research
   - start with `node scripts/example-verifier.mjs` and replace it only after your own verifier returns the same shape
 - supervised interactive action rejected:
   - confirm the allowlisted host
-  - use `--headed` for live non-fixture targets
+  - use `--headed` only for supervised human recovery on the CLI surface; MCP does not expose headed browsing
   - confirm the required `--ack-risk` or `checkpoint -> approve` step
   - inspect provider hints and the recommended profile in `checkpoint.approvalPanel` and `checkpoint.playbook`
   - use `--sensitive` or the daemon secret store for secret input
@@ -256,6 +283,7 @@ pnpm run pilot:real-user-research
 - `read-view` prefers main-content blocks by default; `--main-only` makes the filter explicit for especially noisy page chrome
 - `session-synthesize --format markdown` emits raw Markdown in direct CLI mode
 - `serve` and MCP keep returning structured JSON
+- MCP package and MCP bridge stay headless and do not expose `engine` or `headed`; challenge, auth, MFA, and similar cases are supervised recovery handoff points
 - managed standalone install paths:
   - `~/.touch-browser/install/versions/<bundle-name>`
   - `~/.touch-browser/install/current`
@@ -267,7 +295,8 @@ pnpm run pilot:real-user-research
 - non-sensitive typed values are replayed in the same browser pass right before submit
 - sensitive values are replayed only through the direct CLI secret sidecar or the daemon in-memory secret store
 - anti-bot, MFA, payment, and other high-risk write actions are handled as supervised flows, not bypass flows
-- the default supervised operating procedure is `checkpoint -> approve -> headed continuation -> refresh`
+- the default supervised operating procedure is `checkpoint -> approve -> supervised recovery -> refresh`
+- headed continuation is an operator-only recovery step on the CLI surface, not an MCP contract
 - pilot telemetry defaults to `~/.touch-browser/pilot/telemetry.sqlite` in an installed bundle and `output/pilot/telemetry.sqlite` in a repo checkout
 - complete clean removal from the default installed path means deleting:
   - `~/.touch-browser/install`

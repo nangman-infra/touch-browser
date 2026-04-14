@@ -2,7 +2,7 @@
 
 - Status: `Experimental`
 - Version: `v1`
-- Last Updated: `2026-04-05`
+- Last Updated: `2026-04-14`
 - Scope: `stdio MCP bridge on top of touch-browser serve`
 
 ## 1. Overview
@@ -16,10 +16,25 @@ Provided file:
 
 Run:
 
+- recommended local host path: `npx -y @nangman-infra/touch-browser-mcp`
+- global npm package path: `touch-browser-mcp`
 - installed standalone command: `touch-browser mcp`
 - repo checkout: `pnpm run mcp:bridge`
 
-Minimal installed setup:
+Recommended local-host setup:
+
+```json
+{
+  "mcpServers": {
+    "touch-browser": {
+      "command": "npx",
+      "args": ["-y", "@nangman-infra/touch-browser-mcp"]
+    }
+  }
+}
+```
+
+Minimal installed standalone setup:
 
 ```json
 {
@@ -89,19 +104,34 @@ Current tool set:
 
 ## 3. Intended Use
 
-- `tb_read_view` is the readable surface for higher-level review or verifier models
-- `tb_search` is the discovery surface that structures Google or Brave result pages into ranked candidates and next-action hints, or returns `challenge` / `no-results` when the provider does not yield a normal result list
+- product scope is public docs and research web
+- `tb_search` is the discovery surface; engine selection is automatic
+- `tb_read_view` is the readable scope-checking surface; inspect `mainContentQuality` and `mainContentReason` before extracting
 - `tb_extract` is the evidence retrieval surface for four-state claim outcomes and citations
 - `tb_session_synthesize` combines multi-page session traces into a single report
-- supervised tools remain available for allowlisted, review-gated browser sessions
+- supervised tools remain available for allowlisted, review-gated browser sessions, but MCP itself stays headless and does not accept `headed`
+
+Recommended AI loop:
+
+1. `tb_search`
+2. `tb_search_open_top`
+3. `tb_read_view`
+4. `tb_extract`
+
+Stop and hand off to a human when:
+
+- `status` is `challenge`
+- `nextActionHints` says recovery is human-owned
+- the page indicates auth, MFA, or other supervised recovery
+- `mainContentReason` shows the current tab is still too broad or low-confidence
 
 Relevant tool inputs:
 
-- `tb_search`: `sessionId`, `tabId`, `query`, `engine`, `headed`, `budget`
-- `tb_search_open_result`: `sessionId`, `tabId`, `rank`, `headed`
-- `tb_search_open_top`: `sessionId`, `tabId`, `limit`, `headed`
-- `tb_read_view`: `target`, `mainOnly`, `browser`, `headed`, `budget`, `sessionFile`, `allowDomains`
-- `tb_extract`: `target`, `claims`, `verifierCommand`, `browser`, `headed`, `budget`, `sessionFile`, `allowDomains`
+- `tb_search`: `sessionId`, `tabId`, `query`, `budget`
+- `tb_search_open_result`: `sessionId`, `tabId`, `rank`
+- `tb_search_open_top`: `sessionId`, `tabId`, `limit`
+- `tb_read_view`: `target`, `mainOnly`, `browser`, `budget`, `sessionFile`, `allowDomains`
+- `tb_extract`: `target`, `claims`, `verifierCommand`, `browser`, `budget`, `sessionFile`, `allowDomains`
 
 Serve-to-MCP mapping:
 
@@ -126,12 +156,14 @@ Serve-to-MCP mapping:
 ## 5. Notes
 
 - this is a thin MCP proxy, not a full MCP resource or prompt server
+- the npm package [packages/mcp/server.json](../packages/mcp/server.json) is the primary stdio distribution metadata for local MCP hosts
 - the tool set is intentionally smaller than the full serve method surface
 - search works browser-first inside touch-browser; the bridge forwards ranked result items and next-action hints rather than pretending the search phase is already resolved
-- search responses also carry `status`, `statusDetail`, and structured `nextActionHints.actor/canAutoRun/headedRequired`, so an MCP client can decide whether to open ranked tabs, re-run headed for a CAPTCHA, or hand the step back to a human
+- search responses carry `status`, `statusDetail`, and structured `nextActionHints.actor/canAutoRun/headedRequired`, but MCP clients should treat headed-required and challenge/auth/MFA states as supervised recovery handoff signals, not as permission to retry with headed settings
 - interactive tools only make sense inside allowlisted daemon sessions and still require risk acknowledgement when challenge, MFA, auth, or high-risk-write signals appear
 - the bridge starts `touch-browser serve` as an internal child process and injects `TOUCH_BROWSER_TELEMETRY_SURFACE=mcp`
 - the standalone bundle ships both `touch-browser mcp` and `touch-browser serve`; the checked-in Node launcher itself remains a repository integration asset
+- the npm package `@nangman-infra/touch-browser-mcp` is the preferred local-host install path; it downloads the matching standalone runtime and then launches `touch-browser mcp`
 - child-process resolution order is `TOUCH_BROWSER_SERVE_COMMAND` -> `TOUCH_BROWSER_SERVE_BINARY` -> installed `touch-browser` on `PATH` -> packaged binaries under `bin/`, `dist/standalone/*/bin`, or repo-local `target/{release,debug}`
 - if no binary can be resolved, the bridge fails fast and tells the operator to install a standalone bundle or build the repo once
 - set `TOUCH_BROWSER_SERVE_COMMAND` to force a specific built binary or wrapper command

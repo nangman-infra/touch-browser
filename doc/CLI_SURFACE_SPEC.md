@@ -2,12 +2,19 @@
 
 - Status: `Active`
 - Version: `v1`
-- Last Updated: `2026-04-05`
+- Last Updated: `2026-04-14`
 - Scope: `touch-browser binary commands, serve methods, and MCP-facing command contracts`
 
 ## 1. Overview
 
 This document fixes the current public CLI surface for `touch-browser`.
+
+Important boundary:
+
+- the CLI and serve surfaces are broader than the MCP package surface
+- MCP is constrained to public docs and research web
+- MCP keeps engine selection automatic and does not expose `headed`
+- the CLI still exposes broader search and supervised recovery controls for operators
 
 The runtime now has two read surfaces:
 
@@ -37,7 +44,7 @@ Evidence extraction is intentionally phrased as support retrieval, not final tru
 | `touch-browser search <query> [--engine google\|brave] [--headed] [--profile-dir <path>] [--budget <tokens>] [--session-file <path>]` | Open a Google or Brave search results page inside the browser runtime with a persistent embedded browser-backed search profile and return `ready`, `challenge`, or `no-results` status plus structured result items and next-action hints. If `--profile-dir` is omitted, touch-browser reuses the engine trust profile under the active data root: `~/.touch-browser/browser-search/profiles/<engine>-default` in an installed bundle, or `output/browser-search/profiles/<engine>-default` in a repo checkout. If `--session-file` is omitted, touch-browser stores the search session under the active data root: `~/.touch-browser/browser-search/<engine>.search-session.json` in an installed bundle, or `output/browser-search/<engine>.search-session.json` in a repo checkout. Profile health metadata is written next to the saved search sessions as `<engine>.profile-state.json`. |
 | `touch-browser search-open-result --rank <number> [--engine google\|brave] [--session-file <path>] [--headed]` | Open one saved search result from the current engine search session or an explicit persisted browser search session when the latest saved search is `ready`. |
 | `touch-browser search-open-top [--limit <count>] [--engine google\|brave] [--session-file <path>] [--headed]` | Open the top recommended ranked results into separate persisted browser sessions derived from the saved search session. |
-| `touch-browser mcp` | Start the installed stdio MCP bridge. The command launches the bundled or repo-local MCP bridge entrypoint and forces the bridge's internal `serve` child to reuse the same `touch-browser` binary. |
+| `touch-browser mcp` | Start the installed stdio MCP bridge. The command launches the bundled or repo-local MCP bridge entrypoint and forces the bridge's internal `serve` child to reuse the same `touch-browser` binary. For local MCP hosts, the primary distribution path is the npm package `@nangman-infra/touch-browser-mcp`, which installs the matching runtime and then launches this command internally. |
 | `touch-browser update [--check] [--version <tag>]` | Query GitHub Releases for the matching standalone asset for the current managed install, verify the `.sha256`, unpack into a staging directory, and atomically switch the managed `current` install to the new verified version. `--check` reports availability without installing. |
 | `touch-browser uninstall [--purge-data] [--purge-all] --yes` | Remove the managed standalone install. `--purge-data` also removes search profiles, search sessions, and telemetry under the active data root. `--purge-all` additionally removes semantic model caches under the active data root. |
 | `touch-browser open <target> [--browser] [--headed] [--budget <tokens>] [--session-file <path>] [--allow-domain <host> ...]` | Open a target and compile a structured snapshot. |
@@ -172,6 +179,7 @@ Evidence output terminology:
 - search output includes `results`, `recommendedResultRanks`, and `nextActionHints` so a higher-level AI can decide the next browsing step without pretending the browser already knows the final answer
 - each `nextActionHint` also includes `actor`, `canAutoRun`, and `headedRequired` so touch-browser can separate AI-owned follow-up from human checkpoints
 - search output also includes `status` and optional `statusDetail` so challenge pages and empty result pages are explicit instead of masquerading as normal zero-result searches
+- MCP narrows this broader contract further: it strips `engine` and `headed`, stays on the public docs/research web surface, and treats headed-required states as supervised recovery handoff points
 
 ## 7. Validation
 

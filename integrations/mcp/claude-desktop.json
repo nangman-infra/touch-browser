@@ -1,8 +1,8 @@
 {
   "mcpServers": {
     "touch-browser": {
-      "command": "touch-browser",
-      "args": ["mcp"]
+      "command": "npx",
+      "args": ["-y", "@nangman-infra/touch-browser-mcp"]
     }
   }
 }
