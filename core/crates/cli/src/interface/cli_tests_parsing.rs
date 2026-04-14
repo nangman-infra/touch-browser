@@ -21,6 +21,19 @@ fn preprocesses_help_and_json_error_flags() {
 }
 
 #[test]
+fn preprocesses_global_version_flag() {
+    let processed = preprocess_cli_args(vec!["--version".to_string()]);
+
+    assert!(!processed.json_errors);
+    assert_eq!(processed.args, vec!["--version".to_string()]);
+    assert_eq!(processed.help_text, None);
+    assert_eq!(
+        processed.version_text,
+        Some(format!("touch-browser {}", env!("CARGO_PKG_VERSION")))
+    );
+}
+
+#[test]
 fn builds_structured_usage_error_payload() {
     let payload = build_cli_error_payload(&CliError::Usage(
         "extract requires `--claim <statement>`.".to_string(),

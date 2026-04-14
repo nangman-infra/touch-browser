@@ -10,6 +10,7 @@ pub(crate) struct ProcessedCliArgs {
     pub(crate) args: Vec<String>,
     pub(crate) json_errors: bool,
     pub(crate) help_text: Option<String>,
+    pub(crate) version_text: Option<String>,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -21,6 +22,14 @@ pub(crate) enum CliStdoutMode {
 
 fn is_help_flag(value: &str) -> bool {
     matches!(value, "--help" | "-h")
+}
+
+fn is_version_flag(value: &str) -> bool {
+    matches!(value, "--version" | "-V")
+}
+
+fn version_text() -> String {
+    format!("touch-browser {}", env!("CARGO_PKG_VERSION"))
 }
 
 fn emit_read_view_quality_notice(output: &Value) {
@@ -164,10 +173,17 @@ pub(crate) fn preprocess_cli_args(raw_args: Vec<String>) -> ProcessedCliArgs {
         None
     };
 
+    let version_text = if args.len() == 1 && is_version_flag(&args[0]) {
+        Some(version_text())
+    } else {
+        None
+    };
+
     ProcessedCliArgs {
         args,
         json_errors,
         help_text,
+        version_text,
     }
 }
 
@@ -213,6 +229,10 @@ pub(crate) fn run_cli(raw_args: Vec<String>) -> i32 {
         println!("{help_text}");
         return 0;
     }
+    if let Some(version_text) = processed_args.version_text.as_deref() {
+        println!("{version_text}");
+        return 0;
+    }
 
     let args = processed_args.args;
     let json_errors = processed_args.json_errors;
@@ -234,7 +254,9 @@ pub(crate) fn run_cli(raw_args: Vec<String>) -> i32 {
 
 #[cfg(test)]
 mod tests {
-    use super::{command_usage, should_log_telemetry_command, should_log_telemetry_operation};
+    use super::{
+        command_usage, should_log_telemetry_command, should_log_telemetry_operation, version_text,
+    };
     use crate::{CliCommand, SearchEngine, SearchOptions, UninstallOptions, DEFAULT_SEARCH_TOKENS};
 
     #[test]
@@ -267,5 +289,13 @@ mod tests {
 
         assert_eq!(serve_usage, "Usage:\n  touch-browser serve");
         assert_eq!(mcp_usage, "Usage:\n  touch-browser mcp");
+    }
+
+    #[test]
+    fn version_text_matches_package_version() {
+        assert_eq!(
+            version_text(),
+            format!("touch-browser {}", env!("CARGO_PKG_VERSION"))
+        );
     }
 }
