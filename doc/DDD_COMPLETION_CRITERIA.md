@@ -35,7 +35,7 @@
 | 3 | Application Purity | application은 infrastructure concrete type, shell spawn, raw JSON 조립을 직접 가지지 않는다 | `pnpm run architecture:check`가 `crate::infrastructure::`, `default_cli_ports(`, `Command::new(`, `Stdio::`, `json!(`, `use crate::*;`를 차단 |
 | 4 | Invariant Ownership | 세션, evidence, policy, action 관련 핵심 규칙은 도메인 또는 typed application service에 귀속된다 | 빠른 merge gate는 `pnpm run quality:ci`, 로컬 확장 검증은 `pnpm run quality:full`이 replay, policy, evidence, session 회귀를 강제 |
 | 5 | Published Language Separation | contracts는 published language만 유지하고 presentation policy는 application으로 분리한다 | `pnpm run contracts:check`, `pnpm run contracts:manifest`, `pnpm run architecture:check`가 contracts의 public renderer 재유입을 차단 |
-| 6 | Continuous Quality Gate | 품질 완료는 SonarQube quality gate 통과로 정의한다 | GitHub Actions `sonar.yml`은 `pnpm run quality:ci`만 merge-blocking으로 실행하고, Sonar는 그 뒤 `sonar.qualitygate.wait=true`로 최신 분석 결과를 기다린다 |
+| 6 | Continuous Quality Gate | 품질 완료는 SonarQube quality gate 통과로 정의한다 | GitHub Actions `sonar.yml`은 `quality:ci` 내부 게이트를 lint/fmt/typecheck/clippy/contracts/rust/adapter/evals step으로 분해해 merge-blocking으로 실행하고, Sonar는 그 뒤 `sonar.qualitygate.wait=true`로 최신 분석 결과를 기다린다 |
 
 ## 4. Automation Map
 
@@ -52,8 +52,8 @@ pnpm run quality:full
 
 CI 기준:
 
-1. `quality-checks` job은 merge를 막아야 하는 필수 검증만 담은 `pnpm run quality:ci`를 통과해야 합니다.
-2. 이 빠른 gate에는 `lint`, `fmt`, `typecheck`, `clippy`, 전체 Rust 테스트, Playwright adapter gate, 최소 `serve/MCP/CLI` smoke 검증만 포함됩니다.
+1. `quality-checks` job은 merge를 막아야 하는 필수 검증만 담은 `quality:ci` 경로를 실행하되, GitHub Actions에서는 하위 게이트를 step으로 분해해 어느 단계가 실패했는지 바로 드러나게 해야 합니다.
+2. 이 빠른 gate에는 `lint`, `fmt`, `typecheck`, `clippy`, contracts 검사, 전체 Rust 테스트, Playwright adapter gate, 최소 `serve/MCP/CLI` smoke 검증만 포함됩니다.
 3. 문서 문구 검증, fixture-heavy eval, proof/benchmark 계열 검증은 로컬 `pnpm run quality:full`에서 확인합니다.
 4. 그 다음 `sonarqube` job이 `pnpm run quality:sonar-reports`로 Clippy JSON report를 생성합니다.
 5. Sonar scan은 `sonar.qualitygate.wait=true`로 품질 게이트 결과를 기다립니다.

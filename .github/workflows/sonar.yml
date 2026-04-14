@@ -50,8 +50,29 @@ jobs:
           cargo fmt --version
           cargo clippy --version
 
-      - name: Run local quality gate
-        run: pnpm run quality:ci
+      - name: Run lint gate
+        run: pnpm run quality:lint
+
+      - name: Run Rust fmt gate
+        run: pnpm run quality:fmt
+
+      - name: Run typecheck gate
+        run: pnpm run quality:typecheck
+
+      - name: Run Clippy gate
+        run: pnpm run quality:clippy
+
+      - name: Run contract gate
+        run: pnpm run quality:test:contracts
+
+      - name: Run Rust test gate
+        run: pnpm run quality:test:rust
+
+      - name: Run Playwright adapter gate
+        run: pnpm run quality:test:adapter
+
+      - name: Run evals gate
+        run: pnpm run quality:test:evals
 
   sonarqube:
     name: SonarQube Scan

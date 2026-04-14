@@ -44,7 +44,17 @@ const requiredDocs = [
 
 const requiredWorkflowPatterns = [
   { label: "quality job", pattern: /quality-checks:/ },
-  { label: "quality ci run", pattern: /pnpm run quality:ci/ },
+  { label: "lint gate step", pattern: /name:\s+Run lint gate/ },
+  { label: "fmt gate step", pattern: /name:\s+Run Rust fmt gate/ },
+  { label: "typecheck gate step", pattern: /name:\s+Run typecheck gate/ },
+  { label: "clippy gate step", pattern: /name:\s+Run Clippy gate/ },
+  { label: "contracts gate step", pattern: /name:\s+Run contract gate/ },
+  { label: "rust test gate step", pattern: /name:\s+Run Rust test gate/ },
+  {
+    label: "playwright adapter gate step",
+    pattern: /name:\s+Run Playwright adapter gate/,
+  },
+  { label: "evals gate step", pattern: /name:\s+Run evals gate/ },
   { label: "sonar reports run", pattern: /pnpm run quality:sonar-reports/ },
   { label: "quality gate wait", pattern: /sonar\.qualitygate\.wait=true/ },
 ];
