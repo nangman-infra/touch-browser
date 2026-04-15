@@ -140,9 +140,7 @@
                 "description": "A specific session tab to reuse for this open request."
               }
             },
-            "required": [
-              "target"
-            ]
+            "required": ["target"]
           }
         },
         "outputSchema": {
@@ -191,10 +189,7 @@
                 "description": "The processing budget to spend on this operation."
               }
             },
-            "required": [
-              "sessionId",
-              "query"
-            ]
+            "required": ["sessionId", "query"]
           }
         },
         "outputSchema": {
@@ -239,10 +234,7 @@
                 "description": "The 1-based rank of the search result to open in a new tab."
               }
             },
-            "required": [
-              "sessionId",
-              "rank"
-            ]
+            "required": ["sessionId", "rank"]
           }
         },
         "outputSchema": {
@@ -287,9 +279,7 @@
                 "description": "The maximum number of top-ranked search results to open."
               }
             },
-            "required": [
-              "sessionId"
-            ]
+            "required": ["sessionId"]
           }
         },
         "outputSchema": {
@@ -372,9 +362,7 @@
                 "description": "The specific tab to use inside the session. If omitted, the active tab is used."
               }
             },
-            "required": [
-              "claims"
-            ]
+            "required": ["claims"]
           }
         },
         "outputSchema": {
@@ -564,9 +552,7 @@
                 "description": "Restrict the operation to this list of allowed domains."
               }
             },
-            "required": [
-              "sessionId"
-            ]
+            "required": ["sessionId"]
           }
         },
         "outputSchema": {
@@ -603,9 +589,7 @@
                 "description": "The browser session to use for this operation."
               }
             },
-            "required": [
-              "sessionId"
-            ]
+            "required": ["sessionId"]
           }
         },
         "outputSchema": {
@@ -646,10 +630,7 @@
                 "description": "The specific tab to use inside the session. If omitted, the active tab is used."
               }
             },
-            "required": [
-              "sessionId",
-              "tabId"
-            ]
+            "required": ["sessionId", "tabId"]
           }
         },
         "outputSchema": {
@@ -690,10 +671,7 @@
                 "description": "The specific tab to use inside the session. If omitted, the active tab is used."
               }
             },
-            "required": [
-              "sessionId",
-              "tabId"
-            ]
+            "required": ["sessionId", "tabId"]
           }
         },
         "outputSchema": {
@@ -734,9 +712,7 @@
                 "description": "The specific tab to use inside the session. If omitted, the active tab is used."
               }
             },
-            "required": [
-              "sessionId"
-            ]
+            "required": ["sessionId"]
           }
         },
         "outputSchema": {
@@ -777,9 +753,7 @@
                 "description": "The specific tab to use inside the session. If omitted, the active tab is used."
               }
             },
-            "required": [
-              "sessionId"
-            ]
+            "required": ["sessionId"]
           }
         },
         "outputSchema": {
@@ -824,10 +798,7 @@
                 "description": "The policy profile name to apply to the session."
               }
             },
-            "required": [
-              "sessionId",
-              "profile"
-            ]
+            "required": ["sessionId", "profile"]
           }
         },
         "outputSchema": {
@@ -879,10 +850,7 @@
                 "description": "The supervised risk codes acknowledged for this action."
               }
             },
-            "required": [
-              "sessionId",
-              "targetRef"
-            ]
+            "required": ["sessionId", "targetRef"]
           }
         },
         "outputSchema": {
@@ -942,11 +910,7 @@
                 "description": "The supervised risk codes acknowledged for this action."
               }
             },
-            "required": [
-              "sessionId",
-              "targetRef",
-              "value"
-            ]
+            "required": ["sessionId", "targetRef", "value"]
           }
         },
         "outputSchema": {
@@ -990,10 +954,7 @@
                 "description": "The risk codes to persist as approved for the session."
               }
             },
-            "required": [
-              "sessionId",
-              "ackRisks"
-            ]
+            "required": ["sessionId", "ackRisks"]
           }
         },
         "outputSchema": {
@@ -1038,11 +999,7 @@
                 "description": "The sensitive value to store only in session memory."
               }
             },
-            "required": [
-              "sessionId",
-              "targetRef",
-              "value"
-            ]
+            "required": ["sessionId", "targetRef", "value"]
           }
         },
         "outputSchema": {
@@ -1083,9 +1040,7 @@
                 "description": "The target reference whose stored secret should be cleared. Omit to clear all stored secrets for the session."
               }
             },
-            "required": [
-              "sessionId"
-            ]
+            "required": ["sessionId"]
           }
         },
         "outputSchema": {
@@ -1137,10 +1092,7 @@
                 "description": "The supervised risk codes acknowledged for this action."
               }
             },
-            "required": [
-              "sessionId",
-              "targetRef"
-            ]
+            "required": ["sessionId", "targetRef"]
           }
         },
         "outputSchema": {
@@ -1192,10 +1144,7 @@
                 "description": "The supervised risk codes acknowledged for this action."
               }
             },
-            "required": [
-              "sessionId",
-              "targetRef"
-            ]
+            "required": ["sessionId", "targetRef"]
           }
         },
         "outputSchema": {
@@ -1236,9 +1185,7 @@
                 "description": "The specific tab to use inside the session. If omitted, the active tab is used."
               }
             },
-            "required": [
-              "sessionId"
-            ]
+            "required": ["sessionId"]
           }
         },
         "outputSchema": {
@@ -1347,9 +1294,7 @@
                 "description": "The maximum number of notes to include in the synthesis report."
               }
             },
-            "required": [
-              "sessionId"
-            ]
+            "required": ["sessionId"]
           }
         },
         "outputSchema": {
@@ -1386,9 +1331,7 @@
                 "description": "The browser session to use for this operation."
               }
             },
-            "required": [
-              "sessionId"
-            ]
+            "required": ["sessionId"]
           }
         },
         "outputSchema": {
