@@ -223,6 +223,63 @@ describe("mcp bridge smoke", () => {
     expect(status.structuredContent.daemon).toBe(true);
   }, 40_000);
 
+  it("serializes initialize before tools/list when requests arrive back-to-back", async () => {
+    const child = spawnShellCommand("node integrations/mcp/bridge/index.mjs", {
+      cwd: repoRoot,
+      stdio: ["pipe", "pipe", "pipe"],
+    }) as ChildProcessWithoutNullStreams;
+    clients.push(child);
+
+    const responsesPromise = waitForJsonResponses(child, 2);
+
+    child.stdin.write(
+      `${JSON.stringify({
+        jsonrpc: "2.0",
+        id: 1,
+        method: "initialize",
+        params: {
+          protocolVersion: "2025-06-18",
+          capabilities: {},
+          clientInfo: {
+            name: "vitest",
+            version: "0.0.0",
+          },
+        },
+      })}\n`,
+    );
+    child.stdin.write(
+      `${JSON.stringify({
+        jsonrpc: "2.0",
+        method: "notifications/initialized",
+        params: {},
+      })}\n`,
+    );
+    child.stdin.write(
+      `${JSON.stringify({
+        jsonrpc: "2.0",
+        id: 2,
+        method: "tools/list",
+        params: {},
+      })}\n`,
+    );
+
+    const responses = await responsesPromise;
+    expect(
+      responses.map((payload: { readonly id?: number | null }) => payload.id),
+    ).toEqual([1, 2]);
+    expect(
+      (
+        responses[1] as {
+          readonly result?: {
+            readonly tools?: Array<{ readonly name: string }>;
+          };
+        }
+      ).result?.tools?.some(
+        (tool: { readonly name: string }) => tool.name === "tb_status",
+      ),
+    ).toBe(true);
+  }, 40_000);
+
   it("rejects managed engine or headed MCP arguments instead of forwarding them", async () => {
     const child = spawnShellCommand("node integrations/mcp/bridge/index.mjs", {
       cwd: repoRoot,
@@ -582,5 +639,51 @@ function callError(
       })}\n`,
       "utf8",
     );
+  });
+}
+
+function waitForJsonResponses(
+  child: ChildProcessWithoutNullStreams,
+  expectedCount: number,
+) {
+  let stdoutBuffer = "";
+
+  return new Promise<Array<Record<string, unknown>>>((resolve, reject) => {
+    const responses: Array<Record<string, unknown>> = [];
+
+    const onStdout = (chunk: string) => {
+      stdoutBuffer += chunk;
+      const lines = stdoutBuffer.split("\n");
+      stdoutBuffer = lines.pop() ?? "";
+
+      for (const line of lines) {
+        if (!line.trim()) {
+          continue;
+        }
+
+        responses.push(JSON.parse(line) as Record<string, unknown>);
+        if (responses.length === expectedCount) {
+          cleanup();
+          resolve(responses);
+          return;
+        }
+      }
+    };
+
+    const onExit = (code: number | null) => {
+      cleanup();
+      reject(
+        new Error(`mcp bridge exited before collecting responses: ${code}`),
+      );
+    };
+
+    const cleanup = () => {
+      child.stdout.off("data", onStdout);
+      child.off("exit", onExit);
+    };
+
+    child.stdout.setEncoding("utf8");
+    child.stdout.on("data", onStdout);
+    child.on("exit", onExit);
   });
 }

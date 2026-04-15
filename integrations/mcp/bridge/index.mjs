@@ -17,8 +17,21 @@ const input = readline.createInterface({
 });
 
 let initialized = false;
+let requestQueue = Promise.resolve();
 
-input.on("line", async (line) => {
+input.on("line", (line) => {
+  requestQueue = requestQueue.then(
+    () => processLine(line),
+    () => processLine(line),
+  );
+});
+
+input.on("close", async () => {
+  await requestQueue.catch(() => {});
+  await serve.close();
+});
+
+async function processLine(line) {
   const trimmed = line.trim();
   if (!trimmed) {
     return;
@@ -41,11 +54,7 @@ input.on("line", async (line) => {
     const message = error instanceof Error ? error.message : String(error);
     writeMessage(errorResponse(request.id ?? null, -32000, message));
   }
-});
-
-input.on("close", async () => {
-  await serve.close();
-});
+}
 
 async function handleRequest(request) {
   switch (request.method) {
@@ -68,6 +77,13 @@ async function handleRequest(request) {
     case "ping":
       return successResponse(request.id, {});
     case "tools/list":
+      if (!initialized) {
+        return errorResponse(
+          request.id ?? null,
+          -32001,
+          "MCP bridge has not been initialized.",
+        );
+      }
       return successResponse(request.id, {
         tools: toolCatalog,
       });
