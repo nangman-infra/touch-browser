@@ -9,7 +9,13 @@
     {
       "type": "object",
       "additionalProperties": false,
-      "required": ["name", "title", "description", "inputSchema"],
+      "required": [
+        "name",
+        "title",
+        "description",
+        "inputSchema",
+        "outputSchema"
+      ],
       "properties": {
         "name": {
           "const": "tb_status"
@@ -25,13 +31,22 @@
             "type": "object",
             "properties": {}
           }
+        },
+        "outputSchema": {
+          "type": "object"
         }
       }
     },
     {
       "type": "object",
       "additionalProperties": false,
-      "required": ["name", "title", "description", "inputSchema"],
+      "required": [
+        "name",
+        "title",
+        "description",
+        "inputSchema",
+        "outputSchema"
+      ],
       "properties": {
         "name": {
           "const": "tb_session_create"
@@ -50,17 +65,27 @@
                 "type": "array",
                 "items": {
                   "type": "string"
-                }
+                },
+                "description": "Domains this session is allowed to visit."
               }
             }
           }
+        },
+        "outputSchema": {
+          "type": "object"
         }
       }
     },
     {
       "type": "object",
       "additionalProperties": false,
-      "required": ["name", "title", "description", "inputSchema"],
+      "required": [
+        "name",
+        "title",
+        "description",
+        "inputSchema",
+        "outputSchema"
+      ],
       "properties": {
         "name": {
           "const": "tb_open"
@@ -76,45 +101,65 @@
             "type": "object",
             "properties": {
               "target": {
-                "type": "string"
+                "type": "string",
+                "description": "The URL or public web target to open."
               },
               "browser": {
-                "type": "boolean"
+                "type": "boolean",
+                "description": "When true, open the target through the browser-backed acquisition path."
               },
               "budget": {
-                "type": "number"
+                "type": "number",
+                "description": "The processing budget to spend on this operation."
               },
               "sourceRisk": {
-                "type": "string"
+                "type": "string",
+                "description": "The source risk label to attach to the result or citation."
               },
               "sourceLabel": {
-                "type": "string"
+                "type": "string",
+                "description": "The human-readable source label to attach to the result or citation."
               },
               "verifierCommand": {
-                "type": "string"
+                "type": "string",
+                "description": "An optional verifier command to run for this operation."
               },
               "allowDomains": {
                 "type": "array",
                 "items": {
                   "type": "string"
-                }
+                },
+                "description": "Restrict navigation for this open request to these domains."
               },
               "sessionId": {
-                "type": "string"
+                "type": "string",
+                "description": "An existing session to reuse for this open request."
               },
               "tabId": {
-                "type": "string"
+                "type": "string",
+                "description": "A specific session tab to reuse for this open request."
               }
             },
-            "required": ["target"]
+            "required": [
+              "target"
+            ]
           }
+        },
+        "outputSchema": {
+          "type": "object"
         }
       }
     },
     {
       "type": "object",
       "additionalProperties": false,
-      "required": ["name", "title", "description", "inputSchema"],
+      "required": [
+        "name",
+        "title",
+        "description",
+        "inputSchema",
+        "outputSchema"
+      ],
       "properties": {
         "name": {
           "const": "tb_search"
@@ -130,27 +175,43 @@
             "type": "object",
             "properties": {
               "sessionId": {
-                "type": "string"
+                "type": "string",
+                "description": "The session that will run the web search."
               },
               "tabId": {
-                "type": "string"
+                "type": "string",
+                "description": "An existing tab to reuse for the search results page."
               },
               "query": {
-                "type": "string"
+                "type": "string",
+                "description": "The search query to run."
               },
               "budget": {
-                "type": "number"
+                "type": "number",
+                "description": "The processing budget to spend on this operation."
               }
             },
-            "required": ["sessionId", "query"]
+            "required": [
+              "sessionId",
+              "query"
+            ]
           }
+        },
+        "outputSchema": {
+          "type": "object"
         }
       }
     },
     {
       "type": "object",
       "additionalProperties": false,
-      "required": ["name", "title", "description", "inputSchema"],
+      "required": [
+        "name",
+        "title",
+        "description",
+        "inputSchema",
+        "outputSchema"
+      ],
       "properties": {
         "name": {
           "const": "tb_search_open_result"
@@ -166,24 +227,39 @@
             "type": "object",
             "properties": {
               "sessionId": {
-                "type": "string"
+                "type": "string",
+                "description": "The browser session to use for this operation."
               },
               "tabId": {
-                "type": "string"
+                "type": "string",
+                "description": "The specific tab to use inside the session. If omitted, the active tab is used."
               },
               "rank": {
-                "type": "number"
+                "type": "number",
+                "description": "The 1-based rank of the search result to open in a new tab."
               }
             },
-            "required": ["sessionId", "rank"]
+            "required": [
+              "sessionId",
+              "rank"
+            ]
           }
+        },
+        "outputSchema": {
+          "type": "object"
         }
       }
     },
     {
       "type": "object",
       "additionalProperties": false,
-      "required": ["name", "title", "description", "inputSchema"],
+      "required": [
+        "name",
+        "title",
+        "description",
+        "inputSchema",
+        "outputSchema"
+      ],
       "properties": {
         "name": {
           "const": "tb_search_open_top"
@@ -199,24 +275,38 @@
             "type": "object",
             "properties": {
               "sessionId": {
-                "type": "string"
+                "type": "string",
+                "description": "The browser session to use for this operation."
               },
               "tabId": {
-                "type": "string"
+                "type": "string",
+                "description": "The specific tab to use inside the session. If omitted, the active tab is used."
               },
               "limit": {
-                "type": "number"
+                "type": "number",
+                "description": "The maximum number of top-ranked search results to open."
               }
             },
-            "required": ["sessionId"]
+            "required": [
+              "sessionId"
+            ]
           }
+        },
+        "outputSchema": {
+          "type": "object"
         }
       }
     },
     {
       "type": "object",
       "additionalProperties": false,
-      "required": ["name", "title", "description", "inputSchema"],
+      "required": [
+        "name",
+        "title",
+        "description",
+        "inputSchema",
+        "outputSchema"
+      ],
       "properties": {
         "name": {
           "const": "tb_extract"
@@ -232,54 +322,76 @@
             "type": "object",
             "properties": {
               "target": {
-                "type": "string"
+                "type": "string",
+                "description": "The URL or target whose evidence should be extracted."
               },
               "claims": {
                 "type": "array",
                 "items": {
                   "type": "string"
-                }
+                },
+                "description": "A list of claims to verify against the target and support with citations when possible."
               },
               "browser": {
-                "type": "boolean"
+                "type": "boolean",
+                "description": "When true, use the browser-backed acquisition path for this operation."
               },
               "budget": {
-                "type": "number"
+                "type": "number",
+                "description": "The processing budget to spend on this operation."
               },
               "mainOnly": {
-                "type": "boolean"
+                "type": "boolean",
+                "description": "When true, extract only from the page's main content."
               },
               "verifierCommand": {
-                "type": "string"
+                "type": "string",
+                "description": "An optional verifier command to run for this operation."
               },
               "sourceRisk": {
-                "type": "string"
+                "type": "string",
+                "description": "The source risk label to attach to the result or citation."
               },
               "sourceLabel": {
-                "type": "string"
+                "type": "string",
+                "description": "The human-readable source label to attach to the result or citation."
               },
               "allowDomains": {
                 "type": "array",
                 "items": {
                   "type": "string"
-                }
+                },
+                "description": "Restrict the operation to this list of allowed domains."
               },
               "sessionId": {
-                "type": "string"
+                "type": "string",
+                "description": "The browser session to use for this operation."
               },
               "tabId": {
-                "type": "string"
+                "type": "string",
+                "description": "The specific tab to use inside the session. If omitted, the active tab is used."
               }
             },
-            "required": ["claims"]
+            "required": [
+              "claims"
+            ]
           }
+        },
+        "outputSchema": {
+          "type": "object"
         }
       }
     },
     {
       "type": "object",
       "additionalProperties": false,
-      "required": ["name", "title", "description", "inputSchema"],
+      "required": [
+        "name",
+        "title",
+        "description",
+        "inputSchema",
+        "outputSchema"
+      ],
       "properties": {
         "name": {
           "const": "tb_read_view"
@@ -295,44 +407,62 @@
             "type": "object",
             "properties": {
               "target": {
-                "type": "string"
+                "type": "string",
+                "description": "The URL or target to convert into a readable view."
               },
               "browser": {
-                "type": "boolean"
+                "type": "boolean",
+                "description": "When true, use the browser-backed acquisition path for this operation."
               },
               "budget": {
-                "type": "number"
+                "type": "number",
+                "description": "The processing budget to spend on this operation."
               },
               "mainOnly": {
-                "type": "boolean"
+                "type": "boolean",
+                "description": "When true, return only the page's main content in the read view."
               },
               "sourceRisk": {
-                "type": "string"
+                "type": "string",
+                "description": "The source risk label to attach to the result or citation."
               },
               "sourceLabel": {
-                "type": "string"
+                "type": "string",
+                "description": "The human-readable source label to attach to the result or citation."
               },
               "allowDomains": {
                 "type": "array",
                 "items": {
                   "type": "string"
-                }
+                },
+                "description": "Restrict the operation to this list of allowed domains."
               },
               "sessionId": {
-                "type": "string"
+                "type": "string",
+                "description": "The browser session to use for this operation."
               },
               "tabId": {
-                "type": "string"
+                "type": "string",
+                "description": "The specific tab to use inside the session. If omitted, the active tab is used."
               }
             }
           }
+        },
+        "outputSchema": {
+          "type": "object"
         }
       }
     },
     {
       "type": "object",
       "additionalProperties": false,
-      "required": ["name", "title", "description", "inputSchema"],
+      "required": [
+        "name",
+        "title",
+        "description",
+        "inputSchema",
+        "outputSchema"
+      ],
       "properties": {
         "name": {
           "const": "tb_policy"
@@ -348,38 +478,54 @@
             "type": "object",
             "properties": {
               "target": {
-                "type": "string"
+                "type": "string",
+                "description": "The URL or target whose policy classification should be reported."
               },
               "browser": {
-                "type": "boolean"
+                "type": "boolean",
+                "description": "When true, use the browser-backed acquisition path for this operation."
               },
               "sourceRisk": {
-                "type": "string"
+                "type": "string",
+                "description": "The source risk label to attach to the result or citation."
               },
               "sourceLabel": {
-                "type": "string"
+                "type": "string",
+                "description": "The human-readable source label to attach to the result or citation."
               },
               "allowDomains": {
                 "type": "array",
                 "items": {
                   "type": "string"
-                }
+                },
+                "description": "Restrict the operation to this list of allowed domains."
               },
               "sessionId": {
-                "type": "string"
+                "type": "string",
+                "description": "The browser session to use for this operation."
               },
               "tabId": {
-                "type": "string"
+                "type": "string",
+                "description": "The specific tab to use inside the session. If omitted, the active tab is used."
               }
             }
           }
+        },
+        "outputSchema": {
+          "type": "object"
         }
       }
     },
     {
       "type": "object",
       "additionalProperties": false,
-      "required": ["name", "title", "description", "inputSchema"],
+      "required": [
+        "name",
+        "title",
+        "description",
+        "inputSchema",
+        "outputSchema"
+      ],
       "properties": {
         "name": {
           "const": "tb_tab_open"
@@ -395,33 +541,49 @@
             "type": "object",
             "properties": {
               "sessionId": {
-                "type": "string"
+                "type": "string",
+                "description": "The browser session to use for this operation."
               },
               "target": {
-                "type": "string"
+                "type": "string",
+                "description": "An optional URL or target to open immediately in the new tab."
               },
               "sourceRisk": {
-                "type": "string"
+                "type": "string",
+                "description": "The source risk label to attach to the result or citation."
               },
               "sourceLabel": {
-                "type": "string"
+                "type": "string",
+                "description": "The human-readable source label to attach to the result or citation."
               },
               "allowDomains": {
                 "type": "array",
                 "items": {
                   "type": "string"
-                }
+                },
+                "description": "Restrict the operation to this list of allowed domains."
               }
             },
-            "required": ["sessionId"]
+            "required": [
+              "sessionId"
+            ]
           }
+        },
+        "outputSchema": {
+          "type": "object"
         }
       }
     },
     {
       "type": "object",
       "additionalProperties": false,
-      "required": ["name", "title", "description", "inputSchema"],
+      "required": [
+        "name",
+        "title",
+        "description",
+        "inputSchema",
+        "outputSchema"
+      ],
       "properties": {
         "name": {
           "const": "tb_tab_list"
@@ -437,18 +599,30 @@
             "type": "object",
             "properties": {
               "sessionId": {
-                "type": "string"
+                "type": "string",
+                "description": "The browser session to use for this operation."
               }
             },
-            "required": ["sessionId"]
+            "required": [
+              "sessionId"
+            ]
           }
+        },
+        "outputSchema": {
+          "type": "object"
         }
       }
     },
     {
       "type": "object",
       "additionalProperties": false,
-      "required": ["name", "title", "description", "inputSchema"],
+      "required": [
+        "name",
+        "title",
+        "description",
+        "inputSchema",
+        "outputSchema"
+      ],
       "properties": {
         "name": {
           "const": "tb_tab_select"
@@ -464,21 +638,35 @@
             "type": "object",
             "properties": {
               "sessionId": {
-                "type": "string"
+                "type": "string",
+                "description": "The browser session to use for this operation."
               },
               "tabId": {
-                "type": "string"
+                "type": "string",
+                "description": "The specific tab to use inside the session. If omitted, the active tab is used."
               }
             },
-            "required": ["sessionId", "tabId"]
+            "required": [
+              "sessionId",
+              "tabId"
+            ]
           }
+        },
+        "outputSchema": {
+          "type": "object"
         }
       }
     },
     {
       "type": "object",
       "additionalProperties": false,
-      "required": ["name", "title", "description", "inputSchema"],
+      "required": [
+        "name",
+        "title",
+        "description",
+        "inputSchema",
+        "outputSchema"
+      ],
       "properties": {
         "name": {
           "const": "tb_tab_close"
@@ -494,21 +682,35 @@
             "type": "object",
             "properties": {
               "sessionId": {
-                "type": "string"
+                "type": "string",
+                "description": "The browser session to use for this operation."
               },
               "tabId": {
-                "type": "string"
+                "type": "string",
+                "description": "The specific tab to use inside the session. If omitted, the active tab is used."
               }
             },
-            "required": ["sessionId", "tabId"]
+            "required": [
+              "sessionId",
+              "tabId"
+            ]
           }
+        },
+        "outputSchema": {
+          "type": "object"
         }
       }
     },
     {
       "type": "object",
       "additionalProperties": false,
-      "required": ["name", "title", "description", "inputSchema"],
+      "required": [
+        "name",
+        "title",
+        "description",
+        "inputSchema",
+        "outputSchema"
+      ],
       "properties": {
         "name": {
           "const": "tb_checkpoint"
@@ -524,21 +726,34 @@
             "type": "object",
             "properties": {
               "sessionId": {
-                "type": "string"
+                "type": "string",
+                "description": "The browser session to use for this operation."
               },
               "tabId": {
-                "type": "string"
+                "type": "string",
+                "description": "The specific tab to use inside the session. If omitted, the active tab is used."
               }
             },
-            "required": ["sessionId"]
+            "required": [
+              "sessionId"
+            ]
           }
+        },
+        "outputSchema": {
+          "type": "object"
         }
       }
     },
     {
       "type": "object",
       "additionalProperties": false,
-      "required": ["name", "title", "description", "inputSchema"],
+      "required": [
+        "name",
+        "title",
+        "description",
+        "inputSchema",
+        "outputSchema"
+      ],
       "properties": {
         "name": {
           "const": "tb_profile"
@@ -554,21 +769,34 @@
             "type": "object",
             "properties": {
               "sessionId": {
-                "type": "string"
+                "type": "string",
+                "description": "The browser session to use for this operation."
               },
               "tabId": {
-                "type": "string"
+                "type": "string",
+                "description": "The specific tab to use inside the session. If omitted, the active tab is used."
               }
             },
-            "required": ["sessionId"]
+            "required": [
+              "sessionId"
+            ]
           }
+        },
+        "outputSchema": {
+          "type": "object"
         }
       }
     },
     {
       "type": "object",
       "additionalProperties": false,
-      "required": ["name", "title", "description", "inputSchema"],
+      "required": [
+        "name",
+        "title",
+        "description",
+        "inputSchema",
+        "outputSchema"
+      ],
       "properties": {
         "name": {
           "const": "tb_profile_set"
@@ -584,24 +812,39 @@
             "type": "object",
             "properties": {
               "sessionId": {
-                "type": "string"
+                "type": "string",
+                "description": "The browser session to use for this operation."
               },
               "tabId": {
-                "type": "string"
+                "type": "string",
+                "description": "The specific tab to use inside the session. If omitted, the active tab is used."
               },
               "profile": {
-                "type": "string"
+                "type": "string",
+                "description": "The policy profile name to apply to the session."
               }
             },
-            "required": ["sessionId", "profile"]
+            "required": [
+              "sessionId",
+              "profile"
+            ]
           }
+        },
+        "outputSchema": {
+          "type": "object"
         }
       }
     },
     {
       "type": "object",
       "additionalProperties": false,
-      "required": ["name", "title", "description", "inputSchema"],
+      "required": [
+        "name",
+        "title",
+        "description",
+        "inputSchema",
+        "outputSchema"
+      ],
       "properties": {
         "name": {
           "const": "tb_click"
@@ -617,30 +860,46 @@
             "type": "object",
             "properties": {
               "sessionId": {
-                "type": "string"
+                "type": "string",
+                "description": "The browser session to use for this operation."
               },
               "tabId": {
-                "type": "string"
+                "type": "string",
+                "description": "The specific tab to use inside the session. If omitted, the active tab is used."
               },
               "targetRef": {
-                "type": "string"
+                "type": "string",
+                "description": "The interactive element reference to click."
               },
               "ackRisks": {
                 "type": "array",
                 "items": {
                   "type": "string"
-                }
+                },
+                "description": "The supervised risk codes acknowledged for this action."
               }
             },
-            "required": ["sessionId", "targetRef"]
+            "required": [
+              "sessionId",
+              "targetRef"
+            ]
           }
+        },
+        "outputSchema": {
+          "type": "object"
         }
       }
     },
     {
       "type": "object",
       "additionalProperties": false,
-      "required": ["name", "title", "description", "inputSchema"],
+      "required": [
+        "name",
+        "title",
+        "description",
+        "inputSchema",
+        "outputSchema"
+      ],
       "properties": {
         "name": {
           "const": "tb_type"
@@ -656,36 +915,55 @@
             "type": "object",
             "properties": {
               "sessionId": {
-                "type": "string"
+                "type": "string",
+                "description": "The browser session to use for this operation."
               },
               "tabId": {
-                "type": "string"
+                "type": "string",
+                "description": "The specific tab to use inside the session. If omitted, the active tab is used."
               },
               "targetRef": {
-                "type": "string"
+                "type": "string",
+                "description": "The interactive field reference to type into."
               },
               "value": {
-                "type": "string"
+                "type": "string",
+                "description": "The text value to type into the target field."
               },
               "sensitive": {
-                "type": "boolean"
+                "type": "boolean",
+                "description": "When true, treat the typed value as sensitive."
               },
               "ackRisks": {
                 "type": "array",
                 "items": {
                   "type": "string"
-                }
+                },
+                "description": "The supervised risk codes acknowledged for this action."
               }
             },
-            "required": ["sessionId", "targetRef", "value"]
+            "required": [
+              "sessionId",
+              "targetRef",
+              "value"
+            ]
           }
+        },
+        "outputSchema": {
+          "type": "object"
         }
       }
     },
     {
       "type": "object",
       "additionalProperties": false,
-      "required": ["name", "title", "description", "inputSchema"],
+      "required": [
+        "name",
+        "title",
+        "description",
+        "inputSchema",
+        "outputSchema"
+      ],
       "properties": {
         "name": {
           "const": "tb_approve"
@@ -701,24 +979,38 @@
             "type": "object",
             "properties": {
               "sessionId": {
-                "type": "string"
+                "type": "string",
+                "description": "The browser session to use for this operation."
               },
               "ackRisks": {
                 "type": "array",
                 "items": {
                   "type": "string"
-                }
+                },
+                "description": "The risk codes to persist as approved for the session."
               }
             },
-            "required": ["sessionId", "ackRisks"]
+            "required": [
+              "sessionId",
+              "ackRisks"
+            ]
           }
+        },
+        "outputSchema": {
+          "type": "object"
         }
       }
     },
     {
       "type": "object",
       "additionalProperties": false,
-      "required": ["name", "title", "description", "inputSchema"],
+      "required": [
+        "name",
+        "title",
+        "description",
+        "inputSchema",
+        "outputSchema"
+      ],
       "properties": {
         "name": {
           "const": "tb_secret_store"
@@ -734,24 +1026,40 @@
             "type": "object",
             "properties": {
               "sessionId": {
-                "type": "string"
+                "type": "string",
+                "description": "The browser session to use for this operation."
               },
               "targetRef": {
-                "type": "string"
+                "type": "string",
+                "description": "The target reference that this stored secret is intended for."
               },
               "value": {
-                "type": "string"
+                "type": "string",
+                "description": "The sensitive value to store only in session memory."
               }
             },
-            "required": ["sessionId", "targetRef", "value"]
+            "required": [
+              "sessionId",
+              "targetRef",
+              "value"
+            ]
           }
+        },
+        "outputSchema": {
+          "type": "object"
         }
       }
     },
     {
       "type": "object",
       "additionalProperties": false,
-      "required": ["name", "title", "description", "inputSchema"],
+      "required": [
+        "name",
+        "title",
+        "description",
+        "inputSchema",
+        "outputSchema"
+      ],
       "properties": {
         "name": {
           "const": "tb_secret_clear"
@@ -767,21 +1075,34 @@
             "type": "object",
             "properties": {
               "sessionId": {
-                "type": "string"
+                "type": "string",
+                "description": "The browser session to use for this operation."
               },
               "targetRef": {
-                "type": "string"
+                "type": "string",
+                "description": "The target reference whose stored secret should be cleared. Omit to clear all stored secrets for the session."
               }
             },
-            "required": ["sessionId"]
+            "required": [
+              "sessionId"
+            ]
           }
+        },
+        "outputSchema": {
+          "type": "object"
         }
       }
     },
     {
       "type": "object",
       "additionalProperties": false,
-      "required": ["name", "title", "description", "inputSchema"],
+      "required": [
+        "name",
+        "title",
+        "description",
+        "inputSchema",
+        "outputSchema"
+      ],
       "properties": {
         "name": {
           "const": "tb_type_secret"
@@ -797,30 +1118,46 @@
             "type": "object",
             "properties": {
               "sessionId": {
-                "type": "string"
+                "type": "string",
+                "description": "The browser session to use for this operation."
               },
               "tabId": {
-                "type": "string"
+                "type": "string",
+                "description": "The specific tab to use inside the session. If omitted, the active tab is used."
               },
               "targetRef": {
-                "type": "string"
+                "type": "string",
+                "description": "The sensitive field reference that should receive the stored secret."
               },
               "ackRisks": {
                 "type": "array",
                 "items": {
                   "type": "string"
-                }
+                },
+                "description": "The supervised risk codes acknowledged for this action."
               }
             },
-            "required": ["sessionId", "targetRef"]
+            "required": [
+              "sessionId",
+              "targetRef"
+            ]
           }
+        },
+        "outputSchema": {
+          "type": "object"
         }
       }
     },
     {
       "type": "object",
       "additionalProperties": false,
-      "required": ["name", "title", "description", "inputSchema"],
+      "required": [
+        "name",
+        "title",
+        "description",
+        "inputSchema",
+        "outputSchema"
+      ],
       "properties": {
         "name": {
           "const": "tb_submit"
@@ -836,30 +1173,46 @@
             "type": "object",
             "properties": {
               "sessionId": {
-                "type": "string"
+                "type": "string",
+                "description": "The browser session to use for this operation."
               },
               "tabId": {
-                "type": "string"
+                "type": "string",
+                "description": "The specific tab to use inside the session. If omitted, the active tab is used."
               },
               "targetRef": {
-                "type": "string"
+                "type": "string",
+                "description": "The form or submit control reference to trigger."
               },
               "ackRisks": {
                 "type": "array",
                 "items": {
                   "type": "string"
-                }
+                },
+                "description": "The supervised risk codes acknowledged for this action."
               }
             },
-            "required": ["sessionId", "targetRef"]
+            "required": [
+              "sessionId",
+              "targetRef"
+            ]
           }
+        },
+        "outputSchema": {
+          "type": "object"
         }
       }
     },
     {
       "type": "object",
       "additionalProperties": false,
-      "required": ["name", "title", "description", "inputSchema"],
+      "required": [
+        "name",
+        "title",
+        "description",
+        "inputSchema",
+        "outputSchema"
+      ],
       "properties": {
         "name": {
           "const": "tb_refresh"
@@ -875,21 +1228,34 @@
             "type": "object",
             "properties": {
               "sessionId": {
-                "type": "string"
+                "type": "string",
+                "description": "The browser session to use for this operation."
               },
               "tabId": {
-                "type": "string"
+                "type": "string",
+                "description": "The specific tab to use inside the session. If omitted, the active tab is used."
               }
             },
-            "required": ["sessionId"]
+            "required": [
+              "sessionId"
+            ]
           }
+        },
+        "outputSchema": {
+          "type": "object"
         }
       }
     },
     {
       "type": "object",
       "additionalProperties": false,
-      "required": ["name", "title", "description", "inputSchema"],
+      "required": [
+        "name",
+        "title",
+        "description",
+        "inputSchema",
+        "outputSchema"
+      ],
       "properties": {
         "name": {
           "const": "tb_telemetry_summary"
@@ -905,13 +1271,22 @@
             "type": "object",
             "properties": {}
           }
+        },
+        "outputSchema": {
+          "type": "object"
         }
       }
     },
     {
       "type": "object",
       "additionalProperties": false,
-      "required": ["name", "title", "description", "inputSchema"],
+      "required": [
+        "name",
+        "title",
+        "description",
+        "inputSchema",
+        "outputSchema"
+      ],
       "properties": {
         "name": {
           "const": "tb_telemetry_recent"
@@ -928,17 +1303,27 @@
             "properties": {
               "limit": {
                 "type": "integer",
-                "minimum": 1
+                "minimum": 1,
+                "description": "The maximum number of recent telemetry events to return."
               }
             }
           }
+        },
+        "outputSchema": {
+          "type": "object"
         }
       }
     },
     {
       "type": "object",
       "additionalProperties": false,
-      "required": ["name", "title", "description", "inputSchema"],
+      "required": [
+        "name",
+        "title",
+        "description",
+        "inputSchema",
+        "outputSchema"
+      ],
       "properties": {
         "name": {
           "const": "tb_session_synthesize"
@@ -954,21 +1339,34 @@
             "type": "object",
             "properties": {
               "sessionId": {
-                "type": "string"
+                "type": "string",
+                "description": "The browser session to use for this operation."
               },
               "noteLimit": {
-                "type": "integer"
+                "type": "integer",
+                "description": "The maximum number of notes to include in the synthesis report."
               }
             },
-            "required": ["sessionId"]
+            "required": [
+              "sessionId"
+            ]
           }
+        },
+        "outputSchema": {
+          "type": "object"
         }
       }
     },
     {
       "type": "object",
       "additionalProperties": false,
-      "required": ["name", "title", "description", "inputSchema"],
+      "required": [
+        "name",
+        "title",
+        "description",
+        "inputSchema",
+        "outputSchema"
+      ],
       "properties": {
         "name": {
           "const": "tb_session_close"
@@ -984,11 +1382,17 @@
             "type": "object",
             "properties": {
               "sessionId": {
-                "type": "string"
+                "type": "string",
+                "description": "The browser session to use for this operation."
               }
             },
-            "required": ["sessionId"]
+            "required": [
+              "sessionId"
+            ]
           }
+        },
+        "outputSchema": {
+          "type": "object"
         }
       }
     }
