@@ -1,7 +1,10 @@
+import { copyFile, mkdir, mkdtemp, readFile, rm } from "node:fs/promises";
+import os from "node:os";
 import path from "node:path";
 
 import { describe, expect, it } from "vitest";
 
+import { generateMcpToolCatalog } from "../../../scripts/generate-mcp-tool-catalog.mjs";
 import { readJsonFile } from "../support/json.js";
 import { contractsDir, contractsManifestPath } from "../support/paths.js";
 import {
@@ -78,6 +81,67 @@ describe("contract schemas", () => {
         "mcp-tool-catalog.schema.json",
       )(generatedCatalog),
     ).toBe(true);
+  });
+
+  it("keeps generated MCP output schemas compatible with hosted inspectors", async () => {
+    const generatedCatalogPath = path.join(
+      path.dirname(contractsManifestPath),
+      "mcp-tool-catalog.json",
+    );
+    const generatedCatalog = await readJsonFile(generatedCatalogPath);
+
+    expect(Array.isArray(generatedCatalog)).toBe(true);
+    for (const tool of generatedCatalog as Array<{
+      readonly name: string;
+      readonly outputSchema: Record<string, unknown>;
+    }>) {
+      expect(tool.outputSchema.type).toBe("object");
+      expect(tool.outputSchema).not.toHaveProperty("anyOf");
+      expect(tool.outputSchema).not.toHaveProperty("oneOf");
+      expect(tool.outputSchema).not.toHaveProperty("allOf");
+    }
+  });
+
+  it("keeps the checked-in MCP tool catalog generated from the current source", async () => {
+    const tempRoot = await mkdtemp(
+      path.join(os.tmpdir(), "touch-browser-mcp-tool-catalog-"),
+    );
+
+    try {
+      const tempSchemaDir = path.join(tempRoot, "contracts", "schemas");
+      await mkdir(tempSchemaDir, { recursive: true });
+      await copyFile(
+        path.join(contractsDir, "mcp-tool-catalog.schema.json"),
+        path.join(tempSchemaDir, "mcp-tool-catalog.schema.json"),
+      );
+
+      await generateMcpToolCatalog(tempRoot);
+
+      const checkedInCatalog = JSON.parse(
+        await readFile(
+          path.join(
+            path.dirname(contractsManifestPath),
+            "mcp-tool-catalog.json",
+          ),
+          "utf8",
+        ),
+      );
+      const regeneratedCatalog = JSON.parse(
+        await readFile(
+          path.join(
+            tempRoot,
+            "contracts",
+            "generated",
+            "mcp-tool-catalog.json",
+          ),
+          "utf8",
+        ),
+      );
+
+      expect(regeneratedCatalog).toEqual(checkedInCatalog);
+    } finally {
+      await rm(tempRoot, { recursive: true, force: true });
+    }
   });
 
   it("accepts valid example payloads", async () => {

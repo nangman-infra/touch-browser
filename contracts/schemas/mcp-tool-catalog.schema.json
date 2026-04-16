@@ -33,7 +33,13 @@
           }
         },
         "outputSchema": {
-          "type": "object"
+          "type": "object",
+          "required": ["type"],
+          "properties": {
+            "type": {
+              "const": "object"
+            }
+          }
         }
       }
     },
@@ -72,7 +78,13 @@
           }
         },
         "outputSchema": {
-          "type": "object"
+          "type": "object",
+          "required": ["type"],
+          "properties": {
+            "type": {
+              "const": "object"
+            }
+          }
         }
       }
     },
@@ -144,7 +156,13 @@
           }
         },
         "outputSchema": {
-          "type": "object"
+          "type": "object",
+          "required": ["type"],
+          "properties": {
+            "type": {
+              "const": "object"
+            }
+          }
         }
       }
     },
@@ -193,7 +211,13 @@
           }
         },
         "outputSchema": {
-          "type": "object"
+          "type": "object",
+          "required": ["type"],
+          "properties": {
+            "type": {
+              "const": "object"
+            }
+          }
         }
       }
     },
@@ -238,7 +262,13 @@
           }
         },
         "outputSchema": {
-          "type": "object"
+          "type": "object",
+          "required": ["type"],
+          "properties": {
+            "type": {
+              "const": "object"
+            }
+          }
         }
       }
     },
@@ -283,7 +313,13 @@
           }
         },
         "outputSchema": {
-          "type": "object"
+          "type": "object",
+          "required": ["type"],
+          "properties": {
+            "type": {
+              "const": "object"
+            }
+          }
         }
       }
     },
@@ -366,7 +402,13 @@
           }
         },
         "outputSchema": {
-          "type": "object"
+          "type": "object",
+          "required": ["type"],
+          "properties": {
+            "type": {
+              "const": "object"
+            }
+          }
         }
       }
     },
@@ -437,7 +479,13 @@
           }
         },
         "outputSchema": {
-          "type": "object"
+          "type": "object",
+          "required": ["type"],
+          "properties": {
+            "type": {
+              "const": "object"
+            }
+          }
         }
       }
     },
@@ -500,7 +548,13 @@
           }
         },
         "outputSchema": {
-          "type": "object"
+          "type": "object",
+          "required": ["type"],
+          "properties": {
+            "type": {
+              "const": "object"
+            }
+          }
         }
       }
     },
@@ -556,7 +610,13 @@
           }
         },
         "outputSchema": {
-          "type": "object"
+          "type": "object",
+          "required": ["type"],
+          "properties": {
+            "type": {
+              "const": "object"
+            }
+          }
         }
       }
     },
@@ -593,7 +653,13 @@
           }
         },
         "outputSchema": {
-          "type": "object"
+          "type": "object",
+          "required": ["type"],
+          "properties": {
+            "type": {
+              "const": "object"
+            }
+          }
         }
       }
     },
@@ -634,7 +700,13 @@
           }
         },
         "outputSchema": {
-          "type": "object"
+          "type": "object",
+          "required": ["type"],
+          "properties": {
+            "type": {
+              "const": "object"
+            }
+          }
         }
       }
     },
@@ -675,7 +747,13 @@
           }
         },
         "outputSchema": {
-          "type": "object"
+          "type": "object",
+          "required": ["type"],
+          "properties": {
+            "type": {
+              "const": "object"
+            }
+          }
         }
       }
     },
@@ -716,7 +794,13 @@
           }
         },
         "outputSchema": {
-          "type": "object"
+          "type": "object",
+          "required": ["type"],
+          "properties": {
+            "type": {
+              "const": "object"
+            }
+          }
         }
       }
     },
@@ -757,7 +841,13 @@
           }
         },
         "outputSchema": {
-          "type": "object"
+          "type": "object",
+          "required": ["type"],
+          "properties": {
+            "type": {
+              "const": "object"
+            }
+          }
         }
       }
     },
@@ -802,7 +892,13 @@
           }
         },
         "outputSchema": {
-          "type": "object"
+          "type": "object",
+          "required": ["type"],
+          "properties": {
+            "type": {
+              "const": "object"
+            }
+          }
         }
       }
     },
@@ -854,7 +950,13 @@
           }
         },
         "outputSchema": {
-          "type": "object"
+          "type": "object",
+          "required": ["type"],
+          "properties": {
+            "type": {
+              "const": "object"
+            }
+          }
         }
       }
     },
@@ -914,7 +1016,13 @@
           }
         },
         "outputSchema": {
-          "type": "object"
+          "type": "object",
+          "required": ["type"],
+          "properties": {
+            "type": {
+              "const": "object"
+            }
+          }
         }
       }
     },
@@ -958,7 +1066,13 @@
           }
         },
         "outputSchema": {
-          "type": "object"
+          "type": "object",
+          "required": ["type"],
+          "properties": {
+            "type": {
+              "const": "object"
+            }
+          }
         }
       }
     },
@@ -1003,7 +1117,13 @@
           }
         },
         "outputSchema": {
-          "type": "object"
+          "type": "object",
+          "required": ["type"],
+          "properties": {
+            "type": {
+              "const": "object"
+            }
+          }
         }
       }
     },
@@ -1044,7 +1164,13 @@
           }
         },
         "outputSchema": {
-          "type": "object"
+          "type": "object",
+          "required": ["type"],
+          "properties": {
+            "type": {
+              "const": "object"
+            }
+          }
         }
       }
     },
@@ -1096,7 +1222,13 @@
           }
         },
         "outputSchema": {
-          "type": "object"
+          "type": "object",
+          "required": ["type"],
+          "properties": {
+            "type": {
+              "const": "object"
+            }
+          }
         }
       }
     },
@@ -1148,7 +1280,13 @@
           }
         },
         "outputSchema": {
-          "type": "object"
+          "type": "object",
+          "required": ["type"],
+          "properties": {
+            "type": {
+              "const": "object"
+            }
+          }
         }
       }
     },
@@ -1189,7 +1327,13 @@
           }
         },
         "outputSchema": {
-          "type": "object"
+          "type": "object",
+          "required": ["type"],
+          "properties": {
+            "type": {
+              "const": "object"
+            }
+          }
         }
       }
     },
@@ -1220,7 +1364,13 @@
           }
         },
         "outputSchema": {
-          "type": "object"
+          "type": "object",
+          "required": ["type"],
+          "properties": {
+            "type": {
+              "const": "object"
+            }
+          }
         }
       }
     },
@@ -1257,7 +1407,13 @@
           }
         },
         "outputSchema": {
-          "type": "object"
+          "type": "object",
+          "required": ["type"],
+          "properties": {
+            "type": {
+              "const": "object"
+            }
+          }
         }
       }
     },
@@ -1298,7 +1454,13 @@
           }
         },
         "outputSchema": {
-          "type": "object"
+          "type": "object",
+          "required": ["type"],
+          "properties": {
+            "type": {
+              "const": "object"
+            }
+          }
         }
       }
     },
@@ -1335,7 +1497,13 @@
           }
         },
         "outputSchema": {
-          "type": "object"
+          "type": "object",
+          "required": ["type"],
+          "properties": {
+            "type": {
+              "const": "object"
+            }
+          }
         }
       }
     }

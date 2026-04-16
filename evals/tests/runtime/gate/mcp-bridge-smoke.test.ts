@@ -97,6 +97,12 @@ describe("mcp bridge smoke", () => {
         readonly inputSchema?: {
           readonly properties?: Record<string, unknown>;
         };
+        readonly outputSchema?: {
+          readonly type?: string;
+          readonly anyOf?: unknown;
+          readonly oneOf?: unknown;
+          readonly allOf?: unknown;
+        };
       }>;
     }>("tools/list", {});
     expect(
@@ -142,6 +148,12 @@ describe("mcp bridge smoke", () => {
     expect(readViewTool?.inputSchema?.properties).not.toHaveProperty("headed");
     expect(extractTool?.inputSchema?.properties).not.toHaveProperty("headed");
     expect(refreshTool?.inputSchema?.properties).not.toHaveProperty("headed");
+    for (const tool of tools.tools) {
+      expect(tool.outputSchema?.type).toBe("object");
+      expect(tool.outputSchema?.anyOf).toBeUndefined();
+      expect(tool.outputSchema?.oneOf).toBeUndefined();
+      expect(tool.outputSchema?.allOf).toBeUndefined();
+    }
     expect(
       tools.tools.some(
         (tool: { readonly name: string }) =>

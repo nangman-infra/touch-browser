@@ -85,6 +85,41 @@ function recordSchema(valueSchema) {
   };
 }
 
+function schemaProperties(schema) {
+  return schema?.properties ?? {};
+}
+
+function flattenObjectVariants(variants) {
+  const filteredVariants = variants.filter(Boolean);
+  const properties = {};
+
+  for (const variant of filteredVariants) {
+    if (variant?.type !== "object") {
+      throw new Error("Only object variants can be flattened.");
+    }
+    Object.assign(properties, schemaProperties(variant));
+  }
+
+  return objectSchema({
+    properties,
+    minProperties: 1,
+  });
+}
+
+function assertTopLevelObjectSchema(name, schema) {
+  if (schema?.type !== "object") {
+    throw new Error(
+      `MCP tool \`${name}\` output schema must declare top-level \`type: "object"\`.`,
+    );
+  }
+  if ("anyOf" in schema || "oneOf" in schema || "allOf" in schema) {
+    throw new Error(
+      `MCP tool \`${name}\` output schema must not use top-level composition keywords.`,
+    );
+  }
+  return schema;
+}
+
 function buildOutputSchemas() {
   const arbitraryObject = anyObjectSchema();
 
@@ -156,66 +191,6 @@ function buildOutputSchemas() {
       message: stringSchema(),
     },
     required: ["version", "action", "status", "payloadType", "message"],
-  });
-
-  const snapshotDocumentSchema = objectSchema({
-    properties: {
-      version: stringSchema(),
-      stableRefVersion: stringSchema(),
-      source: objectSchema({
-        properties: {
-          sourceUrl: stringSchema(),
-          sourceType: stringSchema(),
-          title: stringSchema(),
-        },
-        required: ["sourceUrl", "sourceType"],
-      }),
-      budget: objectSchema({
-        properties: {
-          requestedTokens: integerSchema({ minimum: 1 }),
-          estimatedTokens: integerSchema({ minimum: 0 }),
-          emittedTokens: integerSchema({ minimum: 0 }),
-          truncated: booleanSchema(),
-        },
-        required: [
-          "requestedTokens",
-          "estimatedTokens",
-          "emittedTokens",
-          "truncated",
-        ],
-      }),
-      blocks: arraySchema(arbitraryObject),
-    },
-    required: ["version", "stableRefVersion", "source", "budget", "blocks"],
-  });
-
-  const evidenceReportSchema = objectSchema({
-    properties: {
-      version: stringSchema(),
-      generatedAt: stringSchema(),
-      source: objectSchema({
-        properties: {
-          sourceUrl: stringSchema(),
-          sourceType: stringSchema(),
-          sourceRisk: stringSchema(),
-          sourceLabel: stringSchema(),
-        },
-        required: ["sourceUrl", "sourceType", "sourceRisk"],
-      }),
-      evidenceSupportedClaims: arraySchema(arbitraryObject),
-      contradictedClaims: arraySchema(arbitraryObject),
-      insufficientEvidenceClaims: arraySchema(arbitraryObject),
-      needsMoreBrowsingClaims: arraySchema(arbitraryObject),
-      claimOutcomes: arraySchema(arbitraryObject),
-    },
-    required: [
-      "version",
-      "generatedAt",
-      "source",
-      "evidenceSupportedClaims",
-      "insufficientEvidenceClaims",
-      "claimOutcomes",
-    ],
   });
 
   const sessionSynthesisReportSchema = objectSchema({
@@ -435,6 +410,9 @@ function buildOutputSchemas() {
       },
       required: ["sessionId", "tabId", "result"],
     });
+
+  const directOrSessionSchema = (directSchema) =>
+    flattenObjectVariants([directSchema, sessionTabEnvelope(directSchema)]);
 
   const searchOpenResultSchema = objectSchema({
     properties: {
@@ -694,21 +672,13 @@ function buildOutputSchemas() {
         "tabCount",
       ],
     }),
-    tb_open: {
-      anyOf: [actionResultSchema, sessionTabEnvelope(actionResultSchema)],
-    },
+    tb_open: directOrSessionSchema(actionResultSchema),
     tb_search: sessionTabEnvelope(searchSessionResultSchema),
     tb_search_open_result: searchOpenResultSchema,
     tb_search_open_top: searchOpenTopSchema,
-    tb_extract: {
-      anyOf: [extractResultSchema, sessionTabEnvelope(arbitraryObject)],
-    },
-    tb_read_view: {
-      anyOf: [readViewSchema, sessionTabEnvelope(arbitraryObject)],
-    },
-    tb_policy: {
-      anyOf: [directPolicyResultSchema, sessionTabEnvelope(arbitraryObject)],
-    },
+    tb_extract: directOrSessionSchema(extractResultSchema),
+    tb_read_view: directOrSessionSchema(readViewSchema),
+    tb_policy: directOrSessionSchema(directPolicyResultSchema),
     tb_tab_open: tabOpenSchema,
     tb_tab_list: tabListSchema,
     tb_tab_select: tabSelectSchema,
@@ -756,7 +726,7 @@ function extractToolCatalog(schema) {
       title: requiredConst(properties, "title"),
       description: requiredConst(properties, "description"),
       inputSchema: requiredConst(properties, "inputSchema"),
-      outputSchema,
+      outputSchema: assertTopLevelObjectSchema(name, outputSchema),
     };
   });
 }

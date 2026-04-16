@@ -140,8 +140,106 @@ export const toolCatalog = [
       ]
     },
     "outputSchema": {
-      "anyOf": [
-        {
+      "type": "object",
+      "additionalProperties": false,
+      "minProperties": 1,
+      "properties": {
+        "version": {
+          "type": "string"
+        },
+        "action": {
+          "type": "string"
+        },
+        "status": {
+          "type": "string"
+        },
+        "payloadType": {
+          "type": "string"
+        },
+        "output": {
+          "type": [
+            "object",
+            "null"
+          ],
+          "additionalProperties": true
+        },
+        "diagnostics": {
+          "type": "object",
+          "additionalProperties": true
+        },
+        "policy": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "decision": {
+              "type": "string"
+            },
+            "sourceRisk": {
+              "type": "string"
+            },
+            "riskClass": {
+              "type": "string"
+            },
+            "blockedRefs": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            },
+            "signals": {
+              "type": "array",
+              "items": {
+                "type": "object",
+                "additionalProperties": false,
+                "properties": {
+                  "kind": {
+                    "type": "string"
+                  },
+                  "origin": {
+                    "type": "string"
+                  },
+                  "stableRef": {
+                    "type": "string"
+                  },
+                  "detail": {
+                    "type": "string"
+                  }
+                },
+                "required": [
+                  "kind",
+                  "origin",
+                  "detail"
+                ]
+              }
+            },
+            "allowlistedDomains": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            }
+          },
+          "required": [
+            "decision",
+            "sourceRisk",
+            "riskClass",
+            "blockedRefs",
+            "signals"
+          ]
+        },
+        "failureKind": {
+          "type": "string"
+        },
+        "message": {
+          "type": "string"
+        },
+        "sessionId": {
+          "type": "string"
+        },
+        "tabId": {
+          "type": "string"
+        },
+        "result": {
           "type": "object",
           "additionalProperties": false,
           "properties": {
@@ -245,134 +343,8 @@ export const toolCatalog = [
             "payloadType",
             "message"
           ]
-        },
-        {
-          "type": "object",
-          "additionalProperties": false,
-          "properties": {
-            "sessionId": {
-              "type": "string"
-            },
-            "tabId": {
-              "type": "string"
-            },
-            "diagnostics": {
-              "type": "object",
-              "additionalProperties": true
-            },
-            "result": {
-              "type": "object",
-              "additionalProperties": false,
-              "properties": {
-                "version": {
-                  "type": "string"
-                },
-                "action": {
-                  "type": "string"
-                },
-                "status": {
-                  "type": "string"
-                },
-                "payloadType": {
-                  "type": "string"
-                },
-                "output": {
-                  "type": [
-                    "object",
-                    "null"
-                  ],
-                  "additionalProperties": true
-                },
-                "diagnostics": {
-                  "type": [
-                    "object",
-                    "null"
-                  ],
-                  "additionalProperties": true
-                },
-                "policy": {
-                  "type": "object",
-                  "additionalProperties": false,
-                  "properties": {
-                    "decision": {
-                      "type": "string"
-                    },
-                    "sourceRisk": {
-                      "type": "string"
-                    },
-                    "riskClass": {
-                      "type": "string"
-                    },
-                    "blockedRefs": {
-                      "type": "array",
-                      "items": {
-                        "type": "string"
-                      }
-                    },
-                    "signals": {
-                      "type": "array",
-                      "items": {
-                        "type": "object",
-                        "additionalProperties": false,
-                        "properties": {
-                          "kind": {
-                            "type": "string"
-                          },
-                          "origin": {
-                            "type": "string"
-                          },
-                          "stableRef": {
-                            "type": "string"
-                          },
-                          "detail": {
-                            "type": "string"
-                          }
-                        },
-                        "required": [
-                          "kind",
-                          "origin",
-                          "detail"
-                        ]
-                      }
-                    },
-                    "allowlistedDomains": {
-                      "type": "array",
-                      "items": {
-                        "type": "string"
-                      }
-                    }
-                  },
-                  "required": [
-                    "decision",
-                    "sourceRisk",
-                    "riskClass",
-                    "blockedRefs",
-                    "signals"
-                  ]
-                },
-                "failureKind": {
-                  "type": "string"
-                },
-                "message": {
-                  "type": "string"
-                }
-              },
-              "required": [
-                "version",
-                "action",
-                "status",
-                "payloadType",
-                "message"
-              ]
-            }
-          },
-          "required": [
-            "sessionId",
-            "tabId",
-            "result"
-          ]
         }
-      ]
+      }
     }
   },
   {
@@ -1165,8 +1137,293 @@ export const toolCatalog = [
       ]
     },
     "outputSchema": {
-      "anyOf": [
-        {
+      "type": "object",
+      "additionalProperties": false,
+      "minProperties": 1,
+      "properties": {
+        "open": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "version": {
+              "type": "string"
+            },
+            "action": {
+              "type": "string"
+            },
+            "status": {
+              "type": "string"
+            },
+            "payloadType": {
+              "type": "string"
+            },
+            "output": {
+              "type": [
+                "object",
+                "null"
+              ],
+              "additionalProperties": true
+            },
+            "diagnostics": {
+              "type": [
+                "object",
+                "null"
+              ],
+              "additionalProperties": true
+            },
+            "policy": {
+              "type": "object",
+              "additionalProperties": false,
+              "properties": {
+                "decision": {
+                  "type": "string"
+                },
+                "sourceRisk": {
+                  "type": "string"
+                },
+                "riskClass": {
+                  "type": "string"
+                },
+                "blockedRefs": {
+                  "type": "array",
+                  "items": {
+                    "type": "string"
+                  }
+                },
+                "signals": {
+                  "type": "array",
+                  "items": {
+                    "type": "object",
+                    "additionalProperties": false,
+                    "properties": {
+                      "kind": {
+                        "type": "string"
+                      },
+                      "origin": {
+                        "type": "string"
+                      },
+                      "stableRef": {
+                        "type": "string"
+                      },
+                      "detail": {
+                        "type": "string"
+                      }
+                    },
+                    "required": [
+                      "kind",
+                      "origin",
+                      "detail"
+                    ]
+                  }
+                },
+                "allowlistedDomains": {
+                  "type": "array",
+                  "items": {
+                    "type": "string"
+                  }
+                }
+              },
+              "required": [
+                "decision",
+                "sourceRisk",
+                "riskClass",
+                "blockedRefs",
+                "signals"
+              ]
+            },
+            "failureKind": {
+              "type": "string"
+            },
+            "message": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "version",
+            "action",
+            "status",
+            "payloadType",
+            "message"
+          ]
+        },
+        "extract": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "version": {
+              "type": "string"
+            },
+            "action": {
+              "type": "string"
+            },
+            "status": {
+              "type": "string"
+            },
+            "payloadType": {
+              "type": "string"
+            },
+            "output": {
+              "type": [
+                "object",
+                "null"
+              ],
+              "additionalProperties": true
+            },
+            "diagnostics": {
+              "type": [
+                "object",
+                "null"
+              ],
+              "additionalProperties": true
+            },
+            "policy": {
+              "type": "object",
+              "additionalProperties": false,
+              "properties": {
+                "decision": {
+                  "type": "string"
+                },
+                "sourceRisk": {
+                  "type": "string"
+                },
+                "riskClass": {
+                  "type": "string"
+                },
+                "blockedRefs": {
+                  "type": "array",
+                  "items": {
+                    "type": "string"
+                  }
+                },
+                "signals": {
+                  "type": "array",
+                  "items": {
+                    "type": "object",
+                    "additionalProperties": false,
+                    "properties": {
+                      "kind": {
+                        "type": "string"
+                      },
+                      "origin": {
+                        "type": "string"
+                      },
+                      "stableRef": {
+                        "type": "string"
+                      },
+                      "detail": {
+                        "type": "string"
+                      }
+                    },
+                    "required": [
+                      "kind",
+                      "origin",
+                      "detail"
+                    ]
+                  }
+                },
+                "allowlistedDomains": {
+                  "type": "array",
+                  "items": {
+                    "type": "string"
+                  }
+                }
+              },
+              "required": [
+                "decision",
+                "sourceRisk",
+                "riskClass",
+                "blockedRefs",
+                "signals"
+              ]
+            },
+            "failureKind": {
+              "type": "string"
+            },
+            "message": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "version",
+            "action",
+            "status",
+            "payloadType",
+            "message"
+          ]
+        },
+        "sessionState": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "version": {
+              "type": "string"
+            },
+            "sessionId": {
+              "type": "string"
+            },
+            "mode": {
+              "type": "string"
+            },
+            "status": {
+              "type": "string"
+            },
+            "policyProfile": {
+              "type": "string"
+            },
+            "currentUrl": {
+              "type": [
+                "string",
+                "null"
+              ]
+            },
+            "openedAt": {
+              "type": "string"
+            },
+            "updatedAt": {
+              "type": "string"
+            },
+            "visitedUrls": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            },
+            "snapshotIds": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            },
+            "workingSetRefs": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            }
+          },
+          "required": [
+            "version",
+            "sessionId",
+            "mode",
+            "status",
+            "policyProfile",
+            "openedAt",
+            "updatedAt",
+            "visitedUrls",
+            "snapshotIds"
+          ]
+        },
+        "sessionId": {
+          "type": "string"
+        },
+        "tabId": {
+          "type": "string"
+        },
+        "diagnostics": {
+          "type": "object",
+          "additionalProperties": true
+        },
+        "result": {
           "type": "object",
           "additionalProperties": false,
           "properties": {
@@ -1448,33 +1705,8 @@ export const toolCatalog = [
             "extract",
             "sessionState"
           ]
-        },
-        {
-          "type": "object",
-          "additionalProperties": false,
-          "properties": {
-            "sessionId": {
-              "type": "string"
-            },
-            "tabId": {
-              "type": "string"
-            },
-            "diagnostics": {
-              "type": "object",
-              "additionalProperties": true
-            },
-            "result": {
-              "type": "object",
-              "additionalProperties": true
-            }
-          },
-          "required": [
-            "sessionId",
-            "tabId",
-            "result"
-          ]
         }
-      ]
+      }
     }
   },
   {
@@ -1526,8 +1758,139 @@ export const toolCatalog = [
       }
     },
     "outputSchema": {
-      "anyOf": [
-        {
+      "type": "object",
+      "additionalProperties": false,
+      "minProperties": 1,
+      "properties": {
+        "sourceUrl": {
+          "type": "string"
+        },
+        "sourceTitle": {
+          "type": "string"
+        },
+        "markdownText": {
+          "type": "string"
+        },
+        "approxTokens": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "charCount": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "lineCount": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "mainOnly": {
+          "type": "boolean"
+        },
+        "mainContentQuality": {
+          "type": "string"
+        },
+        "mainContentReason": {
+          "type": "string"
+        },
+        "mainContentHint": {
+          "type": "string"
+        },
+        "refIndex": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "properties": {
+              "id": {
+                "type": "string"
+              },
+              "kind": {
+                "type": "string"
+              },
+              "ref": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "id",
+              "kind",
+              "ref"
+            ]
+          }
+        },
+        "sessionState": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "version": {
+              "type": "string"
+            },
+            "sessionId": {
+              "type": "string"
+            },
+            "mode": {
+              "type": "string"
+            },
+            "status": {
+              "type": "string"
+            },
+            "policyProfile": {
+              "type": "string"
+            },
+            "currentUrl": {
+              "type": [
+                "string",
+                "null"
+              ]
+            },
+            "openedAt": {
+              "type": "string"
+            },
+            "updatedAt": {
+              "type": "string"
+            },
+            "visitedUrls": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            },
+            "snapshotIds": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            },
+            "workingSetRefs": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            }
+          },
+          "required": [
+            "version",
+            "sessionId",
+            "mode",
+            "status",
+            "policyProfile",
+            "openedAt",
+            "updatedAt",
+            "visitedUrls",
+            "snapshotIds"
+          ]
+        },
+        "sessionId": {
+          "type": "string"
+        },
+        "tabId": {
+          "type": "string"
+        },
+        "diagnostics": {
+          "type": "object",
+          "additionalProperties": true
+        },
+        "result": {
           "type": "object",
           "additionalProperties": false,
           "properties": {
@@ -1663,33 +2026,8 @@ export const toolCatalog = [
             "refIndex",
             "sessionState"
           ]
-        },
-        {
-          "type": "object",
-          "additionalProperties": false,
-          "properties": {
-            "sessionId": {
-              "type": "string"
-            },
-            "tabId": {
-              "type": "string"
-            },
-            "diagnostics": {
-              "type": "object",
-              "additionalProperties": true
-            },
-            "result": {
-              "type": "object",
-              "additionalProperties": true
-            }
-          },
-          "required": [
-            "sessionId",
-            "tabId",
-            "result"
-          ]
         }
-      ]
+      }
     }
   },
   {
@@ -1733,8 +2071,143 @@ export const toolCatalog = [
       }
     },
     "outputSchema": {
-      "anyOf": [
-        {
+      "type": "object",
+      "additionalProperties": false,
+      "minProperties": 1,
+      "properties": {
+        "policy": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "decision": {
+              "type": "string"
+            },
+            "sourceRisk": {
+              "type": "string"
+            },
+            "riskClass": {
+              "type": "string"
+            },
+            "blockedRefs": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            },
+            "signals": {
+              "type": "array",
+              "items": {
+                "type": "object",
+                "additionalProperties": false,
+                "properties": {
+                  "kind": {
+                    "type": "string"
+                  },
+                  "origin": {
+                    "type": "string"
+                  },
+                  "stableRef": {
+                    "type": "string"
+                  },
+                  "detail": {
+                    "type": "string"
+                  }
+                },
+                "required": [
+                  "kind",
+                  "origin",
+                  "detail"
+                ]
+              }
+            },
+            "allowlistedDomains": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            }
+          },
+          "required": [
+            "decision",
+            "sourceRisk",
+            "riskClass",
+            "blockedRefs",
+            "signals"
+          ]
+        },
+        "sessionState": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "version": {
+              "type": "string"
+            },
+            "sessionId": {
+              "type": "string"
+            },
+            "mode": {
+              "type": "string"
+            },
+            "status": {
+              "type": "string"
+            },
+            "policyProfile": {
+              "type": "string"
+            },
+            "currentUrl": {
+              "type": [
+                "string",
+                "null"
+              ]
+            },
+            "openedAt": {
+              "type": "string"
+            },
+            "updatedAt": {
+              "type": "string"
+            },
+            "visitedUrls": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            },
+            "snapshotIds": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            },
+            "workingSetRefs": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            }
+          },
+          "required": [
+            "version",
+            "sessionId",
+            "mode",
+            "status",
+            "policyProfile",
+            "openedAt",
+            "updatedAt",
+            "visitedUrls",
+            "snapshotIds"
+          ]
+        },
+        "sessionId": {
+          "type": "string"
+        },
+        "tabId": {
+          "type": "string"
+        },
+        "diagnostics": {
+          "type": "object",
+          "additionalProperties": true
+        },
+        "result": {
           "type": "object",
           "additionalProperties": false,
           "properties": {
@@ -1865,33 +2338,8 @@ export const toolCatalog = [
             "policy",
             "sessionState"
           ]
-        },
-        {
-          "type": "object",
-          "additionalProperties": false,
-          "properties": {
-            "sessionId": {
-              "type": "string"
-            },
-            "tabId": {
-              "type": "string"
-            },
-            "diagnostics": {
-              "type": "object",
-              "additionalProperties": true
-            },
-            "result": {
-              "type": "object",
-              "additionalProperties": true
-            }
-          },
-          "required": [
-            "sessionId",
-            "tabId",
-            "result"
-          ]
         }
-      ]
+      }
     }
   },
   {
