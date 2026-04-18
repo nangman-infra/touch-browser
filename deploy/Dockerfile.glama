@@ -1,6 +1,6 @@
 FROM mcr.microsoft.com/playwright:v1.54.0-noble
 
-RUN npm install -g @nangman-infra/touch-browser-mcp@0.1.12 \
+RUN npm install -g @nangman-infra/touch-browser-mcp@0.1.13 \
   && touch-browser-mcp install
 
 ENV TOUCH_BROWSER_TELEMETRY_DB=/tmp/touch-browser-telemetry.sqlite

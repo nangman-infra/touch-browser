@@ -16,7 +16,7 @@ resolver = "2"
 [workspace.package]
 edition = "2021"
 license = "MPL-2.0"
-version = "0.1.12"
+version = "0.1.13"
 
 [workspace.dependencies]
 ferrous-opencc = "0.3.1"
