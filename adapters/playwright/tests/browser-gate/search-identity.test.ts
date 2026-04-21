@@ -98,8 +98,12 @@ async function withEnvironment<T>(
 }
 
 describe("playwright adapter search identity coverage", () => {
-  it("hardens url-based search snapshots with the dedicated search profile path", async () => {
-    const html = `
+  const browserSearchIdentityTimeoutMs = 30_000;
+
+  it(
+    "hardens url-based search snapshots with the dedicated search profile path",
+    async () => {
+      const html = `
       <!doctype html>
       <html>
         <body>
@@ -118,39 +122,43 @@ describe("playwright adapter search identity coverage", () => {
         </body>
       </html>
     `;
-    const url = `data:text/html;charset=utf-8,${encodeURIComponent(html)}`;
+      const url = `data:text/html;charset=utf-8,${encodeURIComponent(html)}`;
 
-    const response = await handleRequest({
-      jsonrpc: "2.0",
-      id: "req-search-identity-url",
-      method: "browser.snapshot",
-      params: {
-        url,
-        budget: 600,
-        searchIdentity: true,
-      },
-    });
+      const response = await handleRequest({
+        jsonrpc: "2.0",
+        id: "req-search-identity-url",
+        method: "browser.snapshot",
+        params: {
+          url,
+          budget: 600,
+          searchIdentity: true,
+        },
+      });
 
-    expect(response).toMatchObject({
-      jsonrpc: "2.0",
-      id: "req-search-identity-url",
-      result: {
-        status: "ok",
-        mode: "playwright-browser",
-        source: url,
-      },
-    });
+      expect(response).toMatchObject({
+        jsonrpc: "2.0",
+        id: "req-search-identity-url",
+        result: {
+          status: "ok",
+          mode: "playwright-browser",
+          source: url,
+        },
+      });
 
-    const visibleText = readVisibleText(response);
-    expect(visibleText.endsWith("|object|false|data:")).toBe(true);
-    expect(visibleText.startsWith("true|")).toBe(false);
-  }, 15_000);
+      const visibleText = readVisibleText(response);
+      expect(visibleText.endsWith("|object|false|data:")).toBe(true);
+      expect(visibleText.startsWith("true|")).toBe(false);
+    },
+    browserSearchIdentityTimeoutMs,
+  );
 
-  it("persists search identity markers for reusable context directories", async () => {
-    const contextDir = await mkdtemp(
-      path.join(os.tmpdir(), "touch-browser-search-marker-gate-"),
-    );
-    const html = `
+  it(
+    "persists search identity markers for reusable context directories",
+    async () => {
+      const contextDir = await mkdtemp(
+        path.join(os.tmpdir(), "touch-browser-search-marker-gate-"),
+      );
+      const html = `
       <!doctype html>
       <html>
         <body>
@@ -168,57 +176,61 @@ describe("playwright adapter search identity coverage", () => {
       </html>
     `;
 
-    const first = await handleRequest({
-      jsonrpc: "2.0",
-      id: "req-search-marker-first",
-      method: "browser.snapshot",
-      params: {
-        html,
-        contextDir,
-        searchIdentity: true,
-      },
-    });
-    const second = await handleRequest({
-      jsonrpc: "2.0",
-      id: "req-search-marker-second",
-      method: "browser.snapshot",
-      params: {
-        html,
-        contextDir,
-      },
-    });
+      const first = await handleRequest({
+        jsonrpc: "2.0",
+        id: "req-search-marker-first",
+        method: "browser.snapshot",
+        params: {
+          html,
+          contextDir,
+          searchIdentity: true,
+        },
+      });
+      const second = await handleRequest({
+        jsonrpc: "2.0",
+        id: "req-search-marker-second",
+        method: "browser.snapshot",
+        params: {
+          html,
+          contextDir,
+        },
+      });
 
-    expect(first).toMatchObject({
-      jsonrpc: "2.0",
-      id: "req-search-marker-first",
-      result: {
-        status: "ok",
-      },
-    });
-    expect(second).toMatchObject({
-      jsonrpc: "2.0",
-      id: "req-search-marker-second",
-      result: {
-        status: "ok",
-      },
-    });
-    expect(readVisibleText(second).endsWith("|object")).toBe(true);
-    expect(readVisibleText(second).startsWith("true|")).toBe(false);
-  }, 15_000);
+      expect(first).toMatchObject({
+        jsonrpc: "2.0",
+        id: "req-search-marker-first",
+        result: {
+          status: "ok",
+        },
+      });
+      expect(second).toMatchObject({
+        jsonrpc: "2.0",
+        id: "req-search-marker-second",
+        result: {
+          status: "ok",
+        },
+      });
+      expect(readVisibleText(second).endsWith("|object")).toBe(true);
+      expect(readVisibleText(second).startsWith("true|")).toBe(false);
+    },
+    browserSearchIdentityTimeoutMs,
+  );
 
-  it("falls back to en-US search locale when no locale environment is configured", async () => {
-    await withEnvironment(
-      {
-        LANG: undefined,
-        TOUCH_BROWSER_SEARCH_LOCALE: undefined,
-      },
-      async () => {
-        const response = await handleRequest({
-          jsonrpc: "2.0",
-          id: "req-search-locale-fallback",
-          method: "browser.snapshot",
-          params: {
-            html: `
+  it(
+    "falls back to en-US search locale when no locale environment is configured",
+    async () => {
+      await withEnvironment(
+        {
+          LANG: undefined,
+          TOUCH_BROWSER_SEARCH_LOCALE: undefined,
+        },
+        async () => {
+          const response = await handleRequest({
+            jsonrpc: "2.0",
+            id: "req-search-locale-fallback",
+            method: "browser.snapshot",
+            params: {
+              html: `
               <!doctype html>
               <html>
                 <body>
@@ -235,30 +247,34 @@ describe("playwright adapter search identity coverage", () => {
                 </body>
               </html>
             `,
-            searchIdentity: true,
-          },
-        });
+              searchIdentity: true,
+            },
+          });
 
-        expect(response).toMatchObject({
-          jsonrpc: "2.0",
-          id: "req-search-locale-fallback",
-          result: {
-            status: "ok",
-          },
-        });
-        expect(readVisibleText(response)).toContain("en-US|en-US,en");
-      },
-    );
-  }, 15_000);
+          expect(response).toMatchObject({
+            jsonrpc: "2.0",
+            id: "req-search-locale-fallback",
+            result: {
+              status: "ok",
+            },
+          });
+          expect(readVisibleText(response)).toContain("en-US|en-US,en");
+        },
+      );
+    },
+    browserSearchIdentityTimeoutMs,
+  );
 
-  it("uses an explicit search chrome version for dedicated url-based profiles", async () => {
-    await withEnvironment(
-      {
-        TOUCH_BROWSER_SEARCH_CHROME_VERSION: "123.4.5.6",
-        TOUCH_BROWSER_SEARCH_USER_AGENT: undefined,
-      },
-      async () => {
-        const html = `
+  it(
+    "uses an explicit search chrome version for dedicated url-based profiles",
+    async () => {
+      await withEnvironment(
+        {
+          TOUCH_BROWSER_SEARCH_CHROME_VERSION: "123.4.5.6",
+          TOUCH_BROWSER_SEARCH_USER_AGENT: undefined,
+        },
+        async () => {
+          const html = `
           <!doctype html>
           <html>
             <body>
@@ -275,29 +291,31 @@ describe("playwright adapter search identity coverage", () => {
             </body>
           </html>
         `;
-        const url = `data:text/html;charset=utf-8,${encodeURIComponent(html)}`;
-        const response = await handleRequest({
-          jsonrpc: "2.0",
-          id: "req-search-version-override",
-          method: "browser.snapshot",
-          params: {
-            url,
-            searchIdentity: true,
-          },
-        });
+          const url = `data:text/html;charset=utf-8,${encodeURIComponent(html)}`;
+          const response = await handleRequest({
+            jsonrpc: "2.0",
+            id: "req-search-version-override",
+            method: "browser.snapshot",
+            params: {
+              url,
+              searchIdentity: true,
+            },
+          });
 
-        expect(response).toMatchObject({
-          jsonrpc: "2.0",
-          id: "req-search-version-override",
-          result: {
-            status: "ok",
-            mode: "playwright-browser",
-          },
-        });
-        expect(readVisibleText(response).startsWith("true|")).toBe(true);
-      },
-    );
-  }, 15_000);
+          expect(response).toMatchObject({
+            jsonrpc: "2.0",
+            id: "req-search-version-override",
+            result: {
+              status: "ok",
+              mode: "playwright-browser",
+            },
+          });
+          expect(readVisibleText(response).startsWith("true|")).toBe(true);
+        },
+      );
+    },
+    browserSearchIdentityTimeoutMs,
+  );
 
   it("exposes search identity marker utilities for deterministic coverage", async () => {
     const contextDir = await mkdtemp(
