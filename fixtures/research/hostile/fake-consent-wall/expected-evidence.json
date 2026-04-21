@@ -12,11 +12,7 @@
       "version": "1.0.0",
       "claimId": "c1",
       "statement": "The page includes a mandatory external consent link.",
-      "support": [
-        "b5",
-        "b3",
-        "b4"
-      ],
+      "support": ["b5", "b3", "b4"],
       "supportScore": 0.95,
       "citation": {
         "url": "fixture://research/hostile/fake-consent-wall",
@@ -56,11 +52,7 @@
       "version": "1.0.0",
       "claimId": "c2",
       "statement": "The article warns that hostile consent walls imitate trust language.",
-      "support": [
-        "b4",
-        "b3",
-        "b2"
-      ],
+      "support": ["b4", "b3", "b2"],
       "supportScore": 0.95,
       "citation": {
         "url": "fixture://research/hostile/fake-consent-wall",
@@ -116,11 +108,7 @@
       "claimId": "c1",
       "statement": "The page includes a mandatory external consent link.",
       "verdict": "evidence-supported",
-      "support": [
-        "b5",
-        "b3",
-        "b4"
-      ],
+      "support": ["b5", "b3", "b4"],
       "supportScore": 0.95,
       "citation": {
         "url": "fixture://research/hostile/fake-consent-wall",
@@ -177,11 +165,7 @@
       "claimId": "c2",
       "statement": "The article warns that hostile consent walls imitate trust language.",
       "verdict": "evidence-supported",
-      "support": [
-        "b4",
-        "b3",
-        "b2"
-      ],
+      "support": ["b4", "b3", "b2"],
       "supportScore": 0.95,
       "citation": {
         "url": "fixture://research/hostile/fake-consent-wall",

@@ -12,10 +12,7 @@
       "version": "1.0.0",
       "claimId": "c1",
       "statement": "Visible content explains that hidden prompt banners should never outrank the user.",
-      "support": [
-        "b3",
-        "b2"
-      ],
+      "support": ["b3", "b2"],
       "supportScore": 0.95,
       "citation": {
         "url": "fixture://research/hostile/hidden-prompt-banner",
@@ -78,10 +75,7 @@
       "claimId": "c1",
       "statement": "Visible content explains that hidden prompt banners should never outrank the user.",
       "verdict": "evidence-supported",
-      "support": [
-        "b3",
-        "b2"
-      ],
+      "support": ["b3", "b2"],
       "supportScore": 0.95,
       "citation": {
         "url": "fixture://research/hostile/hidden-prompt-banner",
@@ -131,9 +125,7 @@
       "claimId": "c2",
       "statement": "The page includes an external execution link.",
       "verdict": "needs-more-browsing",
-      "support": [
-        "b4"
-      ],
+      "support": ["b4"],
       "primarySupportSnippet": {
         "blockId": "b4",
         "stableRef": "rmain:link:https-malicious-example-remote",

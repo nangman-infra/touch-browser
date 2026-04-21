@@ -12,11 +12,7 @@
       "version": "1.0.0",
       "claimId": "c1",
       "statement": "The runtime exposes open, snapshot, extract, diff, compact, and replay commands.",
-      "support": [
-        "b6",
-        "b7",
-        "b5"
-      ],
+      "support": ["b6", "b7", "b5"],
       "supportScore": 0.95,
       "citation": {
         "url": "fixture://research/navigation/api-reference",
@@ -56,11 +52,7 @@
       "version": "1.0.0",
       "claimId": "c2",
       "statement": "Snapshot responses include stable refs and evidence metadata.",
-      "support": [
-        "b8",
-        "b9",
-        "b7"
-      ],
+      "support": ["b8", "b9", "b7"],
       "supportScore": 0.95,
       "citation": {
         "url": "fixture://research/navigation/api-reference",
@@ -124,11 +116,7 @@
       "claimId": "c1",
       "statement": "The runtime exposes open, snapshot, extract, diff, compact, and replay commands.",
       "verdict": "evidence-supported",
-      "support": [
-        "b6",
-        "b7",
-        "b5"
-      ],
+      "support": ["b6", "b7", "b5"],
       "supportScore": 0.95,
       "citation": {
         "url": "fixture://research/navigation/api-reference",
@@ -185,11 +173,7 @@
       "claimId": "c2",
       "statement": "Snapshot responses include stable refs and evidence metadata.",
       "verdict": "evidence-supported",
-      "support": [
-        "b8",
-        "b9",
-        "b7"
-      ],
+      "support": ["b8", "b9", "b7"],
       "supportScore": 0.95,
       "citation": {
         "url": "fixture://research/navigation/api-reference",
@@ -246,11 +230,7 @@
       "claimId": "c3",
       "statement": "The API reference documents a purchase command.",
       "verdict": "needs-more-browsing",
-      "support": [
-        "b5",
-        "b6",
-        "b7"
-      ],
+      "support": ["b5", "b6", "b7"],
       "primarySupportSnippet": {
         "blockId": "b5",
         "stableRef": "rmain:heading:overview",

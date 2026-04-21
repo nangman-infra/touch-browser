@@ -12,11 +12,7 @@
       "version": "1.0.0",
       "claimId": "c1",
       "statement": "Page 1 collects the first batch of release highlights.",
-      "support": [
-        "b4",
-        "b3",
-        "b2"
-      ],
+      "support": ["b4", "b3", "b2"],
       "supportScore": 0.95,
       "citation": {
         "url": "fixture://research/navigation/browser-pagination",
@@ -98,11 +94,7 @@
       "claimId": "c1",
       "statement": "Page 1 collects the first batch of release highlights.",
       "verdict": "evidence-supported",
-      "support": [
-        "b4",
-        "b3",
-        "b2"
-      ],
+      "support": ["b4", "b3", "b2"],
       "supportScore": 0.95,
       "citation": {
         "url": "fixture://research/navigation/browser-pagination",
@@ -160,11 +152,7 @@
       "claimId": "c2",
       "statement": "Page 1 includes a Next button.",
       "verdict": "needs-more-browsing",
-      "support": [
-        "b5",
-        "b3",
-        "b4"
-      ],
+      "support": ["b5", "b3", "b4"],
       "primarySupportSnippet": {
         "blockId": "b5",
         "stableRef": "rmain:button:next",
@@ -221,11 +209,7 @@
       "claimId": "c3",
       "statement": "Page 1 includes a pricing table.",
       "verdict": "needs-more-browsing",
-      "support": [
-        "b3",
-        "b4",
-        "b2"
-      ],
+      "support": ["b3", "b4", "b2"],
       "primarySupportSnippet": {
         "blockId": "b3",
         "stableRef": "rmain:text:page-label",

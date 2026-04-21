@@ -12,11 +12,7 @@
       "version": "1.0.0",
       "claimId": "c1",
       "statement": "The acquisition layer stores requested URLs and final redirected URLs as cache aliases.",
-      "support": [
-        "b3",
-        "b4",
-        "b2"
-      ],
+      "support": ["b3", "b4", "b2"],
       "supportScore": 0.95,
       "citation": {
         "url": "fixture://research/static-docs/cache-strategy",
@@ -56,11 +52,7 @@
       "version": "1.0.0",
       "claimId": "c2",
       "statement": "The docs recommend rejecting unsupported content types before snapshot compilation.",
-      "support": [
-        "b4",
-        "b3",
-        "b5"
-      ],
+      "support": ["b4", "b3", "b5"],
       "supportScore": 0.87,
       "citation": {
         "url": "fixture://research/static-docs/cache-strategy",
@@ -123,11 +115,7 @@
       "claimId": "c1",
       "statement": "The acquisition layer stores requested URLs and final redirected URLs as cache aliases.",
       "verdict": "evidence-supported",
-      "support": [
-        "b3",
-        "b4",
-        "b2"
-      ],
+      "support": ["b3", "b4", "b2"],
       "supportScore": 0.95,
       "citation": {
         "url": "fixture://research/static-docs/cache-strategy",
@@ -184,11 +172,7 @@
       "claimId": "c2",
       "statement": "The docs recommend rejecting unsupported content types before snapshot compilation.",
       "verdict": "evidence-supported",
-      "support": [
-        "b4",
-        "b3",
-        "b5"
-      ],
+      "support": ["b4", "b3", "b5"],
       "supportScore": 0.87,
       "citation": {
         "url": "fixture://research/static-docs/cache-strategy",
@@ -245,9 +229,7 @@
       "claimId": "c3",
       "statement": "The runtime requires a permanent browser daemon to read static pages.",
       "verdict": "insufficient-evidence",
-      "support": [
-        "b5"
-      ],
+      "support": ["b5"],
       "primarySupportSnippet": {
         "blockId": "b5",
         "stableRef": "rmain:text:the-current-cli-does-not-depend-on-a-long-lived-",

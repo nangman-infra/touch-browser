@@ -12,11 +12,7 @@
       "version": "1.0.0",
       "claimId": "c1",
       "statement": "The page contains a work email field.",
-      "support": [
-        "b4",
-        "b5",
-        "b7"
-      ],
+      "support": ["b4", "b5", "b7"],
       "supportScore": 0.81,
       "citation": {
         "url": "fixture://research/navigation/browser-login-form",
@@ -86,11 +82,7 @@
       "claimId": "c1",
       "statement": "The page contains a work email field.",
       "verdict": "evidence-supported",
-      "support": [
-        "b4",
-        "b5",
-        "b7"
-      ],
+      "support": ["b4", "b5", "b7"],
       "supportScore": 0.81,
       "citation": {
         "url": "fixture://research/navigation/browser-login-form",
@@ -147,9 +139,7 @@
       "claimId": "c2",
       "statement": "The page includes a Sign in button.",
       "verdict": "needs-more-browsing",
-      "support": [
-        "b8"
-      ],
+      "support": ["b8"],
       "primarySupportSnippet": {
         "blockId": "b8",
         "stableRef": "rmain:button:sign-in",

@@ -12,10 +12,7 @@
       "version": "1.0.0",
       "claimId": "c1",
       "statement": "Visible article content warns that suspicious download prompts often imitate browser security notices.",
-      "support": [
-        "b4",
-        "b3"
-      ],
+      "support": ["b4", "b3"],
       "supportScore": 0.95,
       "citation": {
         "url": "fixture://research/hostile/fake-download-banner",
@@ -79,10 +76,7 @@
       "claimId": "c1",
       "statement": "Visible article content warns that suspicious download prompts often imitate browser security notices.",
       "verdict": "evidence-supported",
-      "support": [
-        "b4",
-        "b3"
-      ],
+      "support": ["b4", "b3"],
       "supportScore": 0.95,
       "citation": {
         "url": "fixture://research/hostile/fake-download-banner",
@@ -133,9 +127,7 @@
       "claimId": "c2",
       "statement": "The page includes an external download link.",
       "verdict": "needs-more-browsing",
-      "support": [
-        "b5"
-      ],
+      "support": ["b5"],
       "primarySupportSnippet": {
         "blockId": "b5",
         "stableRef": "rmain:link:https-malicious-example-download",

@@ -12,11 +12,7 @@
       "version": "1.0.0",
       "claimId": "c1",
       "statement": "Touch Browser compiles web pages into semantic state for research agents.",
-      "support": [
-        "b6",
-        "b5",
-        "b7"
-      ],
+      "support": ["b6", "b5", "b7"],
       "supportScore": 0.95,
       "citation": {
         "url": "fixture://research/static-docs/getting-started",
@@ -56,11 +52,7 @@
       "version": "1.0.0",
       "claimId": "c2",
       "statement": "Quickstart includes opening a research URL.",
-      "support": [
-        "b8",
-        "b7",
-        "b6"
-      ],
+      "support": ["b8", "b7", "b6"],
       "supportScore": 0.95,
       "citation": {
         "url": "fixture://research/static-docs/getting-started",
@@ -116,11 +108,7 @@
       "claimId": "c1",
       "statement": "Touch Browser compiles web pages into semantic state for research agents.",
       "verdict": "evidence-supported",
-      "support": [
-        "b6",
-        "b5",
-        "b7"
-      ],
+      "support": ["b6", "b5", "b7"],
       "supportScore": 0.95,
       "citation": {
         "url": "fixture://research/static-docs/getting-started",
@@ -177,11 +165,7 @@
       "claimId": "c2",
       "statement": "Quickstart includes opening a research URL.",
       "verdict": "evidence-supported",
-      "support": [
-        "b8",
-        "b7",
-        "b6"
-      ],
+      "support": ["b8", "b7", "b6"],
       "supportScore": 0.95,
       "citation": {
         "url": "fixture://research/static-docs/getting-started",

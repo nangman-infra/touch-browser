@@ -12,11 +12,7 @@
       "version": "1.0.0",
       "claimId": "c1",
       "statement": "Docs Switcher links architecture, policy, and replay references from one index.",
-      "support": [
-        "b3",
-        "b4",
-        "b2"
-      ],
+      "support": ["b3", "b4", "b2"],
       "supportScore": 0.95,
       "citation": {
         "url": "fixture://research/navigation/docs-switcher",
@@ -56,11 +52,7 @@
       "version": "1.0.0",
       "claimId": "c2",
       "statement": "Replay reference",
-      "support": [
-        "b4",
-        "b7",
-        "b3"
-      ],
+      "support": ["b4", "b7", "b3"],
       "supportScore": 0.95,
       "citation": {
         "url": "fixture://research/navigation/docs-switcher",
@@ -124,11 +116,7 @@
       "claimId": "c1",
       "statement": "Docs Switcher links architecture, policy, and replay references from one index.",
       "verdict": "evidence-supported",
-      "support": [
-        "b3",
-        "b4",
-        "b2"
-      ],
+      "support": ["b3", "b4", "b2"],
       "supportScore": 0.95,
       "citation": {
         "url": "fixture://research/navigation/docs-switcher",
@@ -185,11 +173,7 @@
       "claimId": "c2",
       "statement": "Replay reference",
       "verdict": "evidence-supported",
-      "support": [
-        "b4",
-        "b7",
-        "b3"
-      ],
+      "support": ["b4", "b7", "b3"],
       "supportScore": 0.95,
       "citation": {
         "url": "fixture://research/navigation/docs-switcher",
@@ -246,11 +230,7 @@
       "claimId": "c3",
       "statement": "The docs switcher submits a purchase form.",
       "verdict": "needs-more-browsing",
-      "support": [
-        "b3",
-        "b2",
-        "b4"
-      ],
+      "support": ["b3", "b2", "b4"],
       "primarySupportSnippet": {
         "blockId": "b3",
         "stableRef": "rmain:text:docs-switcher-links-architecture-policy-and-repl",

@@ -12,11 +12,7 @@
       "version": "1.0.0",
       "claimId": "c1",
       "statement": "Version 0.1.0 added read-only replay sessions.",
-      "support": [
-        "b4",
-        "b5",
-        "b3"
-      ],
+      "support": ["b4", "b5", "b3"],
       "supportScore": 0.95,
       "citation": {
         "url": "fixture://research/citation-heavy/release-notes",
@@ -56,11 +52,7 @@
       "version": "1.0.0",
       "claimId": "c2",
       "statement": "Version 0.2.0 added hostile policy reports.",
-      "support": [
-        "b4",
-        "b3",
-        "b5"
-      ],
+      "support": ["b4", "b3", "b5"],
       "supportScore": 0.95,
       "citation": {
         "url": "fixture://research/citation-heavy/release-notes",
@@ -123,11 +115,7 @@
       "claimId": "c1",
       "statement": "Version 0.1.0 added read-only replay sessions.",
       "verdict": "evidence-supported",
-      "support": [
-        "b4",
-        "b5",
-        "b3"
-      ],
+      "support": ["b4", "b5", "b3"],
       "supportScore": 0.95,
       "citation": {
         "url": "fixture://research/citation-heavy/release-notes",
@@ -185,11 +173,7 @@
       "claimId": "c2",
       "statement": "Version 0.2.0 added hostile policy reports.",
       "verdict": "evidence-supported",
-      "support": [
-        "b4",
-        "b3",
-        "b5"
-      ],
+      "support": ["b4", "b3", "b5"],
       "supportScore": 0.95,
       "citation": {
         "url": "fixture://research/citation-heavy/release-notes",
@@ -247,9 +231,7 @@
       "claimId": "c3",
       "statement": "The release notes announce autonomous drone shipping.",
       "verdict": "insufficient-evidence",
-      "support": [
-        "b4"
-      ],
+      "support": ["b4"],
       "primarySupportSnippet": {
         "blockId": "b4",
         "stableRef": "rmain:table:version-date-highlights-0-1-0-2026-02-10-added-r",

@@ -12,11 +12,7 @@
       "version": "1.0.0",
       "claimId": "c1",
       "statement": "Pricing Matrix lists Research at $49 per month and Enterprise as custom.",
-      "support": [
-        "b3",
-        "b4",
-        "b2"
-      ],
+      "support": ["b3", "b4", "b2"],
       "supportScore": 0.95,
       "citation": {
         "url": "fixture://research/citation-heavy/pricing-matrix",
@@ -56,11 +52,7 @@
       "version": "1.0.0",
       "claimId": "c2",
       "statement": "Enterprise | Custom | Contact sales",
-      "support": [
-        "b4",
-        "b3",
-        "b2"
-      ],
+      "support": ["b4", "b3", "b2"],
       "supportScore": 0.95,
       "citation": {
         "url": "fixture://research/citation-heavy/pricing-matrix",
@@ -124,11 +116,7 @@
       "claimId": "c1",
       "statement": "Pricing Matrix lists Research at $49 per month and Enterprise as custom.",
       "verdict": "evidence-supported",
-      "support": [
-        "b3",
-        "b4",
-        "b2"
-      ],
+      "support": ["b3", "b4", "b2"],
       "supportScore": 0.95,
       "citation": {
         "url": "fixture://research/citation-heavy/pricing-matrix",
@@ -186,11 +174,7 @@
       "claimId": "c2",
       "statement": "Enterprise | Custom | Contact sales",
       "verdict": "evidence-supported",
-      "support": [
-        "b4",
-        "b3",
-        "b2"
-      ],
+      "support": ["b4", "b3", "b2"],
       "supportScore": 0.95,
       "citation": {
         "url": "fixture://research/citation-heavy/pricing-matrix",
@@ -247,10 +231,7 @@
       "claimId": "c3",
       "statement": "The pricing matrix offers a free GPU tier.",
       "verdict": "needs-more-browsing",
-      "support": [
-        "b4",
-        "b3"
-      ],
+      "support": ["b4", "b3"],
       "primarySupportSnippet": {
         "blockId": "b4",
         "stableRef": "rmain:table:tier-price-notes-research-49-5-seats-enterprise-",

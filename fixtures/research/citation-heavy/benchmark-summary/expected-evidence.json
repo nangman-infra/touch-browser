@@ -12,11 +12,7 @@
       "version": "1.0.0",
       "claimId": "c1",
       "statement": "The Core research suite reported citation precision of 97%.",
-      "support": [
-        "b4",
-        "b5",
-        "b3"
-      ],
+      "support": ["b4", "b5", "b3"],
       "supportScore": 0.94,
       "citation": {
         "url": "fixture://research/citation-heavy/benchmark-summary",
@@ -56,11 +52,7 @@
       "version": "1.0.0",
       "claimId": "c2",
       "statement": "The Hostile review suite reported recall of 91%.",
-      "support": [
-        "b4",
-        "b3",
-        "b5"
-      ],
+      "support": ["b4", "b3", "b5"],
       "supportScore": 0.91,
       "citation": {
         "url": "fixture://research/citation-heavy/benchmark-summary",
@@ -127,11 +119,7 @@
       "claimId": "c1",
       "statement": "The Core research suite reported citation precision of 97%.",
       "verdict": "evidence-supported",
-      "support": [
-        "b4",
-        "b5",
-        "b3"
-      ],
+      "support": ["b4", "b5", "b3"],
       "supportScore": 0.94,
       "citation": {
         "url": "fixture://research/citation-heavy/benchmark-summary",
@@ -189,11 +177,7 @@
       "claimId": "c2",
       "statement": "The Hostile review suite reported recall of 91%.",
       "verdict": "evidence-supported",
-      "support": [
-        "b4",
-        "b3",
-        "b5"
-      ],
+      "support": ["b4", "b3", "b5"],
       "supportScore": 0.91,
       "citation": {
         "url": "fixture://research/citation-heavy/benchmark-summary",
@@ -251,9 +235,7 @@
       "claimId": "c3",
       "statement": "The benchmark announces a native mobile SDK launch.",
       "verdict": "insufficient-evidence",
-      "support": [
-        "b4"
-      ],
+      "support": ["b4"],
       "primarySupportSnippet": {
         "blockId": "b4",
         "stableRef": "rmain:table:suite-recall-citation-precision-core-research-95",
