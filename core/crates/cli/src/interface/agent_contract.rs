@@ -170,22 +170,27 @@ pub(crate) fn compact_agent_output(command: &CliCommand, output: Value) -> Value
         }
     }
 
-    if let Some(opened_sessions) = compact_opened_sessions(&output) {
-        compact["openedCount"] =
-            Value::Number(serde_json::Number::from(opened_sessions.len() as u64));
-        if compact.get("source").is_none_or(Value::is_null) {
-            if let Some(source) = opened_sessions
-                .first()
-                .and_then(|opened| opened.get("source"))
-                .cloned()
-            {
-                compact["source"] = source;
-            }
-        }
-        compact["openedSessions"] = Value::Array(opened_sessions);
-    }
+    add_compact_opened_sessions(&mut compact, &output);
 
     compact
+}
+
+fn add_compact_opened_sessions(compact: &mut Value, output: &Value) {
+    let Some(opened_sessions) = compact_opened_sessions(output) else {
+        return;
+    };
+
+    compact["openedCount"] = Value::Number(serde_json::Number::from(opened_sessions.len() as u64));
+    if compact.get("source").is_none_or(Value::is_null) {
+        if let Some(source) = opened_sessions
+            .first()
+            .and_then(|opened| opened.get("source"))
+            .cloned()
+        {
+            compact["source"] = source;
+        }
+    }
+    compact["openedSessions"] = Value::Array(opened_sessions);
 }
 
 fn compact_capabilities(output: Value) -> Value {
