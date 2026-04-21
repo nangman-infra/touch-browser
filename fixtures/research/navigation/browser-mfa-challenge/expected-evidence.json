@@ -12,7 +12,11 @@
       "version": "1.0.0",
       "claimId": "c1",
       "statement": "The page asks for a verification code.",
-      "support": ["b3", "b7", "b2"],
+      "support": [
+        "b3",
+        "b7",
+        "b2"
+      ],
       "supportScore": 0.77,
       "citation": {
         "url": "fixture://research/navigation/browser-mfa-challenge",
@@ -21,21 +25,30 @@
         "sourceRisk": "low",
         "sourceLabel": "Browser MFA challenge seed"
       },
+      "primarySupportSnippet": {
+        "blockId": "b3",
+        "stableRef": "rmain:text:enter-the-6-digit-verification-code-from-your-au",
+        "snippet": "Enter the 6-digit verification code from your authenticator app",
+        "supportRole": "primary"
+      },
       "supportSnippets": [
         {
           "blockId": "b3",
           "stableRef": "rmain:text:enter-the-6-digit-verification-code-from-your-au",
-          "snippet": "Enter the 6-digit verification code from your authenticator app p 64 main"
+          "snippet": "Enter the 6-digit verification code from your authenticator app",
+          "supportRole": "primary"
         },
         {
           "blockId": "b7",
           "stableRef": "rmain:text:status",
-          "snippet": "Waiting for verification code p 30 main"
+          "snippet": "Waiting for verification code",
+          "supportRole": "context"
         },
         {
           "blockId": "b2",
           "stableRef": "rmain:heading:two-factor-verification",
-          "snippet": "Two-factor verification 1 h1 23 main"
+          "snippet": "Two-factor verification",
+          "supportRole": "context"
         }
       ]
     }
@@ -59,7 +72,11 @@
       "claimId": "c1",
       "statement": "The page asks for a verification code.",
       "verdict": "evidence-supported",
-      "support": ["b3", "b7", "b2"],
+      "support": [
+        "b3",
+        "b7",
+        "b2"
+      ],
       "supportScore": 0.77,
       "citation": {
         "url": "fixture://research/navigation/browser-mfa-challenge",
@@ -68,21 +85,30 @@
         "sourceRisk": "low",
         "sourceLabel": "Browser MFA challenge seed"
       },
+      "primarySupportSnippet": {
+        "blockId": "b3",
+        "stableRef": "rmain:text:enter-the-6-digit-verification-code-from-your-au",
+        "snippet": "Enter the 6-digit verification code from your authenticator app",
+        "supportRole": "primary"
+      },
       "supportSnippets": [
         {
           "blockId": "b3",
           "stableRef": "rmain:text:enter-the-6-digit-verification-code-from-your-au",
-          "snippet": "Enter the 6-digit verification code from your authenticator app p 64 main"
+          "snippet": "Enter the 6-digit verification code from your authenticator app",
+          "supportRole": "primary"
         },
         {
           "blockId": "b7",
           "stableRef": "rmain:text:status",
-          "snippet": "Waiting for verification code p 30 main"
+          "snippet": "Waiting for verification code",
+          "supportRole": "context"
         },
         {
           "blockId": "b2",
           "stableRef": "rmain:heading:two-factor-verification",
-          "snippet": "Two-factor verification 1 h1 23 main"
+          "snippet": "Two-factor verification",
+          "supportRole": "context"
         }
       ],
       "confidenceBand": "review",

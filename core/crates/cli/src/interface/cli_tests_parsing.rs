@@ -9,6 +9,7 @@ fn preprocesses_help_and_json_error_flags() {
     ]);
 
     assert!(processed.json_errors);
+    assert!(!processed.agent_json);
     assert_eq!(
         processed.args,
         vec!["extract".to_string(), "--help".to_string()]
@@ -18,6 +19,16 @@ fn preprocesses_help_and_json_error_flags() {
         command_usage("extract"),
         "command help should surface the extract synopsis",
     );
+}
+
+#[test]
+fn preprocesses_agent_json_flag() {
+    let processed =
+        preprocess_cli_args(vec!["--agent-json".to_string(), "capabilities".to_string()]);
+
+    assert!(processed.agent_json);
+    assert_eq!(processed.args, vec!["capabilities".to_string()]);
+    assert_eq!(processed.help_text, None);
 }
 
 #[test]
@@ -44,6 +55,20 @@ fn builds_structured_usage_error_payload() {
     assert_eq!(
         payload.hint.as_deref(),
         Some("provide --claim <statement> at least once."),
+    );
+    assert!(payload.retryable);
+    assert_eq!(payload.suggested_action.as_deref(), Some("repair-command"));
+}
+
+#[test]
+fn parses_capabilities_and_status_commands() {
+    assert_eq!(
+        parse_command(&["capabilities".to_string()]).expect("capabilities should parse"),
+        CliCommand::Capabilities,
+    );
+    assert_eq!(
+        parse_command(&["status".to_string()]).expect("status alias should parse"),
+        CliCommand::Capabilities,
     );
 }
 #[test]

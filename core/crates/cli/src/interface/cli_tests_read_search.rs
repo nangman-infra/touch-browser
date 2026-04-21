@@ -667,7 +667,7 @@ fn search_open_top_inherits_external_profile_directory() {
 
 #[test]
 fn dispatches_fixture_open_with_policy() {
-    let output = dispatch(CliCommand::Open(TargetOptions {
+    let command = CliCommand::Open(TargetOptions {
         target: "fixture://research/static-docs/getting-started".to_string(),
         budget: DEFAULT_REQUESTED_TOKENS,
         source_risk: None,
@@ -677,12 +677,127 @@ fn dispatches_fixture_open_with_policy() {
         headed: false,
         main_only: false,
         session_file: None,
-    }))
-    .expect("open should succeed");
+    });
+    let output = dispatch(command.clone()).expect("open should succeed");
 
     assert_eq!(output["status"], "succeeded");
     assert_eq!(output["policy"]["decision"], "allow");
     assert_eq!(output["payloadType"], "snapshot-document");
+    let enriched = crate::interface::agent_contract::enrich_output(&command, output);
+    assert_eq!(enriched["agentContract"]["intendedCaller"], "ai-agent");
+    assert_eq!(enriched["nextActions"][0]["action"], "extract");
+}
+
+#[test]
+fn dispatches_capabilities_for_ai_agents() {
+    let output = dispatch(CliCommand::Capabilities).expect("capabilities should succeed");
+
+    assert_eq!(output["status"], "ready");
+    assert_eq!(output["intendedCaller"], "ai-agent");
+    assert_eq!(output["agentContract"]["command"], "capabilities");
+    assert_eq!(output["commands"][0]["name"], "capabilities");
+    assert_eq!(output["nextActions"][0]["action"], "search");
+}
+
+#[test]
+fn agent_enrichment_preserves_session_file_for_open_next_actions() {
+    let session_file = PathBuf::from("/tmp/tb-agent-open-session.json");
+    let command = CliCommand::Open(TargetOptions {
+        target: "https://example.com".to_string(),
+        budget: DEFAULT_REQUESTED_TOKENS,
+        source_risk: None,
+        source_label: None,
+        allowlisted_domains: Vec::new(),
+        browser: true,
+        headed: false,
+        main_only: false,
+        session_file: Some(session_file.clone()),
+    });
+
+    let enriched = crate::interface::agent_contract::enrich_output(
+        &command,
+        json!({
+            "status": "succeeded",
+            "output": {
+                "blocks": [],
+                "source": {
+                    "sourceUrl": "https://example.com",
+                    "sourceType": "playwright"
+                }
+            }
+        }),
+    );
+
+    assert_eq!(enriched["sessionFile"], session_file.display().to_string());
+    assert_eq!(enriched["nextActions"][0]["action"], "session-read");
+    assert_eq!(
+        enriched["nextActions"][0]["command"],
+        "touch-browser session-read --session-file /tmp/tb-agent-open-session.json --main-only"
+    );
+    assert_eq!(enriched["nextActions"][1]["action"], "session-extract");
+}
+
+#[test]
+fn agent_enrichment_preserves_session_file_for_synthesize_close_action() {
+    let session_file = PathBuf::from("/tmp/tb-agent-synthesize-session.json");
+    let command = CliCommand::SessionSynthesize(SessionSynthesizeOptions {
+        session_file: session_file.clone(),
+        note_limit: 12,
+        format: OutputFormat::Json,
+    });
+
+    let enriched =
+        crate::interface::agent_contract::enrich_output(&command, json!({"status": "succeeded"}));
+
+    assert_eq!(enriched["sessionFile"], session_file.display().to_string());
+    assert_eq!(enriched["nextActions"][0]["action"], "session-close");
+    assert_eq!(
+        enriched["nextActions"][0]["command"],
+        "touch-browser session-close --session-file /tmp/tb-agent-synthesize-session.json"
+    );
+}
+
+#[test]
+fn agent_compact_preserves_search_open_top_opened_session_files() {
+    let command = CliCommand::SearchOpenTop(SearchOpenTopOptions {
+        engine: SearchEngine::Brave,
+        session_file: Some(PathBuf::from("/tmp/tb-search.json")),
+        limit: 2,
+        headed: false,
+    });
+    let output = json!({
+        "opened": [
+            {
+                "rank": 1,
+                "sessionFile": "/tmp/tb-search.rank-1.json",
+                "diagnostics": { "qualityLabel": "high" },
+                "result": {
+                    "output": {
+                        "source": {
+                            "sourceUrl": "https://www.iana.org/help/example-domains",
+                            "sourceType": "playwright",
+                            "title": "Example Domains"
+                        }
+                    }
+                }
+            }
+        ],
+        "openedCount": 1,
+        "searchSessionFile": "/tmp/tb-search.json"
+    });
+
+    let enriched = crate::interface::agent_contract::enrich_output(&command, output);
+    let compact = crate::interface::agent_contract::compact_agent_output(&command, enriched);
+
+    assert_eq!(compact["openedCount"], 1);
+    assert_eq!(
+        compact["openedSessions"][0]["sessionFile"],
+        "/tmp/tb-search.rank-1.json"
+    );
+    assert_eq!(
+        compact["nextActions"][0]["command"],
+        "touch-browser session-read --session-file /tmp/tb-search.rank-1.json --main-only"
+    );
 }
 
 #[test]

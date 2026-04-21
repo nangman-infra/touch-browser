@@ -12,7 +12,11 @@
       "version": "1.0.0",
       "claimId": "c1",
       "statement": "The page asks the runtime to follow the Advanced guide link.",
-      "support": ["b3", "b4", "b2"],
+      "support": [
+        "b3",
+        "b4",
+        "b2"
+      ],
       "supportScore": 0.87,
       "citation": {
         "url": "fixture://research/navigation/browser-follow",
@@ -21,21 +25,30 @@
         "sourceRisk": "low",
         "sourceLabel": "Browser-backed follow seed"
       },
+      "primarySupportSnippet": {
+        "blockId": "b3",
+        "stableRef": "rmain:text:follow-content",
+        "snippet": "Follow the Advanced guide link to reveal the next research step",
+        "supportRole": "primary"
+      },
       "supportSnippets": [
         {
           "blockId": "b3",
           "stableRef": "rmain:text:follow-content",
-          "snippet": "Follow the Advanced guide link to reveal the next research step p 64 main"
+          "snippet": "Follow the Advanced guide link to reveal the next research step",
+          "supportRole": "primary"
         },
         {
           "blockId": "b4",
           "stableRef": "rmain:link:advanced",
-          "snippet": "Advanced guide #advanced a 14 main link"
+          "snippet": "Advanced guide",
+          "supportRole": "context"
         },
         {
           "blockId": "b2",
           "stableRef": "rmain:heading:browser-follow",
-          "snippet": "Browser Follow 1 h1 14 main"
+          "snippet": "Browser Follow",
+          "supportRole": "context"
         }
       ]
     },
@@ -43,7 +56,11 @@
       "version": "1.0.0",
       "claimId": "c2",
       "statement": "The page includes an Advanced guide link.",
-      "support": ["b3", "b4", "b2"],
+      "support": [
+        "b3",
+        "b4",
+        "b2"
+      ],
       "supportScore": 0.95,
       "citation": {
         "url": "fixture://research/navigation/browser-follow",
@@ -52,21 +69,30 @@
         "sourceRisk": "low",
         "sourceLabel": "Browser-backed follow seed"
       },
+      "primarySupportSnippet": {
+        "blockId": "b3",
+        "stableRef": "rmain:text:follow-content",
+        "snippet": "Follow the Advanced guide link to reveal the next research step",
+        "supportRole": "primary"
+      },
       "supportSnippets": [
         {
           "blockId": "b3",
           "stableRef": "rmain:text:follow-content",
-          "snippet": "Follow the Advanced guide link to reveal the next research step p 64 main"
+          "snippet": "Follow the Advanced guide link to reveal the next research step",
+          "supportRole": "primary"
         },
         {
           "blockId": "b4",
           "stableRef": "rmain:link:advanced",
-          "snippet": "Advanced guide #advanced a 14 main link"
+          "snippet": "Advanced guide",
+          "supportRole": "context"
         },
         {
           "blockId": "b2",
           "stableRef": "rmain:heading:browser-follow",
-          "snippet": "Browser Follow 1 h1 14 main"
+          "snippet": "Browser Follow",
+          "supportRole": "context"
         }
       ]
     }
@@ -90,7 +116,11 @@
       "claimId": "c1",
       "statement": "The page asks the runtime to follow the Advanced guide link.",
       "verdict": "evidence-supported",
-      "support": ["b3", "b4", "b2"],
+      "support": [
+        "b3",
+        "b4",
+        "b2"
+      ],
       "supportScore": 0.87,
       "citation": {
         "url": "fixture://research/navigation/browser-follow",
@@ -99,21 +129,30 @@
         "sourceRisk": "low",
         "sourceLabel": "Browser-backed follow seed"
       },
+      "primarySupportSnippet": {
+        "blockId": "b3",
+        "stableRef": "rmain:text:follow-content",
+        "snippet": "Follow the Advanced guide link to reveal the next research step",
+        "supportRole": "primary"
+      },
       "supportSnippets": [
         {
           "blockId": "b3",
           "stableRef": "rmain:text:follow-content",
-          "snippet": "Follow the Advanced guide link to reveal the next research step p 64 main"
+          "snippet": "Follow the Advanced guide link to reveal the next research step",
+          "supportRole": "primary"
         },
         {
           "blockId": "b4",
           "stableRef": "rmain:link:advanced",
-          "snippet": "Advanced guide #advanced a 14 main link"
+          "snippet": "Advanced guide",
+          "supportRole": "context"
         },
         {
           "blockId": "b2",
           "stableRef": "rmain:heading:browser-follow",
-          "snippet": "Browser Follow 1 h1 14 main"
+          "snippet": "Browser Follow",
+          "supportRole": "context"
         }
       ],
       "confidenceBand": "medium",
@@ -138,7 +177,11 @@
       "claimId": "c2",
       "statement": "The page includes an Advanced guide link.",
       "verdict": "evidence-supported",
-      "support": ["b3", "b4", "b2"],
+      "support": [
+        "b3",
+        "b4",
+        "b2"
+      ],
       "supportScore": 0.95,
       "citation": {
         "url": "fixture://research/navigation/browser-follow",
@@ -147,21 +190,30 @@
         "sourceRisk": "low",
         "sourceLabel": "Browser-backed follow seed"
       },
+      "primarySupportSnippet": {
+        "blockId": "b3",
+        "stableRef": "rmain:text:follow-content",
+        "snippet": "Follow the Advanced guide link to reveal the next research step",
+        "supportRole": "primary"
+      },
       "supportSnippets": [
         {
           "blockId": "b3",
           "stableRef": "rmain:text:follow-content",
-          "snippet": "Follow the Advanced guide link to reveal the next research step p 64 main"
+          "snippet": "Follow the Advanced guide link to reveal the next research step",
+          "supportRole": "primary"
         },
         {
           "blockId": "b4",
           "stableRef": "rmain:link:advanced",
-          "snippet": "Advanced guide #advanced a 14 main link"
+          "snippet": "Advanced guide",
+          "supportRole": "context"
         },
         {
           "blockId": "b2",
           "stableRef": "rmain:heading:browser-follow",
-          "snippet": "Browser Follow 1 h1 14 main"
+          "snippet": "Browser Follow",
+          "supportRole": "context"
         }
       ],
       "confidenceBand": "high",

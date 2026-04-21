@@ -12,7 +12,11 @@
       "version": "1.0.0",
       "claimId": "c1",
       "statement": "The page contains a work email field.",
-      "support": ["b4", "b5", "b7"],
+      "support": [
+        "b4",
+        "b5",
+        "b7"
+      ],
       "supportScore": 0.81,
       "citation": {
         "url": "fixture://research/navigation/browser-login-form",
@@ -21,21 +25,30 @@
         "sourceRisk": "low",
         "sourceLabel": "Browser-backed login form seed"
       },
+      "primarySupportSnippet": {
+        "blockId": "b4",
+        "stableRef": "rmain:form:work-email-password-no-email-typed-yet-sign-in",
+        "snippet": "Work Email Password No email typed yet",
+        "supportRole": "primary"
+      },
       "supportSnippets": [
         {
           "blockId": "b4",
           "stableRef": "rmain:form:work-email-password-no-email-typed-yet-sign-in",
-          "snippet": "Work Email Password No email typed yet. Sign in 3 form 47 main form field fields input"
+          "snippet": "Work Email Password No email typed yet",
+          "supportRole": "primary"
         },
         {
           "blockId": "b5",
           "stableRef": "rmain:input:email-email-agent-example-com",
-          "snippet": "email email agent@example.com email email input 29 main input field"
+          "snippet": "email email agent@example.com",
+          "supportRole": "context"
         },
         {
           "blockId": "b7",
           "stableRef": "rmain:text:typed-email",
-          "snippet": "No email typed yet p 19 main"
+          "snippet": "No email typed yet",
+          "supportRole": "context"
         }
       ]
     }
@@ -73,7 +86,11 @@
       "claimId": "c1",
       "statement": "The page contains a work email field.",
       "verdict": "evidence-supported",
-      "support": ["b4", "b5", "b7"],
+      "support": [
+        "b4",
+        "b5",
+        "b7"
+      ],
       "supportScore": 0.81,
       "citation": {
         "url": "fixture://research/navigation/browser-login-form",
@@ -82,21 +99,30 @@
         "sourceRisk": "low",
         "sourceLabel": "Browser-backed login form seed"
       },
+      "primarySupportSnippet": {
+        "blockId": "b4",
+        "stableRef": "rmain:form:work-email-password-no-email-typed-yet-sign-in",
+        "snippet": "Work Email Password No email typed yet",
+        "supportRole": "primary"
+      },
       "supportSnippets": [
         {
           "blockId": "b4",
           "stableRef": "rmain:form:work-email-password-no-email-typed-yet-sign-in",
-          "snippet": "Work Email Password No email typed yet. Sign in 3 form 47 main form field fields input"
+          "snippet": "Work Email Password No email typed yet",
+          "supportRole": "primary"
         },
         {
           "blockId": "b5",
           "stableRef": "rmain:input:email-email-agent-example-com",
-          "snippet": "email email agent@example.com email email input 29 main input field"
+          "snippet": "email email agent@example.com",
+          "supportRole": "context"
         },
         {
           "blockId": "b7",
           "stableRef": "rmain:text:typed-email",
-          "snippet": "No email typed yet p 19 main"
+          "snippet": "No email typed yet",
+          "supportRole": "context"
         }
       ],
       "confidenceBand": "review",
@@ -121,12 +147,21 @@
       "claimId": "c2",
       "statement": "The page includes a Sign in button.",
       "verdict": "needs-more-browsing",
-      "support": ["b8"],
+      "support": [
+        "b8"
+      ],
+      "primarySupportSnippet": {
+        "blockId": "b8",
+        "stableRef": "rmain:button:sign-in",
+        "snippet": "Sign in",
+        "supportRole": "primary"
+      },
       "supportSnippets": [
         {
           "blockId": "b8",
           "stableRef": "rmain:button:sign-in",
-          "snippet": "Sign in button 7 main button"
+          "snippet": "Sign in",
+          "supportRole": "primary"
         }
       ],
       "reason": "needs-more-browsing",

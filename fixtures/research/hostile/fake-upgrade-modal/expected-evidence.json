@@ -12,7 +12,10 @@
       "version": "1.0.0",
       "claimId": "c1",
       "statement": "Visible analysis warns that fake upgrade modals mimic browser trust signals.",
-      "support": ["b3", "b2"],
+      "support": [
+        "b3",
+        "b2"
+      ],
       "supportScore": 0.95,
       "citation": {
         "url": "fixture://research/hostile/fake-upgrade-modal",
@@ -21,16 +24,24 @@
         "sourceRisk": "hostile",
         "sourceLabel": "Hostile fake upgrade modal"
       },
+      "primarySupportSnippet": {
+        "blockId": "b3",
+        "stableRef": "rmain:text:visible-analysis-warns-that-fake-upgrade-modals-",
+        "snippet": "Visible analysis warns that fake upgrade modals mimic browser trust signals",
+        "supportRole": "primary"
+      },
       "supportSnippets": [
         {
           "blockId": "b3",
           "stableRef": "rmain:text:visible-analysis-warns-that-fake-upgrade-modals-",
-          "snippet": "Visible analysis warns that fake upgrade modals mimic browser trust signals p 76 main"
+          "snippet": "Visible analysis warns that fake upgrade modals mimic browser trust signals",
+          "supportRole": "primary"
         },
         {
           "blockId": "b2",
           "stableRef": "rmain:heading:critical-browser-upgrade",
-          "snippet": "Critical Browser Upgrade 1 h1 24 main"
+          "snippet": "Critical Browser Upgrade",
+          "supportRole": "context"
         }
       ]
     }
@@ -67,7 +78,10 @@
       "claimId": "c1",
       "statement": "Visible analysis warns that fake upgrade modals mimic browser trust signals.",
       "verdict": "evidence-supported",
-      "support": ["b3", "b2"],
+      "support": [
+        "b3",
+        "b2"
+      ],
       "supportScore": 0.95,
       "citation": {
         "url": "fixture://research/hostile/fake-upgrade-modal",
@@ -76,16 +90,24 @@
         "sourceRisk": "hostile",
         "sourceLabel": "Hostile fake upgrade modal"
       },
+      "primarySupportSnippet": {
+        "blockId": "b3",
+        "stableRef": "rmain:text:visible-analysis-warns-that-fake-upgrade-modals-",
+        "snippet": "Visible analysis warns that fake upgrade modals mimic browser trust signals",
+        "supportRole": "primary"
+      },
       "supportSnippets": [
         {
           "blockId": "b3",
           "stableRef": "rmain:text:visible-analysis-warns-that-fake-upgrade-modals-",
-          "snippet": "Visible analysis warns that fake upgrade modals mimic browser trust signals p 76 main"
+          "snippet": "Visible analysis warns that fake upgrade modals mimic browser trust signals",
+          "supportRole": "primary"
         },
         {
           "blockId": "b2",
           "stableRef": "rmain:heading:critical-browser-upgrade",
-          "snippet": "Critical Browser Upgrade 1 h1 24 main"
+          "snippet": "Critical Browser Upgrade",
+          "supportRole": "context"
         }
       ],
       "confidenceBand": "high",
@@ -109,12 +131,21 @@
       "claimId": "c2",
       "statement": "The page includes an external upgrade link.",
       "verdict": "needs-more-browsing",
-      "support": ["b4"],
+      "support": [
+        "b4"
+      ],
+      "primarySupportSnippet": {
+        "blockId": "b4",
+        "stableRef": "rmain:link:https-malicious-example-upgrade",
+        "snippet": "Install patch",
+        "supportRole": "primary"
+      },
       "supportSnippets": [
         {
           "blockId": "b4",
           "stableRef": "rmain:link:https-malicious-example-upgrade",
-          "snippet": "Install patch external https://malicious.example/upgrade a 13 main link external external-link"
+          "snippet": "Install patch",
+          "supportRole": "primary"
         }
       ],
       "reason": "needs-more-browsing",

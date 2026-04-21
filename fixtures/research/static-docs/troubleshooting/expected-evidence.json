@@ -12,7 +12,11 @@
       "version": "1.0.0",
       "claimId": "c1",
       "statement": "If stable refs go stale after a page change, capture a new semantic snapshot before acting again.",
-      "support": ["b6", "b7", "b5"],
+      "support": [
+        "b6",
+        "b7",
+        "b5"
+      ],
       "supportScore": 0.95,
       "citation": {
         "url": "fixture://research/static-docs/troubleshooting",
@@ -21,21 +25,30 @@
         "sourceRisk": "low",
         "sourceLabel": "Static docs troubleshooting page"
       },
+      "primarySupportSnippet": {
+        "blockId": "b6",
+        "stableRef": "rmain:text:if-stable-refs-go-stale-after-a-page-change-capt",
+        "snippet": "If stable refs go stale after a page change, capture a new semantic snapshot before acting again",
+        "supportRole": "primary"
+      },
       "supportSnippets": [
         {
           "blockId": "b6",
           "stableRef": "rmain:text:if-stable-refs-go-stale-after-a-page-change-capt",
-          "snippet": "If stable refs go stale after a page change, capture a new semantic snapshot before acting again p 97 main"
+          "snippet": "If stable refs go stale after a page change, capture a new semantic snapshot before acting again",
+          "supportRole": "primary"
         },
         {
           "blockId": "b7",
           "stableRef": "rmain:text:memory-compaction-keeps-the-working-set-bounded-",
-          "snippet": "Memory compaction keeps the working set bounded during long research sessions p 78 main"
+          "snippet": "Memory compaction keeps the working set bounded during long research sessions",
+          "supportRole": "context"
         },
         {
           "blockId": "b5",
           "stableRef": "rmain:heading:troubleshooting",
-          "snippet": "Troubleshooting 1 h1 15 main"
+          "snippet": "Troubleshooting",
+          "supportRole": "context"
         }
       ]
     },
@@ -43,7 +56,11 @@
       "version": "1.0.0",
       "claimId": "c2",
       "statement": "Memory compaction keeps the working set bounded during long research sessions.",
-      "support": ["b7", "b8", "b6"],
+      "support": [
+        "b7",
+        "b8",
+        "b6"
+      ],
       "supportScore": 0.95,
       "citation": {
         "url": "fixture://research/static-docs/troubleshooting",
@@ -52,21 +69,30 @@
         "sourceRisk": "low",
         "sourceLabel": "Static docs troubleshooting page"
       },
+      "primarySupportSnippet": {
+        "blockId": "b7",
+        "stableRef": "rmain:text:memory-compaction-keeps-the-working-set-bounded-",
+        "snippet": "Memory compaction keeps the working set bounded during long research sessions",
+        "supportRole": "primary"
+      },
       "supportSnippets": [
         {
           "blockId": "b7",
           "stableRef": "rmain:text:memory-compaction-keeps-the-working-set-bounded-",
-          "snippet": "Memory compaction keeps the working set bounded during long research sessions p 78 main"
+          "snippet": "Memory compaction keeps the working set bounded during long research sessions",
+          "supportRole": "primary"
         },
         {
           "blockId": "b8",
           "stableRef": "rmain:list:1-open-the-current-page-2-read-the-latest-snapsh",
-          "snippet": "1 1. Open the current page. 2. Read the latest snapshot. 3. Re-run replay if the issue must be reproduced deterministically. 3 ordered ol 122 main list items"
+          "snippet": "1",
+          "supportRole": "context"
         },
         {
           "blockId": "b6",
           "stableRef": "rmain:text:if-stable-refs-go-stale-after-a-page-change-capt",
-          "snippet": "If stable refs go stale after a page change, capture a new semantic snapshot before acting again p 97 main"
+          "snippet": "If stable refs go stale after a page change, capture a new semantic snapshot before acting again",
+          "supportRole": "context"
         }
       ]
     }
@@ -90,7 +116,11 @@
       "claimId": "c1",
       "statement": "If stable refs go stale after a page change, capture a new semantic snapshot before acting again.",
       "verdict": "evidence-supported",
-      "support": ["b6", "b7", "b5"],
+      "support": [
+        "b6",
+        "b7",
+        "b5"
+      ],
       "supportScore": 0.95,
       "citation": {
         "url": "fixture://research/static-docs/troubleshooting",
@@ -99,21 +129,30 @@
         "sourceRisk": "low",
         "sourceLabel": "Static docs troubleshooting page"
       },
+      "primarySupportSnippet": {
+        "blockId": "b6",
+        "stableRef": "rmain:text:if-stable-refs-go-stale-after-a-page-change-capt",
+        "snippet": "If stable refs go stale after a page change, capture a new semantic snapshot before acting again",
+        "supportRole": "primary"
+      },
       "supportSnippets": [
         {
           "blockId": "b6",
           "stableRef": "rmain:text:if-stable-refs-go-stale-after-a-page-change-capt",
-          "snippet": "If stable refs go stale after a page change, capture a new semantic snapshot before acting again p 97 main"
+          "snippet": "If stable refs go stale after a page change, capture a new semantic snapshot before acting again",
+          "supportRole": "primary"
         },
         {
           "blockId": "b7",
           "stableRef": "rmain:text:memory-compaction-keeps-the-working-set-bounded-",
-          "snippet": "Memory compaction keeps the working set bounded during long research sessions p 78 main"
+          "snippet": "Memory compaction keeps the working set bounded during long research sessions",
+          "supportRole": "context"
         },
         {
           "blockId": "b5",
           "stableRef": "rmain:heading:troubleshooting",
-          "snippet": "Troubleshooting 1 h1 15 main"
+          "snippet": "Troubleshooting",
+          "supportRole": "context"
         }
       ],
       "confidenceBand": "high",
@@ -138,7 +177,11 @@
       "claimId": "c2",
       "statement": "Memory compaction keeps the working set bounded during long research sessions.",
       "verdict": "evidence-supported",
-      "support": ["b7", "b8", "b6"],
+      "support": [
+        "b7",
+        "b8",
+        "b6"
+      ],
       "supportScore": 0.95,
       "citation": {
         "url": "fixture://research/static-docs/troubleshooting",
@@ -147,21 +190,30 @@
         "sourceRisk": "low",
         "sourceLabel": "Static docs troubleshooting page"
       },
+      "primarySupportSnippet": {
+        "blockId": "b7",
+        "stableRef": "rmain:text:memory-compaction-keeps-the-working-set-bounded-",
+        "snippet": "Memory compaction keeps the working set bounded during long research sessions",
+        "supportRole": "primary"
+      },
       "supportSnippets": [
         {
           "blockId": "b7",
           "stableRef": "rmain:text:memory-compaction-keeps-the-working-set-bounded-",
-          "snippet": "Memory compaction keeps the working set bounded during long research sessions p 78 main"
+          "snippet": "Memory compaction keeps the working set bounded during long research sessions",
+          "supportRole": "primary"
         },
         {
           "blockId": "b8",
           "stableRef": "rmain:list:1-open-the-current-page-2-read-the-latest-snapsh",
-          "snippet": "1 1. Open the current page. 2. Read the latest snapshot. 3. Re-run replay if the issue must be reproduced deterministically. 3 ordered ol 122 main list items"
+          "snippet": "1",
+          "supportRole": "context"
         },
         {
           "blockId": "b6",
           "stableRef": "rmain:text:if-stable-refs-go-stale-after-a-page-change-capt",
-          "snippet": "If stable refs go stale after a page change, capture a new semantic snapshot before acting again p 97 main"
+          "snippet": "If stable refs go stale after a page change, capture a new semantic snapshot before acting again",
+          "supportRole": "context"
         }
       ],
       "confidenceBand": "high",

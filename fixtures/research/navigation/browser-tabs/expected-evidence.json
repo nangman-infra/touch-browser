@@ -12,7 +12,11 @@
       "version": "1.0.0",
       "claimId": "c1",
       "statement": "Browser Tabs highlights overview, policies, and logs as the main navigation targets.",
-      "support": ["b3", "b4", "b2"],
+      "support": [
+        "b3",
+        "b4",
+        "b2"
+      ],
       "supportScore": 0.95,
       "citation": {
         "url": "fixture://research/navigation/browser-tabs",
@@ -21,21 +25,30 @@
         "sourceRisk": "low",
         "sourceLabel": "Browser tabs navigation"
       },
+      "primarySupportSnippet": {
+        "blockId": "b3",
+        "stableRef": "rmain:text:browser-tabs-highlights-overview-policies-and-lo",
+        "snippet": "Browser Tabs highlights overview, policies, and logs as the main navigation targets",
+        "supportRole": "primary"
+      },
       "supportSnippets": [
         {
           "blockId": "b3",
           "stableRef": "rmain:text:browser-tabs-highlights-overview-policies-and-lo",
-          "snippet": "Browser Tabs highlights overview, policies, and logs as the main navigation targets p 84 main"
+          "snippet": "Browser Tabs highlights overview, policies, and logs as the main navigation targets",
+          "supportRole": "primary"
         },
         {
           "blockId": "b4",
           "stableRef": "rmain:list:overview-tab-policies-tab-logs-tab",
-          "snippet": "- Overview tab - Policies tab - Logs tab 3 ul 40 main list items"
+          "snippet": "- Overview tab - Policies tab - Logs tab",
+          "supportRole": "context"
         },
         {
           "blockId": "b2",
           "stableRef": "rmain:heading:browser-tabs",
-          "snippet": "Browser Tabs 1 h1 12 main"
+          "snippet": "Browser Tabs",
+          "supportRole": "context"
         }
       ]
     },
@@ -43,7 +56,11 @@
       "version": "1.0.0",
       "claimId": "c2",
       "statement": "Overview tab",
-      "support": ["b4", "b3", "b2"],
+      "support": [
+        "b4",
+        "b3",
+        "b2"
+      ],
       "supportScore": 0.95,
       "citation": {
         "url": "fixture://research/navigation/browser-tabs",
@@ -52,21 +69,30 @@
         "sourceRisk": "low",
         "sourceLabel": "Browser tabs navigation"
       },
+      "primarySupportSnippet": {
+        "blockId": "b4",
+        "stableRef": "rmain:list:overview-tab-policies-tab-logs-tab",
+        "snippet": "- Overview tab - Policies tab - Logs tab",
+        "supportRole": "primary"
+      },
       "supportSnippets": [
         {
           "blockId": "b4",
           "stableRef": "rmain:list:overview-tab-policies-tab-logs-tab",
-          "snippet": "- Overview tab - Policies tab - Logs tab 3 ul 40 main list items"
+          "snippet": "- Overview tab - Policies tab - Logs tab",
+          "supportRole": "primary"
         },
         {
           "blockId": "b3",
           "stableRef": "rmain:text:browser-tabs-highlights-overview-policies-and-lo",
-          "snippet": "Browser Tabs highlights overview, policies, and logs as the main navigation targets p 84 main"
+          "snippet": "Browser Tabs highlights overview, policies, and logs as the main navigation targets",
+          "supportRole": "context"
         },
         {
           "blockId": "b2",
           "stableRef": "rmain:heading:browser-tabs",
-          "snippet": "Browser Tabs 1 h1 12 main"
+          "snippet": "Browser Tabs",
+          "supportRole": "context"
         }
       ]
     }
@@ -90,7 +116,11 @@
       "claimId": "c1",
       "statement": "Browser Tabs highlights overview, policies, and logs as the main navigation targets.",
       "verdict": "evidence-supported",
-      "support": ["b3", "b4", "b2"],
+      "support": [
+        "b3",
+        "b4",
+        "b2"
+      ],
       "supportScore": 0.95,
       "citation": {
         "url": "fixture://research/navigation/browser-tabs",
@@ -99,21 +129,30 @@
         "sourceRisk": "low",
         "sourceLabel": "Browser tabs navigation"
       },
+      "primarySupportSnippet": {
+        "blockId": "b3",
+        "stableRef": "rmain:text:browser-tabs-highlights-overview-policies-and-lo",
+        "snippet": "Browser Tabs highlights overview, policies, and logs as the main navigation targets",
+        "supportRole": "primary"
+      },
       "supportSnippets": [
         {
           "blockId": "b3",
           "stableRef": "rmain:text:browser-tabs-highlights-overview-policies-and-lo",
-          "snippet": "Browser Tabs highlights overview, policies, and logs as the main navigation targets p 84 main"
+          "snippet": "Browser Tabs highlights overview, policies, and logs as the main navigation targets",
+          "supportRole": "primary"
         },
         {
           "blockId": "b4",
           "stableRef": "rmain:list:overview-tab-policies-tab-logs-tab",
-          "snippet": "- Overview tab - Policies tab - Logs tab 3 ul 40 main list items"
+          "snippet": "- Overview tab - Policies tab - Logs tab",
+          "supportRole": "context"
         },
         {
           "blockId": "b2",
           "stableRef": "rmain:heading:browser-tabs",
-          "snippet": "Browser Tabs 1 h1 12 main"
+          "snippet": "Browser Tabs",
+          "supportRole": "context"
         }
       ],
       "confidenceBand": "high",
@@ -138,7 +177,11 @@
       "claimId": "c2",
       "statement": "Overview tab",
       "verdict": "evidence-supported",
-      "support": ["b4", "b3", "b2"],
+      "support": [
+        "b4",
+        "b3",
+        "b2"
+      ],
       "supportScore": 0.95,
       "citation": {
         "url": "fixture://research/navigation/browser-tabs",
@@ -147,21 +190,30 @@
         "sourceRisk": "low",
         "sourceLabel": "Browser tabs navigation"
       },
+      "primarySupportSnippet": {
+        "blockId": "b4",
+        "stableRef": "rmain:list:overview-tab-policies-tab-logs-tab",
+        "snippet": "- Overview tab - Policies tab - Logs tab",
+        "supportRole": "primary"
+      },
       "supportSnippets": [
         {
           "blockId": "b4",
           "stableRef": "rmain:list:overview-tab-policies-tab-logs-tab",
-          "snippet": "- Overview tab - Policies tab - Logs tab 3 ul 40 main list items"
+          "snippet": "- Overview tab - Policies tab - Logs tab",
+          "supportRole": "primary"
         },
         {
           "blockId": "b3",
           "stableRef": "rmain:text:browser-tabs-highlights-overview-policies-and-lo",
-          "snippet": "Browser Tabs highlights overview, policies, and logs as the main navigation targets p 84 main"
+          "snippet": "Browser Tabs highlights overview, policies, and logs as the main navigation targets",
+          "supportRole": "context"
         },
         {
           "blockId": "b2",
           "stableRef": "rmain:heading:browser-tabs",
-          "snippet": "Browser Tabs 1 h1 12 main"
+          "snippet": "Browser Tabs",
+          "supportRole": "context"
         }
       ],
       "confidenceBand": "high",

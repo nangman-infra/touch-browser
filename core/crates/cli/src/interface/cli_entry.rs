@@ -1,5 +1,6 @@
 use serde_json::Value;
 
+use super::agent_contract;
 use super::deps::{
     dispatch, emit_cli_error, log_telemetry_error, log_telemetry_success, parse_command, run_mcp,
     run_serve, telemetry_surface_label, usage, CliCommand, CliError, OutputFormat,
@@ -9,6 +10,7 @@ use super::deps::{
 pub(crate) struct ProcessedCliArgs {
     pub(crate) args: Vec<String>,
     pub(crate) json_errors: bool,
+    pub(crate) agent_json: bool,
     pub(crate) help_text: Option<String>,
     pub(crate) version_text: Option<String>,
 }
@@ -126,10 +128,26 @@ fn emit_command_failure(
     1
 }
 
-fn dispatch_command(command: CliCommand, operation: &str, json_errors: bool) -> i32 {
-    let stdout_mode = stdout_mode_for_command(&command);
+fn dispatch_command(
+    command: CliCommand,
+    operation: &str,
+    json_errors: bool,
+    agent_json: bool,
+) -> i32 {
+    let stdout_mode = if agent_json {
+        CliStdoutMode::Json
+    } else {
+        stdout_mode_for_command(&command)
+    };
     let should_log_telemetry = should_log_telemetry_command(&command);
+    let command_for_agent_output = command.clone();
     match dispatch(command).and_then(|output| {
+        let enriched_output = agent_contract::enrich_output(&command_for_agent_output, output);
+        let output = if agent_json {
+            agent_contract::compact_agent_output(&command_for_agent_output, enriched_output)
+        } else {
+            enriched_output
+        };
         emit_command_output(stdout_mode, &output)?;
         Ok(output)
     }) {
@@ -150,10 +168,13 @@ fn dispatch_command(command: CliCommand, operation: &str, json_errors: bool) -> 
 
 pub(crate) fn preprocess_cli_args(raw_args: Vec<String>) -> ProcessedCliArgs {
     let mut json_errors = false;
+    let mut agent_json = false;
     let mut args = Vec::with_capacity(raw_args.len());
     for arg in raw_args {
         if arg == "--json-errors" {
             json_errors = true;
+        } else if arg == "--agent-json" {
+            agent_json = true;
         } else {
             args.push(arg);
         }
@@ -182,6 +203,7 @@ pub(crate) fn preprocess_cli_args(raw_args: Vec<String>) -> ProcessedCliArgs {
     ProcessedCliArgs {
         args,
         json_errors,
+        agent_json,
         help_text,
         version_text,
     }
@@ -236,6 +258,7 @@ pub(crate) fn run_cli(raw_args: Vec<String>) -> i32 {
 
     let args = processed_args.args;
     let json_errors = processed_args.json_errors;
+    let agent_json = processed_args.agent_json;
     let operation = args
         .first()
         .cloned()
@@ -249,7 +272,7 @@ pub(crate) fn run_cli(raw_args: Vec<String>) -> i32 {
         return exit_code;
     }
 
-    dispatch_command(command, &operation, json_errors)
+    dispatch_command(command, &operation, json_errors, agent_json)
 }
 
 #[cfg(test)]

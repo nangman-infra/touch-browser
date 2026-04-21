@@ -12,7 +12,11 @@
       "version": "1.0.0",
       "claimId": "c1",
       "statement": "The page contains a Confirm purchase button.",
-      "support": ["b6", "b3", "b7"],
+      "support": [
+        "b6",
+        "b3",
+        "b7"
+      ],
       "supportScore": 0.95,
       "citation": {
         "url": "fixture://research/navigation/browser-high-risk-checkout",
@@ -21,21 +25,30 @@
         "sourceRisk": "low",
         "sourceLabel": "Browser high-risk checkout seed"
       },
+      "primarySupportSnippet": {
+        "blockId": "b6",
+        "stableRef": "rmain:button:confirm-purchase",
+        "snippet": "Confirm purchase",
+        "supportRole": "primary"
+      },
       "supportSnippets": [
         {
           "blockId": "b6",
           "stableRef": "rmain:button:confirm-purchase",
-          "snippet": "Confirm purchase button 16 main button"
+          "snippet": "Confirm purchase",
+          "supportRole": "primary"
         },
         {
           "blockId": "b3",
           "stableRef": "rmain:text:confirm-payment-to-place-order-for-the-research-",
-          "snippet": "Confirm payment to place order for the research plan p 53 main"
+          "snippet": "Confirm payment to place order for the research plan",
+          "supportRole": "context"
         },
         {
           "blockId": "b7",
           "stableRef": "rmain:text:status",
-          "snippet": "Awaiting payment confirmation p 30 main"
+          "snippet": "Awaiting payment confirmation",
+          "supportRole": "context"
         }
       ]
     }
@@ -59,7 +72,11 @@
       "claimId": "c1",
       "statement": "The page contains a Confirm purchase button.",
       "verdict": "evidence-supported",
-      "support": ["b6", "b3", "b7"],
+      "support": [
+        "b6",
+        "b3",
+        "b7"
+      ],
       "supportScore": 0.95,
       "citation": {
         "url": "fixture://research/navigation/browser-high-risk-checkout",
@@ -68,21 +85,30 @@
         "sourceRisk": "low",
         "sourceLabel": "Browser high-risk checkout seed"
       },
+      "primarySupportSnippet": {
+        "blockId": "b6",
+        "stableRef": "rmain:button:confirm-purchase",
+        "snippet": "Confirm purchase",
+        "supportRole": "primary"
+      },
       "supportSnippets": [
         {
           "blockId": "b6",
           "stableRef": "rmain:button:confirm-purchase",
-          "snippet": "Confirm purchase button 16 main button"
+          "snippet": "Confirm purchase",
+          "supportRole": "primary"
         },
         {
           "blockId": "b3",
           "stableRef": "rmain:text:confirm-payment-to-place-order-for-the-research-",
-          "snippet": "Confirm payment to place order for the research plan p 53 main"
+          "snippet": "Confirm payment to place order for the research plan",
+          "supportRole": "context"
         },
         {
           "blockId": "b7",
           "stableRef": "rmain:text:status",
-          "snippet": "Awaiting payment confirmation p 30 main"
+          "snippet": "Awaiting payment confirmation",
+          "supportRole": "context"
         }
       ],
       "confidenceBand": "high",

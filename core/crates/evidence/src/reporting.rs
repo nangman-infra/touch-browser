@@ -2,7 +2,7 @@ use std::collections::BTreeSet;
 use touch_browser_contracts::{
     EvidenceCitation, EvidenceClaimOutcome, EvidenceClaimVerdict, EvidenceConfidenceBand,
     EvidenceGuardFailure, EvidenceGuardKind, EvidenceMatchSignals, EvidenceReport, EvidenceSource,
-    EvidenceSupportSnippet, UnsupportedClaimReason, CONTRACT_VERSION,
+    EvidenceSupportRole, EvidenceSupportSnippet, UnsupportedClaimReason, CONTRACT_VERSION,
 };
 
 use crate::{
@@ -67,6 +67,7 @@ pub(crate) fn build_claim_outcome(
             .collect(),
         support_score: resolution.confidence,
         citation,
+        primary_support_snippet: support_snippets.first().cloned(),
         support_snippets,
         reason: resolution.reason,
         confidence_band,
@@ -87,12 +88,26 @@ fn build_support_snippets(
     support
         .iter()
         .filter(|candidate| seen.insert(candidate.block.id.clone()))
-        .map(|candidate| EvidenceSupportSnippet {
+        .enumerate()
+        .map(|(index, candidate)| EvidenceSupportSnippet {
             block_id: candidate.block.id.clone(),
             stable_ref: candidate.block.stable_ref.clone(),
-            snippet: truncate_snippet(&candidate.text),
+            snippet: truncate_snippet(&visible_candidate_text(candidate)),
+            support_role: if index == 0 {
+                EvidenceSupportRole::Primary
+            } else {
+                EvidenceSupportRole::Context
+            },
         })
         .collect()
+}
+
+fn visible_candidate_text(candidate: &crate::scoring::ScoredCandidate<'_>) -> String {
+    crate::segmentation::segment_block_text(&candidate.block.text)
+        .get(candidate.candidate_index)
+        .filter(|segment| !segment.trim().is_empty())
+        .cloned()
+        .unwrap_or_else(|| candidate.block.text.clone())
 }
 
 fn build_match_signals(candidate: &crate::scoring::ScoredCandidate<'_>) -> EvidenceMatchSignals {
@@ -386,9 +401,9 @@ fn claim_pair_merits_nli_conflict_check(left_statement: &str, right_statement: &
 mod tests {
     use touch_browser_contracts::{
         EvidenceCitation, EvidenceClaimOutcome, EvidenceClaimVerdict, EvidenceConfidenceBand,
-        EvidenceMatchSignals, EvidenceSupportSnippet, SnapshotBlock, SnapshotBlockKind,
-        SnapshotBlockRole, SnapshotBudget, SnapshotDocument, SnapshotEvidence, SnapshotSource,
-        SourceRisk, SourceType, CONTRACT_VERSION,
+        EvidenceMatchSignals, EvidenceSupportRole, EvidenceSupportSnippet, SnapshotBlock,
+        SnapshotBlockKind, SnapshotBlockRole, SnapshotBudget, SnapshotDocument, SnapshotEvidence,
+        SnapshotSource, SourceRisk, SourceType, CONTRACT_VERSION,
     };
 
     use super::{build_claim_outcome, build_report, downgrade_conflicting_supported_claims};
@@ -470,6 +485,42 @@ mod tests {
                 .is_some_and(|explanation| explanation.contains("Matched direct support")),
             "supported claim should expose a human-readable explanation"
         );
+    }
+
+    #[test]
+    fn support_snippets_use_visible_block_text_not_scoring_terms() {
+        let mut input = report_input();
+        input.snapshot.blocks[0].text =
+            "Intro text. Example Docs supports HTTP snapshots. Footer text.".to_string();
+        input.snapshot.blocks[0]
+            .attributes
+            .insert("role".to_string(), serde_json::json!("main"));
+        input.snapshot.blocks[0]
+            .attributes
+            .insert("position".to_string(), serde_json::json!(291));
+
+        let outcome = build_claim_outcome(&input, &input.claims[0]);
+
+        assert_eq!(
+            outcome.support_snippets[0].snippet,
+            "Example Docs supports HTTP snapshots"
+        );
+        assert_eq!(
+            outcome
+                .primary_support_snippet
+                .as_ref()
+                .expect("primary snippet should be present")
+                .support_role,
+            EvidenceSupportRole::Primary
+        );
+        assert_eq!(
+            outcome.support_snippets[0].support_role,
+            EvidenceSupportRole::Primary
+        );
+        assert!(!outcome.support_snippets[0].snippet.contains("Intro text"));
+        assert!(!outcome.support_snippets[0].snippet.contains("Footer text"));
+        assert!(!outcome.support_snippets[0].snippet.contains("291"));
+        assert!(!outcome.support_snippets[0].snippet.ends_with("main"));
     }
 
     #[test]
@@ -558,10 +609,17 @@ mod tests {
                 source_risk: SourceRisk::Low,
                 source_label: Some("Example Docs".to_string()),
             }),
+            primary_support_snippet: Some(EvidenceSupportSnippet {
+                block_id: "b1".to_string(),
+                stable_ref: "rmain:text:intro".to_string(),
+                snippet: "Example Docs supports HTTP snapshots.".to_string(),
+                support_role: EvidenceSupportRole::Primary,
+            }),
             support_snippets: vec![EvidenceSupportSnippet {
                 block_id: "b1".to_string(),
                 stable_ref: "rmain:text:intro".to_string(),
                 snippet: "Example Docs supports HTTP snapshots.".to_string(),
+                support_role: EvidenceSupportRole::Primary,
             }],
             reason: None,
             confidence_band: Some(EvidenceConfidenceBand::High),

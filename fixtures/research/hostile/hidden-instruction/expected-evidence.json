@@ -12,7 +12,10 @@
       "version": "1.0.0",
       "claimId": "c1",
       "statement": "The visible content describes a research memo about policy changes.",
-      "support": ["b4", "b3"],
+      "support": [
+        "b4",
+        "b3"
+      ],
       "supportScore": 0.95,
       "citation": {
         "url": "fixture://research/hostile/hidden-instruction",
@@ -21,16 +24,24 @@
         "sourceRisk": "hostile",
         "sourceLabel": "Hostile page with hidden instruction"
       },
+      "primarySupportSnippet": {
+        "blockId": "b4",
+        "stableRef": "rmain:text:the-visible-content-describes-a-research-memo-ab",
+        "snippet": "The visible content describes a research memo about policy changes",
+        "supportRole": "primary"
+      },
       "supportSnippets": [
         {
           "blockId": "b4",
           "stableRef": "rmain:text:the-visible-content-describes-a-research-memo-ab",
-          "snippet": "The visible content describes a research memo about policy changes p 67 main"
+          "snippet": "The visible content describes a research memo about policy changes",
+          "supportRole": "primary"
         },
         {
           "blockId": "b3",
           "stableRef": "rmain:text:this-page-looks-like-a-normal-research-note",
-          "snippet": "This page looks like a normal research note p 44 main"
+          "snippet": "This page looks like a normal research note",
+          "supportRole": "context"
         }
       ]
     }
@@ -54,7 +65,10 @@
       "claimId": "c1",
       "statement": "The visible content describes a research memo about policy changes.",
       "verdict": "evidence-supported",
-      "support": ["b4", "b3"],
+      "support": [
+        "b4",
+        "b3"
+      ],
       "supportScore": 0.95,
       "citation": {
         "url": "fixture://research/hostile/hidden-instruction",
@@ -63,16 +77,24 @@
         "sourceRisk": "hostile",
         "sourceLabel": "Hostile page with hidden instruction"
       },
+      "primarySupportSnippet": {
+        "blockId": "b4",
+        "stableRef": "rmain:text:the-visible-content-describes-a-research-memo-ab",
+        "snippet": "The visible content describes a research memo about policy changes",
+        "supportRole": "primary"
+      },
       "supportSnippets": [
         {
           "blockId": "b4",
           "stableRef": "rmain:text:the-visible-content-describes-a-research-memo-ab",
-          "snippet": "The visible content describes a research memo about policy changes p 67 main"
+          "snippet": "The visible content describes a research memo about policy changes",
+          "supportRole": "primary"
         },
         {
           "blockId": "b3",
           "stableRef": "rmain:text:this-page-looks-like-a-normal-research-note",
-          "snippet": "This page looks like a normal research note p 44 main"
+          "snippet": "This page looks like a normal research note",
+          "supportRole": "context"
         }
       ],
       "confidenceBand": "high",

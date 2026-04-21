@@ -12,7 +12,11 @@
       "version": "1.0.0",
       "claimId": "c1",
       "statement": "The Core research suite reported citation precision of 97%.",
-      "support": ["b4", "b5", "b3"],
+      "support": [
+        "b4",
+        "b5",
+        "b3"
+      ],
       "supportScore": 0.94,
       "citation": {
         "url": "fixture://research/citation-heavy/benchmark-summary",
@@ -21,21 +25,30 @@
         "sourceRisk": "low",
         "sourceLabel": "Citation-heavy benchmark summary page"
       },
+      "primarySupportSnippet": {
+        "blockId": "b4",
+        "stableRef": "rmain:table:suite-recall-citation-precision-core-research-95",
+        "snippet": "Core research | 95% | 97%",
+        "supportRole": "primary"
+      },
       "supportSnippets": [
         {
           "blockId": "b4",
           "stableRef": "rmain:table:suite-recall-citation-precision-core-research-95",
-          "snippet": "Core research | 95% | 97% Suite | Recall | Citation Precision 3 3 table 88 main"
+          "snippet": "Core research | 95% | 97%",
+          "supportRole": "primary"
         },
         {
           "blockId": "b5",
           "stableRef": "rmain:text:core-research-kept-citation-precision-above-the-",
-          "snippet": "Core research kept citation precision above the go threshold p 61 main"
+          "snippet": "Core research kept citation precision above the go threshold",
+          "supportRole": "context"
         },
         {
           "blockId": "b3",
           "stableRef": "rmain:text:the-internal-benchmark-compares-semantic-snapsho",
-          "snippet": "The internal benchmark compares semantic snapshot quality across research tasks p 80 main"
+          "snippet": "The internal benchmark compares semantic snapshot quality across research tasks",
+          "supportRole": "context"
         }
       ]
     },
@@ -43,7 +56,11 @@
       "version": "1.0.0",
       "claimId": "c2",
       "statement": "The Hostile review suite reported recall of 91%.",
-      "support": ["b4", "b3", "b5"],
+      "support": [
+        "b4",
+        "b3",
+        "b5"
+      ],
       "supportScore": 0.91,
       "citation": {
         "url": "fixture://research/citation-heavy/benchmark-summary",
@@ -52,21 +69,30 @@
         "sourceRisk": "low",
         "sourceLabel": "Citation-heavy benchmark summary page"
       },
+      "primarySupportSnippet": {
+        "blockId": "b4",
+        "stableRef": "rmain:table:suite-recall-citation-precision-core-research-95",
+        "snippet": "Hostile review | 91% | 99%",
+        "supportRole": "primary"
+      },
       "supportSnippets": [
         {
           "blockId": "b4",
           "stableRef": "rmain:table:suite-recall-citation-precision-core-research-95",
-          "snippet": "Hostile review | 91% | 99% Suite | Recall | Citation Precision 3 3 table 88 main"
+          "snippet": "Hostile review | 91% | 99%",
+          "supportRole": "primary"
         },
         {
           "blockId": "b3",
           "stableRef": "rmain:text:the-internal-benchmark-compares-semantic-snapsho",
-          "snippet": "The internal benchmark compares semantic snapshot quality across research tasks p 80 main"
+          "snippet": "The internal benchmark compares semantic snapshot quality across research tasks",
+          "supportRole": "context"
         },
         {
           "blockId": "b5",
           "stableRef": "rmain:text:core-research-kept-citation-precision-above-the-",
-          "snippet": "Core research kept citation precision above the go threshold p 61 main"
+          "snippet": "Core research kept citation precision above the go threshold",
+          "supportRole": "context"
         }
       ]
     }
@@ -101,7 +127,11 @@
       "claimId": "c1",
       "statement": "The Core research suite reported citation precision of 97%.",
       "verdict": "evidence-supported",
-      "support": ["b4", "b5", "b3"],
+      "support": [
+        "b4",
+        "b5",
+        "b3"
+      ],
       "supportScore": 0.94,
       "citation": {
         "url": "fixture://research/citation-heavy/benchmark-summary",
@@ -110,21 +140,30 @@
         "sourceRisk": "low",
         "sourceLabel": "Citation-heavy benchmark summary page"
       },
+      "primarySupportSnippet": {
+        "blockId": "b4",
+        "stableRef": "rmain:table:suite-recall-citation-precision-core-research-95",
+        "snippet": "Core research | 95% | 97%",
+        "supportRole": "primary"
+      },
       "supportSnippets": [
         {
           "blockId": "b4",
           "stableRef": "rmain:table:suite-recall-citation-precision-core-research-95",
-          "snippet": "Core research | 95% | 97% Suite | Recall | Citation Precision 3 3 table 88 main"
+          "snippet": "Core research | 95% | 97%",
+          "supportRole": "primary"
         },
         {
           "blockId": "b5",
           "stableRef": "rmain:text:core-research-kept-citation-precision-above-the-",
-          "snippet": "Core research kept citation precision above the go threshold p 61 main"
+          "snippet": "Core research kept citation precision above the go threshold",
+          "supportRole": "context"
         },
         {
           "blockId": "b3",
           "stableRef": "rmain:text:the-internal-benchmark-compares-semantic-snapsho",
-          "snippet": "The internal benchmark compares semantic snapshot quality across research tasks p 80 main"
+          "snippet": "The internal benchmark compares semantic snapshot quality across research tasks",
+          "supportRole": "context"
         }
       ],
       "confidenceBand": "high",
@@ -150,7 +189,11 @@
       "claimId": "c2",
       "statement": "The Hostile review suite reported recall of 91%.",
       "verdict": "evidence-supported",
-      "support": ["b4", "b3", "b5"],
+      "support": [
+        "b4",
+        "b3",
+        "b5"
+      ],
       "supportScore": 0.91,
       "citation": {
         "url": "fixture://research/citation-heavy/benchmark-summary",
@@ -159,21 +202,30 @@
         "sourceRisk": "low",
         "sourceLabel": "Citation-heavy benchmark summary page"
       },
+      "primarySupportSnippet": {
+        "blockId": "b4",
+        "stableRef": "rmain:table:suite-recall-citation-precision-core-research-95",
+        "snippet": "Hostile review | 91% | 99%",
+        "supportRole": "primary"
+      },
       "supportSnippets": [
         {
           "blockId": "b4",
           "stableRef": "rmain:table:suite-recall-citation-precision-core-research-95",
-          "snippet": "Hostile review | 91% | 99% Suite | Recall | Citation Precision 3 3 table 88 main"
+          "snippet": "Hostile review | 91% | 99%",
+          "supportRole": "primary"
         },
         {
           "blockId": "b3",
           "stableRef": "rmain:text:the-internal-benchmark-compares-semantic-snapsho",
-          "snippet": "The internal benchmark compares semantic snapshot quality across research tasks p 80 main"
+          "snippet": "The internal benchmark compares semantic snapshot quality across research tasks",
+          "supportRole": "context"
         },
         {
           "blockId": "b5",
           "stableRef": "rmain:text:core-research-kept-citation-precision-above-the-",
-          "snippet": "Core research kept citation precision above the go threshold p 61 main"
+          "snippet": "Core research kept citation precision above the go threshold",
+          "supportRole": "context"
         }
       ],
       "confidenceBand": "medium",
@@ -199,12 +251,21 @@
       "claimId": "c3",
       "statement": "The benchmark announces a native mobile SDK launch.",
       "verdict": "insufficient-evidence",
-      "support": ["b4"],
+      "support": [
+        "b4"
+      ],
+      "primarySupportSnippet": {
+        "blockId": "b4",
+        "stableRef": "rmain:table:suite-recall-citation-precision-core-research-95",
+        "snippet": "Suite | Recall | Citation Precision",
+        "supportRole": "primary"
+      },
       "supportSnippets": [
         {
           "blockId": "b4",
           "stableRef": "rmain:table:suite-recall-citation-precision-core-research-95",
-          "snippet": "Suite | Recall | Citation Precision 3 3 table 88 main"
+          "snippet": "Suite | Recall | Citation Precision",
+          "supportRole": "primary"
         }
       ],
       "reason": "insufficient-support-score",

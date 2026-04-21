@@ -146,7 +146,7 @@ fn extract_auto_falls_back_to_browser_for_js_shell_pages() {
 
 #[test]
 fn dispatches_browser_backed_extract() {
-    let output = dispatch(CliCommand::Extract(ExtractOptions {
+    let command = CliCommand::Extract(ExtractOptions {
         target: "fixture://research/citation-heavy/pricing".to_string(),
         budget: DEFAULT_REQUESTED_TOKENS,
         source_risk: None,
@@ -157,8 +157,8 @@ fn dispatches_browser_backed_extract() {
         session_file: None,
         claims: vec!["The Starter plan costs $29 per month.".to_string()],
         verifier_command: None,
-    }))
-    .expect("browser-backed extract should succeed");
+    });
+    let output = dispatch(command.clone()).expect("browser-backed extract should succeed");
 
     assert_eq!(
         output["open"]["output"]["source"]["sourceType"],
@@ -168,6 +168,20 @@ fn dispatches_browser_backed_extract() {
     assert_eq!(
         output["extract"]["output"]["evidenceSupportedClaims"][0]["statement"],
         "The Starter plan costs $29 per month."
+    );
+    let enriched = crate::interface::agent_contract::enrich_output(&command, output);
+    assert_eq!(
+        enriched["extract"]["output"]["claimOutcomes"][0]["reuseAllowed"],
+        true
+    );
+    assert_eq!(enriched["reuseSummary"]["allClaimsReusable"], true);
+    assert_eq!(
+        enriched["nextActions"][0]["action"],
+        "answer-with-citations"
+    );
+    assert_eq!(
+        enriched["nextActions"][0]["command"],
+        serde_json::Value::Null
     );
 }
 

@@ -12,7 +12,10 @@
       "version": "1.0.0",
       "claimId": "c1",
       "statement": "The page asks the runtime to expand hidden details.",
-      "support": ["b3", "b2"],
+      "support": [
+        "b3",
+        "b2"
+      ],
       "supportScore": 0.84,
       "citation": {
         "url": "fixture://research/navigation/browser-expand",
@@ -21,16 +24,24 @@
         "sourceRisk": "low",
         "sourceLabel": "Browser-backed expand seed"
       },
+      "primarySupportSnippet": {
+        "blockId": "b3",
+        "stableRef": "rmain:text:expand-hidden-details-to-reveal-the-supporting-n",
+        "snippet": "Expand hidden details to reveal the supporting note",
+        "supportRole": "primary"
+      },
       "supportSnippets": [
         {
           "blockId": "b3",
           "stableRef": "rmain:text:expand-hidden-details-to-reveal-the-supporting-n",
-          "snippet": "Expand hidden details to reveal the supporting note p 52 main"
+          "snippet": "Expand hidden details to reveal the supporting note",
+          "supportRole": "primary"
         },
         {
           "blockId": "b2",
           "stableRef": "rmain:heading:browser-expand",
-          "snippet": "Browser Expand 1 h1 14 main"
+          "snippet": "Browser Expand",
+          "supportRole": "context"
         }
       ]
     },
@@ -38,7 +49,11 @@
       "version": "1.0.0",
       "claimId": "c2",
       "statement": "The page includes an Expand details button.",
-      "support": ["b4", "b3", "b2"],
+      "support": [
+        "b4",
+        "b3",
+        "b2"
+      ],
       "supportScore": 0.95,
       "citation": {
         "url": "fixture://research/navigation/browser-expand",
@@ -47,21 +62,30 @@
         "sourceRisk": "low",
         "sourceLabel": "Browser-backed expand seed"
       },
+      "primarySupportSnippet": {
+        "blockId": "b4",
+        "stableRef": "rmain:button:expand-details",
+        "snippet": "Expand details",
+        "supportRole": "primary"
+      },
       "supportSnippets": [
         {
           "blockId": "b4",
           "stableRef": "rmain:button:expand-details",
-          "snippet": "Expand details button 14 main button"
+          "snippet": "Expand details",
+          "supportRole": "primary"
         },
         {
           "blockId": "b3",
           "stableRef": "rmain:text:expand-hidden-details-to-reveal-the-supporting-n",
-          "snippet": "Expand hidden details to reveal the supporting note p 52 main"
+          "snippet": "Expand hidden details to reveal the supporting note",
+          "supportRole": "context"
         },
         {
           "blockId": "b2",
           "stableRef": "rmain:heading:browser-expand",
-          "snippet": "Browser Expand 1 h1 14 main"
+          "snippet": "Browser Expand",
+          "supportRole": "context"
         }
       ]
     }
@@ -84,7 +108,10 @@
       "claimId": "c1",
       "statement": "The page asks the runtime to expand hidden details.",
       "verdict": "evidence-supported",
-      "support": ["b3", "b2"],
+      "support": [
+        "b3",
+        "b2"
+      ],
       "supportScore": 0.84,
       "citation": {
         "url": "fixture://research/navigation/browser-expand",
@@ -93,16 +120,24 @@
         "sourceRisk": "low",
         "sourceLabel": "Browser-backed expand seed"
       },
+      "primarySupportSnippet": {
+        "blockId": "b3",
+        "stableRef": "rmain:text:expand-hidden-details-to-reveal-the-supporting-n",
+        "snippet": "Expand hidden details to reveal the supporting note",
+        "supportRole": "primary"
+      },
       "supportSnippets": [
         {
           "blockId": "b3",
           "stableRef": "rmain:text:expand-hidden-details-to-reveal-the-supporting-n",
-          "snippet": "Expand hidden details to reveal the supporting note p 52 main"
+          "snippet": "Expand hidden details to reveal the supporting note",
+          "supportRole": "primary"
         },
         {
           "blockId": "b2",
           "stableRef": "rmain:heading:browser-expand",
-          "snippet": "Browser Expand 1 h1 14 main"
+          "snippet": "Browser Expand",
+          "supportRole": "context"
         }
       ],
       "confidenceBand": "medium",
@@ -127,7 +162,11 @@
       "claimId": "c2",
       "statement": "The page includes an Expand details button.",
       "verdict": "evidence-supported",
-      "support": ["b4", "b3", "b2"],
+      "support": [
+        "b4",
+        "b3",
+        "b2"
+      ],
       "supportScore": 0.95,
       "citation": {
         "url": "fixture://research/navigation/browser-expand",
@@ -136,21 +175,30 @@
         "sourceRisk": "low",
         "sourceLabel": "Browser-backed expand seed"
       },
+      "primarySupportSnippet": {
+        "blockId": "b4",
+        "stableRef": "rmain:button:expand-details",
+        "snippet": "Expand details",
+        "supportRole": "primary"
+      },
       "supportSnippets": [
         {
           "blockId": "b4",
           "stableRef": "rmain:button:expand-details",
-          "snippet": "Expand details button 14 main button"
+          "snippet": "Expand details",
+          "supportRole": "primary"
         },
         {
           "blockId": "b3",
           "stableRef": "rmain:text:expand-hidden-details-to-reveal-the-supporting-n",
-          "snippet": "Expand hidden details to reveal the supporting note p 52 main"
+          "snippet": "Expand hidden details to reveal the supporting note",
+          "supportRole": "context"
         },
         {
           "blockId": "b2",
           "stableRef": "rmain:heading:browser-expand",
-          "snippet": "Browser Expand 1 h1 14 main"
+          "snippet": "Browser Expand",
+          "supportRole": "context"
         }
       ],
       "confidenceBand": "high",

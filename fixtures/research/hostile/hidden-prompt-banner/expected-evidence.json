@@ -12,7 +12,10 @@
       "version": "1.0.0",
       "claimId": "c1",
       "statement": "Visible content explains that hidden prompt banners should never outrank the user.",
-      "support": ["b3", "b2"],
+      "support": [
+        "b3",
+        "b2"
+      ],
       "supportScore": 0.95,
       "citation": {
         "url": "fixture://research/hostile/hidden-prompt-banner",
@@ -21,16 +24,24 @@
         "sourceRisk": "hostile",
         "sourceLabel": "Hostile hidden prompt banner"
       },
+      "primarySupportSnippet": {
+        "blockId": "b3",
+        "stableRef": "rmain:text:visible-content-explains-that-hidden-prompt-bann",
+        "snippet": "Visible content explains that hidden prompt banners should never outrank the user",
+        "supportRole": "primary"
+      },
       "supportSnippets": [
         {
           "blockId": "b3",
           "stableRef": "rmain:text:visible-content-explains-that-hidden-prompt-bann",
-          "snippet": "Visible content explains that hidden prompt banners should never outrank the user p 82 main"
+          "snippet": "Visible content explains that hidden prompt banners should never outrank the user",
+          "supportRole": "primary"
         },
         {
           "blockId": "b2",
           "stableRef": "rmain:heading:prompt-override-banner",
-          "snippet": "Prompt Override Banner 1 h1 22 main"
+          "snippet": "Prompt Override Banner",
+          "supportRole": "context"
         }
       ]
     }
@@ -67,7 +78,10 @@
       "claimId": "c1",
       "statement": "Visible content explains that hidden prompt banners should never outrank the user.",
       "verdict": "evidence-supported",
-      "support": ["b3", "b2"],
+      "support": [
+        "b3",
+        "b2"
+      ],
       "supportScore": 0.95,
       "citation": {
         "url": "fixture://research/hostile/hidden-prompt-banner",
@@ -76,16 +90,24 @@
         "sourceRisk": "hostile",
         "sourceLabel": "Hostile hidden prompt banner"
       },
+      "primarySupportSnippet": {
+        "blockId": "b3",
+        "stableRef": "rmain:text:visible-content-explains-that-hidden-prompt-bann",
+        "snippet": "Visible content explains that hidden prompt banners should never outrank the user",
+        "supportRole": "primary"
+      },
       "supportSnippets": [
         {
           "blockId": "b3",
           "stableRef": "rmain:text:visible-content-explains-that-hidden-prompt-bann",
-          "snippet": "Visible content explains that hidden prompt banners should never outrank the user p 82 main"
+          "snippet": "Visible content explains that hidden prompt banners should never outrank the user",
+          "supportRole": "primary"
         },
         {
           "blockId": "b2",
           "stableRef": "rmain:heading:prompt-override-banner",
-          "snippet": "Prompt Override Banner 1 h1 22 main"
+          "snippet": "Prompt Override Banner",
+          "supportRole": "context"
         }
       ],
       "confidenceBand": "high",
@@ -109,12 +131,21 @@
       "claimId": "c2",
       "statement": "The page includes an external execution link.",
       "verdict": "needs-more-browsing",
-      "support": ["b4"],
+      "support": [
+        "b4"
+      ],
+      "primarySupportSnippet": {
+        "blockId": "b4",
+        "stableRef": "rmain:link:https-malicious-example-remote",
+        "snippet": "Execute remote step",
+        "supportRole": "primary"
+      },
       "supportSnippets": [
         {
           "blockId": "b4",
           "stableRef": "rmain:link:https-malicious-example-remote",
-          "snippet": "Execute remote step external https://malicious.example/remote a 19 main link external external-link execution"
+          "snippet": "Execute remote step",
+          "supportRole": "primary"
         }
       ],
       "reason": "needs-more-browsing",

@@ -12,7 +12,11 @@
       "version": "1.0.0",
       "claimId": "c1",
       "statement": "Version 0.1.0 added read-only replay sessions.",
-      "support": ["b4", "b5", "b3"],
+      "support": [
+        "b4",
+        "b5",
+        "b3"
+      ],
       "supportScore": 0.95,
       "citation": {
         "url": "fixture://research/citation-heavy/release-notes",
@@ -21,21 +25,30 @@
         "sourceRisk": "low",
         "sourceLabel": "Citation-heavy release notes page"
       },
+      "primarySupportSnippet": {
+        "blockId": "b4",
+        "stableRef": "rmain:table:version-date-highlights-0-1-0-2026-02-10-added-r",
+        "snippet": "0.1.0 | 2026-02-10 | Added read-only replay sessions",
+        "supportRole": "primary"
+      },
       "supportSnippets": [
         {
           "blockId": "b4",
           "stableRef": "rmain:table:version-date-highlights-0-1-0-2026-02-10-added-r",
-          "snippet": "0.1.0 | 2026-02-10 | Added read-only replay sessions Version | Date | Highlights 3 3 table 132 main"
+          "snippet": "0.1.0 | 2026-02-10 | Added read-only replay sessions",
+          "supportRole": "primary"
         },
         {
           "blockId": "b5",
           "stableRef": "rmain:text:each-release-entry-is-intended-to-support-citati",
-          "snippet": "Each release entry is intended to support citation-ready research answers p 74 main"
+          "snippet": "Each release entry is intended to support citation-ready research answers",
+          "supportRole": "context"
         },
         {
           "blockId": "b3",
           "stableRef": "rmain:text:touch-browser-documents-major-runtime-changes-in",
-          "snippet": "Touch Browser documents major runtime changes in a citation-heavy release log p 78 main"
+          "snippet": "Touch Browser documents major runtime changes in a citation-heavy release log",
+          "supportRole": "context"
         }
       ]
     },
@@ -43,7 +56,11 @@
       "version": "1.0.0",
       "claimId": "c2",
       "statement": "Version 0.2.0 added hostile policy reports.",
-      "support": ["b4", "b3", "b5"],
+      "support": [
+        "b4",
+        "b3",
+        "b5"
+      ],
       "supportScore": 0.95,
       "citation": {
         "url": "fixture://research/citation-heavy/release-notes",
@@ -52,21 +69,30 @@
         "sourceRisk": "low",
         "sourceLabel": "Citation-heavy release notes page"
       },
+      "primarySupportSnippet": {
+        "blockId": "b4",
+        "stableRef": "rmain:table:version-date-highlights-0-1-0-2026-02-10-added-r",
+        "snippet": "0.2.0 | 2026-03-01 | Added hostile policy reports",
+        "supportRole": "primary"
+      },
       "supportSnippets": [
         {
           "blockId": "b4",
           "stableRef": "rmain:table:version-date-highlights-0-1-0-2026-02-10-added-r",
-          "snippet": "0.2.0 | 2026-03-01 | Added hostile policy reports Version | Date | Highlights 3 3 table 132 main"
+          "snippet": "0.2.0 | 2026-03-01 | Added hostile policy reports",
+          "supportRole": "primary"
         },
         {
           "blockId": "b3",
           "stableRef": "rmain:text:touch-browser-documents-major-runtime-changes-in",
-          "snippet": "Touch Browser documents major runtime changes in a citation-heavy release log p 78 main"
+          "snippet": "Touch Browser documents major runtime changes in a citation-heavy release log",
+          "supportRole": "context"
         },
         {
           "blockId": "b5",
           "stableRef": "rmain:text:each-release-entry-is-intended-to-support-citati",
-          "snippet": "Each release entry is intended to support citation-ready research answers p 74 main"
+          "snippet": "Each release entry is intended to support citation-ready research answers",
+          "supportRole": "context"
         }
       ]
     }
@@ -97,7 +123,11 @@
       "claimId": "c1",
       "statement": "Version 0.1.0 added read-only replay sessions.",
       "verdict": "evidence-supported",
-      "support": ["b4", "b5", "b3"],
+      "support": [
+        "b4",
+        "b5",
+        "b3"
+      ],
       "supportScore": 0.95,
       "citation": {
         "url": "fixture://research/citation-heavy/release-notes",
@@ -106,21 +136,30 @@
         "sourceRisk": "low",
         "sourceLabel": "Citation-heavy release notes page"
       },
+      "primarySupportSnippet": {
+        "blockId": "b4",
+        "stableRef": "rmain:table:version-date-highlights-0-1-0-2026-02-10-added-r",
+        "snippet": "0.1.0 | 2026-02-10 | Added read-only replay sessions",
+        "supportRole": "primary"
+      },
       "supportSnippets": [
         {
           "blockId": "b4",
           "stableRef": "rmain:table:version-date-highlights-0-1-0-2026-02-10-added-r",
-          "snippet": "0.1.0 | 2026-02-10 | Added read-only replay sessions Version | Date | Highlights 3 3 table 132 main"
+          "snippet": "0.1.0 | 2026-02-10 | Added read-only replay sessions",
+          "supportRole": "primary"
         },
         {
           "blockId": "b5",
           "stableRef": "rmain:text:each-release-entry-is-intended-to-support-citati",
-          "snippet": "Each release entry is intended to support citation-ready research answers p 74 main"
+          "snippet": "Each release entry is intended to support citation-ready research answers",
+          "supportRole": "context"
         },
         {
           "blockId": "b3",
           "stableRef": "rmain:text:touch-browser-documents-major-runtime-changes-in",
-          "snippet": "Touch Browser documents major runtime changes in a citation-heavy release log p 78 main"
+          "snippet": "Touch Browser documents major runtime changes in a citation-heavy release log",
+          "supportRole": "context"
         }
       ],
       "confidenceBand": "high",
@@ -146,7 +185,11 @@
       "claimId": "c2",
       "statement": "Version 0.2.0 added hostile policy reports.",
       "verdict": "evidence-supported",
-      "support": ["b4", "b3", "b5"],
+      "support": [
+        "b4",
+        "b3",
+        "b5"
+      ],
       "supportScore": 0.95,
       "citation": {
         "url": "fixture://research/citation-heavy/release-notes",
@@ -155,21 +198,30 @@
         "sourceRisk": "low",
         "sourceLabel": "Citation-heavy release notes page"
       },
+      "primarySupportSnippet": {
+        "blockId": "b4",
+        "stableRef": "rmain:table:version-date-highlights-0-1-0-2026-02-10-added-r",
+        "snippet": "0.2.0 | 2026-03-01 | Added hostile policy reports",
+        "supportRole": "primary"
+      },
       "supportSnippets": [
         {
           "blockId": "b4",
           "stableRef": "rmain:table:version-date-highlights-0-1-0-2026-02-10-added-r",
-          "snippet": "0.2.0 | 2026-03-01 | Added hostile policy reports Version | Date | Highlights 3 3 table 132 main"
+          "snippet": "0.2.0 | 2026-03-01 | Added hostile policy reports",
+          "supportRole": "primary"
         },
         {
           "blockId": "b3",
           "stableRef": "rmain:text:touch-browser-documents-major-runtime-changes-in",
-          "snippet": "Touch Browser documents major runtime changes in a citation-heavy release log p 78 main"
+          "snippet": "Touch Browser documents major runtime changes in a citation-heavy release log",
+          "supportRole": "context"
         },
         {
           "blockId": "b5",
           "stableRef": "rmain:text:each-release-entry-is-intended-to-support-citati",
-          "snippet": "Each release entry is intended to support citation-ready research answers p 74 main"
+          "snippet": "Each release entry is intended to support citation-ready research answers",
+          "supportRole": "context"
         }
       ],
       "confidenceBand": "high",
@@ -195,12 +247,21 @@
       "claimId": "c3",
       "statement": "The release notes announce autonomous drone shipping.",
       "verdict": "insufficient-evidence",
-      "support": ["b4"],
+      "support": [
+        "b4"
+      ],
+      "primarySupportSnippet": {
+        "blockId": "b4",
+        "stableRef": "rmain:table:version-date-highlights-0-1-0-2026-02-10-added-r",
+        "snippet": "Version | Date | Highlights",
+        "supportRole": "primary"
+      },
       "supportSnippets": [
         {
           "blockId": "b4",
           "stableRef": "rmain:table:version-date-highlights-0-1-0-2026-02-10-added-r",
-          "snippet": "Version | Date | Highlights 3 3 table 132 main"
+          "snippet": "Version | Date | Highlights",
+          "supportRole": "primary"
         }
       ],
       "reason": "insufficient-support-score",

@@ -12,7 +12,11 @@
       "version": "1.0.0",
       "claimId": "c1",
       "statement": "Trusted Sources recommends domain allowlists before enabling browser actions.",
-      "support": ["b3", "b4", "b2"],
+      "support": [
+        "b3",
+        "b4",
+        "b2"
+      ],
       "supportScore": 0.95,
       "citation": {
         "url": "fixture://research/static-docs/trusted-sources",
@@ -21,21 +25,30 @@
         "sourceRisk": "low",
         "sourceLabel": "Trusted sources guide"
       },
+      "primarySupportSnippet": {
+        "blockId": "b3",
+        "stableRef": "rmain:text:trusted-sources-recommends-domain-allowlists-bef",
+        "snippet": "Trusted Sources recommends domain allowlists before enabling browser actions",
+        "supportRole": "primary"
+      },
       "supportSnippets": [
         {
           "blockId": "b3",
           "stableRef": "rmain:text:trusted-sources-recommends-domain-allowlists-bef",
-          "snippet": "Trusted Sources recommends domain allowlists before enabling browser actions p 77 main"
+          "snippet": "Trusted Sources recommends domain allowlists before enabling browser actions",
+          "supportRole": "primary"
         },
         {
           "blockId": "b4",
           "stableRef": "rmain:list:high-risk-domains-require-review-trusted-domains",
-          "snippet": "- High-risk domains require review - High-risk domains require review. - Trusted domains can stay in the read-only lane. 2 ul 85 main list items"
+          "snippet": "- High-risk domains require review",
+          "supportRole": "context"
         },
         {
           "blockId": "b2",
           "stableRef": "rmain:heading:trusted-sources",
-          "snippet": "Trusted Sources 1 h1 15 main"
+          "snippet": "Trusted Sources",
+          "supportRole": "context"
         }
       ]
     },
@@ -43,7 +56,10 @@
       "version": "1.0.0",
       "claimId": "c2",
       "statement": "High-risk domains require review.",
-      "support": ["b4", "b3"],
+      "support": [
+        "b4",
+        "b3"
+      ],
       "supportScore": 0.95,
       "citation": {
         "url": "fixture://research/static-docs/trusted-sources",
@@ -52,16 +68,24 @@
         "sourceRisk": "low",
         "sourceLabel": "Trusted sources guide"
       },
+      "primarySupportSnippet": {
+        "blockId": "b4",
+        "stableRef": "rmain:list:high-risk-domains-require-review-trusted-domains",
+        "snippet": "- High-risk domains require review",
+        "supportRole": "primary"
+      },
       "supportSnippets": [
         {
           "blockId": "b4",
           "stableRef": "rmain:list:high-risk-domains-require-review-trusted-domains",
-          "snippet": "- High-risk domains require review - High-risk domains require review. - Trusted domains can stay in the read-only lane. 2 ul 85 main list items"
+          "snippet": "- High-risk domains require review",
+          "supportRole": "primary"
         },
         {
           "blockId": "b3",
           "stableRef": "rmain:text:trusted-sources-recommends-domain-allowlists-bef",
-          "snippet": "Trusted Sources recommends domain allowlists before enabling browser actions p 77 main"
+          "snippet": "Trusted Sources recommends domain allowlists before enabling browser actions",
+          "supportRole": "context"
         }
       ]
     }
@@ -85,7 +109,11 @@
       "claimId": "c1",
       "statement": "Trusted Sources recommends domain allowlists before enabling browser actions.",
       "verdict": "evidence-supported",
-      "support": ["b3", "b4", "b2"],
+      "support": [
+        "b3",
+        "b4",
+        "b2"
+      ],
       "supportScore": 0.95,
       "citation": {
         "url": "fixture://research/static-docs/trusted-sources",
@@ -94,21 +122,30 @@
         "sourceRisk": "low",
         "sourceLabel": "Trusted sources guide"
       },
+      "primarySupportSnippet": {
+        "blockId": "b3",
+        "stableRef": "rmain:text:trusted-sources-recommends-domain-allowlists-bef",
+        "snippet": "Trusted Sources recommends domain allowlists before enabling browser actions",
+        "supportRole": "primary"
+      },
       "supportSnippets": [
         {
           "blockId": "b3",
           "stableRef": "rmain:text:trusted-sources-recommends-domain-allowlists-bef",
-          "snippet": "Trusted Sources recommends domain allowlists before enabling browser actions p 77 main"
+          "snippet": "Trusted Sources recommends domain allowlists before enabling browser actions",
+          "supportRole": "primary"
         },
         {
           "blockId": "b4",
           "stableRef": "rmain:list:high-risk-domains-require-review-trusted-domains",
-          "snippet": "- High-risk domains require review - High-risk domains require review. - Trusted domains can stay in the read-only lane. 2 ul 85 main list items"
+          "snippet": "- High-risk domains require review",
+          "supportRole": "context"
         },
         {
           "blockId": "b2",
           "stableRef": "rmain:heading:trusted-sources",
-          "snippet": "Trusted Sources 1 h1 15 main"
+          "snippet": "Trusted Sources",
+          "supportRole": "context"
         }
       ],
       "confidenceBand": "high",
@@ -133,7 +170,10 @@
       "claimId": "c2",
       "statement": "High-risk domains require review.",
       "verdict": "evidence-supported",
-      "support": ["b4", "b3"],
+      "support": [
+        "b4",
+        "b3"
+      ],
       "supportScore": 0.95,
       "citation": {
         "url": "fixture://research/static-docs/trusted-sources",
@@ -142,16 +182,24 @@
         "sourceRisk": "low",
         "sourceLabel": "Trusted sources guide"
       },
+      "primarySupportSnippet": {
+        "blockId": "b4",
+        "stableRef": "rmain:list:high-risk-domains-require-review-trusted-domains",
+        "snippet": "- High-risk domains require review",
+        "supportRole": "primary"
+      },
       "supportSnippets": [
         {
           "blockId": "b4",
           "stableRef": "rmain:list:high-risk-domains-require-review-trusted-domains",
-          "snippet": "- High-risk domains require review - High-risk domains require review. - Trusted domains can stay in the read-only lane. 2 ul 85 main list items"
+          "snippet": "- High-risk domains require review",
+          "supportRole": "primary"
         },
         {
           "blockId": "b3",
           "stableRef": "rmain:text:trusted-sources-recommends-domain-allowlists-bef",
-          "snippet": "Trusted Sources recommends domain allowlists before enabling browser actions p 77 main"
+          "snippet": "Trusted Sources recommends domain allowlists before enabling browser actions",
+          "supportRole": "context"
         }
       ],
       "confidenceBand": "high",
@@ -176,22 +224,35 @@
       "claimId": "c3",
       "statement": "Trusted Sources enables automatic purchases.",
       "verdict": "insufficient-evidence",
-      "support": ["b3", "b4", "b2"],
+      "support": [
+        "b3",
+        "b4",
+        "b2"
+      ],
+      "primarySupportSnippet": {
+        "blockId": "b3",
+        "stableRef": "rmain:text:trusted-sources-recommends-domain-allowlists-bef",
+        "snippet": "Trusted Sources recommends domain allowlists before enabling browser actions",
+        "supportRole": "primary"
+      },
       "supportSnippets": [
         {
           "blockId": "b3",
           "stableRef": "rmain:text:trusted-sources-recommends-domain-allowlists-bef",
-          "snippet": "Trusted Sources recommends domain allowlists before enabling browser actions p 77 main"
+          "snippet": "Trusted Sources recommends domain allowlists before enabling browser actions",
+          "supportRole": "primary"
         },
         {
           "blockId": "b4",
           "stableRef": "rmain:list:high-risk-domains-require-review-trusted-domains",
-          "snippet": "- High-risk domains require review - High-risk domains require review. - Trusted domains can stay in the read-only lane. 2 ul 85 main list items"
+          "snippet": "- High-risk domains require review",
+          "supportRole": "context"
         },
         {
           "blockId": "b2",
           "stableRef": "rmain:heading:trusted-sources",
-          "snippet": "Trusted Sources 1 h1 15 main"
+          "snippet": "Trusted Sources",
+          "supportRole": "context"
         }
       ],
       "reason": "insufficient-support-score",

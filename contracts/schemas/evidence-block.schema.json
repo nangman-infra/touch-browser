@@ -65,12 +65,35 @@
         }
       }
     },
+    "primarySupportSnippet": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["blockId", "stableRef", "snippet", "supportRole"],
+      "properties": {
+        "blockId": {
+          "type": "string",
+          "pattern": "^b[0-9]+$"
+        },
+        "stableRef": {
+          "type": "string",
+          "pattern": "^r[a-zA-Z0-9:_-]+$"
+        },
+        "snippet": {
+          "type": "string",
+          "minLength": 1
+        },
+        "supportRole": {
+          "type": "string",
+          "enum": ["primary", "context"]
+        }
+      }
+    },
     "supportSnippets": {
       "type": "array",
       "items": {
         "type": "object",
         "additionalProperties": false,
-        "required": ["blockId", "stableRef", "snippet"],
+        "required": ["blockId", "stableRef", "snippet", "supportRole"],
         "properties": {
           "blockId": {
             "type": "string",
@@ -83,6 +106,10 @@
           "snippet": {
             "type": "string",
             "minLength": 1
+          },
+          "supportRole": {
+            "type": "string",
+            "enum": ["primary", "context"]
           }
         }
       }

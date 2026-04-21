@@ -1,6 +1,7 @@
 use serde::Serialize;
 use serde_json::Value;
 
+use super::agent_contract;
 use super::deps::{
     application, infrastructure, ApproveOptions, CliCommand, CliError, ClickOptions, ExpandOptions,
     ExtractOptions, FollowOptions, PaginateOptions, SearchOpenResultOptions, SearchOpenTopOptions,
@@ -36,6 +37,7 @@ fn default_app_context() -> application::context::CliAppContext<'static> {
 pub(crate) fn dispatch(command: CliCommand) -> Result<Value, CliError> {
     let ctx = default_app_context();
     match command {
+        CliCommand::Capabilities => Ok(agent_contract::capabilities_payload()),
         CliCommand::Search(options) => handle_search(&ctx, options),
         CliCommand::SearchOpenResult(options) => handle_search_open_result(&ctx, options),
         CliCommand::SearchOpenTop(options) => handle_search_open_top(&ctx, options),

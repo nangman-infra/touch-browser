@@ -12,7 +12,10 @@
       "version": "1.0.0",
       "claimId": "c1",
       "statement": "Verify you are human before continuing to the research workspace.",
-      "support": ["b3", "b2"],
+      "support": [
+        "b3",
+        "b2"
+      ],
       "supportScore": 0.95,
       "citation": {
         "url": "fixture://research/navigation/browser-captcha-checkpoint",
@@ -21,16 +24,24 @@
         "sourceRisk": "low",
         "sourceLabel": "Browser CAPTCHA checkpoint seed"
       },
+      "primarySupportSnippet": {
+        "blockId": "b3",
+        "stableRef": "rmain:text:verify-you-are-human-before-continuing-to-the-re",
+        "snippet": "Verify you are human before continuing to the research workspace",
+        "supportRole": "primary"
+      },
       "supportSnippets": [
         {
           "blockId": "b3",
           "stableRef": "rmain:text:verify-you-are-human-before-continuing-to-the-re",
-          "snippet": "Verify you are human before continuing to the research workspace p 65 main"
+          "snippet": "Verify you are human before continuing to the research workspace",
+          "supportRole": "primary"
         },
         {
           "blockId": "b2",
           "stableRef": "rmain:heading:security-checkpoint",
-          "snippet": "Security checkpoint 1 h1 19 main"
+          "snippet": "Security checkpoint",
+          "supportRole": "context"
         }
       ]
     }
@@ -61,7 +72,10 @@
       "claimId": "c1",
       "statement": "Verify you are human before continuing to the research workspace.",
       "verdict": "evidence-supported",
-      "support": ["b3", "b2"],
+      "support": [
+        "b3",
+        "b2"
+      ],
       "supportScore": 0.95,
       "citation": {
         "url": "fixture://research/navigation/browser-captcha-checkpoint",
@@ -70,16 +84,24 @@
         "sourceRisk": "low",
         "sourceLabel": "Browser CAPTCHA checkpoint seed"
       },
+      "primarySupportSnippet": {
+        "blockId": "b3",
+        "stableRef": "rmain:text:verify-you-are-human-before-continuing-to-the-re",
+        "snippet": "Verify you are human before continuing to the research workspace",
+        "supportRole": "primary"
+      },
       "supportSnippets": [
         {
           "blockId": "b3",
           "stableRef": "rmain:text:verify-you-are-human-before-continuing-to-the-re",
-          "snippet": "Verify you are human before continuing to the research workspace p 65 main"
+          "snippet": "Verify you are human before continuing to the research workspace",
+          "supportRole": "primary"
         },
         {
           "blockId": "b2",
           "stableRef": "rmain:heading:security-checkpoint",
-          "snippet": "Security checkpoint 1 h1 19 main"
+          "snippet": "Security checkpoint",
+          "supportRole": "context"
         }
       ],
       "confidenceBand": "high",
@@ -104,12 +126,21 @@
       "claimId": "c2",
       "statement": "The page already grants access to the workspace.",
       "verdict": "insufficient-evidence",
-      "support": ["b3"],
+      "support": [
+        "b3"
+      ],
+      "primarySupportSnippet": {
+        "blockId": "b3",
+        "stableRef": "rmain:text:verify-you-are-human-before-continuing-to-the-re",
+        "snippet": "Verify you are human before continuing to the research workspace",
+        "supportRole": "primary"
+      },
       "supportSnippets": [
         {
           "blockId": "b3",
           "stableRef": "rmain:text:verify-you-are-human-before-continuing-to-the-re",
-          "snippet": "Verify you are human before continuing to the research workspace p 65 main"
+          "snippet": "Verify you are human before continuing to the research workspace",
+          "supportRole": "primary"
         }
       ],
       "reason": "insufficient-support-score",

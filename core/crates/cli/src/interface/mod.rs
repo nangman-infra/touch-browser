@@ -1,3 +1,4 @@
+pub(crate) mod agent_contract;
 pub(crate) mod browser_session_parser;
 pub(crate) mod cli_dispatch;
 pub(crate) mod cli_entry;

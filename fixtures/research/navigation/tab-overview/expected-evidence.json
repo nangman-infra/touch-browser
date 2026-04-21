@@ -12,7 +12,11 @@
       "version": "1.0.0",
       "claimId": "c1",
       "statement": "Researchers often open the Architecture tab first.",
-      "support": ["b8", "b3", "b4"],
+      "support": [
+        "b8",
+        "b3",
+        "b4"
+      ],
       "supportScore": 0.95,
       "citation": {
         "url": "fixture://research/navigation/tab-overview",
@@ -21,21 +25,30 @@
         "sourceRisk": "low",
         "sourceLabel": "Navigation tab overview page"
       },
+      "primarySupportSnippet": {
+        "blockId": "b8",
+        "stableRef": "rmain:text:researchers-often-open-the-architecture-tab-firs",
+        "snippet": "Researchers often open the Architecture tab first",
+        "supportRole": "primary"
+      },
       "supportSnippets": [
         {
           "blockId": "b8",
           "stableRef": "rmain:text:researchers-often-open-the-architecture-tab-firs",
-          "snippet": "Researchers often open the Architecture tab first p 50 main"
+          "snippet": "Researchers often open the Architecture tab first",
+          "supportRole": "primary"
         },
         {
           "blockId": "b3",
           "stableRef": "rmain:text:the-runtime-can-scan-documentation-tabs-before-o",
-          "snippet": "The runtime can scan documentation tabs before opening a deeper page p 69 main"
+          "snippet": "The runtime can scan documentation tabs before opening a deeper page",
+          "supportRole": "context"
         },
         {
           "blockId": "b4",
           "stableRef": "rmain:list:architecture-benchmarks-policy",
-          "snippet": "- Architecture - Benchmarks - Policy 3 ul 36 main list items"
+          "snippet": "- Architecture - Benchmarks - Policy",
+          "supportRole": "context"
         }
       ]
     },
@@ -43,7 +56,11 @@
       "version": "1.0.0",
       "claimId": "c2",
       "statement": "The page lists Architecture, Benchmarks, and Policy tabs.",
-      "support": ["b4", "b3", "b8"],
+      "support": [
+        "b4",
+        "b3",
+        "b8"
+      ],
       "supportScore": 0.95,
       "citation": {
         "url": "fixture://research/navigation/tab-overview",
@@ -52,21 +69,30 @@
         "sourceRisk": "low",
         "sourceLabel": "Navigation tab overview page"
       },
+      "primarySupportSnippet": {
+        "blockId": "b4",
+        "stableRef": "rmain:list:architecture-benchmarks-policy",
+        "snippet": "- Architecture - Benchmarks - Policy",
+        "supportRole": "primary"
+      },
       "supportSnippets": [
         {
           "blockId": "b4",
           "stableRef": "rmain:list:architecture-benchmarks-policy",
-          "snippet": "- Architecture - Benchmarks - Policy 3 ul 36 main list items"
+          "snippet": "- Architecture - Benchmarks - Policy",
+          "supportRole": "primary"
         },
         {
           "blockId": "b3",
           "stableRef": "rmain:text:the-runtime-can-scan-documentation-tabs-before-o",
-          "snippet": "The runtime can scan documentation tabs before opening a deeper page p 69 main"
+          "snippet": "The runtime can scan documentation tabs before opening a deeper page",
+          "supportRole": "context"
         },
         {
           "blockId": "b8",
           "stableRef": "rmain:text:researchers-often-open-the-architecture-tab-firs",
-          "snippet": "Researchers often open the Architecture tab first p 50 main"
+          "snippet": "Researchers often open the Architecture tab first",
+          "supportRole": "context"
         }
       ]
     }
@@ -90,7 +116,11 @@
       "claimId": "c1",
       "statement": "Researchers often open the Architecture tab first.",
       "verdict": "evidence-supported",
-      "support": ["b8", "b3", "b4"],
+      "support": [
+        "b8",
+        "b3",
+        "b4"
+      ],
       "supportScore": 0.95,
       "citation": {
         "url": "fixture://research/navigation/tab-overview",
@@ -99,21 +129,30 @@
         "sourceRisk": "low",
         "sourceLabel": "Navigation tab overview page"
       },
+      "primarySupportSnippet": {
+        "blockId": "b8",
+        "stableRef": "rmain:text:researchers-often-open-the-architecture-tab-firs",
+        "snippet": "Researchers often open the Architecture tab first",
+        "supportRole": "primary"
+      },
       "supportSnippets": [
         {
           "blockId": "b8",
           "stableRef": "rmain:text:researchers-often-open-the-architecture-tab-firs",
-          "snippet": "Researchers often open the Architecture tab first p 50 main"
+          "snippet": "Researchers often open the Architecture tab first",
+          "supportRole": "primary"
         },
         {
           "blockId": "b3",
           "stableRef": "rmain:text:the-runtime-can-scan-documentation-tabs-before-o",
-          "snippet": "The runtime can scan documentation tabs before opening a deeper page p 69 main"
+          "snippet": "The runtime can scan documentation tabs before opening a deeper page",
+          "supportRole": "context"
         },
         {
           "blockId": "b4",
           "stableRef": "rmain:list:architecture-benchmarks-policy",
-          "snippet": "- Architecture - Benchmarks - Policy 3 ul 36 main list items"
+          "snippet": "- Architecture - Benchmarks - Policy",
+          "supportRole": "context"
         }
       ],
       "confidenceBand": "high",
@@ -138,7 +177,11 @@
       "claimId": "c2",
       "statement": "The page lists Architecture, Benchmarks, and Policy tabs.",
       "verdict": "evidence-supported",
-      "support": ["b4", "b3", "b8"],
+      "support": [
+        "b4",
+        "b3",
+        "b8"
+      ],
       "supportScore": 0.95,
       "citation": {
         "url": "fixture://research/navigation/tab-overview",
@@ -147,21 +190,30 @@
         "sourceRisk": "low",
         "sourceLabel": "Navigation tab overview page"
       },
+      "primarySupportSnippet": {
+        "blockId": "b4",
+        "stableRef": "rmain:list:architecture-benchmarks-policy",
+        "snippet": "- Architecture - Benchmarks - Policy",
+        "supportRole": "primary"
+      },
       "supportSnippets": [
         {
           "blockId": "b4",
           "stableRef": "rmain:list:architecture-benchmarks-policy",
-          "snippet": "- Architecture - Benchmarks - Policy 3 ul 36 main list items"
+          "snippet": "- Architecture - Benchmarks - Policy",
+          "supportRole": "primary"
         },
         {
           "blockId": "b3",
           "stableRef": "rmain:text:the-runtime-can-scan-documentation-tabs-before-o",
-          "snippet": "The runtime can scan documentation tabs before opening a deeper page p 69 main"
+          "snippet": "The runtime can scan documentation tabs before opening a deeper page",
+          "supportRole": "context"
         },
         {
           "blockId": "b8",
           "stableRef": "rmain:text:researchers-often-open-the-architecture-tab-firs",
-          "snippet": "Researchers often open the Architecture tab first p 50 main"
+          "snippet": "Researchers often open the Architecture tab first",
+          "supportRole": "context"
         }
       ],
       "confidenceBand": "high",

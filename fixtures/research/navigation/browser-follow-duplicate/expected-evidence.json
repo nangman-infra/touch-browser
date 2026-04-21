@@ -12,7 +12,11 @@
       "version": "1.0.0",
       "claimId": "c1",
       "statement": "The page asks the runtime to select the correct Open docs link.",
-      "support": ["b3", "b4", "b2"],
+      "support": [
+        "b3",
+        "b4",
+        "b2"
+      ],
       "supportScore": 0.86,
       "citation": {
         "url": "fixture://research/navigation/browser-follow-duplicate",
@@ -21,21 +25,30 @@
         "sourceRisk": "low",
         "sourceLabel": "Browser-backed duplicate follow disambiguation"
       },
+      "primarySupportSnippet": {
+        "blockId": "b3",
+        "stableRef": "rmain:text:follow-content",
+        "snippet": "Select the correct Open docs link to continue the research flow",
+        "supportRole": "primary"
+      },
       "supportSnippets": [
         {
           "blockId": "b3",
           "stableRef": "rmain:text:follow-content",
-          "snippet": "Select the correct Open docs link to continue the research flow p 64 main"
+          "snippet": "Select the correct Open docs link to continue the research flow",
+          "supportRole": "primary"
         },
         {
           "blockId": "b4",
           "stableRef": "rmain:heading:legacy-docs",
-          "snippet": "Legacy docs 2 h2 11 main"
+          "snippet": "Legacy docs",
+          "supportRole": "context"
         },
         {
           "blockId": "b2",
           "stableRef": "rmain:heading:browser-follow-duplicate",
-          "snippet": "Browser Follow Duplicate 1 h1 24 main"
+          "snippet": "Browser Follow Duplicate",
+          "supportRole": "context"
         }
       ]
     },
@@ -43,7 +56,9 @@
       "version": "1.0.0",
       "claimId": "c2",
       "statement": "Current docs",
-      "support": ["b6"],
+      "support": [
+        "b6"
+      ],
       "supportScore": 0.93,
       "citation": {
         "url": "fixture://research/navigation/browser-follow-duplicate",
@@ -52,11 +67,18 @@
         "sourceRisk": "low",
         "sourceLabel": "Browser-backed duplicate follow disambiguation"
       },
+      "primarySupportSnippet": {
+        "blockId": "b6",
+        "stableRef": "rmain:heading:current-docs",
+        "snippet": "Current docs",
+        "supportRole": "primary"
+      },
       "supportSnippets": [
         {
           "blockId": "b6",
           "stableRef": "rmain:heading:current-docs",
-          "snippet": "Current docs 2 h2 12 main"
+          "snippet": "Current docs",
+          "supportRole": "primary"
         }
       ]
     }
@@ -80,7 +102,11 @@
       "claimId": "c1",
       "statement": "The page asks the runtime to select the correct Open docs link.",
       "verdict": "evidence-supported",
-      "support": ["b3", "b4", "b2"],
+      "support": [
+        "b3",
+        "b4",
+        "b2"
+      ],
       "supportScore": 0.86,
       "citation": {
         "url": "fixture://research/navigation/browser-follow-duplicate",
@@ -89,21 +115,30 @@
         "sourceRisk": "low",
         "sourceLabel": "Browser-backed duplicate follow disambiguation"
       },
+      "primarySupportSnippet": {
+        "blockId": "b3",
+        "stableRef": "rmain:text:follow-content",
+        "snippet": "Select the correct Open docs link to continue the research flow",
+        "supportRole": "primary"
+      },
       "supportSnippets": [
         {
           "blockId": "b3",
           "stableRef": "rmain:text:follow-content",
-          "snippet": "Select the correct Open docs link to continue the research flow p 64 main"
+          "snippet": "Select the correct Open docs link to continue the research flow",
+          "supportRole": "primary"
         },
         {
           "blockId": "b4",
           "stableRef": "rmain:heading:legacy-docs",
-          "snippet": "Legacy docs 2 h2 11 main"
+          "snippet": "Legacy docs",
+          "supportRole": "context"
         },
         {
           "blockId": "b2",
           "stableRef": "rmain:heading:browser-follow-duplicate",
-          "snippet": "Browser Follow Duplicate 1 h1 24 main"
+          "snippet": "Browser Follow Duplicate",
+          "supportRole": "context"
         }
       ],
       "confidenceBand": "medium",
@@ -128,7 +163,9 @@
       "claimId": "c2",
       "statement": "Current docs",
       "verdict": "evidence-supported",
-      "support": ["b6"],
+      "support": [
+        "b6"
+      ],
       "supportScore": 0.93,
       "citation": {
         "url": "fixture://research/navigation/browser-follow-duplicate",
@@ -137,11 +174,18 @@
         "sourceRisk": "low",
         "sourceLabel": "Browser-backed duplicate follow disambiguation"
       },
+      "primarySupportSnippet": {
+        "blockId": "b6",
+        "stableRef": "rmain:heading:current-docs",
+        "snippet": "Current docs",
+        "supportRole": "primary"
+      },
       "supportSnippets": [
         {
           "blockId": "b6",
           "stableRef": "rmain:heading:current-docs",
-          "snippet": "Current docs 2 h2 12 main"
+          "snippet": "Current docs",
+          "supportRole": "primary"
         }
       ],
       "confidenceBand": "high",

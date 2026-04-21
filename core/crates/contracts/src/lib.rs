@@ -189,6 +189,8 @@ pub struct EvidenceBlock {
     #[serde(rename = "supportScore", alias = "confidence")]
     pub support_score: f64,
     pub citation: EvidenceCitation,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub primary_support_snippet: Option<EvidenceSupportSnippet>,
     #[serde(skip_serializing_if = "Vec::is_empty", default)]
     pub support_snippets: Vec<EvidenceSupportSnippet>,
 }
@@ -275,11 +277,24 @@ pub enum EvidenceConfidenceBand {
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
+#[serde(rename_all = "kebab-case")]
+pub enum EvidenceSupportRole {
+    Primary,
+    Context,
+}
+
+fn default_support_role() -> EvidenceSupportRole {
+    EvidenceSupportRole::Context
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
 #[serde(rename_all = "camelCase")]
 pub struct EvidenceSupportSnippet {
     pub block_id: String,
     pub stable_ref: String,
     pub snippet: String,
+    #[serde(default = "default_support_role")]
+    pub support_role: EvidenceSupportRole,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
@@ -319,6 +334,8 @@ pub struct EvidenceClaimOutcome {
     pub support_score: Option<f64>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub citation: Option<EvidenceCitation>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub primary_support_snippet: Option<EvidenceSupportSnippet>,
     #[serde(skip_serializing_if = "Vec::is_empty", default)]
     pub support_snippets: Vec<EvidenceSupportSnippet>,
     #[serde(skip_serializing_if = "Option::is_none")]
@@ -380,6 +397,10 @@ impl EvidenceClaimOutcome {
                 source_risk: SourceRisk::Low,
                 source_label: None,
             }),
+            primary_support_snippet: self
+                .primary_support_snippet
+                .clone()
+                .or_else(|| self.support_snippets.first().cloned()),
             support_snippets: self.support_snippets.clone(),
         })
     }
@@ -433,8 +454,8 @@ impl EvidenceReport {
 mod tests {
     use super::{
         EvidenceBlock, EvidenceCitation, EvidenceClaimOutcome, EvidenceClaimVerdict,
-        EvidenceConfidenceBand, EvidenceMatchSignals, EvidenceSupportSnippet, RiskClass,
-        SnapshotBlockKind, SourceRisk, SourceType, CONTRACT_VERSION,
+        EvidenceConfidenceBand, EvidenceMatchSignals, EvidenceSupportRole, EvidenceSupportSnippet,
+        RiskClass, SnapshotBlockKind, SourceRisk, SourceType, CONTRACT_VERSION,
     };
 
     #[test]
@@ -487,6 +508,7 @@ mod tests {
                 source_risk: SourceRisk::Low,
                 source_label: None,
             },
+            primary_support_snippet: None,
             support_snippets: Vec::new(),
         };
         let value = serde_json::to_value(&block).expect("serialize");
@@ -505,10 +527,17 @@ mod tests {
             support: vec!["b1".to_string()],
             support_score: Some(0.95),
             citation: None,
+            primary_support_snippet: Some(EvidenceSupportSnippet {
+                block_id: "b1".to_string(),
+                stable_ref: "rmain:text:intro".to_string(),
+                snippet: "Example Docs supports HTTP snapshots.".to_string(),
+                support_role: EvidenceSupportRole::Primary,
+            }),
             support_snippets: vec![EvidenceSupportSnippet {
                 block_id: "b1".to_string(),
                 stable_ref: "rmain:text:intro".to_string(),
                 snippet: "Example Docs supports HTTP snapshots.".to_string(),
+                support_role: EvidenceSupportRole::Primary,
             }],
             reason: None,
             confidence_band: Some(EvidenceConfidenceBand::High),
@@ -540,6 +569,14 @@ mod tests {
         assert_eq!(
             value["supportSnippets"][0]["blockId"],
             serde_json::json!("b1")
+        );
+        assert_eq!(
+            value["primarySupportSnippet"]["supportRole"],
+            serde_json::json!("primary")
+        );
+        assert_eq!(
+            value["supportSnippets"][0]["supportRole"],
+            serde_json::json!("primary")
         );
         assert_eq!(
             value["verdictExplanation"],

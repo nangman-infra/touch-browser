@@ -12,7 +12,11 @@
       "version": "1.0.0",
       "claimId": "c1",
       "statement": "Touch Browser compiles web pages into semantic state for research agents.",
-      "support": ["b6", "b5", "b7"],
+      "support": [
+        "b6",
+        "b5",
+        "b7"
+      ],
       "supportScore": 0.95,
       "citation": {
         "url": "fixture://research/static-docs/getting-started",
@@ -21,21 +25,30 @@
         "sourceRisk": "low",
         "sourceLabel": "Static docs getting started page"
       },
+      "primarySupportSnippet": {
+        "blockId": "b6",
+        "stableRef": "rmain:text:touch-browser-compiles-web-pages-into-semantic-s",
+        "snippet": "Touch Browser compiles web pages into semantic state for research agents",
+        "supportRole": "primary"
+      },
       "supportSnippets": [
         {
           "blockId": "b6",
           "stableRef": "rmain:text:touch-browser-compiles-web-pages-into-semantic-s",
-          "snippet": "Touch Browser compiles web pages into semantic state for research agents p 73 main"
+          "snippet": "Touch Browser compiles web pages into semantic state for research agents",
+          "supportRole": "primary"
         },
         {
           "blockId": "b5",
           "stableRef": "rmain:heading:getting-started",
-          "snippet": "Getting Started 1 h1 15 main"
+          "snippet": "Getting Started",
+          "supportRole": "context"
         },
         {
           "blockId": "b7",
           "stableRef": "rmain:heading:quickstart",
-          "snippet": "Quickstart 2 h2 10 main"
+          "snippet": "Quickstart",
+          "supportRole": "context"
         }
       ]
     },
@@ -43,7 +56,11 @@
       "version": "1.0.0",
       "claimId": "c2",
       "statement": "Quickstart includes opening a research URL.",
-      "support": ["b8", "b7", "b6"],
+      "support": [
+        "b8",
+        "b7",
+        "b6"
+      ],
       "supportScore": 0.95,
       "citation": {
         "url": "fixture://research/static-docs/getting-started",
@@ -52,21 +69,30 @@
         "sourceRisk": "low",
         "sourceLabel": "Static docs getting started page"
       },
+      "primarySupportSnippet": {
+        "blockId": "b8",
+        "stableRef": "rmain:list:1-install-the-runtime-2-open-a-research-url-3-ca",
+        "snippet": "1",
+        "supportRole": "primary"
+      },
       "supportSnippets": [
         {
           "blockId": "b8",
           "stableRef": "rmain:list:1-install-the-runtime-2-open-a-research-url-3-ca",
-          "snippet": "1 1. Install the runtime. 2. Open a research URL. 3. Capture a semantic snapshot. 3 ordered ol 79 main list items"
+          "snippet": "1",
+          "supportRole": "primary"
         },
         {
           "blockId": "b7",
           "stableRef": "rmain:heading:quickstart",
-          "snippet": "Quickstart 2 h2 10 main"
+          "snippet": "Quickstart",
+          "supportRole": "context"
         },
         {
           "blockId": "b6",
           "stableRef": "rmain:text:touch-browser-compiles-web-pages-into-semantic-s",
-          "snippet": "Touch Browser compiles web pages into semantic state for research agents p 73 main"
+          "snippet": "Touch Browser compiles web pages into semantic state for research agents",
+          "supportRole": "context"
         }
       ]
     }
@@ -90,7 +116,11 @@
       "claimId": "c1",
       "statement": "Touch Browser compiles web pages into semantic state for research agents.",
       "verdict": "evidence-supported",
-      "support": ["b6", "b5", "b7"],
+      "support": [
+        "b6",
+        "b5",
+        "b7"
+      ],
       "supportScore": 0.95,
       "citation": {
         "url": "fixture://research/static-docs/getting-started",
@@ -99,21 +129,30 @@
         "sourceRisk": "low",
         "sourceLabel": "Static docs getting started page"
       },
+      "primarySupportSnippet": {
+        "blockId": "b6",
+        "stableRef": "rmain:text:touch-browser-compiles-web-pages-into-semantic-s",
+        "snippet": "Touch Browser compiles web pages into semantic state for research agents",
+        "supportRole": "primary"
+      },
       "supportSnippets": [
         {
           "blockId": "b6",
           "stableRef": "rmain:text:touch-browser-compiles-web-pages-into-semantic-s",
-          "snippet": "Touch Browser compiles web pages into semantic state for research agents p 73 main"
+          "snippet": "Touch Browser compiles web pages into semantic state for research agents",
+          "supportRole": "primary"
         },
         {
           "blockId": "b5",
           "stableRef": "rmain:heading:getting-started",
-          "snippet": "Getting Started 1 h1 15 main"
+          "snippet": "Getting Started",
+          "supportRole": "context"
         },
         {
           "blockId": "b7",
           "stableRef": "rmain:heading:quickstart",
-          "snippet": "Quickstart 2 h2 10 main"
+          "snippet": "Quickstart",
+          "supportRole": "context"
         }
       ],
       "confidenceBand": "high",
@@ -138,7 +177,11 @@
       "claimId": "c2",
       "statement": "Quickstart includes opening a research URL.",
       "verdict": "evidence-supported",
-      "support": ["b8", "b7", "b6"],
+      "support": [
+        "b8",
+        "b7",
+        "b6"
+      ],
       "supportScore": 0.95,
       "citation": {
         "url": "fixture://research/static-docs/getting-started",
@@ -147,21 +190,30 @@
         "sourceRisk": "low",
         "sourceLabel": "Static docs getting started page"
       },
+      "primarySupportSnippet": {
+        "blockId": "b8",
+        "stableRef": "rmain:list:1-install-the-runtime-2-open-a-research-url-3-ca",
+        "snippet": "1",
+        "supportRole": "primary"
+      },
       "supportSnippets": [
         {
           "blockId": "b8",
           "stableRef": "rmain:list:1-install-the-runtime-2-open-a-research-url-3-ca",
-          "snippet": "1 1. Install the runtime. 2. Open a research URL. 3. Capture a semantic snapshot. 3 ordered ol 79 main list items"
+          "snippet": "1",
+          "supportRole": "primary"
         },
         {
           "blockId": "b7",
           "stableRef": "rmain:heading:quickstart",
-          "snippet": "Quickstart 2 h2 10 main"
+          "snippet": "Quickstart",
+          "supportRole": "context"
         },
         {
           "blockId": "b6",
           "stableRef": "rmain:text:touch-browser-compiles-web-pages-into-semantic-s",
-          "snippet": "Touch Browser compiles web pages into semantic state for research agents p 73 main"
+          "snippet": "Touch Browser compiles web pages into semantic state for research agents",
+          "supportRole": "context"
         }
       ],
       "confidenceBand": "high",

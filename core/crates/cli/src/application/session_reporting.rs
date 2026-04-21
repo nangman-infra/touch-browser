@@ -115,6 +115,10 @@ fn synthesize_claim_outcomes_from_report(report: &EvidenceReport) -> Vec<Evidenc
             support: claim.support.clone(),
             support_score: Some(claim.support_score),
             citation: Some(claim.citation.clone()),
+            primary_support_snippet: claim
+                .primary_support_snippet
+                .clone()
+                .or_else(|| claim.support_snippets.first().cloned()),
             support_snippets: claim.support_snippets.clone(),
             reason: None,
             confidence_band: None,
@@ -137,6 +141,7 @@ fn synthesize_claim_outcomes_from_report(report: &EvidenceReport) -> Vec<Evidenc
             support: Vec::new(),
             support_score: None,
             citation: None,
+            primary_support_snippet: None,
             support_snippets: Vec::new(),
             reason: Some(claim.reason.clone()),
             confidence_band: None,
@@ -159,6 +164,7 @@ fn synthesize_claim_outcomes_from_report(report: &EvidenceReport) -> Vec<Evidenc
             support: Vec::new(),
             support_score: None,
             citation: None,
+            primary_support_snippet: None,
             support_snippets: Vec::new(),
             reason: Some(claim.reason.clone()),
             confidence_band: None,
@@ -181,6 +187,7 @@ fn synthesize_claim_outcomes_from_report(report: &EvidenceReport) -> Vec<Evidenc
             support: Vec::new(),
             support_score: None,
             citation: None,
+            primary_support_snippet: None,
             support_snippets: Vec::new(),
             reason: Some(claim.reason.clone()),
             confidence_band: None,

@@ -12,7 +12,11 @@
       "version": "1.0.0",
       "claimId": "c1",
       "statement": "The tutorials index links readers to CLI, Policy, and Replay walkthroughs.",
-      "support": ["b6", "b5", "b7"],
+      "support": [
+        "b6",
+        "b5",
+        "b7"
+      ],
       "supportScore": 0.95,
       "citation": {
         "url": "fixture://research/navigation/tutorial-index",
@@ -21,21 +25,30 @@
         "sourceRisk": "low",
         "sourceLabel": "Navigation-heavy tutorial index page"
       },
+      "primarySupportSnippet": {
+        "blockId": "b6",
+        "stableRef": "rmain:text:the-tutorials-index-links-readers-to-cli-policy-",
+        "snippet": "The tutorials index links readers to CLI, Policy, and Replay walkthroughs",
+        "supportRole": "primary"
+      },
       "supportSnippets": [
         {
           "blockId": "b6",
           "stableRef": "rmain:text:the-tutorials-index-links-readers-to-cli-policy-",
-          "snippet": "The tutorials index links readers to CLI, Policy, and Replay walkthroughs p 74 main"
+          "snippet": "The tutorials index links readers to CLI, Policy, and Replay walkthroughs",
+          "supportRole": "primary"
         },
         {
           "blockId": "b5",
           "stableRef": "rmain:heading:tutorial-index",
-          "snippet": "Tutorial Index 1 h1 14 main"
+          "snippet": "Tutorial Index",
+          "supportRole": "context"
         },
         {
           "blockId": "b7",
           "stableRef": "rmain:heading:cli",
-          "snippet": "CLI Tutorial 2 h2 12 main"
+          "snippet": "CLI Tutorial",
+          "supportRole": "context"
         }
       ]
     },
@@ -43,7 +56,11 @@
       "version": "1.0.0",
       "claimId": "c2",
       "statement": "The replay tutorial demonstrates how to replay a saved scenario deterministically.",
-      "support": ["b12", "b11", "b8"],
+      "support": [
+        "b12",
+        "b11",
+        "b8"
+      ],
       "supportScore": 0.95,
       "citation": {
         "url": "fixture://research/navigation/tutorial-index",
@@ -52,21 +69,30 @@
         "sourceRisk": "low",
         "sourceLabel": "Navigation-heavy tutorial index page"
       },
+      "primarySupportSnippet": {
+        "blockId": "b12",
+        "stableRef": "rmain:text:the-replay-tutorial-demonstrates-how-to-replay-a",
+        "snippet": "The replay tutorial demonstrates how to replay a saved scenario deterministically",
+        "supportRole": "primary"
+      },
       "supportSnippets": [
         {
           "blockId": "b12",
           "stableRef": "rmain:text:the-replay-tutorial-demonstrates-how-to-replay-a",
-          "snippet": "The replay tutorial demonstrates how to replay a saved scenario deterministically p 82 main"
+          "snippet": "The replay tutorial demonstrates how to replay a saved scenario deterministically",
+          "supportRole": "primary"
         },
         {
           "blockId": "b11",
           "stableRef": "rmain:heading:replay",
-          "snippet": "Replay Tutorial 2 h2 15 main"
+          "snippet": "Replay Tutorial",
+          "supportRole": "context"
         },
         {
           "blockId": "b8",
           "stableRef": "rmain:text:the-cli-tutorial-shows-how-to-open-a-fixture-and",
-          "snippet": "The CLI tutorial shows how to open a fixture and inspect a policy report p 73 main"
+          "snippet": "The CLI tutorial shows how to open a fixture and inspect a policy report",
+          "supportRole": "context"
         }
       ]
     }
@@ -97,7 +123,11 @@
       "claimId": "c1",
       "statement": "The tutorials index links readers to CLI, Policy, and Replay walkthroughs.",
       "verdict": "evidence-supported",
-      "support": ["b6", "b5", "b7"],
+      "support": [
+        "b6",
+        "b5",
+        "b7"
+      ],
       "supportScore": 0.95,
       "citation": {
         "url": "fixture://research/navigation/tutorial-index",
@@ -106,21 +136,30 @@
         "sourceRisk": "low",
         "sourceLabel": "Navigation-heavy tutorial index page"
       },
+      "primarySupportSnippet": {
+        "blockId": "b6",
+        "stableRef": "rmain:text:the-tutorials-index-links-readers-to-cli-policy-",
+        "snippet": "The tutorials index links readers to CLI, Policy, and Replay walkthroughs",
+        "supportRole": "primary"
+      },
       "supportSnippets": [
         {
           "blockId": "b6",
           "stableRef": "rmain:text:the-tutorials-index-links-readers-to-cli-policy-",
-          "snippet": "The tutorials index links readers to CLI, Policy, and Replay walkthroughs p 74 main"
+          "snippet": "The tutorials index links readers to CLI, Policy, and Replay walkthroughs",
+          "supportRole": "primary"
         },
         {
           "blockId": "b5",
           "stableRef": "rmain:heading:tutorial-index",
-          "snippet": "Tutorial Index 1 h1 14 main"
+          "snippet": "Tutorial Index",
+          "supportRole": "context"
         },
         {
           "blockId": "b7",
           "stableRef": "rmain:heading:cli",
-          "snippet": "CLI Tutorial 2 h2 12 main"
+          "snippet": "CLI Tutorial",
+          "supportRole": "context"
         }
       ],
       "confidenceBand": "high",
@@ -145,7 +184,11 @@
       "claimId": "c2",
       "statement": "The replay tutorial demonstrates how to replay a saved scenario deterministically.",
       "verdict": "evidence-supported",
-      "support": ["b12", "b11", "b8"],
+      "support": [
+        "b12",
+        "b11",
+        "b8"
+      ],
       "supportScore": 0.95,
       "citation": {
         "url": "fixture://research/navigation/tutorial-index",
@@ -154,21 +197,30 @@
         "sourceRisk": "low",
         "sourceLabel": "Navigation-heavy tutorial index page"
       },
+      "primarySupportSnippet": {
+        "blockId": "b12",
+        "stableRef": "rmain:text:the-replay-tutorial-demonstrates-how-to-replay-a",
+        "snippet": "The replay tutorial demonstrates how to replay a saved scenario deterministically",
+        "supportRole": "primary"
+      },
       "supportSnippets": [
         {
           "blockId": "b12",
           "stableRef": "rmain:text:the-replay-tutorial-demonstrates-how-to-replay-a",
-          "snippet": "The replay tutorial demonstrates how to replay a saved scenario deterministically p 82 main"
+          "snippet": "The replay tutorial demonstrates how to replay a saved scenario deterministically",
+          "supportRole": "primary"
         },
         {
           "blockId": "b11",
           "stableRef": "rmain:heading:replay",
-          "snippet": "Replay Tutorial 2 h2 15 main"
+          "snippet": "Replay Tutorial",
+          "supportRole": "context"
         },
         {
           "blockId": "b8",
           "stableRef": "rmain:text:the-cli-tutorial-shows-how-to-open-a-fixture-and",
-          "snippet": "The CLI tutorial shows how to open a fixture and inspect a policy report p 73 main"
+          "snippet": "The CLI tutorial shows how to open a fixture and inspect a policy report",
+          "supportRole": "context"
         }
       ],
       "confidenceBand": "high",
@@ -193,12 +245,21 @@
       "claimId": "c3",
       "statement": "The tutorials index includes purchase automation lessons.",
       "verdict": "insufficient-evidence",
-      "support": ["b6"],
+      "support": [
+        "b6"
+      ],
+      "primarySupportSnippet": {
+        "blockId": "b6",
+        "stableRef": "rmain:text:the-tutorials-index-links-readers-to-cli-policy-",
+        "snippet": "The tutorials index links readers to CLI, Policy, and Replay walkthroughs",
+        "supportRole": "primary"
+      },
       "supportSnippets": [
         {
           "blockId": "b6",
           "stableRef": "rmain:text:the-tutorials-index-links-readers-to-cli-policy-",
-          "snippet": "The tutorials index links readers to CLI, Policy, and Replay walkthroughs p 74 main"
+          "snippet": "The tutorials index links readers to CLI, Policy, and Replay walkthroughs",
+          "supportRole": "primary"
         }
       ],
       "reason": "insufficient-support-score",

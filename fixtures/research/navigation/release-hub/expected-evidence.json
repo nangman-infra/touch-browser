@@ -12,7 +12,11 @@
       "version": "1.0.0",
       "claimId": "c1",
       "statement": "Release Hub groups stable, beta, and archived release tracks.",
-      "support": ["b3", "b4", "b2"],
+      "support": [
+        "b3",
+        "b4",
+        "b2"
+      ],
       "supportScore": 0.95,
       "citation": {
         "url": "fixture://research/navigation/release-hub",
@@ -21,21 +25,30 @@
         "sourceRisk": "low",
         "sourceLabel": "Release hub navigation"
       },
+      "primarySupportSnippet": {
+        "blockId": "b3",
+        "stableRef": "rmain:text:release-hub-groups-stable-beta-and-archived-rele",
+        "snippet": "Release Hub groups stable, beta, and archived release tracks",
+        "supportRole": "primary"
+      },
       "supportSnippets": [
         {
           "blockId": "b3",
           "stableRef": "rmain:text:release-hub-groups-stable-beta-and-archived-rele",
-          "snippet": "Release Hub groups stable, beta, and archived release tracks p 61 main"
+          "snippet": "Release Hub groups stable, beta, and archived release tracks",
+          "supportRole": "primary"
         },
         {
           "blockId": "b4",
           "stableRef": "rmain:list:stable-track-beta-track-archived-track",
-          "snippet": "- Stable track - Beta track - Archived track 3 ul 44 main list items"
+          "snippet": "- Stable track - Beta track - Archived track",
+          "supportRole": "context"
         },
         {
           "blockId": "b2",
           "stableRef": "rmain:heading:release-hub",
-          "snippet": "Release Hub 1 h1 11 main"
+          "snippet": "Release Hub",
+          "supportRole": "context"
         }
       ]
     },
@@ -43,7 +56,11 @@
       "version": "1.0.0",
       "claimId": "c2",
       "statement": "Stable track",
-      "support": ["b4", "b3", "b2"],
+      "support": [
+        "b4",
+        "b3",
+        "b2"
+      ],
       "supportScore": 0.95,
       "citation": {
         "url": "fixture://research/navigation/release-hub",
@@ -52,21 +69,30 @@
         "sourceRisk": "low",
         "sourceLabel": "Release hub navigation"
       },
+      "primarySupportSnippet": {
+        "blockId": "b4",
+        "stableRef": "rmain:list:stable-track-beta-track-archived-track",
+        "snippet": "- Stable track - Beta track - Archived track",
+        "supportRole": "primary"
+      },
       "supportSnippets": [
         {
           "blockId": "b4",
           "stableRef": "rmain:list:stable-track-beta-track-archived-track",
-          "snippet": "- Stable track - Beta track - Archived track 3 ul 44 main list items"
+          "snippet": "- Stable track - Beta track - Archived track",
+          "supportRole": "primary"
         },
         {
           "blockId": "b3",
           "stableRef": "rmain:text:release-hub-groups-stable-beta-and-archived-rele",
-          "snippet": "Release Hub groups stable, beta, and archived release tracks p 61 main"
+          "snippet": "Release Hub groups stable, beta, and archived release tracks",
+          "supportRole": "context"
         },
         {
           "blockId": "b2",
           "stableRef": "rmain:heading:release-hub",
-          "snippet": "Release Hub 1 h1 11 main"
+          "snippet": "Release Hub",
+          "supportRole": "context"
         }
       ]
     }
@@ -90,7 +116,11 @@
       "claimId": "c1",
       "statement": "Release Hub groups stable, beta, and archived release tracks.",
       "verdict": "evidence-supported",
-      "support": ["b3", "b4", "b2"],
+      "support": [
+        "b3",
+        "b4",
+        "b2"
+      ],
       "supportScore": 0.95,
       "citation": {
         "url": "fixture://research/navigation/release-hub",
@@ -99,21 +129,30 @@
         "sourceRisk": "low",
         "sourceLabel": "Release hub navigation"
       },
+      "primarySupportSnippet": {
+        "blockId": "b3",
+        "stableRef": "rmain:text:release-hub-groups-stable-beta-and-archived-rele",
+        "snippet": "Release Hub groups stable, beta, and archived release tracks",
+        "supportRole": "primary"
+      },
       "supportSnippets": [
         {
           "blockId": "b3",
           "stableRef": "rmain:text:release-hub-groups-stable-beta-and-archived-rele",
-          "snippet": "Release Hub groups stable, beta, and archived release tracks p 61 main"
+          "snippet": "Release Hub groups stable, beta, and archived release tracks",
+          "supportRole": "primary"
         },
         {
           "blockId": "b4",
           "stableRef": "rmain:list:stable-track-beta-track-archived-track",
-          "snippet": "- Stable track - Beta track - Archived track 3 ul 44 main list items"
+          "snippet": "- Stable track - Beta track - Archived track",
+          "supportRole": "context"
         },
         {
           "blockId": "b2",
           "stableRef": "rmain:heading:release-hub",
-          "snippet": "Release Hub 1 h1 11 main"
+          "snippet": "Release Hub",
+          "supportRole": "context"
         }
       ],
       "confidenceBand": "high",
@@ -138,7 +177,11 @@
       "claimId": "c2",
       "statement": "Stable track",
       "verdict": "evidence-supported",
-      "support": ["b4", "b3", "b2"],
+      "support": [
+        "b4",
+        "b3",
+        "b2"
+      ],
       "supportScore": 0.95,
       "citation": {
         "url": "fixture://research/navigation/release-hub",
@@ -147,21 +190,30 @@
         "sourceRisk": "low",
         "sourceLabel": "Release hub navigation"
       },
+      "primarySupportSnippet": {
+        "blockId": "b4",
+        "stableRef": "rmain:list:stable-track-beta-track-archived-track",
+        "snippet": "- Stable track - Beta track - Archived track",
+        "supportRole": "primary"
+      },
       "supportSnippets": [
         {
           "blockId": "b4",
           "stableRef": "rmain:list:stable-track-beta-track-archived-track",
-          "snippet": "- Stable track - Beta track - Archived track 3 ul 44 main list items"
+          "snippet": "- Stable track - Beta track - Archived track",
+          "supportRole": "primary"
         },
         {
           "blockId": "b3",
           "stableRef": "rmain:text:release-hub-groups-stable-beta-and-archived-rele",
-          "snippet": "Release Hub groups stable, beta, and archived release tracks p 61 main"
+          "snippet": "Release Hub groups stable, beta, and archived release tracks",
+          "supportRole": "context"
         },
         {
           "blockId": "b2",
           "stableRef": "rmain:heading:release-hub",
-          "snippet": "Release Hub 1 h1 11 main"
+          "snippet": "Release Hub",
+          "supportRole": "context"
         }
       ],
       "confidenceBand": "high",

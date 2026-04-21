@@ -12,7 +12,11 @@
       "version": "1.0.0",
       "claimId": "c1",
       "statement": "Docs Switcher links architecture, policy, and replay references from one index.",
-      "support": ["b3", "b4", "b2"],
+      "support": [
+        "b3",
+        "b4",
+        "b2"
+      ],
       "supportScore": 0.95,
       "citation": {
         "url": "fixture://research/navigation/docs-switcher",
@@ -21,21 +25,30 @@
         "sourceRisk": "low",
         "sourceLabel": "Docs switcher"
       },
+      "primarySupportSnippet": {
+        "blockId": "b3",
+        "stableRef": "rmain:text:docs-switcher-links-architecture-policy-and-repl",
+        "snippet": "Docs Switcher links architecture, policy, and replay references from one index",
+        "supportRole": "primary"
+      },
       "supportSnippets": [
         {
           "blockId": "b3",
           "stableRef": "rmain:text:docs-switcher-links-architecture-policy-and-repl",
-          "snippet": "Docs Switcher links architecture, policy, and replay references from one index p 79 main"
+          "snippet": "Docs Switcher links architecture, policy, and replay references from one index",
+          "supportRole": "primary"
         },
         {
           "blockId": "b4",
           "stableRef": "rmain:list:architecture-reference-policy-reference-replay-r",
-          "snippet": "- Architecture reference - Policy reference - Replay reference 3 ul 62 main list items"
+          "snippet": "- Architecture reference - Policy reference - Replay reference",
+          "supportRole": "context"
         },
         {
           "blockId": "b2",
           "stableRef": "rmain:heading:docs-switcher",
-          "snippet": "Docs Switcher 1 h1 13 main"
+          "snippet": "Docs Switcher",
+          "supportRole": "context"
         }
       ]
     },
@@ -43,7 +56,11 @@
       "version": "1.0.0",
       "claimId": "c2",
       "statement": "Replay reference",
-      "support": ["b4", "b7", "b3"],
+      "support": [
+        "b4",
+        "b7",
+        "b3"
+      ],
       "supportScore": 0.95,
       "citation": {
         "url": "fixture://research/navigation/docs-switcher",
@@ -52,21 +69,30 @@
         "sourceRisk": "low",
         "sourceLabel": "Docs switcher"
       },
+      "primarySupportSnippet": {
+        "blockId": "b4",
+        "stableRef": "rmain:list:architecture-reference-policy-reference-replay-r",
+        "snippet": "- Architecture reference - Policy reference - Replay reference",
+        "supportRole": "primary"
+      },
       "supportSnippets": [
         {
           "blockId": "b4",
           "stableRef": "rmain:list:architecture-reference-policy-reference-replay-r",
-          "snippet": "- Architecture reference - Policy reference - Replay reference 3 ul 62 main list items"
+          "snippet": "- Architecture reference - Policy reference - Replay reference",
+          "supportRole": "primary"
         },
         {
           "blockId": "b7",
           "stableRef": "rmain:link:replay",
-          "snippet": "Replay reference /replay a 16 main link"
+          "snippet": "Replay reference",
+          "supportRole": "context"
         },
         {
           "blockId": "b3",
           "stableRef": "rmain:text:docs-switcher-links-architecture-policy-and-repl",
-          "snippet": "Docs Switcher links architecture, policy, and replay references from one index p 79 main"
+          "snippet": "Docs Switcher links architecture, policy, and replay references from one index",
+          "supportRole": "context"
         }
       ]
     }
@@ -98,7 +124,11 @@
       "claimId": "c1",
       "statement": "Docs Switcher links architecture, policy, and replay references from one index.",
       "verdict": "evidence-supported",
-      "support": ["b3", "b4", "b2"],
+      "support": [
+        "b3",
+        "b4",
+        "b2"
+      ],
       "supportScore": 0.95,
       "citation": {
         "url": "fixture://research/navigation/docs-switcher",
@@ -107,21 +137,30 @@
         "sourceRisk": "low",
         "sourceLabel": "Docs switcher"
       },
+      "primarySupportSnippet": {
+        "blockId": "b3",
+        "stableRef": "rmain:text:docs-switcher-links-architecture-policy-and-repl",
+        "snippet": "Docs Switcher links architecture, policy, and replay references from one index",
+        "supportRole": "primary"
+      },
       "supportSnippets": [
         {
           "blockId": "b3",
           "stableRef": "rmain:text:docs-switcher-links-architecture-policy-and-repl",
-          "snippet": "Docs Switcher links architecture, policy, and replay references from one index p 79 main"
+          "snippet": "Docs Switcher links architecture, policy, and replay references from one index",
+          "supportRole": "primary"
         },
         {
           "blockId": "b4",
           "stableRef": "rmain:list:architecture-reference-policy-reference-replay-r",
-          "snippet": "- Architecture reference - Policy reference - Replay reference 3 ul 62 main list items"
+          "snippet": "- Architecture reference - Policy reference - Replay reference",
+          "supportRole": "context"
         },
         {
           "blockId": "b2",
           "stableRef": "rmain:heading:docs-switcher",
-          "snippet": "Docs Switcher 1 h1 13 main"
+          "snippet": "Docs Switcher",
+          "supportRole": "context"
         }
       ],
       "confidenceBand": "high",
@@ -146,7 +185,11 @@
       "claimId": "c2",
       "statement": "Replay reference",
       "verdict": "evidence-supported",
-      "support": ["b4", "b7", "b3"],
+      "support": [
+        "b4",
+        "b7",
+        "b3"
+      ],
       "supportScore": 0.95,
       "citation": {
         "url": "fixture://research/navigation/docs-switcher",
@@ -155,21 +198,30 @@
         "sourceRisk": "low",
         "sourceLabel": "Docs switcher"
       },
+      "primarySupportSnippet": {
+        "blockId": "b4",
+        "stableRef": "rmain:list:architecture-reference-policy-reference-replay-r",
+        "snippet": "- Architecture reference - Policy reference - Replay reference",
+        "supportRole": "primary"
+      },
       "supportSnippets": [
         {
           "blockId": "b4",
           "stableRef": "rmain:list:architecture-reference-policy-reference-replay-r",
-          "snippet": "- Architecture reference - Policy reference - Replay reference 3 ul 62 main list items"
+          "snippet": "- Architecture reference - Policy reference - Replay reference",
+          "supportRole": "primary"
         },
         {
           "blockId": "b7",
           "stableRef": "rmain:link:replay",
-          "snippet": "Replay reference /replay a 16 main link"
+          "snippet": "Replay reference",
+          "supportRole": "context"
         },
         {
           "blockId": "b3",
           "stableRef": "rmain:text:docs-switcher-links-architecture-policy-and-repl",
-          "snippet": "Docs Switcher links architecture, policy, and replay references from one index p 79 main"
+          "snippet": "Docs Switcher links architecture, policy, and replay references from one index",
+          "supportRole": "context"
         }
       ],
       "confidenceBand": "high",
@@ -194,22 +246,35 @@
       "claimId": "c3",
       "statement": "The docs switcher submits a purchase form.",
       "verdict": "needs-more-browsing",
-      "support": ["b3", "b2", "b4"],
+      "support": [
+        "b3",
+        "b2",
+        "b4"
+      ],
+      "primarySupportSnippet": {
+        "blockId": "b3",
+        "stableRef": "rmain:text:docs-switcher-links-architecture-policy-and-repl",
+        "snippet": "Docs Switcher links architecture, policy, and replay references from one index",
+        "supportRole": "primary"
+      },
       "supportSnippets": [
         {
           "blockId": "b3",
           "stableRef": "rmain:text:docs-switcher-links-architecture-policy-and-repl",
-          "snippet": "Docs Switcher links architecture, policy, and replay references from one index p 79 main"
+          "snippet": "Docs Switcher links architecture, policy, and replay references from one index",
+          "supportRole": "primary"
         },
         {
           "blockId": "b2",
           "stableRef": "rmain:heading:docs-switcher",
-          "snippet": "Docs Switcher 1 h1 13 main"
+          "snippet": "Docs Switcher",
+          "supportRole": "context"
         },
         {
           "blockId": "b4",
           "stableRef": "rmain:list:architecture-reference-policy-reference-replay-r",
-          "snippet": "- Architecture reference - Policy reference - Replay reference 3 ul 62 main list items"
+          "snippet": "- Architecture reference - Policy reference - Replay reference",
+          "supportRole": "context"
         }
       ],
       "reason": "needs-more-browsing",

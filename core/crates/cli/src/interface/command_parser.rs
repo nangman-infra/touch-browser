@@ -11,6 +11,7 @@ pub(crate) fn parse_command(args: &[String]) -> Result<CliCommand, CliError> {
     };
 
     match command_name {
+        "capabilities" | "status" => Ok(CliCommand::Capabilities),
         "search" => Ok(CliCommand::Search(
             search_command_parser::parse_search_options(&args[1..])?,
         )),

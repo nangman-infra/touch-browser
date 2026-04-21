@@ -6,11 +6,14 @@ use touch_browser_runtime::RuntimeError;
 use touch_browser_storage_sqlite::TelemetryError;
 
 #[derive(Debug, Serialize)]
+#[serde(rename_all = "camelCase")]
 pub(crate) struct CliErrorPayload {
     pub(crate) error: String,
     pub(crate) kind: String,
     pub(crate) message: String,
     pub(crate) hint: Option<String>,
+    pub(crate) retryable: bool,
+    pub(crate) suggested_action: Option<String>,
 }
 
 #[derive(Debug, Error)]
@@ -63,76 +66,102 @@ pub(crate) fn emit_cli_error(error: &CliError, json_errors: bool) {
 pub(crate) fn build_cli_error_payload(error: &CliError) -> CliErrorPayload {
     match error {
         CliError::Usage(message) => {
-            let (code, hint) = usage_error_details(message);
+            let (code, hint, retryable, suggested_action) = usage_error_details(message);
             CliErrorPayload {
                 error: code.to_string(),
                 kind: "usage-error".to_string(),
                 message: message.clone(),
                 hint,
+                retryable,
+                suggested_action,
             }
         }
         CliError::Acquisition(_) => CliErrorPayload {
             error: "acquisition-error".to_string(),
             kind: "runtime-error".to_string(),
             message: error.to_string(),
-            hint: None,
+            hint: runtime_error_hint(&error.to_string()),
+            retryable: true,
+            suggested_action: Some("retry-with-browser-or-open-more-specific-source".to_string()),
         },
         CliError::Observation(_) => CliErrorPayload {
             error: "observation-error".to_string(),
             kind: "runtime-error".to_string(),
             message: error.to_string(),
             hint: None,
+            retryable: true,
+            suggested_action: Some("retry-with-larger-budget-or-browser-capture".to_string()),
         },
         CliError::Runtime(_) => CliErrorPayload {
             error: "runtime-error".to_string(),
             kind: "runtime-error".to_string(),
             message: error.to_string(),
-            hint: None,
+            hint: runtime_error_hint(&error.to_string()),
+            retryable: !requires_human_handoff(&error.to_string()),
+            suggested_action: runtime_suggested_action(&error.to_string()),
         },
         CliError::Adapter(_) => CliErrorPayload {
             error: "adapter-error".to_string(),
             kind: "runtime-error".to_string(),
             message: error.to_string(),
             hint: None,
+            retryable: true,
+            suggested_action: Some(
+                "retry-or-human-handoff-if-browser-challenge-persists".to_string(),
+            ),
         },
         CliError::Verifier(_) => CliErrorPayload {
             error: "verifier-error".to_string(),
             kind: "runtime-error".to_string(),
             message: error.to_string(),
             hint: None,
+            retryable: true,
+            suggested_action: Some("retry-without-verifier-or-fix-verifier-command".to_string()),
         },
         CliError::Telemetry(_) => CliErrorPayload {
             error: "telemetry-error".to_string(),
             kind: "runtime-error".to_string(),
             message: error.to_string(),
             hint: None,
+            retryable: true,
+            suggested_action: Some(
+                "retry-with-telemetry-db-override-or-disable-telemetry".to_string(),
+            ),
         },
         CliError::Network(_) => CliErrorPayload {
             error: "network-error".to_string(),
             kind: "runtime-error".to_string(),
             message: error.to_string(),
             hint: None,
+            retryable: true,
+            suggested_action: Some("retry-or-open-a-cached-specific-source".to_string()),
         },
         CliError::Io(_) | CliError::IoPath { .. } => CliErrorPayload {
             error: "io-error".to_string(),
             kind: "runtime-error".to_string(),
             message: error.to_string(),
             hint: None,
+            retryable: true,
+            suggested_action: Some("check-paths-and-permissions-then-retry".to_string()),
         },
         CliError::Json(_) | CliError::JsonPath { .. } => CliErrorPayload {
             error: "json-error".to_string(),
             kind: "runtime-error".to_string(),
             message: error.to_string(),
             hint: None,
+            retryable: true,
+            suggested_action: Some("repair-json-input-or-session-file-then-retry".to_string()),
         },
     }
 }
 
-fn usage_error_details(message: &str) -> (&'static str, Option<String>) {
+fn usage_error_details(message: &str) -> (&'static str, Option<String>, bool, Option<String>) {
     if message.contains("Unknown command") {
         return (
             "unknown-command",
             Some("run `touch-browser --help` to list supported commands.".to_string()),
+            true,
+            Some("call-capabilities".to_string()),
         );
     }
     if message.contains("A target URL or fixture URI is required.") {
@@ -141,6 +170,8 @@ fn usage_error_details(message: &str) -> (&'static str, Option<String>) {
             Some(
                 "provide a target URL or fixture URI as the first positional argument.".to_string(),
             ),
+            true,
+            Some("repair-command".to_string()),
         );
     }
     if message.contains("--claim requires")
@@ -150,6 +181,8 @@ fn usage_error_details(message: &str) -> (&'static str, Option<String>) {
         return (
             "missing-claim",
             Some("provide --claim <statement> at least once.".to_string()),
+            true,
+            Some("repair-command".to_string()),
         );
     }
     if message.contains("--session-file requires")
@@ -158,28 +191,69 @@ fn usage_error_details(message: &str) -> (&'static str, Option<String>) {
         return (
             "missing-session-file",
             Some("provide --session-file <path>.".to_string()),
+            true,
+            Some("repair-command".to_string()),
         );
     }
     if message.contains("--ref requires") || message.contains("requires `--ref <stable-ref>`") {
         return (
             "missing-ref",
             Some("provide --ref <stable-ref>.".to_string()),
+            true,
+            Some("repair-command".to_string()),
         );
     }
     if message.contains("--value requires") || message.contains("requires `--value <text>`") {
-        return ("missing-value", Some("provide --value <text>.".to_string()));
+        return (
+            "missing-value",
+            Some("provide --value <text>.".to_string()),
+            true,
+            Some("repair-command".to_string()),
+        );
     }
     if message.contains("--risk requires") || message.contains("--ack-risk requires") {
         return (
             "missing-risk",
             Some("provide the required risk acknowledgement value.".to_string()),
+            true,
+            Some("repair-command".to_string()),
         );
     }
     if message.contains("uninstall is destructive") {
         return (
             "confirmation-required",
             Some("re-run uninstall with --yes after reviewing the command.".to_string()),
+            false,
+            Some("human-confirmation-required".to_string()),
         );
     }
-    ("usage-error", None)
+    (
+        "usage-error",
+        None,
+        true,
+        Some("repair-command".to_string()),
+    )
+}
+
+fn requires_human_handoff(message: &str) -> bool {
+    let normalized = message.to_ascii_lowercase();
+    ["challenge", "captcha", "mfa", "auth", "high-risk"]
+        .iter()
+        .any(|needle| normalized.contains(needle))
+}
+
+fn runtime_error_hint(message: &str) -> Option<String> {
+    requires_human_handoff(message)
+        .then(|| "stop autonomous retries and hand off to supervised human recovery.".to_string())
+}
+
+fn runtime_suggested_action(message: &str) -> Option<String> {
+    Some(
+        if requires_human_handoff(message) {
+            "human-handoff"
+        } else {
+            "retry-or-open-more-specific-source"
+        }
+        .to_string(),
+    )
 }

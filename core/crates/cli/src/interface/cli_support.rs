@@ -155,6 +155,8 @@ pub(crate) fn usage() -> String {
     [
         "Usage:",
         "  Stable research commands:",
+        "  touch-browser capabilities",
+        "  touch-browser status",
         "  touch-browser search <query> [--engine google|brave] [--headed] [--profile-dir <path>] [--budget <tokens>] [--session-file <path>]",
         "  touch-browser search-open-result --rank <number> [--prefer-official] [--engine google|brave] [--session-file <path>] [--headed]",
         "  touch-browser search-open-top [--limit <count>] [--engine google|brave] [--session-file <path>] [--headed]",
