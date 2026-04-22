@@ -143,6 +143,17 @@ pub(crate) fn compact_agent_output(command: &CliCommand, output: Value) -> Value
         compact["search"] = compact_search(search);
     }
 
+    add_compact_telemetry(command, &mut compact, &output);
+    add_compact_evidence_report(&mut compact, &output);
+    add_compact_snapshot(&mut compact, &output);
+    add_compact_markdown(&mut compact, &output);
+    add_compact_report(&mut compact, &output);
+    add_compact_opened_sessions(&mut compact, &output);
+
+    compact
+}
+
+fn add_compact_telemetry(command: &CliCommand, compact: &mut Value, output: &Value) {
     match command {
         CliCommand::TelemetrySummary => {
             if let Some(summary) = output.get("summary").or_else(|| output.get("result")) {
@@ -159,37 +170,46 @@ pub(crate) fn compact_agent_output(command: &CliCommand, output: Value) -> Value
         }
         _ => {}
     }
+}
 
-    if let Some(report) = primary_evidence_report(&output) {
-        compact["source"] = report.get("source").cloned().unwrap_or(Value::Null);
-        compact["claimOutcomes"] = report
-            .get("claimOutcomes")
-            .cloned()
-            .unwrap_or_else(|| json!([]));
-        compact["citations"] = extract_citations(report);
-    }
+fn add_compact_evidence_report(compact: &mut Value, output: &Value) {
+    let Some(report) = primary_evidence_report(output) else {
+        return;
+    };
 
-    if let Some(snapshot) = primary_snapshot(&output) {
-        compact["source"] = snapshot.get("source").cloned().unwrap_or(Value::Null);
-        compact["workingSetRefs"] = compact_snapshot_refs(snapshot);
-    }
+    compact["source"] = report.get("source").cloned().unwrap_or(Value::Null);
+    compact["claimOutcomes"] = report
+        .get("claimOutcomes")
+        .cloned()
+        .unwrap_or_else(|| json!([]));
+    compact["citations"] = extract_citations(report);
+}
 
+fn add_compact_snapshot(compact: &mut Value, output: &Value) {
+    let Some(snapshot) = primary_snapshot(output) else {
+        return;
+    };
+
+    compact["source"] = snapshot.get("source").cloned().unwrap_or(Value::Null);
+    compact["workingSetRefs"] = compact_snapshot_refs(snapshot);
+}
+
+fn add_compact_markdown(compact: &mut Value, output: &Value) {
     if let Some(markdown) = output
         .get("markdownText")
         .or_else(|| output.get("markdown"))
     {
         compact["markdown"] = markdown.clone();
     }
+}
 
-    if let Some(report) = output.get("report").or_else(|| output.get("result")) {
-        if report.get("claims").is_some() || report.get("notes").is_some() {
-            compact["report"] = report.clone();
-        }
+fn add_compact_report(compact: &mut Value, output: &Value) {
+    let Some(report) = output.get("report").or_else(|| output.get("result")) else {
+        return;
+    };
+    if report.get("claims").is_some() || report.get("notes").is_some() {
+        compact["report"] = report.clone();
     }
-
-    add_compact_opened_sessions(&mut compact, &output);
-
-    compact
 }
 
 fn add_compact_opened_sessions(compact: &mut Value, output: &Value) {
