@@ -122,3 +122,39 @@ jobs:
         env:
           SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
           SONAR_HOST_URL: ${{ vars.SONAR_HOST_URL != '' && vars.SONAR_HOST_URL || secrets.SONAR_HOST_URL }}
+
+      - name: Print SonarQube quality gate details
+        if: failure()
+        env:
+          SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
+          SONAR_HOST_URL: ${{ vars.SONAR_HOST_URL != '' && vars.SONAR_HOST_URL || secrets.SONAR_HOST_URL }}
+        run: |
+          task_file=".scannerwork/report-task.txt"
+          if [ ! -f "${task_file}" ]; then
+            echo "SonarQube task metadata was not generated."
+            exit 0
+          fi
+
+          ce_task_id="$(awk -F= '/^ceTaskId=/ { print $2 }' "${task_file}")"
+          if [ -z "${ce_task_id}" ]; then
+            echo "SonarQube task id was not found."
+            exit 0
+          fi
+
+          task_json="$(curl --fail --silent --user "${SONAR_TOKEN}:" "${SONAR_HOST_URL}/api/ce/task?id=${ce_task_id}")"
+          analysis_id="$(node -e 'const fs = require("node:fs"); const data = JSON.parse(fs.readFileSync(0, "utf8")); process.stdout.write(data.task?.analysisId || "");' <<< "${task_json}")"
+          if [ -z "${analysis_id}" ]; then
+            echo "SonarQube analysis id was not available yet."
+            exit 0
+          fi
+
+          gate_json="$(curl --fail --silent --user "${SONAR_TOKEN}:" "${SONAR_HOST_URL}/api/qualitygates/project_status?analysisId=${analysis_id}")"
+          node -e '
+            const fs = require("node:fs");
+            const data = JSON.parse(fs.readFileSync(0, "utf8"));
+            const projectStatus = data.projectStatus || {};
+            console.log(`SonarQube quality gate: ${projectStatus.status || "UNKNOWN"}`);
+            for (const condition of projectStatus.conditions || []) {
+              console.log(`${condition.status}: ${condition.metricKey} actual=${condition.actualValue ?? "n/a"} threshold=${condition.errorThreshold ?? "n/a"} comparator=${condition.comparator ?? "n/a"}`);
+            }
+          ' <<< "${gate_json}"
