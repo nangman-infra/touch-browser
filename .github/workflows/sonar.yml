@@ -158,3 +158,13 @@ jobs:
               console.log(`${condition.status}: ${condition.metricKey} actual=${condition.actualValue ?? "n/a"} threshold=${condition.errorThreshold ?? "n/a"} comparator=${condition.comparator ?? "n/a"}`);
             }
           ' <<< "${gate_json}"
+
+          issues_json="$(curl --fail --silent --user "${SONAR_TOKEN}:" --get "${SONAR_HOST_URL}/api/issues/search" --data-urlencode "componentKeys=touch-browser" --data-urlencode "resolved=false" --data-urlencode "inNewCodePeriod=true" --data-urlencode "ps=20")"
+          node -e '
+            const fs = require("node:fs");
+            const data = JSON.parse(fs.readFileSync(0, "utf8"));
+            for (const issue of data.issues || []) {
+              const location = `${issue.component || "unknown"}:${issue.line || "n/a"}`;
+              console.log(`SonarQube issue: ${issue.severity || "UNKNOWN"} ${issue.rule || "unknown-rule"} ${location} ${issue.message || ""}`);
+            }
+          ' <<< "${issues_json}"
