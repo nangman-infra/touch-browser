@@ -801,6 +801,51 @@ fn agent_compact_preserves_search_open_top_opened_session_files() {
 }
 
 #[test]
+fn agent_compact_preserves_telemetry_payloads() {
+    let summary_command = CliCommand::TelemetrySummary;
+    let summary_output = json!({
+        "summary": {
+            "totalEvents": 3,
+            "operationCounts": { "open": 2, "extract": 1 }
+        },
+        "result": {
+            "totalEvents": 3,
+            "operationCounts": { "open": 2, "extract": 1 }
+        }
+    });
+    let summary_enriched =
+        crate::interface::agent_contract::enrich_output(&summary_command, summary_output);
+    let summary_compact =
+        crate::interface::agent_contract::compact_agent_output(&summary_command, summary_enriched);
+
+    assert_eq!(summary_compact["summary"]["totalEvents"], 3);
+    assert_eq!(summary_compact["summary"]["operationCounts"]["open"], 2);
+
+    let recent_command = CliCommand::TelemetryRecent(TelemetryRecentOptions { limit: 2 });
+    let recent_output = json!({
+        "limit": 2,
+        "events": [
+            { "operation": "open", "status": "succeeded" },
+            { "operation": "extract", "status": "succeeded" }
+        ],
+        "result": [
+            { "operation": "open", "status": "succeeded" },
+            { "operation": "extract", "status": "succeeded" }
+        ]
+    });
+    let recent_enriched =
+        crate::interface::agent_contract::enrich_output(&recent_command, recent_output);
+    let recent_compact =
+        crate::interface::agent_contract::compact_agent_output(&recent_command, recent_enriched);
+
+    assert_eq!(recent_compact["limit"], 2);
+    assert_eq!(
+        recent_compact["events"].as_array().expect("events").len(),
+        2
+    );
+}
+
+#[test]
 fn dispatches_hostile_policy_command() {
     let output = dispatch(CliCommand::Policy(TargetOptions {
         target: "fixture://research/hostile/fake-system-message".to_string(),

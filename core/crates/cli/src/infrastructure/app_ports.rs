@@ -181,6 +181,10 @@ impl BrowserAutomationPort for DefaultBrowserAutomation {
         &self,
         request: BrowserFollowRequest,
     ) -> Result<BrowserFollowResult, CliError> {
+        if let Some(result) = fixture_follow_result(&request)? {
+            return Ok(result);
+        }
+
         let result = invoke_playwright_follow(PlaywrightFollowParams {
             url: request.source.url,
             html: request.source.html,
@@ -421,6 +425,46 @@ impl BrowserAutomationPort for DefaultBrowserAutomation {
     fn mark_browser_session_interactive(&self, persisted: &mut BrowserCliSession) {
         mark_browser_session_interactive(persisted)
     }
+}
+
+fn fixture_follow_result(
+    request: &BrowserFollowRequest,
+) -> Result<Option<BrowserFollowResult>, CliError> {
+    let Some(href) = request.target.href.as_deref() else {
+        return Ok(None);
+    };
+    if !request.source.source_url.starts_with("fixture://") || href.starts_with('#') {
+        return Ok(None);
+    }
+
+    let catalog = load_fixture_catalog()?;
+    let Some(document) = catalog.resolve_link(&request.source.source_url, href) else {
+        return Ok(None);
+    };
+    if document.source_url == request.source.source_url {
+        return Ok(None);
+    }
+
+    let label = document
+        .source_label
+        .clone()
+        .unwrap_or_else(|| document.source_url.clone());
+    Ok(Some(BrowserFollowResult {
+        followed_ref: request.target.target_ref.clone(),
+        target_text: request.target.text.clone(),
+        target_href: request.target.href.clone(),
+        clicked_text: request.target.text.clone(),
+        final_url: document.source_url.clone(),
+        title: label.clone(),
+        visible_text: label,
+        html: document.html.clone(),
+        load_diagnostics: BrowserLoadDiagnostics {
+            wait_strategy: "fixture-link-alias".to_string(),
+            wait_budget_ms: None,
+            wait_consumed_ms: Some(0),
+            wait_stop_reason: Some("fixture-catalog".to_string()),
+        },
+    }))
 }
 
 impl FixtureCatalogPort for DefaultFixtureCatalog {

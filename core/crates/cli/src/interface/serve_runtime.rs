@@ -400,6 +400,118 @@ mod tests {
     }
 
     #[test]
+    fn runtime_search_open_result_recovers_saved_search_tab_after_open_top_changes_active_tab() {
+        let mut daemon_state = ServeDaemonState::new().expect("daemon state");
+        let created = serve_dispatch(
+            ServeJsonRpcRequest {
+                jsonrpc: "2.0".to_string(),
+                id: json!(1),
+                method: "runtime.session.create".to_string(),
+                params: json!({}),
+            },
+            &mut daemon_state,
+        );
+        let session_id = created["result"]["sessionId"]
+            .as_str()
+            .expect("session id")
+            .to_string();
+        let search_tab_id = created["result"]["activeTabId"]
+            .as_str()
+            .expect("active tab id")
+            .to_string();
+        let search_session_file = daemon_state
+            .session(&session_id)
+            .expect("session")
+            .tabs
+            .get(&search_tab_id)
+            .expect("tab")
+            .session_file
+            .clone();
+        let session = ReadOnlyRuntime::default().start_session("srvsearch002", DEFAULT_OPENED_AT);
+        let latest_search = SearchReport {
+            version: CONTRACT_VERSION.to_string(),
+            generated_at: DEFAULT_OPENED_AT.to_string(),
+            engine: SearchEngine::Google,
+            query: "fixture search".to_string(),
+            search_url: "https://www.google.com/search?q=fixture".to_string(),
+            final_url: "https://www.google.com/search?q=fixture".to_string(),
+            status: SearchReportStatus::Ready,
+            status_detail: None,
+            recovery: None,
+            result_count: 1,
+            results: vec![SearchResultItem {
+                rank: 1,
+                title: "Fixture docs".to_string(),
+                url: "fixture://research/navigation/browser-pagination".to_string(),
+                domain: "fixture.local".to_string(),
+                snippet: Some("Fixture search result".to_string()),
+                stable_ref: None,
+                official_likely: true,
+                selection_score: Some(1.0),
+                recommended_surface: Some("read-view".to_string()),
+            }],
+            recommended_result_ranks: vec![1],
+            next_action_hints: Vec::new(),
+        };
+        let persisted = build_browser_cli_session(
+            &session,
+            512,
+            true,
+            None,
+            None,
+            None,
+            None,
+            Vec::new(),
+            Vec::new(),
+            Some(latest_search),
+        );
+        save_browser_cli_session(&search_session_file, &persisted)
+            .expect("search session should save");
+
+        let top_response = serve_dispatch(
+            ServeJsonRpcRequest {
+                jsonrpc: "2.0".to_string(),
+                id: json!(2),
+                method: "runtime.search.openTop".to_string(),
+                params: json!({
+                    "sessionId": session_id.clone(),
+                    "limit": 1
+                }),
+            },
+            &mut daemon_state,
+        );
+        assert_eq!(
+            top_response["result"]["openedTabs"][0]["tabId"],
+            json!("tab-0002")
+        );
+
+        let result_response = serve_dispatch(
+            ServeJsonRpcRequest {
+                jsonrpc: "2.0".to_string(),
+                id: json!(3),
+                method: "runtime.search.openResult".to_string(),
+                params: json!({
+                    "sessionId": session_id,
+                    "rank": 1
+                }),
+            },
+            &mut daemon_state,
+        );
+
+        assert_eq!(
+            result_response["result"]["searchTabId"],
+            json!(search_tab_id)
+        );
+        assert_eq!(
+            result_response["result"]["selectedResult"]["rank"],
+            json!(1)
+        );
+        assert_eq!(result_response["result"]["openedTabId"], json!("tab-0003"));
+
+        daemon_state.cleanup().expect("cleanup");
+    }
+
+    #[test]
     fn runtime_session_refresh_flattens_diagnostics() {
         let mut daemon_state = ServeDaemonState::new().expect("daemon state");
         let created = serve_dispatch(

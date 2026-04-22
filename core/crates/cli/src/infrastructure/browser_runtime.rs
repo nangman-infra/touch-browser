@@ -362,6 +362,9 @@ pub(crate) fn current_browser_action_source(
 
 pub(crate) fn resolved_browser_source_url(source: &BrowserActionSource, final_url: &str) -> String {
     if source.html.is_some() {
+        if is_fixture_target(final_url) && final_url != source.source_url {
+            return final_url.to_string();
+        }
         return source.source_url.clone();
     }
 

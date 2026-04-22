@@ -77,7 +77,7 @@ pub(crate) fn serve_search_open_result(
     let headed = json_bool(params, "headed");
     ensure_research_headed_allowed(headed.unwrap_or(false), "runtime.search.openResult")?;
     let (resolved_search_tab_id, search_session_file) =
-        daemon_state.opened_tab_file(&session_id, search_tab_id.as_deref())?;
+        daemon_state.latest_search_tab_file(&session_id, search_tab_id.as_deref())?;
     let persisted = load_browser_cli_session(&search_session_file)?;
     let latest_search = persisted.latest_search.ok_or_else(|| {
         CliError::Usage(format!(
@@ -136,7 +136,7 @@ pub(crate) fn serve_search_open_top(
     let headed = json_bool(params, "headed");
     ensure_research_headed_allowed(headed.unwrap_or(false), "runtime.search.openTop")?;
     let (resolved_search_tab_id, search_session_file) =
-        daemon_state.opened_tab_file(&session_id, search_tab_id.as_deref())?;
+        daemon_state.latest_search_tab_file(&session_id, search_tab_id.as_deref())?;
     let persisted = load_browser_cli_session(&search_session_file)?;
     let latest_search = persisted.latest_search.ok_or_else(|| {
         CliError::Usage(format!(

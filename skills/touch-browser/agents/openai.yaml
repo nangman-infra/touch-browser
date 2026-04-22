@@ -1,0 +1,4 @@
+interface:
+  display_name: "Touch Browser"
+  short_description: "Help with touch-browser research workflows"
+  default_prompt: "Use touch-browser for evidence-first public web research and claim verification."

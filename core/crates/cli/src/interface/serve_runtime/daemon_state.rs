@@ -178,6 +178,40 @@ impl ServeDaemonState {
         Ok((tab_id, tab.session_file.clone()))
     }
 
+    pub(crate) fn latest_search_tab_file(
+        &self,
+        session_id: &str,
+        requested_tab_id: Option<&str>,
+    ) -> Result<(String, PathBuf), CliError> {
+        if requested_tab_id.is_some() {
+            return self.opened_tab_file(session_id, requested_tab_id);
+        }
+
+        if let Ok((active_tab_id, active_session_file)) = self.opened_tab_file(session_id, None) {
+            if load_browser_cli_session(&active_session_file)?
+                .latest_search
+                .is_some()
+            {
+                return Ok((active_tab_id, active_session_file));
+            }
+        }
+
+        let session = self.session(session_id)?;
+        for (tab_id, tab) in session.tabs.iter().rev() {
+            if !tab.session_file.is_file() {
+                continue;
+            }
+            if load_browser_cli_session(&tab.session_file)?
+                .latest_search
+                .is_some()
+            {
+                return Ok((tab_id.clone(), tab.session_file.clone()));
+            }
+        }
+
+        self.opened_tab_file(session_id, None)
+    }
+
     pub(crate) fn extend_session_allowlist(
         &mut self,
         session_id: &str,

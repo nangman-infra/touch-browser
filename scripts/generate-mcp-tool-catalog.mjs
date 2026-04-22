@@ -482,8 +482,11 @@ function buildOutputSchemas() {
       sessionId: stringSchema(),
       activeTabId: stringSchema(),
       tab: tabSummarySchema,
+      tabId: stringSchema(),
+      diagnostics: arbitraryObject,
+      result: arbitraryObject,
     },
-    required: ["sessionId", "activeTabId", "tab"],
+    required: ["sessionId"],
   });
 
   const tabListSchema = objectSchema({

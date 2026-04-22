@@ -143,6 +143,23 @@ pub(crate) fn compact_agent_output(command: &CliCommand, output: Value) -> Value
         compact["search"] = compact_search(search);
     }
 
+    match command {
+        CliCommand::TelemetrySummary => {
+            if let Some(summary) = output.get("summary").or_else(|| output.get("result")) {
+                compact["summary"] = summary.clone();
+            }
+        }
+        CliCommand::TelemetryRecent(_) => {
+            if let Some(limit) = output.get("limit") {
+                compact["limit"] = limit.clone();
+            }
+            if let Some(events) = output.get("events").or_else(|| output.get("result")) {
+                compact["events"] = events.clone();
+            }
+        }
+        _ => {}
+    }
+
     if let Some(report) = primary_evidence_report(&output) {
         compact["source"] = report.get("source").cloned().unwrap_or(Value::Null);
         compact["claimOutcomes"] = report

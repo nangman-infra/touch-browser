@@ -10,6 +10,13 @@ This directory is the usage and operations index for the uploaded repository.
 | --- | --- |
 | install and run the project | [INSTALL_AND_OPERATIONS.md](INSTALL_AND_OPERATIONS.md) |
 | understand the CLI surface | [CLI_SURFACE_SPEC.md](CLI_SURFACE_SPEC.md) |
+| inspect CLI and skill best-practice rules before expansion | [CLI_SKILL_BP_SPEC.md](CLI_SKILL_BP_SPEC.md) |
+| inspect the future `touch-browser` skill contract before implementation | [TOUCH_BROWSER_SKILL_SPEC.md](TOUCH_BROWSER_SKILL_SPEC.md) |
+| inspect the repository layer ownership including `skills/` | [REPOSITORY_STRUCTURE_SPEC.md](REPOSITORY_STRUCTURE_SPEC.md) |
+| inspect skill validation and routing best practices | [SKILL_VALIDATION_BP_SPEC.md](SKILL_VALIDATION_BP_SPEC.md) |
+| inspect best practices for the touch-browser routing prompt set | [TOUCH_BROWSER_ROUTING_PROMPTSET_BP_SPEC.md](TOUCH_BROWSER_ROUTING_PROMPTSET_BP_SPEC.md) |
+| inspect the first concrete touch-browser routing prompt catalog | [TOUCH_BROWSER_ROUTING_PROMPT_CATALOG.md](TOUCH_BROWSER_ROUTING_PROMPT_CATALOG.md) |
+| inspect the manual routing review sheet for the prompt catalog | [TOUCH_BROWSER_ROUTING_REVIEW_SHEET.md](TOUCH_BROWSER_ROUTING_REVIEW_SHEET.md) |
 | connect an external agent over MCP | [MCP_BRIDGE_SPEC.md](MCP_BRIDGE_SPEC.md) |
 | install the npm MCP package for local hosts | [../packages/mcp/README.md](../packages/mcp/README.md) |
 | run the pilot package | [PILOT_PACKAGE_SPEC.md](PILOT_PACKAGE_SPEC.md) |

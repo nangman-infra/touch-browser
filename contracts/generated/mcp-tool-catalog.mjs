@@ -2437,12 +2437,21 @@ export const toolCatalog = [
             "snapshotCount",
             "latestSearchResultCount"
           ]
+        },
+        "tabId": {
+          "type": "string"
+        },
+        "diagnostics": {
+          "type": "object",
+          "additionalProperties": true
+        },
+        "result": {
+          "type": "object",
+          "additionalProperties": true
         }
       },
       "required": [
-        "sessionId",
-        "activeTabId",
-        "tab"
+        "sessionId"
       ]
     }
   },

@@ -5,7 +5,7 @@ export const protocolVersion = "2025-06-18";
 export const implementation = {
   name: "touch-browser-mcp-bridge",
   title: "Touch Browser MCP Bridge",
-  version: "0.2.0",
+  version: "0.2.1",
 };
 
 export const toolCatalog = generatedToolCatalog;

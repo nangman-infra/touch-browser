@@ -171,6 +171,45 @@ fn follows_browser_session_and_can_extract_from_persisted_state() {
 }
 
 #[test]
+fn follows_static_fixture_link_through_catalog_alias() {
+    let session_file = temp_session_path("session-follow-static-fixture");
+    open_browser_session(
+        &session_file,
+        "fixture://research/static-docs/getting-started",
+    );
+
+    let follow_output = dispatch(CliCommand::Follow(FollowOptions {
+        session_file: session_file.clone(),
+        target_ref: "rnav:link:pricing".to_string(),
+        headed: false,
+    }))
+    .expect("static fixture link should resolve through the fixture catalog");
+
+    assert_eq!(follow_output["action"]["status"], "succeeded");
+    assert_eq!(
+        follow_output["sessionState"]["currentUrl"],
+        "fixture://research/citation-heavy/pricing"
+    );
+    assert_eq!(
+        follow_output["action"]["diagnostics"]["waitStrategy"],
+        "fixture-link-alias"
+    );
+    assert!(follow_output["action"]["output"]["snapshot"]["blocks"]
+        .as_array()
+        .expect("blocks")
+        .iter()
+        .any(|block| block["text"]
+            .as_str()
+            .unwrap_or_default()
+            .contains("Starter | $29 | 10,000")));
+
+    dispatch(CliCommand::SessionClose(SessionFileOptions {
+        session_file,
+    }))
+    .expect("session close should succeed");
+}
+
+#[test]
 fn preserves_requested_budget_across_browser_follow_actions() {
     let session_file = temp_session_path("session-follow-budget");
     let open_output = open_browser_session_with_budget(
