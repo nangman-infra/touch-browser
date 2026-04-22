@@ -303,9 +303,11 @@ mod tests {
         daemon_state.cleanup().expect("cleanup");
     }
 
-    #[test]
-    fn runtime_search_open_top_inherits_persisted_budget_and_flattens_diagnostics() {
-        let mut daemon_state = ServeDaemonState::new().expect("daemon state");
+    fn create_session_with_latest_search(
+        daemon_state: &mut ServeDaemonState,
+        runtime_session_id: &str,
+        requested_budget: usize,
+    ) -> (String, String) {
         let created = serve_dispatch(
             ServeJsonRpcRequest {
                 jsonrpc: "2.0".to_string(),
@@ -313,7 +315,7 @@ mod tests {
                 method: "runtime.session.create".to_string(),
                 params: json!({}),
             },
-            &mut daemon_state,
+            daemon_state,
         );
         let session_id = created["result"]["sessionId"]
             .as_str()
@@ -331,7 +333,8 @@ mod tests {
             .expect("tab")
             .session_file
             .clone();
-        let session = ReadOnlyRuntime::default().start_session("srvsearch001", DEFAULT_OPENED_AT);
+        let session =
+            ReadOnlyRuntime::default().start_session(runtime_session_id, DEFAULT_OPENED_AT);
         let latest_search = SearchReport {
             version: CONTRACT_VERSION.to_string(),
             generated_at: DEFAULT_OPENED_AT.to_string(),
@@ -359,7 +362,7 @@ mod tests {
         };
         let persisted = build_browser_cli_session(
             &session,
-            2048,
+            requested_budget,
             true,
             None,
             None,
@@ -371,6 +374,14 @@ mod tests {
         );
         save_browser_cli_session(&search_session_file, &persisted)
             .expect("search session should save");
+        (session_id, tab_id)
+    }
+
+    #[test]
+    fn runtime_search_open_top_inherits_persisted_budget_and_flattens_diagnostics() {
+        let mut daemon_state = ServeDaemonState::new().expect("daemon state");
+        let (session_id, tab_id) =
+            create_session_with_latest_search(&mut daemon_state, "srvsearch001", 2048);
 
         let response = serve_dispatch(
             ServeJsonRpcRequest {
@@ -402,71 +413,8 @@ mod tests {
     #[test]
     fn runtime_search_open_result_recovers_saved_search_tab_after_open_top_changes_active_tab() {
         let mut daemon_state = ServeDaemonState::new().expect("daemon state");
-        let created = serve_dispatch(
-            ServeJsonRpcRequest {
-                jsonrpc: "2.0".to_string(),
-                id: json!(1),
-                method: "runtime.session.create".to_string(),
-                params: json!({}),
-            },
-            &mut daemon_state,
-        );
-        let session_id = created["result"]["sessionId"]
-            .as_str()
-            .expect("session id")
-            .to_string();
-        let search_tab_id = created["result"]["activeTabId"]
-            .as_str()
-            .expect("active tab id")
-            .to_string();
-        let search_session_file = daemon_state
-            .session(&session_id)
-            .expect("session")
-            .tabs
-            .get(&search_tab_id)
-            .expect("tab")
-            .session_file
-            .clone();
-        let session = ReadOnlyRuntime::default().start_session("srvsearch002", DEFAULT_OPENED_AT);
-        let latest_search = SearchReport {
-            version: CONTRACT_VERSION.to_string(),
-            generated_at: DEFAULT_OPENED_AT.to_string(),
-            engine: SearchEngine::Google,
-            query: "fixture search".to_string(),
-            search_url: "https://www.google.com/search?q=fixture".to_string(),
-            final_url: "https://www.google.com/search?q=fixture".to_string(),
-            status: SearchReportStatus::Ready,
-            status_detail: None,
-            recovery: None,
-            result_count: 1,
-            results: vec![SearchResultItem {
-                rank: 1,
-                title: "Fixture docs".to_string(),
-                url: "fixture://research/navigation/browser-pagination".to_string(),
-                domain: "fixture.local".to_string(),
-                snippet: Some("Fixture search result".to_string()),
-                stable_ref: None,
-                official_likely: true,
-                selection_score: Some(1.0),
-                recommended_surface: Some("read-view".to_string()),
-            }],
-            recommended_result_ranks: vec![1],
-            next_action_hints: Vec::new(),
-        };
-        let persisted = build_browser_cli_session(
-            &session,
-            512,
-            true,
-            None,
-            None,
-            None,
-            None,
-            Vec::new(),
-            Vec::new(),
-            Some(latest_search),
-        );
-        save_browser_cli_session(&search_session_file, &persisted)
-            .expect("search session should save");
+        let (session_id, search_tab_id) =
+            create_session_with_latest_search(&mut daemon_state, "srvsearch002", 512);
 
         let top_response = serve_dispatch(
             ServeJsonRpcRequest {
