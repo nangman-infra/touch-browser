@@ -800,77 +800,17 @@ impl CdpBrowser {
             "action": action_payload(action),
         });
         let frames = self.frame_descriptors()?;
-        let mut best_frame: Option<&CdpFrameDescriptor> = None;
-        let mut best_value: Option<Value> = None;
-        let probe_expression = format!(
-            "({})(JSON.parse({}))",
-            ACTION_PROBE_SCRIPT,
-            serde_json::to_string(&payload.to_string())?
-        );
-        if let Some(main_frame) = frames.first() {
-            if let Ok(value) = self.evaluate_value(&probe_expression) {
-                let score = value
-                    .get("score")
-                    .and_then(Value::as_i64)
-                    .unwrap_or_default();
-                if score > 0 {
-                    best_frame = Some(main_frame);
-                    best_value = Some(value);
-                }
-            }
-        }
-        for frame in frames.iter().skip(1) {
-            let Ok(value) = self.evaluate_frame_value(&frame.id, &probe_expression) else {
-                continue;
-            };
-            let score = value
-                .get("score")
-                .and_then(Value::as_i64)
-                .unwrap_or_default();
-            if score <= 0 {
-                continue;
-            }
-            let replace = match best_value
-                .as_ref()
-                .and_then(|current| current.get("score"))
-                .and_then(Value::as_i64)
-            {
-                Some(current) => score > current,
-                None => true,
-            };
-            if replace {
-                best_frame = Some(frame);
-                best_value = Some(value);
-            }
-        }
-
-        let value = if let Some(frame) = best_frame {
-            let expression = format!(
-                "({})(JSON.parse({}))",
-                ACTION_PERFORM_SCRIPT,
-                serde_json::to_string(&payload.to_string())?
-            );
-            if frames
-                .first()
-                .is_some_and(|main_frame| main_frame.id == frame.id)
-            {
-                self.evaluate_value(&expression)?
-            } else {
-                self.evaluate_frame_value(&frame.id, &expression)?
-            }
-        } else if matches!(action, CdpActionKind::Follow) && target.href.is_some() {
-            let expression = format!(
-                "({})(JSON.parse({}))",
-                ACTION_PERFORM_SCRIPT,
-                serde_json::to_string(&payload.to_string())?
-            );
-            self.evaluate_value(&expression)?
-        } else {
-            return Err(CliError::Adapter(format!(
-                "CDP action target was not found for `{}`.",
-                target.text
-            )));
-        };
+        let probe_expression = action_expression(ACTION_PROBE_SCRIPT, &payload)?;
+        let best_frame = select_best_action_frame(self, &frames, &probe_expression);
+        let perform_expression = action_expression(ACTION_PERFORM_SCRIPT, &payload)?;
+        let value = perform_action_in_best_frame(
+            self,
+            &frames,
+            best_frame.as_ref(),
+            &perform_expression,
+            action,
+            target,
+        )?;
         Ok(CdpActionDetails {
             target_text: value
                 .get("targetText")
@@ -1243,6 +1183,86 @@ fn action_payload(action: &CdpActionKind) -> Value {
     }
 }
 
+fn action_expression(script: &str, payload: &Value) -> Result<String, CliError> {
+    Ok(format!(
+        "({})(JSON.parse({}))",
+        script,
+        serde_json::to_string(&payload.to_string())?
+    ))
+}
+
+fn action_probe_score(value: &Value) -> i64 {
+    value
+        .get("score")
+        .and_then(Value::as_i64)
+        .unwrap_or_default()
+}
+
+fn probe_action_frame(
+    browser: &mut CdpBrowser,
+    frame: &CdpFrameDescriptor,
+    probe_expression: &str,
+    main_frame_id: Option<&str>,
+) -> Option<(CdpFrameDescriptor, i64)> {
+    let value = if main_frame_id.is_some_and(|id| id == frame.id) {
+        browser.evaluate_value(probe_expression).ok()?
+    } else {
+        browser
+            .evaluate_frame_value(&frame.id, probe_expression)
+            .ok()?
+    };
+    let score = action_probe_score(&value);
+    (score > 0).then(|| (frame.clone(), score))
+}
+
+fn select_best_action_frame(
+    browser: &mut CdpBrowser,
+    frames: &[CdpFrameDescriptor],
+    probe_expression: &str,
+) -> Option<CdpFrameDescriptor> {
+    let main_frame_id = frames.first().map(|frame| frame.id.as_str());
+    let mut best_match: Option<(CdpFrameDescriptor, i64)> = None;
+
+    for frame in frames {
+        let Some(candidate) = probe_action_frame(browser, frame, probe_expression, main_frame_id)
+        else {
+            continue;
+        };
+        if best_match
+            .as_ref()
+            .is_none_or(|(_, current_score)| candidate.1 > *current_score)
+        {
+            best_match = Some(candidate);
+        }
+    }
+
+    best_match.map(|(frame, _)| frame)
+}
+
+fn perform_action_in_best_frame(
+    browser: &mut CdpBrowser,
+    frames: &[CdpFrameDescriptor],
+    best_frame: Option<&CdpFrameDescriptor>,
+    perform_expression: &str,
+    action: &CdpActionKind,
+    target: &BrowserSnapshotReference,
+) -> Result<Value, CliError> {
+    let main_frame_id = frames.first().map(|frame| frame.id.as_str());
+    if let Some(frame) = best_frame {
+        if main_frame_id.is_some_and(|id| id == frame.id) {
+            return browser.evaluate_value(perform_expression);
+        }
+        return browser.evaluate_frame_value(&frame.id, perform_expression);
+    }
+    if matches!(action, CdpActionKind::Follow) && target.href.is_some() {
+        return browser.evaluate_value(perform_expression);
+    }
+    Err(CliError::Adapter(format!(
+        "CDP action target was not found for `{}`.",
+        target.text
+    )))
+}
+
 #[derive(Debug)]
 struct SearchIdentityPayload {
     languages: Vec<String>,
@@ -1358,59 +1378,71 @@ struct SearchPlatformProfile {
 
 fn search_platform_profile(architecture: &str, bitness: &str) -> SearchPlatformProfile {
     match env::consts::OS {
-        "windows" => SearchPlatformProfile {
-            navigator_platform: "Win32".to_string(),
-            user_agent_fragment: if architecture == "arm" {
-                "Windows NT 10.0; Win64; ARM64".to_string()
-            } else if bitness == "64" {
-                "Windows NT 10.0; Win64; x64".to_string()
-            } else {
-                "Windows NT 10.0".to_string()
-            },
-            user_agent_data_platform: "Windows".to_string(),
-            platform_version: "15.0.0".to_string(),
-            web_gl_vendor: "Google Inc. (Microsoft)".to_string(),
-            web_gl_renderer: if architecture == "arm" {
-                "ANGLE (Qualcomm Adreno Direct3D11 vs_5_0 ps_5_0)".to_string()
-            } else {
-                "ANGLE (Intel, Intel(R) UHD Graphics Direct3D11 vs_5_0 ps_5_0)".to_string()
-            },
+        "windows" => windows_search_platform_profile(architecture, bitness),
+        "linux" => linux_search_platform_profile(architecture),
+        _ => macos_search_platform_profile(architecture),
+    }
+}
+
+fn windows_search_platform_profile(architecture: &str, bitness: &str) -> SearchPlatformProfile {
+    SearchPlatformProfile {
+        navigator_platform: "Win32".to_string(),
+        user_agent_fragment: if architecture == "arm" {
+            "Windows NT 10.0; Win64; ARM64".to_string()
+        } else if bitness == "64" {
+            "Windows NT 10.0; Win64; x64".to_string()
+        } else {
+            "Windows NT 10.0".to_string()
         },
-        "linux" => SearchPlatformProfile {
-            navigator_platform: if architecture == "arm" {
-                "Linux armv8l".to_string()
-            } else {
-                "Linux x86_64".to_string()
-            },
-            user_agent_fragment: if architecture == "arm" {
-                "X11; Linux aarch64".to_string()
-            } else {
-                "X11; Linux x86_64".to_string()
-            },
-            user_agent_data_platform: "Linux".to_string(),
-            platform_version: "6.0.0".to_string(),
-            web_gl_vendor: "Google Inc. (Linux)".to_string(),
-            web_gl_renderer: if architecture == "arm" {
-                "ANGLE (ARM Mali OpenGL ES)".to_string()
-            } else {
-                "ANGLE (Intel, Mesa Intel(R) Graphics OpenGL)".to_string()
-            },
+        user_agent_data_platform: "Windows".to_string(),
+        platform_version: "15.0.0".to_string(),
+        web_gl_vendor: "Google Inc. (Microsoft)".to_string(),
+        web_gl_renderer: if architecture == "arm" {
+            "ANGLE (Qualcomm Adreno Direct3D11 vs_5_0 ps_5_0)".to_string()
+        } else {
+            "ANGLE (Intel, Intel(R) UHD Graphics Direct3D11 vs_5_0 ps_5_0)".to_string()
         },
-        _ => SearchPlatformProfile {
-            navigator_platform: "MacIntel".to_string(),
-            user_agent_fragment: if architecture == "arm" {
-                "Macintosh; ARM Mac OS X 14_0_0".to_string()
-            } else {
-                "Macintosh; Intel Mac OS X 10_15_7".to_string()
-            },
-            user_agent_data_platform: "macOS".to_string(),
-            platform_version: "14.0.0".to_string(),
-            web_gl_vendor: "Intel Inc.".to_string(),
-            web_gl_renderer: if architecture == "arm" {
-                "Apple GPU".to_string()
-            } else {
-                "Intel Iris OpenGL Engine".to_string()
-            },
+    }
+}
+
+fn linux_search_platform_profile(architecture: &str) -> SearchPlatformProfile {
+    SearchPlatformProfile {
+        navigator_platform: if architecture == "arm" {
+            "Linux armv8l".to_string()
+        } else {
+            "Linux x86_64".to_string()
+        },
+        user_agent_fragment: if architecture == "arm" {
+            "X11; Linux aarch64".to_string()
+        } else {
+            "X11; Linux x86_64".to_string()
+        },
+        user_agent_data_platform: "Linux".to_string(),
+        platform_version: "6.0.0".to_string(),
+        web_gl_vendor: "Google Inc. (Linux)".to_string(),
+        web_gl_renderer: if architecture == "arm" {
+            "ANGLE (ARM Mali OpenGL ES)".to_string()
+        } else {
+            "ANGLE (Intel, Mesa Intel(R) Graphics OpenGL)".to_string()
+        },
+    }
+}
+
+fn macos_search_platform_profile(architecture: &str) -> SearchPlatformProfile {
+    SearchPlatformProfile {
+        navigator_platform: "MacIntel".to_string(),
+        user_agent_fragment: if architecture == "arm" {
+            "Macintosh; ARM Mac OS X 14_0_0".to_string()
+        } else {
+            "Macintosh; Intel Mac OS X 10_15_7".to_string()
+        },
+        user_agent_data_platform: "macOS".to_string(),
+        platform_version: "14.0.0".to_string(),
+        web_gl_vendor: "Intel Inc.".to_string(),
+        web_gl_renderer: if architecture == "arm" {
+            "Apple GPU".to_string()
+        } else {
+            "Intel Iris OpenGL Engine".to_string()
         },
     }
 }

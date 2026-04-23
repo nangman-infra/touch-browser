@@ -8,6 +8,29 @@ const repoRoot = path.resolve(import.meta.dirname, "..");
 const outputDir = path.join(repoRoot, "output", "browser-adapter-parity");
 const binary = path.join(repoRoot, "target", "debug", "touch-browser");
 
+function resolveCargoExecutable() {
+  const candidates = [
+    process.env.CARGO,
+    process.env.CARGO_HOME
+      ? path.join(process.env.CARGO_HOME, "bin", "cargo")
+      : null,
+    path.join(os.homedir(), ".cargo", "bin", "cargo"),
+    "/usr/local/bin/cargo",
+    "/opt/homebrew/bin/cargo",
+    "/usr/bin/cargo",
+  ];
+
+  for (const candidate of candidates) {
+    if (candidate && path.isAbsolute(candidate) && fs.existsSync(candidate)) {
+      return candidate;
+    }
+  }
+
+  throw new Error(
+    "Could not resolve an absolute cargo path. Set CARGO to an absolute executable path.",
+  );
+}
+
 const cases = [
   {
     name: "snapshot-static-docs",
@@ -186,7 +209,7 @@ const cases = [
 ];
 
 fs.mkdirSync(outputDir, { recursive: true });
-execFileSync("cargo", ["build", "-p", "touch-browser-cli"], {
+execFileSync(resolveCargoExecutable(), ["build", "-p", "touch-browser-cli"], {
   cwd: repoRoot,
   stdio: "inherit",
 });

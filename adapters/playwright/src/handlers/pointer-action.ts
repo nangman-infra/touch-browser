@@ -166,7 +166,34 @@ async function captureDownloadEvidence(
 }
 
 function sanitizeDownloadFilename(filename: string): string {
-  const sanitized = filename.replace(/[^\w.-]+/g, "_").replace(/^_+|_+$/g, "");
+  let sanitized = "";
+  let pendingSeparator = false;
+
+  for (const character of filename) {
+    const isAllowed =
+      (character >= "a" && character <= "z") ||
+      (character >= "A" && character <= "Z") ||
+      (character >= "0" && character <= "9") ||
+      character === "_" ||
+      character === "." ||
+      character === "-";
+
+    if (isAllowed) {
+      sanitized +=
+        pendingSeparator && sanitized.length > 0 ? `_${character}` : character;
+      pendingSeparator = false;
+      continue;
+    }
+
+    pendingSeparator = true;
+  }
+
+  while (sanitized.startsWith("_")) {
+    sanitized = sanitized.slice(1);
+  }
+  while (sanitized.endsWith("_")) {
+    sanitized = sanitized.slice(0, -1);
+  }
   return sanitized || "download.bin";
 }
 

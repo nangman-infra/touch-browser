@@ -33,13 +33,13 @@ type ClosedShadowActionResult = {
 
 type EvaluateTarget = Page | Frame;
 
-const DOM_INSTRUMENTATION_SCRIPT = `
+const DOM_INSTRUMENTATION_SCRIPT = String.raw`
 (() => {
   if (globalThis.__touchBrowserDomInstrumentationInstalled) {
     return;
   }
   const registry = [];
-  const normalize = (value) => String(value || "").replace(/\\s+/g, " ").trim();
+  const normalize = (value) => String(value || "").replace(/\s+/g, " ").trim();
   const originalAttachShadow = Element.prototype.attachShadow;
   const elementPath = (element) => {
     const parts = [];
