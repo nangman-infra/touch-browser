@@ -1,3 +1,4 @@
+import http from "node:http";
 import { describe, expect, it } from "vitest";
 
 import {
@@ -7,6 +8,148 @@ import {
 } from "../support/adapter-helpers.js";
 
 describe("playwright adapter browser snapshots", () => {
+  it("captures cross-origin iframe content in browser snapshots", async () => {
+    const childServer = await startServer((request, response) => {
+      if (request.url === "/child") {
+        response.writeHead(200, { "content-type": "text/html; charset=utf-8" });
+        response.end(
+          "<!doctype html><html><body><main><h2>Frame Article</h2><p>Cross origin iframe text.</p></main></body></html>",
+        );
+        return;
+      }
+      response.writeHead(404).end("missing");
+    });
+    const parentServer = await startServer((request, response) => {
+      if (request.url === "/parent") {
+        response.writeHead(200, { "content-type": "text/html; charset=utf-8" });
+        response.end(
+          `<!doctype html><html><body><main><h1>Parent</h1><iframe src="${childServer.url}/child" title="docs"></iframe></main></body></html>`,
+        );
+        return;
+      }
+      response.writeHead(404).end("missing");
+    });
+
+    try {
+      const response = await handleRequest({
+        jsonrpc: "2.0",
+        id: "req-cross-origin-iframe",
+        method: "browser.snapshot",
+        params: {
+          url: `${parentServer.url}/parent`,
+          budget: 900,
+        },
+      });
+
+      const success = expectJsonRpcSuccess(response);
+      expect(success.result).toMatchObject({
+        visibleText: expect.stringContaining("Cross origin iframe text."),
+        html: expect.stringContaining("data-touch-browser-frame-url"),
+      });
+    } finally {
+      await Promise.all([
+        closeServer(parentServer.server),
+        closeServer(childServer.server),
+      ]);
+    }
+  }, 15_000);
+
+  it("captures closed shadow DOM content in browser snapshots", async () => {
+    const response = await handleRequest({
+      jsonrpc: "2.0",
+      id: "req-closed-shadow",
+      method: "browser.snapshot",
+      params: {
+        html: `
+          <!doctype html>
+          <html>
+            <body>
+              <main>
+                <h1>Closed Shadow Host</h1>
+                <closed-card></closed-card>
+                <script>
+                  customElements.define("closed-card", class extends HTMLElement {
+                    connectedCallback() {
+                      const root = this.attachShadow({ mode: "closed" });
+                      root.innerHTML = "<button>Shadow CTA</button><p>Hidden shadow text.</p>";
+                    }
+                  });
+                </script>
+              </main>
+            </body>
+          </html>
+        `,
+        budget: 700,
+      },
+    });
+
+    const success = expectJsonRpcSuccess(response);
+    expect(success.result).toMatchObject({
+      visibleText: expect.stringContaining("Hidden shadow text."),
+      html: expect.stringContaining("data-touch-browser-closed-shadow-root"),
+    });
+  });
+
+  it("captures closed shadow DOM content inside cross-origin iframes", async () => {
+    const childServer = await startServer((request, response) => {
+      if (request.url === "/child") {
+        response.writeHead(200, { "content-type": "text/html; charset=utf-8" });
+        response.end(`<!doctype html>
+          <html>
+            <body>
+              <main>
+                <p id="status">Pending nested shadow click.</p>
+                <script>
+                  customElements.define("nested-shadow-app", class extends HTMLElement {
+                    connectedCallback() {
+                      const root = this.attachShadow({ mode: "closed" });
+                      root.innerHTML = "<button type='button'>Nested Shadow Continue</button><p>Nested hidden text.</p>";
+                    }
+                  });
+                </script>
+                <nested-shadow-app></nested-shadow-app>
+              </main>
+            </body>
+          </html>`);
+        return;
+      }
+      response.writeHead(404).end("missing");
+    });
+    const parentServer = await startServer((request, response) => {
+      if (request.url === "/parent") {
+        response.writeHead(200, { "content-type": "text/html; charset=utf-8" });
+        response.end(
+          `<!doctype html><html><body><main><h1>Nested Parent</h1><iframe src="${childServer.url}/child" title="nested"></iframe></main></body></html>`,
+        );
+        return;
+      }
+      response.writeHead(404).end("missing");
+    });
+
+    try {
+      const response = await handleRequest({
+        jsonrpc: "2.0",
+        id: "req-cross-origin-nested-closed-shadow",
+        method: "browser.snapshot",
+        params: {
+          url: `${parentServer.url}/parent`,
+          budget: 900,
+        },
+      });
+
+      const success = expectJsonRpcSuccess(response);
+      expect(success.result).toMatchObject({
+        visibleText: expect.stringContaining("Nested hidden text."),
+        html: expect.stringContaining("Nested Shadow Continue"),
+      });
+    } finally {
+      await Promise.all([
+        closeServer(parentServer.server),
+        closeServer(childServer.server),
+      ]);
+    }
+  }, 15_000);
+
   it("captures browser-backed snapshots from inline html", async () => {
     const response = await handleRequest({
       jsonrpc: "2.0",
@@ -53,6 +196,36 @@ describe("playwright adapter browser snapshots", () => {
       links: [{ text: "Docs", href: "/docs" }],
     });
   });
+
+  function startServer(
+    handler: http.RequestListener,
+  ): Promise<{ server: http.Server; url: string }> {
+    return new Promise((resolve) => {
+      const server = http.createServer(handler);
+      server.listen(0, "127.0.0.1", () => {
+        const address = server.address();
+        if (!address || typeof address === "string") {
+          throw new Error("Failed to resolve test server port.");
+        }
+        resolve({
+          server,
+          url: `http://127.0.0.1:${address.port}`,
+        });
+      });
+    });
+  }
+
+  function closeServer(server: http.Server): Promise<void> {
+    return new Promise((resolve, reject) => {
+      server.close((error) => {
+        if (error) {
+          reject(error);
+          return;
+        }
+        resolve();
+      });
+    });
+  }
 
   it("hardens search snapshots to look less like automation", async () => {
     const response = await handleRequest({

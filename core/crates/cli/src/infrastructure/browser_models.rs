@@ -124,6 +124,17 @@ pub(crate) struct PlaywrightClickParams {
 
 #[derive(Debug, Deserialize)]
 #[serde(rename_all = "camelCase")]
+pub(crate) struct PlaywrightDownloadEvidence {
+    pub(crate) completed: bool,
+    pub(crate) suggested_filename: String,
+    pub(crate) path: Option<String>,
+    pub(crate) byte_length: Option<u64>,
+    pub(crate) sha256: Option<String>,
+    pub(crate) failure: Option<String>,
+}
+
+#[derive(Debug, Deserialize)]
+#[serde(rename_all = "camelCase")]
 pub(crate) struct PlaywrightClickResult {
     #[allow(dead_code)]
     pub(crate) status: String,
@@ -135,6 +146,7 @@ pub(crate) struct PlaywrightClickResult {
     pub(crate) target_text: String,
     pub(crate) target_href: Option<String>,
     pub(crate) clicked_text: String,
+    pub(crate) download: Option<PlaywrightDownloadEvidence>,
     pub(crate) final_url: String,
     pub(crate) title: String,
     pub(crate) visible_text: String,

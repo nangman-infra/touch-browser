@@ -138,6 +138,8 @@ pub enum SourceType {
     Fixture,
     Http,
     Playwright,
+    #[serde(rename = "cdp-rust")]
+    CdpRust,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]

@@ -12,12 +12,17 @@ import path from "node:path";
 import { type BrowserContext, type Page, chromium } from "playwright";
 
 import {
+  captureFrameLinks,
+  collectClosedShadowSnapshots,
+  installDomInstrumentation,
+} from "./dom-instrumentation.js";
+import {
   ignoreCleanupFailure,
   ignoreNavigationSettleFailure,
   readProbeFallback,
 } from "./error-tolerance.js";
 import {
-  hasSearchIdentityMarker,
+  hasSearchIdentityMarker as hasSearchIdentityProfileMarker,
   installSearchIdentity,
   searchIdentityPersistentOptions,
   writeSearchIdentityMarker,
@@ -75,7 +80,7 @@ export async function withPage<T>(
         searchIdentity:
           source.searchIdentity ||
           (source.contextDir
-            ? await hasSearchIdentityMarker(source.contextDir)
+            ? await hasSearchIdentityProfileMarker(source.contextDir)
             : false),
       } satisfies BrowserSource;
       const context = await launchPersistentBrowserContext(
@@ -135,7 +140,9 @@ export async function withPage<T>(
     const context = await browser.newContext({
       viewport: { width: 1600, height: 1200 },
       screen: { width: 1600, height: 1200 },
+      acceptDownloads: true,
     });
+    await installDomInstrumentation(context);
     const page = await context.newPage();
     applyPageTimeouts(page);
 
@@ -163,18 +170,157 @@ export async function capturePageState(
   for (let attempt = 0; attempt < 3; attempt += 1) {
     try {
       const title = await page.title();
-      const visibleText = normalizeWhitespace(
+      const baseVisibleText = normalizeWhitespace(
         await readProbeFallback(
           page.locator("body").innerText(),
           "",
           "capturePageState body text",
         ),
       );
-      const linkCount = await page.locator("a").count();
-      const buttonCount = await page.locator("button").count();
-      const inputCount = await page.locator("input").count();
-      const links = await readLinks(page, linkCount);
-      const html = await page.content();
+      const baseLinkCount = await page.locator("a").count();
+      const baseButtonCount = await page.locator("button").count();
+      const baseInputCount = await page.locator("input").count();
+      const baseLinks = await readLinks(page, baseLinkCount);
+      const baseHtml = await page.content();
+      const mainShadowSnapshots = await collectClosedShadowSnapshots(page);
+      const childFrames = page
+        .frames()
+        .filter((frame) => frame !== page.mainFrame());
+      const frameSnapshots = await Promise.all(
+        childFrames.map(async (frame, index) => {
+          const [
+            html,
+            visibleText,
+            linkCount,
+            buttonCount,
+            inputCount,
+            links,
+            closedShadows,
+          ] = await Promise.all([
+            readProbeFallback(
+              frame.content(),
+              "",
+              `capturePageState frame html ${index}`,
+            ),
+            readProbeFallback(
+              frame.locator("body").innerText(),
+              "",
+              `capturePageState frame text ${index}`,
+            ),
+            readProbeFallback(
+              frame.locator("a").count(),
+              0,
+              `capturePageState frame links ${index}`,
+            ),
+            readProbeFallback(
+              frame.locator("button").count(),
+              0,
+              `capturePageState frame buttons ${index}`,
+            ),
+            readProbeFallback(
+              frame.locator("input").count(),
+              0,
+              `capturePageState frame inputs ${index}`,
+            ),
+            captureFrameLinks(frame, MAX_CAPTURED_LINKS),
+            collectClosedShadowSnapshots(frame),
+          ]);
+          return {
+            url: frame.url(),
+            html,
+            visibleText: normalizeWhitespace(visibleText),
+            linkCount,
+            buttonCount,
+            inputCount,
+            links,
+            closedShadows,
+          };
+        }),
+      );
+      const mainShadowSuffix = mainShadowSnapshots
+        .map(
+          (snapshot, index) =>
+            `<section data-touch-browser-closed-shadow-root="${index}" data-touch-browser-host-path="${snapshot.hostPath}"><main>${snapshot.html}</main></section>`,
+        )
+        .join("");
+      const frameSuffix = frameSnapshots
+        .map((frame, index) => {
+          const closedShadowSuffix = frame.closedShadows
+            .map(
+              (snapshot, shadowIndex) =>
+                `<section data-touch-browser-closed-shadow-root="${index}-${shadowIndex}" data-touch-browser-host-path="${snapshot.hostPath}"><main>${snapshot.html}</main></section>`,
+            )
+            .join("");
+          return `<section data-touch-browser-frame="${index}" data-touch-browser-frame-url="${frame.url}">${frame.html}${closedShadowSuffix}</section>`;
+        })
+        .join("");
+      const visibleText = normalizeWhitespace(
+        [
+          baseVisibleText,
+          ...mainShadowSnapshots.map((snapshot) => snapshot.text),
+          ...frameSnapshots.flatMap((frame) => [
+            frame.visibleText,
+            ...frame.closedShadows.map((snapshot) => snapshot.text),
+          ]),
+        ].join(" "),
+      );
+      const linkCount =
+        baseLinkCount +
+        mainShadowSnapshots.reduce(
+          (total, snapshot) => total + snapshot.linkCount,
+          0,
+        ) +
+        frameSnapshots.reduce(
+          (total, frame) =>
+            total +
+            frame.linkCount +
+            frame.closedShadows.reduce(
+              (shadowTotal, snapshot) => shadowTotal + snapshot.linkCount,
+              0,
+            ),
+          0,
+        );
+      const buttonCount =
+        baseButtonCount +
+        mainShadowSnapshots.reduce(
+          (total, snapshot) => total + snapshot.buttonCount,
+          0,
+        ) +
+        frameSnapshots.reduce(
+          (total, frame) =>
+            total +
+            frame.buttonCount +
+            frame.closedShadows.reduce(
+              (shadowTotal, snapshot) => shadowTotal + snapshot.buttonCount,
+              0,
+            ),
+          0,
+        );
+      const inputCount =
+        baseInputCount +
+        mainShadowSnapshots.reduce(
+          (total, snapshot) => total + snapshot.inputCount,
+          0,
+        ) +
+        frameSnapshots.reduce(
+          (total, frame) =>
+            total +
+            frame.inputCount +
+            frame.closedShadows.reduce(
+              (shadowTotal, snapshot) => shadowTotal + snapshot.inputCount,
+              0,
+            ),
+          0,
+        );
+      const links = [
+        ...baseLinks,
+        ...mainShadowSnapshots.flatMap((snapshot) => snapshot.links),
+        ...frameSnapshots.flatMap((frame) => [
+          ...frame.links,
+          ...frame.closedShadows.flatMap((snapshot) => snapshot.links),
+        ]),
+      ].slice(0, MAX_CAPTURED_LINKS);
+      const html = `${baseHtml}${mainShadowSuffix}${frameSuffix}`;
 
       return {
         finalUrl: page.url(),
@@ -262,6 +408,7 @@ async function launchPersistentBrowserContext(
     headless: source.headless,
     viewport: { width: 1600, height: 1200 },
     screen: { width: 1600, height: 1200 },
+    acceptDownloads: true,
   };
   const contextOptions = {
     ...baseOptions,
@@ -271,6 +418,7 @@ async function launchPersistentBrowserContext(
     contextDir,
     contextOptions,
   );
+  await installDomInstrumentation(context);
 
   if (source.searchIdentity) {
     if (source.contextDir) {

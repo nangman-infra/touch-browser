@@ -53,7 +53,7 @@
         },
         "sourceType": {
           "type": "string",
-          "enum": ["fixture", "http", "playwright"]
+          "enum": ["fixture", "http", "playwright", "cdp-rust"]
         },
         "sourceRisk": {
           "type": "string",

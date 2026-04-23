@@ -727,11 +727,28 @@ pub(crate) struct FollowAdapterOutput {
 
 #[derive(Debug, Clone, Serialize)]
 #[serde(rename_all = "camelCase")]
+pub(crate) struct DownloadEvidenceOutput {
+    pub(crate) completed: bool,
+    pub(crate) suggested_filename: String,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub(crate) path: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub(crate) byte_length: Option<u64>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub(crate) sha256: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub(crate) failure: Option<String>,
+}
+
+#[derive(Debug, Clone, Serialize)]
+#[serde(rename_all = "camelCase")]
 pub(crate) struct ClickAdapterOutput {
     pub(crate) clicked_ref: String,
     pub(crate) target_text: String,
     pub(crate) target_href: Option<String>,
     pub(crate) clicked_text: String,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub(crate) download: Option<DownloadEvidenceOutput>,
     pub(crate) title: String,
     pub(crate) visible_text: String,
     pub(crate) final_url: String,

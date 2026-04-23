@@ -24,6 +24,7 @@ touch-browser-observation = { path = "../observation" }
 touch-browser-policy = { path = "../policy" }
 touch-browser-runtime = { path = "../runtime" }
 touch-browser-storage-sqlite = { path = "../storage-sqlite" }
+tungstenite.workspace = true
 url.workspace = true
 
 [dev-dependencies]

@@ -86,6 +86,34 @@ Tagged `v*` pushes now build standalone macOS and Linux bundles in the `Standalo
 - a bundled Node runtime and Playwright adapter
 - the default semantic runner scripts and model cache
 
+Browser actions keep the Playwright adapter as the zero-config compatibility
+default. For new CLI deployments, the main recommended browser engine is the
+Rust CDP path. Enable it with:
+
+```bash
+TOUCH_BROWSER_BROWSER_ADAPTER=cdp-rust touch-browser open <target> --browser --session-file /tmp/tb.json
+pnpm run fixtures:browser-adapter-parity
+```
+
+The CDP adapter reports browser-backed captures as `sourceType: "cdp-rust"`,
+reuses persistent browser context directories, applies the search identity
+profile for search-result captures, and is covered by parity fixtures plus CLI
+E2E validation for follow, click, type, submit, pagination, expand, iframe,
+shadow DOM, SPA updates, download clicks, persistent-session actions, and
+cross-origin nested shadow interactions. It still requires Chrome or Chromium.
+Set `TOUCH_BROWSER_CDP_BROWSER=/absolute/path/to/chrome` when it is not
+installed in a standard location.
+
+For local size checks, a slim bundle profile skips prebundled Playwright
+Chromium and semantic model caches:
+
+```bash
+pnpm run build:standalone-bundle:slim -- local-dev
+```
+
+The full bundle remains the release default because it preserves the bundled
+Playwright compatibility path while shipping the recommended Rust CDP engine.
+
 When a tagged release is published, download the matching tarball from [GitHub Releases](https://github.com/nangman-infra/touch-browser/releases), unpack it, and run:
 
 ```bash

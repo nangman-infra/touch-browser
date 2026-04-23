@@ -8,6 +8,7 @@ import {
   capturePageState,
   withPage,
 } from "../browser-runtime.js";
+import { performClosedShadowActionAcrossFrames } from "../dom-instrumentation.js";
 import { findSubmitLocator, findTypeLocator } from "../locator-scoring.js";
 import {
   asBoolean,
@@ -89,13 +90,42 @@ export async function handleSubmit(
           inputType: undefined,
         } satisfies TargetDescriptor;
         const locator = await findSubmitLocator(page, target);
-        if (!locator) {
+        if (locator) {
+          await submitTargetLocator(locator);
+          await settleAfterAction(page);
+
+          return {
+            status: "ok",
+            method: "browser.submit",
+            limitedDynamicAction: false,
+            submittedRef: targetRef ?? targetText,
+            targetText: resolvedTarget,
+            ...(await capturePageState(page)),
+          };
+        }
+
+        const shadowAction = await performClosedShadowActionAcrossFrames(page, {
+          kind: "submit",
+          target,
+          prefill: prefill.map((entry) => ({
+            value: entry.value,
+            target: {
+              text: entry.targetText,
+              href: undefined,
+              tagName: entry.targetTagName,
+              domPathHint: entry.targetDomPathHint,
+              ordinalHint: entry.targetOrdinalHint,
+              name: entry.targetName,
+              inputType: entry.targetInputType,
+            } satisfies TargetDescriptor,
+          })),
+        });
+        if (!shadowAction) {
           throw new Error(
             `No submit target was found for \`${resolvedTarget}\`.`,
           );
         }
 
-        await submitTargetLocator(locator);
         await settleAfterAction(page);
 
         return {
@@ -103,7 +133,7 @@ export async function handleSubmit(
           method: "browser.submit",
           limitedDynamicAction: false,
           submittedRef: targetRef ?? targetText,
-          targetText: resolvedTarget,
+          targetText: shadowAction.targetText,
           ...(await capturePageState(page)),
         };
       },

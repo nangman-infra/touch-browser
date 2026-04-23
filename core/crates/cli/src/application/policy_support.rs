@@ -486,28 +486,40 @@ fn policy_requires_ack(
     target_ref: Option<&str>,
 ) -> Option<(AckRisk, &'static str)> {
     for signal in &policy.signals {
-        let matches_target = target_ref.is_none()
+        let target_matches_signal = target_ref.is_none()
             || signal.stable_ref.as_deref() == target_ref
             || signal.stable_ref.is_none();
-
-        if !matches_target {
-            continue;
-        }
+        let submit_on_supervised_page = action == ActionName::Submit
+            && matches!(
+                signal.kind,
+                touch_browser_contracts::PolicySignalKind::BotChallenge
+                    | touch_browser_contracts::PolicySignalKind::MfaChallenge
+            );
+        let matches_target = target_matches_signal || submit_on_supervised_page;
 
         match signal.kind {
             touch_browser_contracts::PolicySignalKind::BotChallenge => {
+                if !matches_target {
+                    continue;
+                }
                 return Some((
                     AckRisk::Challenge,
                     "Detected a likely bot or CAPTCHA checkpoint. Re-open in headed mode, complete the human checkpoint manually, then retry with `--ack-risk challenge` or run `refresh` after the page advances.",
                 ));
             }
             touch_browser_contracts::PolicySignalKind::MfaChallenge => {
+                if !matches_target {
+                    continue;
+                }
                 return Some((
                     AckRisk::Mfa,
                     "Detected a likely MFA or verification checkpoint. Use headed mode, complete the challenge manually or provide a daemon secret, then retry with `--ack-risk mfa`.",
                 ));
             }
             touch_browser_contracts::PolicySignalKind::SensitiveAuthFlow => {
+                if !matches_target {
+                    continue;
+                }
                 let requires_ack = action != ActionName::Type
                     || target_ref.is_some_and(|target_ref| {
                         current_snapshot_ref_is_sensitive(session, target_ref)
@@ -520,6 +532,9 @@ fn policy_requires_ack(
                 }
             }
             touch_browser_contracts::PolicySignalKind::HighRiskWrite => {
+                if !matches_target {
+                    continue;
+                }
                 if matches!(action, ActionName::Click | ActionName::Submit) {
                     return Some((
                         AckRisk::HighRiskWrite,

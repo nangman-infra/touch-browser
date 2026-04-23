@@ -9,7 +9,7 @@ use std::{
 use serde::{Deserialize, Serialize};
 use serde_json::{json, Value};
 
-use super::browser_models::*;
+use super::{browser_cdp, browser_models::*};
 use crate::application::browser_session::BrowserLoadDiagnostics;
 use crate::application::{
     browser_session::{
@@ -578,10 +578,15 @@ pub(crate) fn compile_browser_snapshot(
     html: &str,
     requested_tokens: usize,
 ) -> Result<SnapshotDocument, CliError> {
+    let source_type = if browser_cdp::cdp_adapter_enabled() {
+        SourceType::CdpRust
+    } else {
+        SourceType::Playwright
+    };
     ObservationCompiler
         .compile(&ObservationInput::new(
             source_url.to_string(),
-            SourceType::Playwright,
+            source_type,
             html.to_string(),
             requested_tokens,
         ))
@@ -591,42 +596,63 @@ pub(crate) fn compile_browser_snapshot(
 pub(crate) fn invoke_playwright_snapshot(
     params: PlaywrightSnapshotParams,
 ) -> Result<PlaywrightSnapshotResult, CliError> {
+    if browser_cdp::cdp_adapter_enabled() {
+        return browser_cdp::invoke_cdp_snapshot(params);
+    }
     invoke_playwright_request("browser.snapshot", json!("cli-browser-snapshot"), params)
 }
 
 pub(crate) fn invoke_playwright_follow(
     params: PlaywrightFollowParams,
 ) -> Result<PlaywrightFollowResult, CliError> {
+    if browser_cdp::cdp_adapter_enabled() {
+        return browser_cdp::invoke_cdp_follow(params);
+    }
     invoke_playwright_request("browser.follow", json!("cli-browser-follow"), params)
 }
 
 pub(crate) fn invoke_playwright_click(
     params: PlaywrightClickParams,
 ) -> Result<PlaywrightClickResult, CliError> {
+    if browser_cdp::cdp_adapter_enabled() {
+        return browser_cdp::invoke_cdp_click(params);
+    }
     invoke_playwright_request("browser.click", json!("cli-browser-click"), params)
 }
 
 pub(crate) fn invoke_playwright_type(
     params: PlaywrightTypeParams,
 ) -> Result<PlaywrightTypeResult, CliError> {
+    if browser_cdp::cdp_adapter_enabled() {
+        return browser_cdp::invoke_cdp_type(params);
+    }
     invoke_playwright_request("browser.type", json!("cli-browser-type"), params)
 }
 
 pub(crate) fn invoke_playwright_submit(
     params: PlaywrightSubmitParams,
 ) -> Result<PlaywrightSubmitResult, CliError> {
+    if browser_cdp::cdp_adapter_enabled() {
+        return browser_cdp::invoke_cdp_submit(params);
+    }
     invoke_playwright_request("browser.submit", json!("cli-browser-submit"), params)
 }
 
 pub(crate) fn invoke_playwright_paginate(
     params: PlaywrightPaginateParams,
 ) -> Result<PlaywrightPaginateResult, CliError> {
+    if browser_cdp::cdp_adapter_enabled() {
+        return browser_cdp::invoke_cdp_paginate(params);
+    }
     invoke_playwright_request("browser.paginate", json!("cli-browser-paginate"), params)
 }
 
 pub(crate) fn invoke_playwright_expand(
     params: PlaywrightExpandParams,
 ) -> Result<PlaywrightExpandResult, CliError> {
+    if browser_cdp::cdp_adapter_enabled() {
+        return browser_cdp::invoke_cdp_expand(params);
+    }
     invoke_playwright_request("browser.expand", json!("cli-browser-expand"), params)
 }
 

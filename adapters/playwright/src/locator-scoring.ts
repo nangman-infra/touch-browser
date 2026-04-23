@@ -1,4 +1,4 @@
-import type { Locator, Page } from "playwright";
+import type { Frame, Locator, Page } from "playwright";
 
 import { readProbeFallback } from "./error-tolerance.js";
 import { normalizeWhitespace } from "./shared.js";
@@ -12,15 +12,17 @@ export async function findFirstLocator(
   page: Page,
   selectors: string[],
 ): Promise<ReturnType<Page["locator"]> | undefined> {
-  for (const selector of selectors) {
-    const locator = page.locator(selector).first();
-    const count = await readProbeFallback(
-      locator.count(),
-      0,
-      `findFirstLocator count ${selector}`,
-    );
-    if (count > 0) {
-      return locator;
+  for (const frame of allFrames(page)) {
+    for (const selector of selectors) {
+      const locator = frame.locator(selector).first();
+      const count = await readProbeFallback(
+        locator.count(),
+        0,
+        `findFirstLocator count ${selector}`,
+      );
+      if (count > 0) {
+        return locator;
+      }
     }
   }
 
@@ -31,17 +33,14 @@ export async function findExpandLocator(
   page: Page,
   target: TargetDescriptor,
 ): Promise<Locator | undefined> {
-  return findBestLocator(
-    page.locator("button, [role='button'], summary, a"),
-    target,
-  );
+  return findBestLocator(page, "button, [role='button'], summary, a", target);
 }
 
 export async function findFollowLocator(
   page: Page,
   target: TargetDescriptor,
 ): Promise<Locator | undefined> {
-  return findBestLocator(page.locator("a"), target);
+  return findBestLocator(page, "a", target);
 }
 
 export async function findClickLocator(
@@ -49,9 +48,8 @@ export async function findClickLocator(
   target: TargetDescriptor,
 ): Promise<Locator | undefined> {
   return findBestLocator(
-    page.locator(
-      "button, [role='button'], a, input[type='submit'], input[type='button'], input[type='checkbox'], input[type='radio']",
-    ),
+    page,
+    "button, [role='button'], a, input[type='submit'], input[type='button'], input[type='checkbox'], input[type='radio']",
     target,
   );
 }
@@ -61,7 +59,8 @@ export async function findTypeLocator(
   target: TargetDescriptor,
 ): Promise<Locator | undefined> {
   return findBestLocator(
-    page.locator("input, textarea, [contenteditable='true']"),
+    page,
+    "input, textarea, [contenteditable='true']",
     target,
   );
 }
@@ -71,30 +70,38 @@ export async function findSubmitLocator(
   target: TargetDescriptor,
 ): Promise<Locator | undefined> {
   return findBestLocator(
-    page.locator(
-      "form, button[type='submit'], input[type='submit'], button, input[type='button']",
-    ),
+    page,
+    "form, button[type='submit'], input[type='submit'], button, input[type='button']",
     target,
   );
 }
 
 async function findBestLocator(
-  root: Locator,
+  page: Page,
+  selector: string,
   target: TargetDescriptor,
 ): Promise<Locator | undefined> {
-  const count = await root.count();
   const candidates: ScoredCandidate[] = [];
 
-  for (let index = 0; index < count; index += 1) {
-    const locator = root.nth(index);
-    const descriptor = await describeCandidate(locator, index);
-    if (!descriptor) {
-      continue;
-    }
+  for (const frame of allFrames(page)) {
+    const root = frame.locator(selector);
+    const count = await readProbeFallback(
+      root.count(),
+      0,
+      `findBestLocator count ${selector}`,
+    );
 
-    const score = scoreCandidate(descriptor, target);
-    if (score > 0) {
-      candidates.push({ descriptor, score });
+    for (let index = 0; index < count; index += 1) {
+      const locator = root.nth(index);
+      const descriptor = await describeCandidate(locator, index, frame);
+      if (!descriptor) {
+        continue;
+      }
+
+      const score = scoreCandidate(descriptor, target);
+      if (score > 0) {
+        candidates.push({ descriptor, score });
+      }
     }
   }
 
@@ -135,6 +142,7 @@ async function findBestLocator(
 async function describeCandidate(
   locator: Locator,
   domIndex: number,
+  frame: Frame,
 ): Promise<CandidateDescriptor | undefined> {
   const isVisible = await readProbeFallback(
     locator.isVisible(),
@@ -178,7 +186,10 @@ async function describeCandidate(
         let current: Element | null = element;
         while (current) {
           parts.unshift(current.tagName.toLowerCase());
-          current = current.parentElement;
+          current =
+            current.parentElement ||
+            ((current.getRootNode() as { host?: Element } | null)?.host ??
+              null);
         }
         return parts.join(" > ");
       }),
@@ -188,10 +199,15 @@ async function describeCandidate(
     readProbeFallback(
       locator.evaluate((element) => {
         const parts: string[] = [];
-        let current: Element | null = element.parentElement;
+        let current: Element | null =
+          element.parentElement ||
+          ((element.getRootNode() as { host?: Element } | null)?.host ?? null);
         while (current) {
           parts.unshift(current.tagName.toLowerCase());
-          current = current.parentElement;
+          current =
+            current.parentElement ||
+            ((current.getRootNode() as { host?: Element } | null)?.host ??
+              null);
         }
         return parts.join(" > ");
       }),
@@ -237,14 +253,18 @@ async function describeCandidate(
     return undefined;
   }
 
+  const framePrefix = frame.url()
+    ? `frame(${frame.url().toLowerCase()}) > `
+    : "";
+
   return {
     locator,
     domIndex,
     text: resolvedText,
     href: href ?? undefined,
     tagName,
-    fullPath,
-    parentPath,
+    fullPath: `${framePrefix}${fullPath}`,
+    parentPath: `${framePrefix}${parentPath}`,
   };
 }
 
@@ -352,4 +372,9 @@ function scoreDomPathMatch(
   }
 
   return candidate.fullPath.startsWith(`${normalizedHint} >`) ? 2 : 0;
+}
+
+function allFrames(page: Page): Frame[] {
+  const mainFrame = page.mainFrame();
+  return [mainFrame, ...page.frames().filter((frame) => frame !== mainFrame)];
 }

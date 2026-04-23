@@ -1,4 +1,5 @@
 pub(crate) mod app_ports;
+pub(crate) mod browser_cdp;
 pub(crate) mod browser_models;
 pub(crate) mod browser_runtime;
 pub(crate) mod fixtures;

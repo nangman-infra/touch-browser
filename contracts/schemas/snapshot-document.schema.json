@@ -23,7 +23,7 @@
         },
         "sourceType": {
           "type": "string",
-          "enum": ["fixture", "http", "playwright"]
+          "enum": ["fixture", "http", "playwright", "cdp-rust"]
         },
         "title": {
           "type": "string",

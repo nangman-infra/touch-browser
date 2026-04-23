@@ -511,6 +511,7 @@ fn rejects_mfa_submit_without_ack_and_allows_it_with_ack() {
     );
     let otp_ref = browser_session_block_ref(&open_output, "input", None);
     let form_ref = browser_session_block_ref(&open_output, "form", None);
+    let button_ref = browser_session_block_ref(&open_output, "button", None);
 
     let blocked = dispatch(CliCommand::Submit(SubmitOptions {
         session_file: session_file.clone(),
@@ -521,6 +522,16 @@ fn rejects_mfa_submit_without_ack_and_allows_it_with_ack() {
     }))
     .expect("submit should return a rejection");
     assert_eq!(blocked["action"]["status"], "rejected");
+
+    let blocked_button = dispatch(CliCommand::Submit(SubmitOptions {
+        session_file: session_file.clone(),
+        target_ref: button_ref,
+        headed: false,
+        ack_risks: Vec::new(),
+        extra_prefill: Vec::new(),
+    }))
+    .expect("button submit should return a rejection on MFA pages");
+    assert_eq!(blocked_button["action"]["status"], "rejected");
 
     dispatch(CliCommand::Type(TypeOptions {
         session_file: session_file.clone(),

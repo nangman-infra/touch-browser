@@ -88,6 +88,18 @@ fi
 VERSION="${1:-${TOUCH_BROWSER_BUNDLE_VERSION:-$(git -C "${REPO_ROOT}" describe --tags --always 2>/dev/null || echo dev)}}"
 PLATFORM="${TOUCH_BROWSER_BUNDLE_PLATFORM:-$(normalize_platform)}"
 ARCH="${TOUCH_BROWSER_BUNDLE_ARCH:-$(normalize_arch)}"
+BUNDLE_PROFILE="${TOUCH_BROWSER_BUNDLE_PROFILE:-full}"
+case "${BUNDLE_PROFILE}" in
+  full) ;;
+  slim)
+    TOUCH_BROWSER_BUNDLE_SKIP_MODEL_WARMUP="${TOUCH_BROWSER_BUNDLE_SKIP_MODEL_WARMUP:-1}"
+    TOUCH_BROWSER_BUNDLE_SKIP_PLAYWRIGHT_DOWNLOAD="${TOUCH_BROWSER_BUNDLE_SKIP_PLAYWRIGHT_DOWNLOAD:-1}"
+    ;;
+  *)
+    echo "Unsupported TOUCH_BROWSER_BUNDLE_PROFILE: ${BUNDLE_PROFILE}. Use full or slim." >&2
+    exit 1
+    ;;
+esac
 BUNDLE_NAME="touch-browser-${VERSION}-${PLATFORM}-${ARCH}"
 DIST_ROOT="${REPO_ROOT}/dist/standalone"
 BUNDLE_ROOT="${DIST_ROOT}/${BUNDLE_NAME}"
@@ -171,5 +183,6 @@ tar -C "${DIST_ROOT}" -czf "${TARBALL_PATH}" "${BUNDLE_NAME}"
 write_checksum
 
 echo "Standalone bundle created:"
+echo "  profile: ${BUNDLE_PROFILE}"
 echo "  ${TARBALL_PATH}"
 echo "  ${CHECKSUM_PATH}"

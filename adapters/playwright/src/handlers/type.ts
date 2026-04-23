@@ -4,6 +4,7 @@ import {
   capturePageState,
   withPage,
 } from "../browser-runtime.js";
+import { performClosedShadowActionAcrossFrames } from "../dom-instrumentation.js";
 import { findTypeLocator } from "../locator-scoring.js";
 import {
   asBoolean,
@@ -71,13 +72,32 @@ export async function handleType(
           inputType: targetInputType,
         } satisfies TargetDescriptor;
         const locator = await findTypeLocator(page, target);
-        if (!locator) {
+        if (locator) {
+          await fillTargetLocator(page, locator, value);
+          await settleAfterAction(page);
+
+          return {
+            status: "ok",
+            method: "browser.type",
+            limitedDynamicAction: false,
+            typedRef: targetRef ?? targetText,
+            targetText: targetText ?? targetRef,
+            typedLength: value.length,
+            ...(await capturePageState(page)),
+          };
+        }
+
+        const shadowAction = await performClosedShadowActionAcrossFrames(page, {
+          kind: "type",
+          target,
+          value,
+        });
+        if (!shadowAction) {
           throw new Error(
             `No input target was found for \`${targetRef ?? targetText}\`.`,
           );
         }
 
-        await fillTargetLocator(page, locator, value);
         await settleAfterAction(page);
 
         return {
@@ -85,8 +105,8 @@ export async function handleType(
           method: "browser.type",
           limitedDynamicAction: false,
           typedRef: targetRef ?? targetText,
-          targetText: targetText ?? targetRef,
-          typedLength: value.length,
+          targetText: shadowAction.targetText,
+          typedLength: shadowAction.typedLength ?? value.length,
           ...(await capturePageState(page)),
         };
       },

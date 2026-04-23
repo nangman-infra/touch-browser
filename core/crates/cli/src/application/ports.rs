@@ -82,6 +82,16 @@ pub(crate) struct BrowserFollowResult {
 }
 
 #[derive(Debug, Clone)]
+pub(crate) struct BrowserDownloadEvidence {
+    pub(crate) completed: bool,
+    pub(crate) suggested_filename: String,
+    pub(crate) path: Option<String>,
+    pub(crate) byte_length: Option<u64>,
+    pub(crate) sha256: Option<String>,
+    pub(crate) failure: Option<String>,
+}
+
+#[derive(Debug, Clone)]
 pub(crate) struct BrowserClickRequest {
     pub(crate) source: BrowserActionSource,
     pub(crate) target: BrowserSnapshotReference,
@@ -94,6 +104,7 @@ pub(crate) struct BrowserClickResult {
     pub(crate) target_text: String,
     pub(crate) target_href: Option<String>,
     pub(crate) clicked_text: String,
+    pub(crate) download: Option<BrowserDownloadEvidence>,
     pub(crate) final_url: String,
     pub(crate) title: String,
     pub(crate) visible_text: String,
