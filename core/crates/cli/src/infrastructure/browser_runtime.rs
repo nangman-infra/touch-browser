@@ -381,7 +381,7 @@ pub(crate) fn current_snapshot_ref_text(
 ) -> Result<String, CliError> {
     let text = resolve_session_block(session, target_ref)
         .map(|block| block.text.clone())
-        .ok_or_else(|| RuntimeError::MissingHref(target_ref.to_string()))?;
+        .ok_or_else(|| RuntimeError::MissingRef(target_ref.to_string()))?;
     Ok(text)
 }
 

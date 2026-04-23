@@ -182,6 +182,8 @@ pub enum RuntimeError {
     NoCurrentSnapshot,
     #[error("missing current url")]
     MissingCurrentUrl,
+    #[error("target ref not found in current snapshot: {0}")]
+    MissingRef(String),
     #[error("follow target ref has no href: {0}")]
     MissingHref(String),
     #[error("could not resolve link target: {0}")]

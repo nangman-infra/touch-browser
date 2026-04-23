@@ -2148,7 +2148,7 @@ checksum = "756daf9b1013ebe47a8776667b466417e2d4c5679d441c26230efd9ef78692db"
 
 [[package]]
 name = "touch-browser-acquisition"
-version = "0.2.1"
+version = "0.2.2"
 dependencies = [
  "reqwest",
  "serde",
@@ -2161,7 +2161,7 @@ dependencies = [
 
 [[package]]
 name = "touch-browser-action-vm"
-version = "0.2.1"
+version = "0.2.2"
 dependencies = [
  "serde",
  "serde_json",
@@ -2172,7 +2172,7 @@ dependencies = [
 
 [[package]]
 name = "touch-browser-cli"
-version = "0.2.1"
+version = "0.2.2"
 dependencies = [
  "kuchiki",
  "reqwest",
@@ -2195,7 +2195,7 @@ dependencies = [
 
 [[package]]
 name = "touch-browser-contracts"
-version = "0.2.1"
+version = "0.2.2"
 dependencies = [
  "serde",
  "serde_json",
@@ -2203,7 +2203,7 @@ dependencies = [
 
 [[package]]
 name = "touch-browser-evidence"
-version = "0.2.1"
+version = "0.2.2"
 dependencies = [
  "ferrous-opencc",
  "serde",
@@ -2214,7 +2214,7 @@ dependencies = [
 
 [[package]]
 name = "touch-browser-memory"
-version = "0.2.1"
+version = "0.2.2"
 dependencies = [
  "serde",
  "touch-browser-contracts",
@@ -2222,7 +2222,7 @@ dependencies = [
 
 [[package]]
 name = "touch-browser-observation"
-version = "0.2.1"
+version = "0.2.2"
 dependencies = [
  "kuchiki",
  "regex",
@@ -2234,7 +2234,7 @@ dependencies = [
 
 [[package]]
 name = "touch-browser-policy"
-version = "0.2.1"
+version = "0.2.2"
 dependencies = [
  "serde",
  "serde_json",
@@ -2244,7 +2244,7 @@ dependencies = [
 
 [[package]]
 name = "touch-browser-runtime"
-version = "0.2.1"
+version = "0.2.2"
 dependencies = [
  "serde",
  "serde_json",
@@ -2259,7 +2259,7 @@ dependencies = [
 
 [[package]]
 name = "touch-browser-storage-sqlite"
-version = "0.2.1"
+version = "0.2.2"
 dependencies = [
  "rusqlite",
  "serde",

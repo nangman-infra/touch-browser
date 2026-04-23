@@ -129,14 +129,15 @@ fn emit_command_failure(
 }
 
 fn output_indicates_command_failure(output: &Value) -> bool {
-    status_is_failed(output.get("status"))
-        || status_is_failed(output.pointer("/open/status"))
-        || status_is_failed(output.pointer("/extract/status"))
-        || status_is_failed(output.pointer("/result/status"))
+    status_is_terminal_failure(output.get("status"))
+        || status_is_terminal_failure(output.pointer("/open/status"))
+        || status_is_terminal_failure(output.pointer("/extract/status"))
+        || status_is_terminal_failure(output.pointer("/result/status"))
+        || status_is_terminal_failure(output.pointer("/action/status"))
 }
 
-fn status_is_failed(value: Option<&Value>) -> bool {
-    value.and_then(Value::as_str) == Some("failed")
+fn status_is_terminal_failure(value: Option<&Value>) -> bool {
+    matches!(value.and_then(Value::as_str), Some("failed" | "rejected"))
 }
 
 fn emit_status_failure(operation: &str, output: &Value, should_log_telemetry: bool) -> i32 {
@@ -259,7 +260,7 @@ pub(crate) fn command_usage(command_name: &str) -> Option<String> {
 fn command_examples(command_name: &str) -> Option<&'static str> {
     match command_name {
         "open" => Some(
-            "  touch-browser open https://www.iana.org/help/example-domains --browser --session-file /tmp/tb-session.json\n  touch-browser session-read --session-file /tmp/tb-session.json --main-only",
+            "  touch-browser open https://www.iana.org/help/example-domains --browser --session-file /tmp/tb-session.json\n  touch-browser session-read --session-file /tmp/tb-session.json --main-only\n  TOUCH_BROWSER_REPO_ROOT=/absolute/path/to/touch-browser touch-browser open fixture://research/static-docs/getting-started --session-file /tmp/tb-fixture.json",
         ),
         "read-view" => Some(
             "  touch-browser read-view https://www.iana.org/help/example-domains --main-only",
@@ -393,11 +394,17 @@ mod tests {
             "status": "failed"
         })));
         assert!(output_indicates_command_failure(&json!({
+            "status": "rejected"
+        })));
+        assert!(output_indicates_command_failure(&json!({
             "open": { "status": "succeeded" },
             "extract": { "status": "failed" }
         })));
         assert!(output_indicates_command_failure(&json!({
             "result": { "status": "failed" }
+        })));
+        assert!(output_indicates_command_failure(&json!({
+            "action": { "status": "rejected" }
         })));
         assert!(!output_indicates_command_failure(&json!({
             "status": "succeeded",

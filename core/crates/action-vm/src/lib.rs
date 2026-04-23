@@ -370,6 +370,7 @@ fn classify_runtime_error(error: &RuntimeError) -> ActionFailureKind {
     match error {
         RuntimeError::UnknownSource(_) => ActionFailureKind::UnknownSource,
         RuntimeError::MissingHref(_) => ActionFailureKind::MissingHref,
+        RuntimeError::MissingRef(_) => ActionFailureKind::InvalidInput,
         RuntimeError::UnresolvedLink(_) => ActionFailureKind::UnresolvedLink,
         RuntimeError::ReplayMissingTarget | RuntimeError::MissingCurrentUrl => {
             ActionFailureKind::MissingTarget
