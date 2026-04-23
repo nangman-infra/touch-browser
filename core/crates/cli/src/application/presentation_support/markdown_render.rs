@@ -21,7 +21,7 @@ pub(super) fn render_markdown_block(block: &SnapshotBlock) -> String {
             text
         ),
         SnapshotBlockKind::Text | SnapshotBlockKind::Metadata => text,
-        SnapshotBlockKind::List => render_markdown_list(&text),
+        SnapshotBlockKind::List => render_markdown_list(block, &text),
         SnapshotBlockKind::Table => render_markdown_table(block, &text),
         SnapshotBlockKind::Link => render_markdown_link(block, &text),
         SnapshotBlockKind::Button => format!("- {text}"),
@@ -37,22 +37,113 @@ fn normalize_markdown_text(text: &str) -> String {
         .join("\n")
 }
 
-fn render_markdown_list(text: &str) -> String {
+fn render_markdown_list(block: &SnapshotBlock, text: &str) -> String {
+    let ordered = block
+        .attributes
+        .get("ordered")
+        .and_then(Value::as_bool)
+        .unwrap_or(false);
     let items = text
         .lines()
-        .map(normalize_list_item)
+        .flat_map(|line| split_inline_list_items(line, ordered))
+        .map(|item| normalize_list_item(&item))
         .filter(|line| !line.is_empty())
         .collect::<Vec<_>>();
 
     if items.len() <= 1 {
-        return format!("- {}", normalize_list_item(text));
+        let item = normalize_list_item(text);
+        return if ordered {
+            format!("1. {item}")
+        } else {
+            format!("- {item}")
+        };
     }
 
     items
         .into_iter()
-        .map(|item| format!("- {item}"))
+        .enumerate()
+        .map(|(index, item)| {
+            if ordered {
+                format!("{}. {item}", index + 1)
+            } else {
+                format!("- {item}")
+            }
+        })
         .collect::<Vec<_>>()
         .join("\n")
+}
+
+fn split_inline_list_items(text: &str, ordered: bool) -> Vec<String> {
+    if ordered {
+        split_inline_ordered_items(text)
+    } else {
+        split_inline_unordered_items(text)
+    }
+}
+
+fn split_inline_ordered_items(text: &str) -> Vec<String> {
+    let trimmed = text.trim();
+    let mut starts = Vec::new();
+    let bytes = trimmed.as_bytes();
+    let mut index = 0usize;
+    while index < bytes.len() {
+        if index == 0 || bytes[index.saturating_sub(1)].is_ascii_whitespace() {
+            let digit_start = index;
+            while index < bytes.len() && bytes[index].is_ascii_digit() {
+                index += 1;
+            }
+            if index > digit_start
+                && index + 1 < bytes.len()
+                && matches!(bytes[index], b'.' | b')')
+                && bytes[index + 1].is_ascii_whitespace()
+            {
+                starts.push(digit_start);
+            }
+        }
+        index += 1;
+    }
+
+    split_by_starts(trimmed, starts)
+}
+
+fn split_inline_unordered_items(text: &str) -> Vec<String> {
+    let trimmed = text.trim();
+    if !trimmed.starts_with("- ") && !trimmed.starts_with("* ") {
+        return vec![trimmed.to_string()];
+    }
+
+    let marker = if trimmed.starts_with("- ") {
+        "- "
+    } else {
+        "* "
+    };
+    let starts = trimmed
+        .match_indices(marker)
+        .filter_map(|(index, _)| {
+            if index == 0 || trimmed.as_bytes()[index - 1].is_ascii_whitespace() {
+                Some(index)
+            } else {
+                None
+            }
+        })
+        .collect::<Vec<_>>();
+    split_by_starts(trimmed, starts)
+}
+
+fn split_by_starts(text: &str, starts: Vec<usize>) -> Vec<String> {
+    if starts.len() <= 1 {
+        return vec![text.to_string()];
+    }
+
+    starts
+        .iter()
+        .enumerate()
+        .map(|(index, start)| {
+            let end = starts.get(index + 1).copied().unwrap_or(text.len());
+            text[*start..end].trim().to_string()
+        })
+        .filter(|item| !item.is_empty())
+        .collect()
 }
 
 fn normalize_list_item(text: &str) -> String {

@@ -521,12 +521,12 @@ fn extract_search_results_from_snapshot(
         if !seen_urls.insert(identity) {
             continue;
         }
-        let title = block.text.trim().to_string();
+        let domain = url_domain(&url);
+        let title = clean_search_result_title(&block.text, &domain);
         if title.len() < 6 {
             continue;
         }
         let snippet = collect_search_result_snippet(&snapshot.blocks, index);
-        let domain = url_domain(&url);
 
         results.push(SearchResultItem {
             rank: results.len() + 1,
@@ -570,14 +570,14 @@ fn extract_search_results_from_html(
             continue;
         }
 
-        let title = collapse_whitespace(&anchor.text_contents());
+        let domain = url_domain(&url);
+        let title = clean_search_result_title(&anchor.text_contents(), &domain);
         if title.len() < 6 {
             continue;
         }
         if looks_like_search_nav_link(&title) {
             continue;
         }
-        let domain = url_domain(&url);
         let snippet = search_result_snippet_from_anchor(anchor.as_node(), &title);
 
         results.push(SearchResultItem {
@@ -594,6 +594,54 @@ fn extract_search_results_from_html(
     }
 
     results
+}
+
+fn clean_search_result_title(raw_title: &str, domain: &str) -> String {
+    let mut title = collapse_whitespace(raw_title);
+    if let Some((_, tail)) = title.rsplit_once('›') {
+        let cleaned_tail = tail.trim();
+        if !cleaned_tail.is_empty() {
+            title = cleaned_tail.to_string();
+        }
+    }
+
+    let bare_domain = domain.strip_prefix("www.").unwrap_or(domain);
+    for prefix in [domain, bare_domain] {
+        if let Some(rest) = title.strip_prefix(prefix) {
+            let rest = rest.trim_start_matches([' ', '-', '|', ':', '›']).trim();
+            if !rest.is_empty() {
+                title = rest.to_string();
+                break;
+            }
+        }
+    }
+
+    remove_leading_breadcrumb_slug(&title)
+}
+
+fn remove_leading_breadcrumb_slug(title: &str) -> String {
+    let Some((first, rest)) = title.split_once(' ') else {
+        return title.to_string();
+    };
+    let rest = rest.trim();
+    if rest.is_empty() {
+        return title.to_string();
+    }
+
+    let first_as_words = first.replace(['-', '_', '/'], " ");
+    let first_normalized = first_as_words.to_ascii_lowercase();
+    let rest_normalized = rest.to_ascii_lowercase();
+    let looks_like_slug = first
+        .chars()
+        .all(|ch| ch.is_ascii_lowercase() || ch.is_ascii_digit() || matches!(ch, '-' | '_' | '/'));
+    if looks_like_slug
+        && (rest_normalized.starts_with(&first_normalized)
+            || rest.chars().next().is_some_and(char::is_uppercase))
+    {
+        return rest.to_string();
+    }
+
+    title.to_string()
 }
 
 fn merge_search_results(results: &mut Vec<SearchResultItem>, additional: Vec<SearchResultItem>) {
@@ -1318,7 +1366,7 @@ mod tests {
     use url::Url;
 
     use super::{
-        authority_domain_bonus, canonicalize_search_result_url,
+        authority_domain_bonus, canonicalize_search_result_url, clean_search_result_title,
         default_or_legacy_search_session_file_for, default_search_output_dir,
         default_search_profile_dir, infer_search_engine_from_session_file,
         latest_search_session_file_for, latest_search_session_file_in,
@@ -1441,6 +1489,21 @@ mod tests {
         assert_eq!(
             payload.get("version").and_then(Value::as_str),
             Some(CONTRACT_VERSION)
+        );
+    }
+
+    #[test]
+    fn search_title_cleanup_removes_engine_breadcrumbs() {
+        assert_eq!(
+            clean_search_result_title(
+                "IANA iana.org › help › example-domains Example Domains",
+                "www.iana.org"
+            ),
+            "Example Domains"
+        );
+        assert_eq!(
+            clean_search_result_title("iana.org Example Domains", "iana.org"),
+            "Example Domains"
         );
     }
 

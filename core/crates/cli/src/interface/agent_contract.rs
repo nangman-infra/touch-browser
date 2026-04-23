@@ -149,6 +149,7 @@ pub(crate) fn compact_agent_output(command: &CliCommand, output: Value) -> Value
     add_compact_markdown(&mut compact, &output);
     add_compact_report(&mut compact, &output);
     add_compact_opened_sessions(&mut compact, &output);
+    add_compact_command_artifacts(command, &mut compact, &output);
 
     compact
 }
@@ -228,6 +229,36 @@ fn add_compact_opened_sessions(compact: &mut Value, output: &Value) {
         }
     }
     compact["openedSessions"] = Value::Array(opened_sessions);
+}
+
+fn add_compact_command_artifacts(command: &CliCommand, compact: &mut Value, output: &Value) {
+    match command {
+        CliCommand::MemorySummary { .. } => {
+            copy_field(output, compact, "requestedActions");
+            copy_field(output, compact, "actionCount");
+            copy_field(output, compact, "memorySummary");
+        }
+        CliCommand::Replay { .. } => {
+            copy_field(output, compact, "snapshotCount");
+            copy_field(output, compact, "evidenceReportCount");
+            copy_field(output, compact, "replayTranscript");
+        }
+        CliCommand::SessionProfile(_) | CliCommand::SetProfile(_) => {
+            copy_field(output, compact, "policyProfile");
+            if compact.get("policyProfile").is_none() {
+                if let Some(profile) = output.pointer("/result/policyProfile").cloned() {
+                    compact["policyProfile"] = profile;
+                }
+            }
+        }
+        _ => {}
+    }
+}
+
+fn copy_field(source: &Value, target: &mut Value, field: &str) {
+    if let Some(value) = source.get(field).cloned() {
+        target[field] = value;
+    }
 }
 
 fn compact_capabilities(output: Value) -> Value {

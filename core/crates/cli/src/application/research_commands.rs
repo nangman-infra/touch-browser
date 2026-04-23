@@ -1553,10 +1553,15 @@ pub(crate) fn handle_replay(
     scenario: &str,
 ) -> Result<ReplayCommandOutput, CliError> {
     let catalog = ctx.ports.fixtures.load_catalog()?;
-    let transcript_path = repo_root()
-        .join("fixtures/scenarios")
-        .join(scenario)
-        .join("replay-transcript.json");
+    let scenarios_dir = repo_root().join("fixtures/scenarios");
+    let transcript_path = scenarios_dir.join(scenario).join("replay-transcript.json");
+    if !transcript_path.is_file() {
+        return Err(CliError::Usage(replay_scenario_missing_message(
+            scenario,
+            &transcript_path,
+            &available_replay_scenarios(&scenarios_dir)?,
+        )));
+    }
     let transcript: ReplayTranscript = serde_json::from_str(&fs::read_to_string(transcript_path)?)?;
     let session = ctx
         .runtime
@@ -1568,6 +1573,40 @@ pub(crate) fn handle_replay(
         snapshot_count: session.snapshots.len(),
         evidence_report_count: session.evidence_reports.len(),
     })
+}
+
+fn available_replay_scenarios(scenarios_dir: &Path) -> Result<Vec<String>, CliError> {
+    if !scenarios_dir.is_dir() {
+        return Ok(Vec::new());
+    }
+
+    let mut scenarios = Vec::new();
+    for entry in fs::read_dir(scenarios_dir)? {
+        let entry = entry?;
+        if entry.file_type()?.is_dir() && entry.path().join("replay-transcript.json").is_file() {
+            if let Some(name) = entry.file_name().to_str() {
+                scenarios.push(name.to_string());
+            }
+        }
+    }
+    scenarios.sort();
+    Ok(scenarios)
+}
+
+fn replay_scenario_missing_message(
+    scenario: &str,
+    transcript_path: &Path,
+    available_scenarios: &[String],
+) -> String {
+    let available = if available_scenarios.is_empty() {
+        "No replay scenarios are installed under fixtures/scenarios.".to_string()
+    } else {
+        format!("Available scenarios: {}.", available_scenarios.join(", "))
+    };
+    format!(
+        "replay scenario `{scenario}` was not found. Expected transcript at {}. {available}",
+        transcript_path.display()
+    )
 }
 
 pub(crate) fn handle_memory_summary(

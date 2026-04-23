@@ -128,6 +128,30 @@ fn emit_command_failure(
     1
 }
 
+fn output_indicates_command_failure(output: &Value) -> bool {
+    status_is_failed(output.get("status"))
+        || status_is_failed(output.pointer("/open/status"))
+        || status_is_failed(output.pointer("/extract/status"))
+        || status_is_failed(output.pointer("/result/status"))
+}
+
+fn status_is_failed(value: Option<&Value>) -> bool {
+    value.and_then(Value::as_str) == Some("failed")
+}
+
+fn emit_status_failure(operation: &str, output: &Value, should_log_telemetry: bool) -> i32 {
+    if should_log_telemetry {
+        let _ = log_telemetry_error(
+            &telemetry_surface_label("cli"),
+            operation,
+            "command returned failed status",
+            None,
+            output,
+        );
+    }
+    1
+}
+
 fn dispatch_command(
     command: CliCommand,
     operation: &str,
@@ -152,6 +176,9 @@ fn dispatch_command(
         Ok(output)
     }) {
         Ok(output) => {
+            if output_indicates_command_failure(&output) {
+                return emit_status_failure(operation, &output, should_log_telemetry);
+            }
             if should_log_telemetry {
                 let _ = log_telemetry_success(
                     &telemetry_surface_label("cli"),
@@ -220,7 +247,42 @@ pub(crate) fn command_usage(command_name: &str) -> Option<String> {
     if lines.is_empty() {
         None
     } else {
-        Some(format!("Usage:\n{}", lines.join("\n")))
+        let mut help = format!("Usage:\n{}", lines.join("\n"));
+        if let Some(examples) = command_examples(command_name) {
+            help.push_str("\n\nExamples:\n");
+            help.push_str(examples);
+        }
+        Some(help)
+    }
+}
+
+fn command_examples(command_name: &str) -> Option<&'static str> {
+    match command_name {
+        "open" => Some(
+            "  touch-browser open https://www.iana.org/help/example-domains --browser --session-file /tmp/tb-session.json\n  touch-browser session-read --session-file /tmp/tb-session.json --main-only",
+        ),
+        "read-view" => Some(
+            "  touch-browser read-view https://www.iana.org/help/example-domains --main-only",
+        ),
+        "extract" => Some(
+            "  touch-browser extract https://www.iana.org/help/example-domains --claim \"example.com is maintained for documentation purposes.\"",
+        ),
+        "search" => Some(
+            "  touch-browser search \"IANA example domains\" --engine brave --session-file /tmp/tb-search.json\n  touch-browser search-open-top --engine brave --session-file /tmp/tb-search.json --limit 3",
+        ),
+        "session-extract" => Some(
+            "  touch-browser session-extract --session-file /tmp/tb-session.json --claim \"example.com is maintained for documentation purposes.\"",
+        ),
+        "session-synthesize" => Some(
+            "  touch-browser session-synthesize --session-file /tmp/tb-session.json --format markdown",
+        ),
+        "replay" => Some(
+            "  touch-browser replay <scenario-name> --json-errors\n  # Scenarios must live under fixtures/scenarios/<scenario-name>/replay-transcript.json",
+        ),
+        "serve" => Some(
+            "  printf '%s\\n' '{\"jsonrpc\":\"2.0\",\"id\":1,\"method\":\"runtime.status\",\"params\":{}}' | touch-browser serve",
+        ),
+        _ => None,
     }
 }
 
@@ -278,9 +340,11 @@ pub(crate) fn run_cli(raw_args: Vec<String>) -> i32 {
 #[cfg(test)]
 mod tests {
     use super::{
-        command_usage, should_log_telemetry_command, should_log_telemetry_operation, version_text,
+        command_usage, output_indicates_command_failure, should_log_telemetry_command,
+        should_log_telemetry_operation, version_text,
     };
     use crate::{CliCommand, SearchEngine, SearchOptions, UninstallOptions, DEFAULT_SEARCH_TOKENS};
+    use serde_json::json;
 
     #[test]
     fn telemetry_logging_skips_uninstall_lifecycle() {
@@ -310,7 +374,8 @@ mod tests {
         let serve_usage = command_usage("serve").expect("serve usage should exist");
         let mcp_usage = command_usage("mcp").expect("mcp usage should exist");
 
-        assert_eq!(serve_usage, "Usage:\n  touch-browser serve");
+        assert!(serve_usage.starts_with("Usage:\n  touch-browser serve"));
+        assert!(serve_usage.contains("Examples:\n"));
         assert_eq!(mcp_usage, "Usage:\n  touch-browser mcp");
     }
 
@@ -320,5 +385,25 @@ mod tests {
             version_text(),
             format!("touch-browser {}", env!("CARGO_PKG_VERSION"))
         );
+    }
+
+    #[test]
+    fn output_failure_detection_marks_action_failures_only() {
+        assert!(output_indicates_command_failure(&json!({
+            "status": "failed"
+        })));
+        assert!(output_indicates_command_failure(&json!({
+            "open": { "status": "succeeded" },
+            "extract": { "status": "failed" }
+        })));
+        assert!(output_indicates_command_failure(&json!({
+            "result": { "status": "failed" }
+        })));
+        assert!(!output_indicates_command_failure(&json!({
+            "status": "succeeded",
+            "summary": {
+                "statusCounts": { "failed": 4, "succeeded": 1 }
+            }
+        })));
     }
 }

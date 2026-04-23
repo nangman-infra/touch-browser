@@ -20,6 +20,9 @@ fn dispatches_read_view_for_fixture_target() {
         .expect("markdown text should be present");
     assert!(markdown.starts_with('#'));
     assert!(markdown.contains("Getting Started"));
+    assert!(markdown.contains("1. Install the runtime."));
+    assert!(markdown.contains("2. Open a research URL."));
+    assert!(!markdown.contains("- Install the runtime. 2. Open"));
     assert!(output["approxTokens"].as_u64().unwrap_or(0) > 0);
 }
 
@@ -877,6 +880,19 @@ fn dispatches_replay_command() {
 }
 
 #[test]
+fn replay_missing_scenario_explains_expected_location() {
+    let error = dispatch(CliCommand::Replay {
+        scenario: "missing-scenario-for-test".to_string(),
+    })
+    .expect_err("missing replay scenario should fail");
+
+    let message = error.to_string();
+    assert!(message.contains("replay scenario `missing-scenario-for-test` was not found"));
+    assert!(message.contains("fixtures/scenarios"));
+    assert!(message.contains("replay-transcript.json"));
+}
+
+#[test]
 fn dispatches_memory_summary_for_fifty_actions() {
     let output =
         dispatch(CliCommand::MemorySummary { steps: 50 }).expect("memory summary should succeed");
@@ -889,4 +905,24 @@ fn dispatches_memory_summary_for_fifty_actions() {
             .expect("working set size should be numeric")
             <= 6
     );
+}
+
+#[test]
+fn agent_compact_preserves_memory_summary_payload() {
+    let command = CliCommand::MemorySummary { steps: 4 };
+    let output = json!({
+        "requestedActions": 4,
+        "actionCount": 4,
+        "memorySummary": {
+            "turnCount": 4,
+            "synthesizedNotes": ["A", "B"]
+        }
+    });
+    let enriched = crate::interface::agent_contract::enrich_output(&command, output);
+    let compact = crate::interface::agent_contract::compact_agent_output(&command, enriched);
+
+    assert_eq!(compact["requestedActions"], 4);
+    assert_eq!(compact["actionCount"], 4);
+    assert_eq!(compact["memorySummary"]["turnCount"], 4);
+    assert_eq!(compact["memorySummary"]["synthesizedNotes"][0], "A");
 }
