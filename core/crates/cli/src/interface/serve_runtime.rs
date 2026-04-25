@@ -433,6 +433,33 @@ mod tests {
             json!("tab-0002")
         );
 
+        let manual_tab = serve_dispatch(
+            ServeJsonRpcRequest {
+                jsonrpc: "2.0".to_string(),
+                id: json!(21),
+                method: "runtime.tab.open".to_string(),
+                params: json!({
+                    "sessionId": session_id.clone()
+                }),
+            },
+            &mut daemon_state,
+        );
+        assert_eq!(manual_tab["result"]["activeTabId"], json!("tab-0003"));
+
+        let selected = serve_dispatch(
+            ServeJsonRpcRequest {
+                jsonrpc: "2.0".to_string(),
+                id: json!(22),
+                method: "runtime.tab.select".to_string(),
+                params: json!({
+                    "sessionId": session_id.clone(),
+                    "tabId": "tab-0003"
+                }),
+            },
+            &mut daemon_state,
+        );
+        assert_eq!(selected["result"]["activeTabId"], json!("tab-0003"));
+
         let result_response = serve_dispatch(
             ServeJsonRpcRequest {
                 jsonrpc: "2.0".to_string(),
@@ -454,7 +481,7 @@ mod tests {
             result_response["result"]["selectedResult"]["rank"],
             json!(1)
         );
-        assert_eq!(result_response["result"]["openedTabId"], json!("tab-0003"));
+        assert_eq!(result_response["result"]["openedTabId"], json!("tab-0004"));
 
         daemon_state.cleanup().expect("cleanup");
     }

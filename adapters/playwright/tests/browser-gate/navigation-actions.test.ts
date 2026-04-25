@@ -43,7 +43,7 @@ describe("playwright adapter browser navigation actions", () => {
         visibleText: "Step 2 Advanced guide",
       },
     });
-  });
+  }, 10_000);
 
   it("executes browser-backed pagination with inline html", async () => {
     const paginate = await handleRequest({

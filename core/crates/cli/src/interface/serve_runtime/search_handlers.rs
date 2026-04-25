@@ -56,6 +56,7 @@ pub(crate) fn serve_search(
         profile_dir: None,
         session_file: Some(session_file),
     }))?;
+    daemon_state.mark_latest_search_tab(&session_id, &resolved_tab_id)?;
     presenters::present_session_tab_result(session_id, resolved_tab_id, result)
 }
 

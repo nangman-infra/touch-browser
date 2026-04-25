@@ -24,13 +24,21 @@ describe("policy regression scenarios", () => {
       sourceRisk: "low",
       riskClass: "low",
       blockedRefs: [],
+      pageRisk: {
+        decision: "allow",
+        riskClass: "low",
+      },
+      actionRisk: {
+        decision: "allow",
+        riskClass: "low",
+      },
     });
     expect(output.sessionState.currentUrl).toBe(
       "fixture://research/static-docs/getting-started",
     );
   });
 
-  it("keeps the hostile fake system fixture blocked", async () => {
+  it("keeps the hostile fake system fixture page-reviewed and action-blocked", async () => {
     const registry = await loadContractSchemas();
     const validate = requireValidator(registry, "policy-report.schema.json");
     const output = await readJsonFile<{
@@ -47,9 +55,17 @@ describe("policy regression scenarios", () => {
       "rmain:link:https-malicious-example-submit",
     );
     expect(output.policy).toMatchObject({
-      decision: "block",
+      decision: "review",
       sourceRisk: "hostile",
-      riskClass: "blocked",
+      riskClass: "high",
+      pageRisk: {
+        decision: "review",
+        riskClass: "high",
+      },
+      actionRisk: {
+        decision: "block",
+        riskClass: "blocked",
+      },
     });
     expect(output.sessionState.currentUrl).toBe(
       "fixture://research/hostile/fake-system-message",
@@ -70,6 +86,14 @@ describe("policy regression scenarios", () => {
       decision: "review",
       sourceRisk: "low",
       riskClass: "high",
+      pageRisk: {
+        decision: "review",
+        riskClass: "high",
+      },
+      actionRisk: {
+        decision: "review",
+        riskClass: "high",
+      },
     });
     expect(
       output.policy.signals.some((signal) => signal.kind === "bot-challenge"),
@@ -90,6 +114,14 @@ describe("policy regression scenarios", () => {
       decision: "review",
       sourceRisk: "low",
       riskClass: "high",
+      pageRisk: {
+        decision: "review",
+        riskClass: "high",
+      },
+      actionRisk: {
+        decision: "review",
+        riskClass: "high",
+      },
     });
     expect(
       output.policy.signals.some((signal) => signal.kind === "mfa-challenge"),
@@ -101,7 +133,7 @@ describe("policy regression scenarios", () => {
     ).toBe(true);
   });
 
-  it("marks the checkout checkpoint as high-risk write", async () => {
+  it("marks the checkout checkpoint as page-allow and action-review", async () => {
     const registry = await loadContractSchemas();
     const validate = requireValidator(registry, "policy-report.schema.json");
     const output = await readJsonFile<{
@@ -112,9 +144,17 @@ describe("policy regression scenarios", () => {
 
     expect(validate(output.policy)).toBe(true);
     expect(output.policy).toMatchObject({
-      decision: "review",
+      decision: "allow",
       sourceRisk: "low",
-      riskClass: "high",
+      riskClass: "low",
+      pageRisk: {
+        decision: "allow",
+        riskClass: "low",
+      },
+      actionRisk: {
+        decision: "review",
+        riskClass: "high",
+      },
     });
     expect(
       output.policy.signals.some((signal) => signal.kind === "high-risk-write"),

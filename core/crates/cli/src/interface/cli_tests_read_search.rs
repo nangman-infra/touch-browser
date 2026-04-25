@@ -97,6 +97,10 @@ fn read_view_output_changes_when_main_only_is_enabled() {
         main.main_content_reason.as_deref(),
         Some("main-region-confirmed")
     );
+    assert!(main
+        .main_content_metrics
+        .as_ref()
+        .is_some_and(|metrics| metrics.body_ratio >= 0.5 && metrics.nav_ratio == 0.0));
 }
 
 #[test]
@@ -195,6 +199,10 @@ fn read_view_main_only_reports_poor_quality_for_navigation_heavy_output() {
             .is_some_and(|hint| hint.contains("main-region signals conflict")),
         "expected cause-based poor guidance"
     );
+    assert!(main
+        .main_content_metrics
+        .as_ref()
+        .is_some_and(|metrics| { metrics.kept_block_count > 0 && metrics.body_ratio < 0.5 }));
 }
 
 #[test]
@@ -863,8 +871,31 @@ fn dispatches_hostile_policy_command() {
     }))
     .expect("policy command should succeed");
 
-    assert_eq!(output["policy"]["decision"], "block");
-    assert_eq!(output["policy"]["riskClass"], "blocked");
+    assert_eq!(output["policy"]["decision"], "review");
+    assert_eq!(output["policy"]["riskClass"], "high");
+    assert_eq!(output["policy"]["pageRisk"]["decision"], "review");
+    assert_eq!(output["policy"]["actionRisk"]["decision"], "block");
+}
+
+#[test]
+fn dispatches_split_policy_risk_for_login_fixture() {
+    let output = dispatch(CliCommand::Policy(TargetOptions {
+        target: "fixture://research/navigation/browser-login-form".to_string(),
+        budget: DEFAULT_REQUESTED_TOKENS,
+        source_risk: None,
+        source_label: None,
+        allowlisted_domains: Vec::new(),
+        browser: false,
+        headed: false,
+        main_only: false,
+        session_file: None,
+    }))
+    .expect("policy command should succeed");
+
+    assert_eq!(output["policy"]["decision"], "allow");
+    assert_eq!(output["policy"]["riskClass"], "low");
+    assert_eq!(output["policy"]["pageRisk"]["decision"], "allow");
+    assert_eq!(output["policy"]["actionRisk"]["decision"], "review");
 }
 
 #[test]

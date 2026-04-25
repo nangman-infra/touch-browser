@@ -1,6 +1,6 @@
 use touch_browser_contracts::{
-    PolicyDecision, PolicyReport, PolicySignal, PolicySignalKind, PolicySignalOrigin, RiskClass,
-    SnapshotBlock, SnapshotBlockKind, SnapshotDocument, SourceRisk,
+    PolicyDecision, PolicyReport, PolicyRiskSummary, PolicySignal, PolicySignalKind,
+    PolicySignalOrigin, RiskClass, SnapshotBlock, SnapshotBlockKind, SnapshotDocument, SourceRisk,
 };
 use url::Url;
 
@@ -40,16 +40,26 @@ impl PolicyKernel {
         blocked_refs.sort();
         blocked_refs.dedup();
 
-        let decision = policy_decision(&blocked_refs, &signals, source_risk.clone());
-        let risk_class = risk_class_for(&decision);
+        let page_decision = page_policy_decision(&signals, source_risk.clone());
+        let action_decision = action_policy_decision(&blocked_refs, &signals, source_risk.clone());
+        let page_risk = PolicyRiskSummary {
+            decision: page_decision.clone(),
+            risk_class: risk_class_for(&page_decision),
+        };
+        let action_risk = PolicyRiskSummary {
+            decision: action_decision.clone(),
+            risk_class: risk_class_for(&action_decision),
+        };
 
         PolicyReport {
-            decision,
+            decision: page_decision,
             source_risk,
-            risk_class,
+            risk_class: page_risk.risk_class.clone(),
             blocked_refs,
             signals,
             allowlisted_domains: normalized_allowlist,
+            page_risk,
+            action_risk,
         }
     }
 }
@@ -286,18 +296,54 @@ fn policy_boundary_signal(
     }
 }
 
-fn policy_decision(
+fn page_policy_decision(signals: &[PolicySignal], source_risk: SourceRisk) -> PolicyDecision {
+    if source_risk == SourceRisk::Hostile || signals.iter().any(signal_applies_to_page_read) {
+        PolicyDecision::Review
+    } else {
+        PolicyDecision::Allow
+    }
+}
+
+fn action_policy_decision(
     blocked_refs: &[String],
     signals: &[PolicySignal],
     source_risk: SourceRisk,
 ) -> PolicyDecision {
     if !blocked_refs.is_empty() {
         PolicyDecision::Block
-    } else if !signals.is_empty() || source_risk == SourceRisk::Hostile {
+    } else if source_risk == SourceRisk::Hostile
+        || signals.iter().any(signal_applies_to_interaction)
+    {
         PolicyDecision::Review
     } else {
         PolicyDecision::Allow
     }
+}
+
+fn signal_applies_to_page_read(signal: &PolicySignal) -> bool {
+    matches!(
+        signal.kind,
+        PolicySignalKind::HostileSource
+            | PolicySignalKind::UntrustedSystemLanguage
+            | PolicySignalKind::SuspiciousCta
+            | PolicySignalKind::BotChallenge
+            | PolicySignalKind::MfaChallenge
+    ) || (signal.kind == PolicySignalKind::DomainNotAllowlisted && signal.stable_ref.is_none())
+}
+
+fn signal_applies_to_interaction(signal: &PolicySignal) -> bool {
+    matches!(
+        signal.kind,
+        PolicySignalKind::HostileSource
+            | PolicySignalKind::UntrustedSystemLanguage
+            | PolicySignalKind::SuspiciousCta
+            | PolicySignalKind::ExternalActionable
+            | PolicySignalKind::HostileFormControl
+            | PolicySignalKind::BotChallenge
+            | PolicySignalKind::MfaChallenge
+            | PolicySignalKind::SensitiveAuthFlow
+            | PolicySignalKind::HighRiskWrite
+    ) || signal.kind == PolicySignalKind::DomainNotAllowlisted
 }
 
 fn risk_class_for(decision: &PolicyDecision) -> RiskClass {
@@ -596,7 +642,9 @@ mod tests {
             read_snapshot("fixtures/research/hostile/fake-system-message/expected-snapshot.json");
         let report = PolicyKernel.evaluate_snapshot(&snapshot, SourceRisk::Hostile);
 
-        assert_eq!(report.decision, PolicyDecision::Block);
+        assert_eq!(report.decision, PolicyDecision::Review);
+        assert_eq!(report.page_risk.decision, PolicyDecision::Review);
+        assert_eq!(report.action_risk.decision, PolicyDecision::Block);
         assert!(report
             .blocked_refs
             .contains(&"rmain:link:https-malicious-example-submit".to_string()));
@@ -632,7 +680,9 @@ mod tests {
             &["trusted.example".to_string()],
         );
 
-        assert_eq!(report.decision, PolicyDecision::Block);
+        assert_eq!(report.decision, PolicyDecision::Review);
+        assert_eq!(report.page_risk.decision, PolicyDecision::Review);
+        assert_eq!(report.action_risk.decision, PolicyDecision::Block);
         assert_eq!(
             report.allowlisted_domains,
             vec!["trusted.example".to_string()]
@@ -655,6 +705,8 @@ mod tests {
         let report = PolicyKernel.evaluate_snapshot(&snapshot, SourceRisk::Low);
 
         assert_eq!(report.decision, PolicyDecision::Review);
+        assert_eq!(report.page_risk.decision, PolicyDecision::Review);
+        assert_eq!(report.action_risk.decision, PolicyDecision::Review);
         assert!(report.signals.iter().any(|signal| {
             signal.kind == PolicySignalKind::BotChallenge
                 && signal.origin == PolicySignalOrigin::LiveHeuristic
@@ -669,6 +721,8 @@ mod tests {
         let report = PolicyKernel.evaluate_snapshot(&snapshot, SourceRisk::Low);
 
         assert_eq!(report.decision, PolicyDecision::Review);
+        assert_eq!(report.page_risk.decision, PolicyDecision::Review);
+        assert_eq!(report.action_risk.decision, PolicyDecision::Review);
         assert!(report.signals.iter().any(|signal| {
             signal.kind == PolicySignalKind::MfaChallenge
                 && signal.origin == PolicySignalOrigin::LiveHeuristic
@@ -686,7 +740,9 @@ mod tests {
         );
         let report = PolicyKernel.evaluate_snapshot(&snapshot, SourceRisk::Low);
 
-        assert_eq!(report.decision, PolicyDecision::Review);
+        assert_eq!(report.decision, PolicyDecision::Allow);
+        assert_eq!(report.page_risk.decision, PolicyDecision::Allow);
+        assert_eq!(report.action_risk.decision, PolicyDecision::Review);
         assert!(report.signals.iter().any(|signal| {
             signal.kind == PolicySignalKind::HighRiskWrite
                 && signal.origin == PolicySignalOrigin::LiveHeuristic

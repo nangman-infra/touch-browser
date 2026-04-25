@@ -20,6 +20,15 @@ use touch_browser_contracts::{
     SnapshotBlockKind, SnapshotBlockRole, SnapshotDocument,
 };
 
+#[derive(Debug, Clone, PartialEq)]
+pub(crate) struct MainContentMetrics {
+    pub(crate) body_ratio: f64,
+    pub(crate) heading_density: f64,
+    pub(crate) nav_ratio: f64,
+    pub(crate) kept_block_count: usize,
+    pub(crate) candidate_block_count: usize,
+}
+
 pub(crate) fn render_compact_snapshot(snapshot: &SnapshotDocument) -> String {
     let has_heading = snapshot
         .blocks
@@ -336,7 +345,12 @@ impl MainContentReason {
 pub(crate) fn assess_main_read_view_quality(
     snapshot: &SnapshotDocument,
     markdown_text: &str,
-) -> Option<(MainContentQuality, MainContentReason, String)> {
+) -> Option<(
+    MainContentQuality,
+    MainContentReason,
+    String,
+    MainContentMetrics,
+)> {
     let has_heading = snapshot
         .blocks
         .iter()
@@ -360,13 +374,20 @@ pub(crate) fn assess_main_read_view_quality(
         })
         .filter(|block| !prefer_article_like_main || block_matches_preferred_main_content(block))
         .collect::<Vec<_>>();
+    let candidate_blocks = snapshot
+        .blocks
+        .iter()
+        .filter(|block| keep_read_view_block(block, has_heading))
+        .collect::<Vec<_>>();
 
     let has_any_markdown = !markdown_text.trim().is_empty();
+    let metrics = main_content_metrics(&candidate_blocks, &filtered_blocks);
     if !has_any_markdown && filtered_blocks.is_empty() {
         return Some((
             MainContentQuality::Poor,
             MainContentReason::NoMainContentDetected,
             "Main-content extraction did not find a readable body section. This usually means the page is a shell, index, or non-article surface. Open a more specific URL before escalating to headed mode.".to_string(),
+            metrics,
         ));
     }
     if has_any_markdown && filtered_blocks.is_empty() {
@@ -374,6 +395,7 @@ pub(crate) fn assess_main_read_view_quality(
             MainContentQuality::Poor,
             MainContentReason::ContentPresentButMainFilterRejected,
             "Readable content exists, but the current main-content filter rejected it. Compare the first heading and try a more specific document URL; headed mode is not the default fix for this case.".to_string(),
+            metrics,
         ));
     }
 
@@ -410,6 +432,9 @@ pub(crate) fn assess_main_read_view_quality(
     let has_heading_block = filtered_blocks
         .iter()
         .any(|block| matches!(block.kind, SnapshotBlockKind::Heading));
+    let nav_ratio_high = metrics.nav_ratio >= 0.28;
+    let body_ratio_low = metrics.body_ratio <= 0.38;
+    let heading_density_high = metrics.heading_density >= 0.45 && content_chars < 700;
 
     let strong_main_signal = has_main_zone || prefer_article_like_main;
     let document_like_without_main_zone = !strong_main_signal
@@ -422,12 +447,13 @@ pub(crate) fn assess_main_read_view_quality(
         && has_heading_block
         && content_chars >= 8
         && chrome_zone_count <= main_zone_count
+        && !nav_ratio_high
     {
         (
             MainContentQuality::High,
             MainContentReason::MainRegionConfirmed,
         )
-    } else if document_like_without_main_zone {
+    } else if document_like_without_main_zone && !nav_ratio_high {
         if content_chars >= 800 || body_text_block_count >= 2 {
             (
                 MainContentQuality::High,
@@ -448,6 +474,9 @@ pub(crate) fn assess_main_read_view_quality(
                 LayoutZone::Nav | LayoutZone::Aside | LayoutZone::Header | LayoutZone::Footer
             ))
         || (main_zone_count == 0 && chrome_zone_count > 0)
+        || nav_ratio_high
+        || body_ratio_low
+        || heading_density_high
     {
         let reason = if content_chars < 8 && body_text_block_count == 0 {
             MainContentReason::NoMainContentDetected
@@ -486,7 +515,58 @@ pub(crate) fn assess_main_read_view_quality(
         }
     };
 
-    Some((quality, reason, hint))
+    Some((quality, reason, hint, metrics))
+}
+
+fn main_content_metrics(
+    candidate_blocks: &[&SnapshotBlock],
+    filtered_blocks: &[&SnapshotBlock],
+) -> MainContentMetrics {
+    let kept_block_count = filtered_blocks.len();
+    let candidate_block_count = candidate_blocks.len();
+    let candidate_chars = candidate_blocks
+        .iter()
+        .map(|block| block.text.trim().chars().count())
+        .sum::<usize>();
+    let body_chars = filtered_blocks
+        .iter()
+        .filter(|block| {
+            matches!(
+                block.kind,
+                SnapshotBlockKind::Text | SnapshotBlockKind::List | SnapshotBlockKind::Table
+            )
+        })
+        .map(|block| block.text.trim().chars().count())
+        .sum::<usize>();
+    let heading_count = filtered_blocks
+        .iter()
+        .filter(|block| matches!(block.kind, SnapshotBlockKind::Heading))
+        .count();
+    let nav_like_count = filtered_blocks
+        .iter()
+        .filter(|block| {
+            matches!(
+                block_layout_zone(block),
+                Some(LayoutZone::Nav | LayoutZone::Aside | LayoutZone::Header | LayoutZone::Footer)
+            )
+        })
+        .count();
+
+    MainContentMetrics {
+        body_ratio: ratio(body_chars, candidate_chars),
+        heading_density: ratio(heading_count, kept_block_count),
+        nav_ratio: ratio(nav_like_count, kept_block_count),
+        kept_block_count,
+        candidate_block_count,
+    }
+}
+
+fn ratio(numerator: usize, denominator: usize) -> f64 {
+    if denominator == 0 {
+        0.0
+    } else {
+        ((numerator as f64 / denominator as f64) * 100.0).round() / 100.0
+    }
 }
 
 pub(crate) fn compact_ref_index(snapshot: &SnapshotDocument) -> Vec<CompactRefIndexEntry> {
@@ -1661,6 +1741,131 @@ mod tests {
     }
 
     #[test]
+    fn main_read_view_filters_chrome_developers_cookie_language_and_sign_in_noise() {
+        let snapshot = SnapshotDocument {
+            version: CONTRACT_VERSION.to_string(),
+            stable_ref_version: STABLE_REF_VERSION.to_string(),
+            source: SnapshotSource {
+                source_url:
+                    "https://developer.chrome.com/blog/new-in-chrome-126".to_string(),
+                source_type: SourceType::Playwright,
+                title: Some("New in Chrome 126".to_string()),
+            },
+            budget: SnapshotBudget {
+                requested_tokens: 512,
+                estimated_tokens: 84,
+                emitted_tokens: 84,
+                truncated: false,
+            },
+            blocks: vec![
+                SnapshotBlock {
+                    version: CONTRACT_VERSION.to_string(),
+                    id: "b1".to_string(),
+                    kind: SnapshotBlockKind::Button,
+                    stable_ref: "rnav:button:sign-in".to_string(),
+                    role: SnapshotBlockRole::Cta,
+                    text: "Sign in".to_string(),
+                    attributes: BTreeMap::from([("zone".to_string(), json!("nav"))]),
+                    evidence: SnapshotEvidence {
+                        source_url:
+                            "https://developer.chrome.com/blog/new-in-chrome-126".to_string(),
+                        source_type: SourceType::Playwright,
+                        dom_path_hint: Some(
+                            "html > body > header > nav > button.sign-in".to_string(),
+                        ),
+                        byte_range_start: None,
+                        byte_range_end: None,
+                    },
+                },
+                SnapshotBlock {
+                    version: CONTRACT_VERSION.to_string(),
+                    id: "b2".to_string(),
+                    kind: SnapshotBlockKind::Text,
+                    stable_ref: "rmain:text:body".to_string(),
+                    role: SnapshotBlockRole::Content,
+                    text: "Chrome 126 ships CSS text-wrap balance improvements and updated DevTools recorder capabilities.".to_string(),
+                    attributes: BTreeMap::from([("zone".to_string(), json!("main"))]),
+                    evidence: SnapshotEvidence {
+                        source_url:
+                            "https://developer.chrome.com/blog/new-in-chrome-126".to_string(),
+                        source_type: SourceType::Playwright,
+                        dom_path_hint: Some(
+                            "html > body > main > article > div.devsite-article-body > p:nth-of-type(1)"
+                                .to_string(),
+                        ),
+                        byte_range_start: None,
+                        byte_range_end: None,
+                    },
+                },
+                SnapshotBlock {
+                    version: CONTRACT_VERSION.to_string(),
+                    id: "b3".to_string(),
+                    kind: SnapshotBlockKind::Button,
+                    stable_ref: "rmain:button:accept-cookies".to_string(),
+                    role: SnapshotBlockRole::Cta,
+                    text: "Accept all".to_string(),
+                    attributes: BTreeMap::from([("zone".to_string(), json!("main"))]),
+                    evidence: SnapshotEvidence {
+                        source_url:
+                            "https://developer.chrome.com/blog/new-in-chrome-126".to_string(),
+                        source_type: SourceType::Playwright,
+                        dom_path_hint: Some(
+                            "html > body > main > div.cookie-banner > button.accept".to_string(),
+                        ),
+                        byte_range_start: None,
+                        byte_range_end: None,
+                    },
+                },
+                SnapshotBlock {
+                    version: CONTRACT_VERSION.to_string(),
+                    id: "b4".to_string(),
+                    kind: SnapshotBlockKind::Link,
+                    stable_ref: "rfooter:link:privacy".to_string(),
+                    role: SnapshotBlockRole::Supporting,
+                    text: "Privacy".to_string(),
+                    attributes: BTreeMap::from([("zone".to_string(), json!("footer"))]),
+                    evidence: SnapshotEvidence {
+                        source_url:
+                            "https://developer.chrome.com/blog/new-in-chrome-126".to_string(),
+                        source_type: SourceType::Playwright,
+                        dom_path_hint: Some(
+                            "html > body > footer.devsite-footer a.privacy".to_string(),
+                        ),
+                        byte_range_start: None,
+                        byte_range_end: None,
+                    },
+                },
+                SnapshotBlock {
+                    version: CONTRACT_VERSION.to_string(),
+                    id: "b5".to_string(),
+                    kind: SnapshotBlockKind::Link,
+                    stable_ref: "rmain:link:language".to_string(),
+                    role: SnapshotBlockRole::Supporting,
+                    text: "English".to_string(),
+                    attributes: BTreeMap::from([("zone".to_string(), json!("main"))]),
+                    evidence: SnapshotEvidence {
+                        source_url:
+                            "https://developer.chrome.com/blog/new-in-chrome-126".to_string(),
+                        source_type: SourceType::Playwright,
+                        dom_path_hint: Some(
+                            "html > body > main > div.language-selector > a".to_string(),
+                        ),
+                        byte_range_start: None,
+                        byte_range_end: None,
+                    },
+                },
+            ],
+        };
+
+        let markdown = render_main_read_view_markdown(&snapshot);
+        assert!(markdown.contains("Chrome 126 ships"));
+        assert!(!markdown.contains("Sign in"));
+        assert!(!markdown.contains("Accept all"));
+        assert!(!markdown.contains("Privacy"));
+        assert!(!markdown.contains("English"));
+    }
+
+    #[test]
     fn document_like_pages_without_main_zone_are_not_marked_poor() {
         let snapshot = SnapshotDocument {
             version: CONTRACT_VERSION.to_string(),
@@ -1729,7 +1934,7 @@ mod tests {
         };
 
         let markdown = render_main_read_view_markdown(&snapshot);
-        let (quality, _, _) = assess_main_read_view_quality(&snapshot, &markdown)
+        let (quality, _, _, _) = assess_main_read_view_quality(&snapshot, &markdown)
             .expect("quality should be assessed");
 
         assert_ne!(quality, MainContentQuality::Poor);

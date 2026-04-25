@@ -311,7 +311,9 @@ pub(crate) fn checkpoint_approval_panel(
     recommended_profile: PolicyProfile,
     policy: &PolicyReport,
 ) -> CheckpointApprovalPanel {
-    let severity = match policy.decision {
+    let severity_decision =
+        more_severe_policy_decision(&policy.page_risk.decision, &policy.action_risk.decision);
+    let severity = match severity_decision {
         touch_browser_contracts::PolicyDecision::Block => "block",
         touch_browser_contracts::PolicyDecision::Review => "review",
         touch_browser_contracts::PolicyDecision::Allow => "allow",
@@ -359,6 +361,19 @@ pub(crate) fn checkpoint_approval_panel(
         required_ack_risks: required_ack_risks.to_vec(),
         approved_risks: approved_risks.to_vec(),
         actions,
+    }
+}
+
+fn more_severe_policy_decision(
+    left: &touch_browser_contracts::PolicyDecision,
+    right: &touch_browser_contracts::PolicyDecision,
+) -> touch_browser_contracts::PolicyDecision {
+    use touch_browser_contracts::PolicyDecision;
+
+    match (left, right) {
+        (PolicyDecision::Block, _) | (_, PolicyDecision::Block) => PolicyDecision::Block,
+        (PolicyDecision::Review, _) | (_, PolicyDecision::Review) => PolicyDecision::Review,
+        _ => PolicyDecision::Allow,
     }
 }
 
@@ -591,7 +606,7 @@ pub(crate) fn preflight_session_block(
 ) -> Option<SessionCommandOutput> {
     let policy =
         current_policy_with_allowlist(&persisted.session, kernel, &persisted.allowlisted_domains)?;
-    if policy.decision != touch_browser_contracts::PolicyDecision::Block {
+    if policy.page_risk.decision != touch_browser_contracts::PolicyDecision::Block {
         return None;
     }
 
@@ -691,6 +706,10 @@ pub(crate) fn preflight_interactive_action(
             session_state: persisted.session.state.clone(),
             session_file: session_file.display().to_string(),
         });
+    }
+
+    if policy.action_risk.decision == touch_browser_contracts::PolicyDecision::Allow {
+        return None;
     }
 
     if let Some((required_ack, detail)) =

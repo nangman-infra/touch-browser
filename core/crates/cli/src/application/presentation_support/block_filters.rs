@@ -59,6 +59,9 @@ pub(super) fn keep_main_reading_block(
     if !keep_reading_block(block, has_heading) {
         return false;
     }
+    if is_site_main_content_noise_block(block) {
+        return false;
+    }
 
     let zone = block_layout_zone(block);
     if has_main_zone {
@@ -182,6 +185,9 @@ pub(super) fn keep_main_read_view_block(
     if !keep_read_view_block(block, has_heading) {
         return false;
     }
+    if is_site_main_content_noise_block(block) {
+        return false;
+    }
 
     let zone = block_layout_zone(block);
     if has_main_zone {
@@ -258,4 +264,61 @@ fn is_toc_like_block(block: &SnapshotBlock) -> bool {
             .get("href")
             .and_then(|value| value.as_str())
             .is_some_and(|href| href.starts_with('#'))
+}
+
+fn is_site_main_content_noise_block(block: &SnapshotBlock) -> bool {
+    let source_url = block.evidence.source_url.to_ascii_lowercase();
+    let dom_path = block
+        .evidence
+        .dom_path_hint
+        .as_deref()
+        .unwrap_or_default()
+        .to_ascii_lowercase();
+    let stable_ref = block.stable_ref.to_ascii_lowercase();
+    let text = block.text.trim().to_ascii_lowercase();
+
+    if source_url.contains("developer.mozilla.org") {
+        if dom_path.contains("article-footer")
+            || dom_path.contains("language-selector")
+            || dom_path.contains("interlanguage-link")
+            || dom_path.contains("page-footer")
+            || dom_path.contains("breadcrumb")
+            || stable_ref.starts_with("rfooter:")
+            || stable_ref.starts_with("rnav:")
+        {
+            return true;
+        }
+
+        return text == "help improve mdn"
+            || text.starts_with("this page was last modified on")
+            || text.starts_with("view this page in")
+            || text == "change language";
+    }
+
+    if source_url.contains("developer.chrome.com") {
+        if dom_path.contains("cookie")
+            || dom_path.contains("consent")
+            || dom_path.contains("language")
+            || dom_path.contains("locale")
+            || dom_path.contains("sign-in")
+            || dom_path.contains("account")
+            || dom_path.contains("devsite-footer")
+            || dom_path.contains("site-footer")
+            || dom_path.contains("utility")
+            || dom_path.contains("breadcrumb")
+            || stable_ref.starts_with("rfooter:")
+            || stable_ref.starts_with("rnav:")
+        {
+            return true;
+        }
+
+        return matches!(
+            text.as_str(),
+            "sign in" | "language" | "english" | "privacy" | "terms"
+        ) || text.starts_with("accept all")
+            || text.starts_with("reject all")
+            || text.contains("cookie");
+    }
+
+    false
 }

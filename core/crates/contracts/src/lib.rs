@@ -799,6 +799,13 @@ pub struct PolicySignal {
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
 #[serde(rename_all = "camelCase")]
+pub struct PolicyRiskSummary {
+    pub decision: PolicyDecision,
+    pub risk_class: RiskClass,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
+#[serde(rename_all = "camelCase")]
 pub struct PolicyReport {
     pub decision: PolicyDecision,
     pub source_risk: SourceRisk,
@@ -807,6 +814,8 @@ pub struct PolicyReport {
     pub signals: Vec<PolicySignal>,
     #[serde(skip_serializing_if = "Vec::is_empty", default)]
     pub allowlisted_domains: Vec<String>,
+    pub page_risk: PolicyRiskSummary,
+    pub action_risk: PolicyRiskSummary,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]

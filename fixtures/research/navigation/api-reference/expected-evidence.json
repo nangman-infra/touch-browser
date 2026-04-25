@@ -259,7 +259,7 @@
       ],
       "reason": "needs-more-browsing",
       "reviewRecommended": true,
-      "verdictExplanation": "Browse a more specific source page before answering.",
+      "verdictExplanation": "The page contains related text, but the evidence does not stay anchored to the exact subject of the claim. Open a page focused on that specific subject. Browse a more specific source page before answering.",
       "matchSignals": {
         "blockId": "b5",
         "stableRef": "rmain:heading:overview",

@@ -6,9 +6,11 @@ coverage/
 
 target/
 output/
-fixtures/scenarios/
+fixtures/scenarios/*
 !fixtures/scenarios/aws-page-type-benchmark/
 !fixtures/scenarios/aws-page-type-benchmark/report.json
+!fixtures/scenarios/qa-site-regression/
+!fixtures/scenarios/qa-site-regression/target-sites.json
 sonar-reports/
 
 *.sqlite

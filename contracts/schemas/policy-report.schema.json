@@ -4,7 +4,15 @@
   "title": "PolicyReport",
   "type": "object",
   "additionalProperties": false,
-  "required": ["decision", "sourceRisk", "riskClass", "blockedRefs", "signals"],
+  "required": [
+    "decision",
+    "sourceRisk",
+    "riskClass",
+    "blockedRefs",
+    "signals",
+    "pageRisk",
+    "actionRisk"
+  ],
   "properties": {
     "decision": {
       "type": "string",
@@ -70,6 +78,36 @@
         "pattern": "^(?:\\*\\.)?[a-zA-Z0-9.-]+$"
       },
       "uniqueItems": true
+    },
+    "pageRisk": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["decision", "riskClass"],
+      "properties": {
+        "decision": {
+          "type": "string",
+          "enum": ["allow", "review", "block"]
+        },
+        "riskClass": {
+          "type": "string",
+          "enum": ["low", "high", "blocked"]
+        }
+      }
+    },
+    "actionRisk": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["decision", "riskClass"],
+      "properties": {
+        "decision": {
+          "type": "string",
+          "enum": ["allow", "review", "block"]
+        },
+        "riskClass": {
+          "type": "string",
+          "enum": ["low", "high", "blocked"]
+        }
+      }
     }
   }
 }

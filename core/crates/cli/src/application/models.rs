@@ -610,6 +610,16 @@ impl CompactSnapshotOutput {
 
 #[derive(Debug, Serialize)]
 #[serde(rename_all = "camelCase")]
+pub(crate) struct ReadViewMainContentMetrics {
+    pub(crate) body_ratio: f64,
+    pub(crate) heading_density: f64,
+    pub(crate) nav_ratio: f64,
+    pub(crate) kept_block_count: usize,
+    pub(crate) candidate_block_count: usize,
+}
+
+#[derive(Debug, Serialize)]
+#[serde(rename_all = "camelCase")]
 pub(crate) struct ReadViewOutput {
     pub(crate) source_url: String,
     #[serde(skip_serializing_if = "Option::is_none")]
@@ -626,6 +636,8 @@ pub(crate) struct ReadViewOutput {
     pub(crate) main_content_reason: Option<String>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub(crate) main_content_hint: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub(crate) main_content_metrics: Option<ReadViewMainContentMetrics>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub(crate) diagnostics: Option<CaptureDiagnostics>,
     #[serde(skip_serializing_if = "Option::is_none")]
@@ -660,16 +672,23 @@ impl ReadViewOutput {
         let char_count = markdown_text.chars().count();
         let approx_tokens = char_count.div_ceil(4).max(1);
         let ref_index = compact_ref_index(snapshot);
-        let (main_content_quality, main_content_reason, main_content_hint) =
+        let (main_content_quality, main_content_reason, main_content_hint, main_content_metrics) =
             assess_main_read_view_quality(snapshot, &quality_markdown)
-                .map(|(quality, reason, hint)| {
+                .map(|(quality, reason, hint, metrics)| {
                     (
                         Some(quality.as_str().to_string()),
                         Some(reason.as_str().to_string()),
                         Some(hint),
+                        Some(ReadViewMainContentMetrics {
+                            body_ratio: metrics.body_ratio,
+                            heading_density: metrics.heading_density,
+                            nav_ratio: metrics.nav_ratio,
+                            kept_block_count: metrics.kept_block_count,
+                            candidate_block_count: metrics.candidate_block_count,
+                        }),
                     )
                 })
-                .unwrap_or((None, None, None));
+                .unwrap_or((None, None, None, None));
 
         Self {
             source_url: snapshot.source.source_url.clone(),
@@ -683,6 +702,7 @@ impl ReadViewOutput {
             main_content_quality,
             main_content_reason,
             main_content_hint,
+            main_content_metrics,
             diagnostics: None,
             session_state,
             session_file,

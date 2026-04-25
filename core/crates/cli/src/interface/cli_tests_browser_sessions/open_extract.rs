@@ -269,8 +269,9 @@ fn dispatches_browser_backed_hostile_policy() {
     }))
     .expect("browser-backed policy should succeed");
 
-    assert_eq!(output["policy"]["decision"], "block");
-    assert_eq!(output["policy"]["riskClass"], "blocked");
+    assert_eq!(output["policy"]["decision"], "review");
+    assert_eq!(output["policy"]["riskClass"], "high");
+    assert_eq!(output["policy"]["actionRisk"]["decision"], "block");
 }
 
 #[test]

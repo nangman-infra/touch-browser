@@ -31,10 +31,7 @@ pub(crate) fn build_claim_outcome(
         confidence_band.clone(),
         resolution.reason.clone(),
         &support_snippets,
-        resolution
-            .guard_failures
-            .first()
-            .map(|failure| failure.detail.as_str()),
+        resolution.guard_failures.first(),
         resolution.next_action_hint.as_deref(),
     ));
     let citation =
@@ -169,7 +166,7 @@ fn build_verdict_explanation(
     confidence_band: Option<EvidenceConfidenceBand>,
     reason: Option<UnsupportedClaimReason>,
     support_snippets: &[EvidenceSupportSnippet],
-    first_guard_detail: Option<&str>,
+    first_guard_failure: Option<&EvidenceGuardFailure>,
     next_action_hint: Option<&str>,
 ) -> String {
     match verdict {
@@ -188,20 +185,19 @@ fn build_verdict_explanation(
             ),
             None => "Matched support from the current page. Review the attached snippets before reusing the claim.".to_string(),
         },
-        EvidenceClaimVerdict::Contradicted => first_guard_detail
-            .map(|detail| format!("Retrieved evidence conflicts with the claim: {detail}"))
+        EvidenceClaimVerdict::Contradicted => first_guard_failure
+            .map(|failure| {
+                format!(
+                    "Retrieved evidence conflicts with the claim: {}",
+                    contradiction_message_for_failure(failure)
+                )
+            })
             .unwrap_or_else(|| {
                 "Retrieved evidence conflicts with the claim on the current page.".to_string()
             }),
         EvidenceClaimVerdict::NeedsMoreBrowsing => next_action_hint
-            .map(str::to_string)
-            .or_else(|| {
-                first_guard_detail.map(|detail| {
-                    format!(
-                        "The current page surfaced mixed or borderline evidence: {detail}"
-                    )
-                })
-            })
+            .map(|hint| combine_user_facing_explanation(first_guard_failure, hint))
+            .or_else(|| first_guard_failure.map(needs_more_browsing_message_for_failure))
             .unwrap_or_else(|| {
                 "The current page surfaced plausible evidence, but it still needs a more specific source or manual review.".to_string()
             }),
@@ -212,8 +208,74 @@ fn build_verdict_explanation(
             Some(UnsupportedClaimReason::NoSupportingBlock) => {
                 "The page did not surface a direct support block for this claim.".to_string()
             }
+            Some(UnsupportedClaimReason::NeedsMoreBrowsing) => first_guard_failure
+                .map(needs_more_browsing_message_for_failure)
+                .unwrap_or_else(|| {
+                    "The page is related, but it does not directly support the full claim yet.".to_string()
+                }),
             _ => "The page did not surface enough direct evidence for this claim.".to_string(),
         },
+    }
+}
+
+fn combine_user_facing_explanation(
+    first_guard_failure: Option<&EvidenceGuardFailure>,
+    next_action_hint: &str,
+) -> String {
+    match first_guard_failure {
+        Some(failure) => format!(
+            "{} {}",
+            needs_more_browsing_message_for_failure(failure),
+            next_action_hint
+        ),
+        None => next_action_hint.to_string(),
+    }
+}
+
+fn contradiction_message_for_failure(failure: &EvidenceGuardFailure) -> String {
+    match failure.kind {
+        EvidenceGuardKind::NumericValue | EvidenceGuardKind::NumericUnit => {
+            "the exact numeric detail on the page does not match the claim".to_string()
+        }
+        EvidenceGuardKind::Scope => {
+            "the page evidence is narrower than the claim scope".to_string()
+        }
+        EvidenceGuardKind::Status => {
+            "the page evidence points to a different release status than the claim".to_string()
+        }
+        EvidenceGuardKind::Negation => "the page text states the opposite of the claim".to_string(),
+        EvidenceGuardKind::Predicate => {
+            "the page states a different property than the claim".to_string()
+        }
+        EvidenceGuardKind::AnchorCoverage | EvidenceGuardKind::QualifierCoverage => {
+            "the closest matching passage does not actually anchor the full claim".to_string()
+        }
+    }
+}
+
+fn needs_more_browsing_message_for_failure(failure: &EvidenceGuardFailure) -> String {
+    match failure.kind {
+        EvidenceGuardKind::NumericValue | EvidenceGuardKind::NumericUnit => {
+            "The page discusses the topic, but it does not directly support the exact numeric detail yet. Open the limits, pricing, quotas, or spec page.".to_string()
+        }
+        EvidenceGuardKind::Scope => {
+            "The claim scope is wider than the page evidence. The current page looks partial or regional, so a more specific official reference page is recommended.".to_string()
+        }
+        EvidenceGuardKind::Status => {
+            "The page mentions the feature, but it does not directly confirm release status. An official status page or release-notes page is recommended.".to_string()
+        }
+        EvidenceGuardKind::Predicate => {
+            "The page is related, but it reads more like indirect or blog-style explanation than direct normative support for the exact claim. Open a sentence or reference page that states it explicitly.".to_string()
+        }
+        EvidenceGuardKind::AnchorCoverage => {
+            "The page contains related text, but the evidence does not stay anchored to the exact subject of the claim. Open a page focused on that specific subject.".to_string()
+        }
+        EvidenceGuardKind::QualifierCoverage => {
+            "The page is close, but it does not directly support the qualifier in the claim such as only, default, minimum, or maximum. Open a more exact reference page.".to_string()
+        }
+        EvidenceGuardKind::Negation => {
+            "The page contains mixed signals around the claim, so it still needs a more exact source before answering.".to_string()
+        }
     }
 }
 
@@ -401,12 +463,16 @@ fn claim_pair_merits_nli_conflict_check(left_statement: &str, right_statement: &
 mod tests {
     use touch_browser_contracts::{
         EvidenceCitation, EvidenceClaimOutcome, EvidenceClaimVerdict, EvidenceConfidenceBand,
-        EvidenceMatchSignals, EvidenceSupportRole, EvidenceSupportSnippet, SnapshotBlock,
-        SnapshotBlockKind, SnapshotBlockRole, SnapshotBudget, SnapshotDocument, SnapshotEvidence,
-        SnapshotSource, SourceRisk, SourceType, CONTRACT_VERSION,
+        EvidenceGuardFailure, EvidenceGuardKind, EvidenceMatchSignals, EvidenceSupportRole,
+        EvidenceSupportSnippet, SnapshotBlock, SnapshotBlockKind, SnapshotBlockRole,
+        SnapshotBudget, SnapshotDocument, SnapshotEvidence, SnapshotSource, SourceRisk, SourceType,
+        CONTRACT_VERSION,
     };
 
-    use super::{build_claim_outcome, build_report, downgrade_conflicting_supported_claims};
+    use super::{
+        build_claim_outcome, build_report, downgrade_conflicting_supported_claims,
+        needs_more_browsing_message_for_failure,
+    };
     use crate::semantic_matching::NliScore;
     use crate::{ClaimRequest, EvidenceInput};
 
@@ -562,6 +628,26 @@ mod tests {
                 && outcome.reason
                     == Some(touch_browser_contracts::UnsupportedClaimReason::NeedsMoreBrowsing)
         }));
+    }
+
+    #[test]
+    fn needs_more_browsing_messages_translate_guard_failures_for_humans() {
+        let scope = needs_more_browsing_message_for_failure(&EvidenceGuardFailure {
+            kind: EvidenceGuardKind::Scope,
+            detail: "Claim scope `universal` conflicts with support scope `limited`.".to_string(),
+        });
+        let predicate = needs_more_browsing_message_for_failure(&EvidenceGuardFailure {
+            kind: EvidenceGuardKind::Predicate,
+            detail: "The claim requires explicit evidence.".to_string(),
+        });
+        let status = needs_more_browsing_message_for_failure(&EvidenceGuardFailure {
+            kind: EvidenceGuardKind::Status,
+            detail: "The claim requires explicit release-status support.".to_string(),
+        });
+
+        assert!(scope.contains("claim scope is wider"));
+        assert!(predicate.contains("blog-style explanation"));
+        assert!(status.contains("official status page"));
     }
 
     #[test]

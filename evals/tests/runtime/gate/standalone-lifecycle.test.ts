@@ -78,6 +78,28 @@ describe("standalone lifecycle smoke", () => {
       );
 
       const commandPath = path.join(installDir, "touch-browser");
+      const versionText = (
+        await runShell(`${shellQuote(commandPath)} --version`, env)
+      ).trim();
+      expect(versionText).toBe("touch-browser 0.3.0");
+
+      const status = JSON.parse(
+        await runShell(`${shellQuote(commandPath)} status`, env),
+      );
+      expect(status.status).toBe("ready");
+      expect(status.result.recommendedFirstCall).toBe(
+        "touch-browser capabilities --agent-json",
+      );
+
+      const capabilities = JSON.parse(
+        await runShell(
+          `${shellQuote(commandPath)} capabilities --agent-json`,
+          env,
+        ),
+      );
+      expect(capabilities.status).toBe("ready");
+      expect(capabilities.agentContract.command).toBe("capabilities");
+
       const mcpStatus = await runMcpStatus(
         `${shellQuote(commandPath)} mcp`,
         env,

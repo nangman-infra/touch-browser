@@ -1590,24 +1590,30 @@ fn next_action_hint_for_failures(failures: &[EvidenceGuardFailure]) -> Option<St
             EvidenceGuardKind::NumericValue | EvidenceGuardKind::NumericUnit
         )
     }) {
-        Some("Browse the limits, pricing, or quotas page before answering.".to_string())
+        Some(
+            "Browse the limits, pricing, quotas, or exact specification page before answering."
+                .to_string(),
+        )
     } else if failures
         .iter()
         .any(|failure| matches!(failure.kind, EvidenceGuardKind::Scope))
     {
         Some(
-            "Browse the regional availability or feature-matrix page before answering.".to_string(),
+            "Browse the regional availability, feature matrix, or official reference page that matches the exact scope before answering.".to_string(),
         )
     } else if failures
         .iter()
         .any(|failure| matches!(failure.kind, EvidenceGuardKind::Status))
     {
-        Some("Browse the release notes or feature status page before answering.".to_string())
+        Some(
+            "Browse the official release notes or feature status page before answering."
+                .to_string(),
+        )
     } else if failures
         .iter()
         .any(|failure| matches!(failure.kind, EvidenceGuardKind::Predicate))
     {
-        Some("Browse a source sentence that explicitly states the property you are claiming before answering.".to_string())
+        Some("Browse a source sentence or reference page that explicitly states the property you are claiming before answering.".to_string())
     } else if failures.is_empty() {
         None
     } else {

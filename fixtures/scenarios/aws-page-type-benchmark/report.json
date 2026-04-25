@@ -1,0 +1,393 @@
+{
+  "checkedAt": "2026-04-11T15:54:37.241Z",
+  "status": "aws-page-types-profiled",
+  "sampleCount": 6,
+  "successfulSampleCount": 6,
+  "mainOnlyRecallRate": 1,
+  "browserRicherCount": 4,
+  "browserRicherRate": 0.67,
+  "autoFallbackCount": 2,
+  "autoFallbackRate": 0.33,
+  "samples": [
+    {
+      "id": "lambda-quotas",
+      "pageType": "quota-guide",
+      "url": "https://docs.aws.amazon.com/lambda/latest/dg/gettingstarted-limits.html",
+      "auto": {
+        "latencyMs": 1295,
+        "sourceType": "http",
+        "title": "Lambda quotas - AWS Lambda",
+        "emittedTokens": 2047,
+        "blockCount": 51,
+        "diagnostics": {
+          "captureMode": "http",
+          "effectiveBudget": 2048,
+          "fallbackTriggered": false,
+          "mainBlockCount": 26,
+          "meaningfulBlockCount": 26,
+          "qualityLabel": "high",
+          "qualityScore": 1,
+          "recommendedNextStep": "increase-budget",
+          "requestedBudget": 512,
+          "shellBlockCount": 20,
+          "truncated": true,
+          "waitStrategy": "http-fetch"
+        }
+      },
+      "browser": {
+        "latencyMs": 4065,
+        "sourceType": "playwright",
+        "title": "Lambda quotas - AWS Lambda",
+        "emittedTokens": 4096,
+        "blockCount": 441,
+        "diagnostics": {
+          "captureMode": "browser",
+          "effectiveBudget": 4096,
+          "fallbackTriggered": false,
+          "mainBlockCount": 31,
+          "meaningfulBlockCount": 40,
+          "qualityLabel": "high",
+          "qualityScore": 1,
+          "recommendedNextStep": "increase-budget",
+          "requestedBudget": 512,
+          "shellBlockCount": 399,
+          "truncated": true,
+          "waitBudgetMs": 2000,
+          "waitConsumedMs": 0,
+          "waitStopReason": "main-content-ready",
+          "waitStrategy": "load+quality-probe"
+        }
+      },
+      "browserRicher": true,
+      "mainOnly": {
+        "latencyMs": 38,
+        "tokens": 1666,
+        "matchedMustContain": [
+          "Lambda quotas",
+          "15 minutes",
+          "10,240 MB of memory"
+        ],
+        "recall": 1,
+        "passed": true
+      }
+    },
+    {
+      "id": "s3-listobjectsv2-api",
+      "pageType": "api-reference",
+      "url": "https://docs.aws.amazon.com/AmazonS3/latest/API/API_ListObjectsV2.html",
+      "auto": {
+        "latencyMs": 162,
+        "sourceType": "http",
+        "title": "ListObjectsV2 - Amazon Simple Storage Service",
+        "emittedTokens": 4096,
+        "blockCount": 152,
+        "diagnostics": {
+          "captureMode": "http",
+          "effectiveBudget": 4096,
+          "fallbackTriggered": false,
+          "mainBlockCount": 101,
+          "meaningfulBlockCount": 101,
+          "qualityLabel": "high",
+          "qualityScore": 1,
+          "recommendedNextStep": "increase-budget",
+          "requestedBudget": 512,
+          "shellBlockCount": 45,
+          "truncated": true,
+          "waitStrategy": "http-fetch"
+        }
+      },
+      "browser": {
+        "latencyMs": 4016,
+        "sourceType": "playwright",
+        "title": "ListObjectsV2 - Amazon Simple Storage Service",
+        "emittedTokens": 4096,
+        "blockCount": 259,
+        "diagnostics": {
+          "captureMode": "browser",
+          "effectiveBudget": 4096,
+          "fallbackTriggered": false,
+          "mainBlockCount": 78,
+          "meaningfulBlockCount": 86,
+          "qualityLabel": "high",
+          "qualityScore": 1,
+          "recommendedNextStep": "increase-budget",
+          "requestedBudget": 512,
+          "shellBlockCount": 173,
+          "truncated": true,
+          "waitBudgetMs": 2000,
+          "waitConsumedMs": 0,
+          "waitStopReason": "main-content-ready",
+          "waitStrategy": "load+quality-probe"
+        }
+      },
+      "browserRicher": true,
+      "mainOnly": {
+        "latencyMs": 98,
+        "tokens": 3929,
+        "matchedMustContain": [
+          "ListObjectsV2",
+          "up to 1,000",
+          "General purpose bucket"
+        ],
+        "recall": 1,
+        "passed": true
+      }
+    },
+    {
+      "id": "sdk-js-s3-examples",
+      "pageType": "code-examples",
+      "url": "https://docs.aws.amazon.com/sdk-for-javascript/v3/developer-guide/javascript_s3_code_examples.html",
+      "auto": {
+        "latencyMs": 266,
+        "sourceType": "http",
+        "title": "Amazon S3 examples using SDK for JavaScript (v3) - AWS SDK for JavaScript",
+        "emittedTokens": 4096,
+        "blockCount": 301,
+        "diagnostics": {
+          "captureMode": "http",
+          "effectiveBudget": 4096,
+          "fallbackTriggered": false,
+          "mainBlockCount": 165,
+          "meaningfulBlockCount": 165,
+          "qualityLabel": "high",
+          "qualityScore": 1,
+          "recommendedNextStep": "increase-budget",
+          "requestedBudget": 512,
+          "shellBlockCount": 111,
+          "truncated": true,
+          "waitStrategy": "http-fetch"
+        }
+      },
+      "browser": {
+        "latencyMs": 5204,
+        "sourceType": "playwright",
+        "title": "Amazon S3 examples using SDK for JavaScript (v3) - AWS SDK for JavaScript",
+        "emittedTokens": 4096,
+        "blockCount": 414,
+        "diagnostics": {
+          "captureMode": "browser",
+          "effectiveBudget": 4096,
+          "fallbackTriggered": false,
+          "mainBlockCount": 207,
+          "meaningfulBlockCount": 215,
+          "qualityLabel": "high",
+          "qualityScore": 1,
+          "recommendedNextStep": "increase-budget",
+          "requestedBudget": 512,
+          "shellBlockCount": 176,
+          "truncated": true,
+          "waitBudgetMs": 2000,
+          "waitConsumedMs": 0,
+          "waitStopReason": "main-content-ready",
+          "waitStrategy": "load+quality-probe"
+        }
+      },
+      "browserRicher": true,
+      "mainOnly": {
+        "latencyMs": 183,
+        "tokens": 6063,
+        "matchedMustContain": [
+          "Amazon S3 examples using SDK for JavaScript (v3)",
+          "AWS SDK for JavaScript (v3)",
+          "AWS Code Examples Repository"
+        ],
+        "recall": 1,
+        "passed": true
+      }
+    },
+    {
+      "id": "prescriptive-guidance-patterns",
+      "pageType": "prescriptive-guidance",
+      "url": "https://docs.aws.amazon.com/prescriptive-guidance/latest/patterns/migrate-databases-to-amazon-rds.html",
+      "auto": {
+        "latencyMs": 4060,
+        "sourceType": "playwright",
+        "title": "AWS Prescriptive Guidance Patterns - AWS Prescriptive Guidance",
+        "emittedTokens": 4096,
+        "blockCount": 296,
+        "diagnostics": {
+          "captureMode": "browser-fallback",
+          "effectiveBudget": 4096,
+          "fallbackReason": "missing-main-content",
+          "fallbackTriggered": true,
+          "mainBlockCount": 12,
+          "meaningfulBlockCount": 20,
+          "qualityLabel": "high",
+          "qualityScore": 1,
+          "recommendedNextStep": "increase-budget",
+          "requestedBudget": 512,
+          "shellBlockCount": 268,
+          "truncated": true,
+          "waitBudgetMs": 2000,
+          "waitConsumedMs": 0,
+          "waitStopReason": "main-content-ready",
+          "waitStrategy": "load+quality-probe"
+        }
+      },
+      "browser": {
+        "latencyMs": 3392,
+        "sourceType": "playwright",
+        "title": "AWS Prescriptive Guidance Patterns - AWS Prescriptive Guidance",
+        "emittedTokens": 4096,
+        "blockCount": 296,
+        "diagnostics": {
+          "captureMode": "browser",
+          "effectiveBudget": 4096,
+          "fallbackTriggered": false,
+          "mainBlockCount": 12,
+          "meaningfulBlockCount": 20,
+          "qualityLabel": "high",
+          "qualityScore": 1,
+          "recommendedNextStep": "increase-budget",
+          "requestedBudget": 512,
+          "shellBlockCount": 268,
+          "truncated": true,
+          "waitBudgetMs": 2000,
+          "waitConsumedMs": 0,
+          "waitStopReason": "main-content-ready",
+          "waitStrategy": "load+quality-probe"
+        }
+      },
+      "browserRicher": false,
+      "mainOnly": {
+        "latencyMs": 3296,
+        "tokens": 993,
+        "matchedMustContain": [
+          "AWS Prescriptive Guidance Patterns",
+          "step-by-step instructions",
+          "migrating to AWS"
+        ],
+        "recall": 1,
+        "passed": true
+      }
+    },
+    {
+      "id": "s3-files-guide",
+      "pageType": "storage-guide",
+      "url": "https://docs.aws.amazon.com/AmazonS3/latest/userguide/s3-files.html",
+      "auto": {
+        "latencyMs": 72,
+        "sourceType": "http",
+        "title": "Working with Amazon S3 Files - Amazon Simple Storage Service",
+        "emittedTokens": 2047,
+        "blockCount": 41,
+        "diagnostics": {
+          "captureMode": "http",
+          "effectiveBudget": 2048,
+          "fallbackTriggered": false,
+          "mainBlockCount": 27,
+          "meaningfulBlockCount": 27,
+          "qualityLabel": "high",
+          "qualityScore": 1,
+          "recommendedNextStep": "increase-budget",
+          "requestedBudget": 512,
+          "shellBlockCount": 10,
+          "truncated": true,
+          "waitStrategy": "http-fetch"
+        }
+      },
+      "browser": {
+        "latencyMs": 3921,
+        "sourceType": "playwright",
+        "title": "Working with Amazon S3 Files - Amazon Simple Storage Service",
+        "emittedTokens": 4096,
+        "blockCount": 264,
+        "diagnostics": {
+          "captureMode": "browser",
+          "effectiveBudget": 4096,
+          "fallbackTriggered": false,
+          "mainBlockCount": 40,
+          "meaningfulBlockCount": 49,
+          "qualityLabel": "high",
+          "qualityScore": 1,
+          "recommendedNextStep": "increase-budget",
+          "requestedBudget": 512,
+          "shellBlockCount": 210,
+          "truncated": true,
+          "waitBudgetMs": 2000,
+          "waitConsumedMs": 0,
+          "waitStopReason": "main-content-ready",
+          "waitStrategy": "load+quality-probe"
+        }
+      },
+      "browserRicher": true,
+      "mainOnly": {
+        "latencyMs": 34,
+        "tokens": 1450,
+        "matchedMustContain": [
+          "Working with Amazon S3 Files",
+          "shared file system",
+          "high-performance storage"
+        ],
+        "recall": 1,
+        "passed": true
+      }
+    },
+    {
+      "id": "cloudformation-template-reference",
+      "pageType": "template-reference",
+      "url": "https://docs.aws.amazon.com/AWSCloudFormation/latest/TemplateReference/aws-properties-s3vectors-index-metadatafileconfiguration.html",
+      "auto": {
+        "latencyMs": 3772,
+        "sourceType": "playwright",
+        "title": "Introduction: CloudFormation Template Reference Guide - AWS CloudFormation",
+        "emittedTokens": 3295,
+        "blockCount": 406,
+        "diagnostics": {
+          "captureMode": "browser-fallback",
+          "effectiveBudget": 4096,
+          "fallbackReason": "missing-main-content",
+          "fallbackTriggered": true,
+          "mainBlockCount": 17,
+          "meaningfulBlockCount": 25,
+          "qualityLabel": "high",
+          "qualityScore": 1,
+          "recommendedNextStep": "increase-budget",
+          "requestedBudget": 512,
+          "shellBlockCount": 383,
+          "truncated": true,
+          "waitBudgetMs": 2000,
+          "waitConsumedMs": 0,
+          "waitStopReason": "main-content-ready",
+          "waitStrategy": "load+quality-probe"
+        }
+      },
+      "browser": {
+        "latencyMs": 3336,
+        "sourceType": "playwright",
+        "title": "Introduction: CloudFormation Template Reference Guide - AWS CloudFormation",
+        "emittedTokens": 3295,
+        "blockCount": 406,
+        "diagnostics": {
+          "captureMode": "browser",
+          "effectiveBudget": 4096,
+          "fallbackTriggered": false,
+          "mainBlockCount": 17,
+          "meaningfulBlockCount": 25,
+          "qualityLabel": "high",
+          "qualityScore": 1,
+          "recommendedNextStep": "increase-budget",
+          "requestedBudget": 512,
+          "shellBlockCount": 383,
+          "truncated": true,
+          "waitBudgetMs": 2000,
+          "waitConsumedMs": 0,
+          "waitStopReason": "main-content-ready",
+          "waitStrategy": "load+quality-probe"
+        }
+      },
+      "browserRicher": false,
+      "mainOnly": {
+        "latencyMs": 3547,
+        "tokens": 993,
+        "matchedMustContain": [
+          "CloudFormation Template Reference Guide",
+          "AWS resource and property types reference",
+          "Intrinsic functions"
+        ],
+        "recall": 1,
+        "passed": true
+      }
+    }
+  ]
+}

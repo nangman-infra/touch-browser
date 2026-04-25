@@ -589,6 +589,10 @@ fn checkpoint_and_approve_enable_supervised_session_without_repeating_ack_flags(
         "interactive-supervised-auth"
     );
     assert_eq!(
+        checkpoint["checkpoint"]["approvalPanel"]["severity"],
+        "review"
+    );
+    assert_eq!(
         checkpoint["checkpoint"]["playbook"]["provider"],
         "generic-auth"
     );
@@ -624,6 +628,29 @@ fn checkpoint_and_approve_enable_supervised_session_without_repeating_ack_flags(
     }))
     .expect("approved submit should succeed without inline ack");
     assert_eq!(approved["action"]["status"], "succeeded");
+
+    close_browser_fixture_session(session_file);
+}
+
+#[test]
+fn checkpoint_uses_action_risk_severity_for_high_risk_write_pages() {
+    let session_file = temp_session_path("session-checkpoint-high-risk-severity");
+    open_browser_fixture_session(
+        &session_file,
+        "fixture://research/navigation/browser-high-risk-checkout",
+    );
+
+    let checkpoint = dispatch(CliCommand::SessionCheckpoint(SessionFileOptions {
+        session_file: session_file.clone(),
+    }))
+    .expect("checkpoint should succeed");
+
+    assert_eq!(checkpoint["policy"]["decision"], "allow");
+    assert_eq!(checkpoint["policy"]["actionRisk"]["decision"], "review");
+    assert_eq!(
+        checkpoint["checkpoint"]["approvalPanel"]["severity"],
+        "review"
+    );
 
     close_browser_fixture_session(session_file);
 }

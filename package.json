@@ -52,7 +52,7 @@
     "test:adapter": "pnpm exec vitest run --config adapters/playwright/vitest.config.ts",
     "test:adapter:gate": "pnpm exec vitest run --config adapters/playwright/vitest.sonar.config.ts",
     "test:adapter:sonar": "pnpm exec vitest run --config adapters/playwright/vitest.sonar.config.ts --coverage.enabled true",
-    "test:evals:ci": "pnpm exec vitest run --config evals/vitest.gate.config.ts evals/tests/runtime/gate/interface-compatibility.test.ts evals/tests/runtime/gate/serve-smoke.test.ts evals/tests/runtime/gate/serve-rpc-client-stability.test.ts evals/tests/runtime/gate/mcp-bridge-smoke.test.ts evals/tests/runtime/gate/mcp-client-stability.test.ts",
+    "test:evals:ci": "pnpm exec vitest run --config evals/vitest.gate.config.ts evals/tests/runtime/gate/interface-compatibility.test.ts evals/tests/runtime/gate/serve-smoke.test.ts evals/tests/runtime/gate/serve-rpc-client-stability.test.ts evals/tests/runtime/gate/mcp-bridge-smoke.test.ts evals/tests/runtime/gate/mcp-client-stability.test.ts evals/tests/runtime/gate/qa-site-regression-manifest.test.ts evals/tests/runtime/gate/qa-site-regression-e2e.test.ts",
     "test:ci": "pnpm run quality:test:contracts && pnpm run quality:test:rust && pnpm run quality:test:adapter && pnpm run quality:test:evals",
     "test:evals": "pnpm run test:evals:gate && pnpm run test:evals:proof && pnpm run test:evals:benchmark",
     "test:evals:gate": "pnpm run fixtures:evals:gate && pnpm exec vitest run --config evals/vitest.gate.config.ts",

@@ -353,9 +353,9 @@ describe("contract schemas", () => {
         registry,
         "policy-report.schema.json",
       )({
-        decision: "block",
+        decision: "review",
         sourceRisk: "hostile",
-        riskClass: "blocked",
+        riskClass: "high",
         blockedRefs: ["rmain:link:https-malicious-example-submit"],
         signals: [
           {
@@ -366,6 +366,14 @@ describe("contract schemas", () => {
               "External actionable element is blocked on hostile sources.",
           },
         ],
+        pageRisk: {
+          decision: "review",
+          riskClass: "high",
+        },
+        actionRisk: {
+          decision: "block",
+          riskClass: "blocked",
+        },
       }),
     ).toBe(true);
 
@@ -402,6 +410,14 @@ describe("contract schemas", () => {
           riskClass: "low",
           blockedRefs: [],
           signals: [],
+          pageRisk: {
+            decision: "allow",
+            riskClass: "low",
+          },
+          actionRisk: {
+            decision: "allow",
+            riskClass: "low",
+          },
         },
         message: "Opened document.",
       }),

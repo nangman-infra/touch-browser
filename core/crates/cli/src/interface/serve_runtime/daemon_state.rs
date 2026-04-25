@@ -28,6 +28,7 @@ pub(crate) struct ServeRuntimeSession {
     pub(crate) approved_risks: BTreeSet<AckRisk>,
     pub(crate) tabs: BTreeMap<String, ServeTabRecord>,
     pub(crate) active_tab_id: Option<String>,
+    pub(crate) latest_search_tab_id: Option<String>,
 }
 
 #[derive(Debug, Clone)]
@@ -78,6 +79,7 @@ impl ServeDaemonState {
                 approved_risks: BTreeSet::new(),
                 tabs: BTreeMap::new(),
                 active_tab_id: None,
+                latest_search_tab_id: None,
             },
         );
         let tab_id = self.create_tab_for_session(&session_id)?;
@@ -187,6 +189,19 @@ impl ServeDaemonState {
             return self.opened_tab_file(session_id, requested_tab_id);
         }
 
+        if let Some(search_tab_id) = self.session(session_id)?.latest_search_tab_id.as_deref() {
+            if let Ok((tab_id, session_file)) =
+                self.opened_tab_file(session_id, Some(search_tab_id))
+            {
+                if load_browser_cli_session(&session_file)?
+                    .latest_search
+                    .is_some()
+                {
+                    return Ok((tab_id, session_file));
+                }
+            }
+        }
+
         if let Ok((active_tab_id, active_session_file)) = self.opened_tab_file(session_id, None) {
             if load_browser_cli_session(&active_session_file)?
                 .latest_search
@@ -210,6 +225,17 @@ impl ServeDaemonState {
         }
 
         self.opened_tab_file(session_id, None)
+    }
+
+    pub(crate) fn mark_latest_search_tab(
+        &mut self,
+        session_id: &str,
+        tab_id: &str,
+    ) -> Result<(), CliError> {
+        self.ensure_tab(session_id, tab_id)?;
+        let session = self.session_mut(session_id)?;
+        session.latest_search_tab_id = Some(tab_id.to_string());
+        Ok(())
     }
 
     pub(crate) fn extend_session_allowlist(
@@ -312,6 +338,9 @@ impl ServeDaemonState {
 
         let session = self.session_mut(session_id)?;
         session.tabs.remove(tab_id);
+        if session.latest_search_tab_id.as_deref() == Some(tab_id) {
+            session.latest_search_tab_id = None;
+        }
         if was_active {
             session.active_tab_id = session.tabs.keys().next().cloned();
         }

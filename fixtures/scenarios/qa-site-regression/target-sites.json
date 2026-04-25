@@ -1,0 +1,131 @@
+{
+  "version": "1.1.0",
+  "sites": [
+    {
+      "id": "mdn-reference",
+      "label": "MDN reference",
+      "target": "https://developer.mozilla.org/en-US/docs/Web/API/AbortController",
+      "mode": "stateless-extract",
+      "claims": [
+        {
+          "statement": "This page documents the AbortController interface.",
+          "expectedVerdict": "evidence-supported"
+        }
+      ],
+      "readView": {
+        "mustContain": [
+          "The AbortController interface represents a controller object",
+          "## Specifications"
+        ],
+        "mustNotContain": [
+          "Telemetry Settings",
+          "MDN Community"
+        ]
+      },
+      "expected": {
+        "supported": true,
+        "contradicted": false,
+        "needsMoreBrowsing": false,
+        "policy": {
+          "pageDecision": "allow",
+          "actionDecision": "allow"
+        }
+      }
+    },
+    {
+      "id": "chrome-developers-blog",
+      "label": "Chrome Developers blog",
+      "target": "https://developer.chrome.com/blog/",
+      "mode": "stateless-extract",
+      "verifierCommand": "node scripts/example-verifier.mjs",
+      "claims": [
+        {
+          "statement": "This page is the official reference page for Chrome developers.",
+          "expectedVerdict": "needs-more-browsing"
+        }
+      ],
+      "readView": {
+        "mustContain": [
+          "Chrome for Developers",
+          "## Blog"
+        ],
+        "mustNotContain": [
+          "English",
+          "한국어",
+          "Sign in"
+        ]
+      },
+      "expected": {
+        "supported": false,
+        "contradicted": false,
+        "needsMoreBrowsing": true,
+        "policy": {
+          "pageDecision": "allow",
+          "actionDecision": "allow"
+        }
+      }
+    },
+    {
+      "id": "iana-docs",
+      "label": "IANA docs",
+      "target": "https://www.iana.org/help/example-domains",
+      "mode": "stateless-extract",
+      "claims": [
+        {
+          "statement": "This page explains example domains used in documentation.",
+          "expectedVerdict": "evidence-supported"
+        }
+      ],
+      "readView": {
+        "mustContain": [
+          "# Example Domains",
+          "These domains may be used as illustrative examples in documents"
+        ],
+        "mustNotContain": [
+          "Privacy Policy",
+          "Terms of Service"
+        ]
+      },
+      "expected": {
+        "supported": true,
+        "contradicted": false,
+        "needsMoreBrowsing": false,
+        "policy": {
+          "pageDecision": "allow",
+          "actionDecision": "allow"
+        }
+      }
+    },
+    {
+      "id": "multi-page-follow-flow",
+      "label": "Multi-page follow flow",
+      "target": "fixture://research/navigation/browser-follow",
+      "mode": "session-follow",
+      "sessionFlow": {
+        "followRef": "rmain:link:advanced",
+        "afterReadMustContain": [
+          "Advanced guide opened for the next research step."
+        ]
+      },
+      "claims": [
+        {
+          "statement": "Advanced guide opened for the next research step.",
+          "expectedVerdict": "evidence-supported"
+        },
+        {
+          "statement": "The page contains a payment form.",
+          "expectedVerdict": "insufficient-evidence"
+        }
+      ],
+      "expected": {
+        "supported": true,
+        "contradicted": false,
+        "needsMoreBrowsing": false,
+        "policy": {
+          "pageDecision": "allow",
+          "actionDecision": "allow"
+        }
+      }
+    }
+  ]
+}

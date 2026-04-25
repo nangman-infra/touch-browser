@@ -504,7 +504,8 @@ mod tests {
         let policy = follow_result
             .policy
             .expect("blocked follow should carry policy report");
-        assert_eq!(policy.decision, PolicyDecision::Block);
+        assert_eq!(policy.decision, PolicyDecision::Review);
+        assert_eq!(policy.action_risk.decision, PolicyDecision::Block);
         assert!(policy
             .blocked_refs
             .contains(&"rmain:link:https-malicious-example-submit".to_string()));
