@@ -81,7 +81,7 @@ describe("standalone lifecycle smoke", () => {
       const versionText = (
         await runShell(`${shellQuote(commandPath)} --version`, env)
       ).trim();
-      expect(versionText).toBe("touch-browser 0.3.0");
+      expect(versionText).toBe("touch-browser 0.4.0");
 
       const status = JSON.parse(
         await runShell(`${shellQuote(commandPath)} status`, env),
