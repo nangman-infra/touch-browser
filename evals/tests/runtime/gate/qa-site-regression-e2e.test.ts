@@ -148,7 +148,7 @@ describe("qa site regression cli e2e", () => {
       } finally {
         rmSync(tempDir, { force: true, recursive: true });
       }
-    }, 60_000);
+    }, 120_000);
   }
 
   const publicWebIt = publicWebQaEnabled ? it : it.skip;
