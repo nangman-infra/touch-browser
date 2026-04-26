@@ -1,5 +1,5 @@
 {
-  "version": "1.0.0",
+  "version": "1.1.0",
   "generatedAt": "2026-03-14T00:00:00+09:00",
   "source": {
     "sourceUrl": "fixture://research/navigation/browser-login-form",
@@ -9,7 +9,7 @@
   },
   "evidenceSupportedClaims": [
     {
-      "version": "1.0.0",
+      "version": "1.1.0",
       "claimId": "c1",
       "statement": "The page contains a work email field.",
       "support": ["b4", "b5", "b7"],
@@ -51,7 +51,7 @@
   ],
   "insufficientEvidenceClaims": [
     {
-      "version": "1.0.0",
+      "version": "1.1.0",
       "claimId": "c3",
       "statement": "The page starts with an authenticated dashboard.",
       "reason": "insufficient-support-score",
@@ -64,7 +64,7 @@
   ],
   "needsMoreBrowsingClaims": [
     {
-      "version": "1.0.0",
+      "version": "1.1.0",
       "claimId": "c2",
       "statement": "The page includes a Sign in button.",
       "reason": "needs-more-browsing",
@@ -78,7 +78,7 @@
   ],
   "claimOutcomes": [
     {
-      "version": "1.0.0",
+      "version": "1.1.0",
       "claimId": "c1",
       "statement": "The page contains a work email field.",
       "verdict": "evidence-supported",
@@ -135,7 +135,7 @@
       ]
     },
     {
-      "version": "1.0.0",
+      "version": "1.1.0",
       "claimId": "c2",
       "statement": "The page includes a Sign in button.",
       "verdict": "needs-more-browsing",
@@ -173,7 +173,7 @@
       "nextActionHint": "The retrieved support is plausible but still borderline. Inspect the source sentence directly before answering."
     },
     {
-      "version": "1.0.0",
+      "version": "1.1.0",
       "claimId": "c3",
       "statement": "The page starts with an authenticated dashboard.",
       "verdict": "insufficient-evidence",

@@ -1,5 +1,5 @@
 {
-  "version": "1.0.0",
+  "version": "1.1.0",
   "generatedAt": "2026-03-14T00:00:00+09:00",
   "source": {
     "sourceUrl": "fixture://research/static-docs/compaction-playbook",
@@ -9,7 +9,7 @@
   },
   "evidenceSupportedClaims": [
     {
-      "version": "1.0.0",
+      "version": "1.1.0",
       "claimId": "c1",
       "statement": "Compaction Playbook keeps working sets small by promoting supported claims and recent refs.",
       "support": ["b3", "b4", "b2"],
@@ -49,7 +49,7 @@
       ]
     },
     {
-      "version": "1.0.0",
+      "version": "1.1.0",
       "claimId": "c2",
       "statement": "Recent refs remain in the active working set.",
       "support": ["b4", "b3", "b2"],
@@ -91,7 +91,7 @@
   ],
   "insufficientEvidenceClaims": [
     {
-      "version": "1.0.0",
+      "version": "1.1.0",
       "claimId": "c3",
       "statement": "Compaction Playbook requires screenshot rendering.",
       "reason": "insufficient-support-score",
@@ -104,7 +104,7 @@
   ],
   "claimOutcomes": [
     {
-      "version": "1.0.0",
+      "version": "1.1.0",
       "claimId": "c1",
       "statement": "Compaction Playbook keeps working sets small by promoting supported claims and recent refs.",
       "verdict": "evidence-supported",
@@ -161,7 +161,7 @@
       ]
     },
     {
-      "version": "1.0.0",
+      "version": "1.1.0",
       "claimId": "c2",
       "statement": "Recent refs remain in the active working set.",
       "verdict": "evidence-supported",
@@ -218,7 +218,7 @@
       ]
     },
     {
-      "version": "1.0.0",
+      "version": "1.1.0",
       "claimId": "c3",
       "statement": "Compaction Playbook requires screenshot rendering.",
       "verdict": "insufficient-evidence",

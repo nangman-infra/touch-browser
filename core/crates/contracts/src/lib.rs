@@ -4,7 +4,7 @@ use serde::{Deserialize, Serialize};
 use serde_json::Value;
 
 pub const CONTRACTS_CRATE: &str = "touch-browser-contracts";
-pub const CONTRACT_VERSION: &str = "1.0.0";
+pub const CONTRACT_VERSION: &str = "1.1.0";
 pub const STABLE_REF_VERSION: &str = "1";
 
 pub fn crate_status() -> &'static str {

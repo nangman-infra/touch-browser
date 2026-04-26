@@ -1,5 +1,5 @@
 {
-  "version": "1.0.0",
+  "version": "1.1.0",
   "generatedAt": "2026-03-14T00:00:00+09:00",
   "source": {
     "sourceUrl": "fixture://research/static-docs/trusted-sources",
@@ -9,7 +9,7 @@
   },
   "evidenceSupportedClaims": [
     {
-      "version": "1.0.0",
+      "version": "1.1.0",
       "claimId": "c1",
       "statement": "Trusted Sources recommends domain allowlists before enabling browser actions.",
       "support": ["b3", "b4", "b2"],
@@ -49,7 +49,7 @@
       ]
     },
     {
-      "version": "1.0.0",
+      "version": "1.1.0",
       "claimId": "c2",
       "statement": "High-risk domains require review.",
       "support": ["b4", "b3"],
@@ -85,7 +85,7 @@
   ],
   "insufficientEvidenceClaims": [
     {
-      "version": "1.0.0",
+      "version": "1.1.0",
       "claimId": "c3",
       "statement": "Trusted Sources enables automatic purchases.",
       "reason": "insufficient-support-score",
@@ -98,7 +98,7 @@
   ],
   "claimOutcomes": [
     {
-      "version": "1.0.0",
+      "version": "1.1.0",
       "claimId": "c1",
       "statement": "Trusted Sources recommends domain allowlists before enabling browser actions.",
       "verdict": "evidence-supported",
@@ -155,7 +155,7 @@
       ]
     },
     {
-      "version": "1.0.0",
+      "version": "1.1.0",
       "claimId": "c2",
       "statement": "High-risk domains require review.",
       "verdict": "evidence-supported",
@@ -206,7 +206,7 @@
       ]
     },
     {
-      "version": "1.0.0",
+      "version": "1.1.0",
       "claimId": "c3",
       "statement": "Trusted Sources enables automatic purchases.",
       "verdict": "insufficient-evidence",

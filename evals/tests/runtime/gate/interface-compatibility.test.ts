@@ -3,6 +3,8 @@ import { describe, expect, it } from "vitest";
 import { repoRoot } from "../support/paths.js";
 import { spawnShellCommand } from "../support/shell.js";
 
+const CURRENT_CONTRACT_VERSION = "1.1.0";
+
 type RpcEnvelope<T> = {
   readonly id: number | string | null;
   readonly jsonrpc: "2.0";
@@ -37,10 +39,10 @@ describe("interface compatibility", () => {
       "cargo run -q -p touch-browser-cli -- read-view fixture://research/static-docs/getting-started",
     );
 
-    expect(open.version).toBe("1.0.0");
+    expect(open.version).toBe(CURRENT_CONTRACT_VERSION);
     expect(open.action).toBe("open");
     expect(open.status).toBe("succeeded");
-    expect(open.output.version).toBe("1.0.0");
+    expect(open.output.version).toBe(CURRENT_CONTRACT_VERSION);
     expect(open.output.stableRefVersion).toBe("1");
 
     expect(compact.sourceUrl).toBe(
@@ -76,7 +78,7 @@ describe("interface compatibility", () => {
     expect(serveStatus.methods).toContain("runtime.session.secret.store");
     expect(serveStatus.methods).toContain("runtime.telemetry.summary");
     expect(serveStatus.methods).toContain("runtime.telemetry.recent");
-    expect(serveStatus.version).toBe("1.0.0");
+    expect(serveStatus.version).toBe(CURRENT_CONTRACT_VERSION);
 
     const mcpToolList = await runMcpCall<McpToolListResult>("tools/list", {});
     expect(

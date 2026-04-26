@@ -6,6 +6,8 @@ on:
       - main
   pull_request:
   workflow_dispatch:
+  schedule:
+    - cron: "0 18 * * *"
 
 permissions:
   contents: read
@@ -168,3 +170,34 @@ jobs:
               console.log(`SonarQube issue: ${issue.severity || "UNKNOWN"} ${issue.rule || "unknown-rule"} ${location} ${issue.message || ""}`);
             }
           ' <<< "${issues_json}"
+
+  public-web-qa:
+    name: Public Web QA
+    needs: quality-checks
+    if: github.event_name != 'pull_request'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+
+      - name: Set up pnpm
+        uses: pnpm/action-setup@v5
+        with:
+          version: 10.24.0
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v6
+        with:
+          node-version: 22
+          cache: pnpm
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Install Playwright Chromium
+        run: pnpm exec playwright install --with-deps chromium
+
+      - name: Run public-web QA regression gate
+        run: pnpm run quality:test:evals:public-web

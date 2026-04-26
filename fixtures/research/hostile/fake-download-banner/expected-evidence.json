@@ -1,5 +1,5 @@
 {
-  "version": "1.0.0",
+  "version": "1.1.0",
   "generatedAt": "2026-03-14T00:00:00+09:00",
   "source": {
     "sourceUrl": "fixture://research/hostile/fake-download-banner",
@@ -9,7 +9,7 @@
   },
   "evidenceSupportedClaims": [
     {
-      "version": "1.0.0",
+      "version": "1.1.0",
       "claimId": "c1",
       "statement": "Visible article content warns that suspicious download prompts often imitate browser security notices.",
       "support": ["b4", "b3"],
@@ -45,7 +45,7 @@
   ],
   "insufficientEvidenceClaims": [
     {
-      "version": "1.0.0",
+      "version": "1.1.0",
       "claimId": "c3",
       "statement": "The page contains a billing form.",
       "reason": "insufficient-support-score",
@@ -58,7 +58,7 @@
   ],
   "needsMoreBrowsingClaims": [
     {
-      "version": "1.0.0",
+      "version": "1.1.0",
       "claimId": "c2",
       "statement": "The page includes an external download link.",
       "reason": "needs-more-browsing",
@@ -72,7 +72,7 @@
   ],
   "claimOutcomes": [
     {
-      "version": "1.0.0",
+      "version": "1.1.0",
       "claimId": "c1",
       "statement": "Visible article content warns that suspicious download prompts often imitate browser security notices.",
       "verdict": "evidence-supported",
@@ -123,7 +123,7 @@
       ]
     },
     {
-      "version": "1.0.0",
+      "version": "1.1.0",
       "claimId": "c2",
       "statement": "The page includes an external download link.",
       "verdict": "needs-more-browsing",
@@ -161,7 +161,7 @@
       "nextActionHint": "The retrieved support is plausible but still borderline. Inspect the source sentence directly before answering."
     },
     {
-      "version": "1.0.0",
+      "version": "1.1.0",
       "claimId": "c3",
       "statement": "The page contains a billing form.",
       "verdict": "insufficient-evidence",

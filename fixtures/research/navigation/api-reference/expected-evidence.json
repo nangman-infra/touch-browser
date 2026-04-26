@@ -1,5 +1,5 @@
 {
-  "version": "1.0.0",
+  "version": "1.1.0",
   "generatedAt": "2026-03-14T00:00:00+09:00",
   "source": {
     "sourceUrl": "fixture://research/navigation/api-reference",
@@ -9,7 +9,7 @@
   },
   "evidenceSupportedClaims": [
     {
-      "version": "1.0.0",
+      "version": "1.1.0",
       "claimId": "c1",
       "statement": "The runtime exposes open, snapshot, extract, diff, compact, and replay commands.",
       "support": ["b6", "b7", "b5"],
@@ -49,7 +49,7 @@
       ]
     },
     {
-      "version": "1.0.0",
+      "version": "1.1.0",
       "claimId": "c2",
       "statement": "Snapshot responses include stable refs and evidence metadata.",
       "support": ["b8", "b9", "b7"],
@@ -92,7 +92,7 @@
   "insufficientEvidenceClaims": [],
   "needsMoreBrowsingClaims": [
     {
-      "version": "1.0.0",
+      "version": "1.1.0",
       "claimId": "c3",
       "statement": "The API reference documents a purchase command.",
       "reason": "needs-more-browsing",
@@ -112,7 +112,7 @@
   ],
   "claimOutcomes": [
     {
-      "version": "1.0.0",
+      "version": "1.1.0",
       "claimId": "c1",
       "statement": "The runtime exposes open, snapshot, extract, diff, compact, and replay commands.",
       "verdict": "evidence-supported",
@@ -169,7 +169,7 @@
       ]
     },
     {
-      "version": "1.0.0",
+      "version": "1.1.0",
       "claimId": "c2",
       "statement": "Snapshot responses include stable refs and evidence metadata.",
       "verdict": "evidence-supported",
@@ -226,7 +226,7 @@
       ]
     },
     {
-      "version": "1.0.0",
+      "version": "1.1.0",
       "claimId": "c3",
       "statement": "The API reference documents a purchase command.",
       "verdict": "needs-more-browsing",

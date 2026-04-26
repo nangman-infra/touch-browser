@@ -13,9 +13,39 @@ permissions:
   contents: write
 
 jobs:
+  public-web-release-gate:
+    name: Public web release gate
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+
+      - name: Set up pnpm
+        uses: pnpm/action-setup@v5
+        with:
+          version: 10.24.0
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v6
+        with:
+          node-version: 22
+          cache: pnpm
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Install Playwright Chromium
+        run: pnpm exec playwright install --with-deps chromium
+
+      - name: Run public-web QA regression gate
+        run: pnpm run quality:test:evals:public-web
+
   build-bundles:
     name: Build standalone bundles
     runs-on: ${{ matrix.os }}
+    needs: public-web-release-gate
     strategy:
       fail-fast: false
       matrix:

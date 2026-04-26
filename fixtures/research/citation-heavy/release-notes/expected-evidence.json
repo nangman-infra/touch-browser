@@ -1,5 +1,5 @@
 {
-  "version": "1.0.0",
+  "version": "1.1.0",
   "generatedAt": "2026-03-14T00:00:00+09:00",
   "source": {
     "sourceUrl": "fixture://research/citation-heavy/release-notes",
@@ -9,7 +9,7 @@
   },
   "evidenceSupportedClaims": [
     {
-      "version": "1.0.0",
+      "version": "1.1.0",
       "claimId": "c1",
       "statement": "Version 0.1.0 added read-only replay sessions.",
       "support": ["b4", "b5", "b3"],
@@ -49,7 +49,7 @@
       ]
     },
     {
-      "version": "1.0.0",
+      "version": "1.1.0",
       "claimId": "c2",
       "statement": "Version 0.2.0 added hostile policy reports.",
       "support": ["b4", "b3", "b5"],
@@ -91,7 +91,7 @@
   ],
   "insufficientEvidenceClaims": [
     {
-      "version": "1.0.0",
+      "version": "1.1.0",
       "claimId": "c3",
       "statement": "The release notes announce autonomous drone shipping.",
       "reason": "insufficient-support-score",
@@ -111,7 +111,7 @@
   ],
   "claimOutcomes": [
     {
-      "version": "1.0.0",
+      "version": "1.1.0",
       "claimId": "c1",
       "statement": "Version 0.1.0 added read-only replay sessions.",
       "verdict": "evidence-supported",
@@ -169,7 +169,7 @@
       ]
     },
     {
-      "version": "1.0.0",
+      "version": "1.1.0",
       "claimId": "c2",
       "statement": "Version 0.2.0 added hostile policy reports.",
       "verdict": "evidence-supported",
@@ -227,7 +227,7 @@
       ]
     },
     {
-      "version": "1.0.0",
+      "version": "1.1.0",
       "claimId": "c3",
       "statement": "The release notes announce autonomous drone shipping.",
       "verdict": "insufficient-evidence",

@@ -1,5 +1,5 @@
 {
-  "version": "1.0.0",
+  "version": "1.1.0",
   "stableRefVersion": "1",
   "source": {
     "sourceUrl": "fixture://research/navigation/browser-tabs",
@@ -14,7 +14,7 @@
   },
   "blocks": [
     {
-      "version": "1.0.0",
+      "version": "1.1.0",
       "id": "b1",
       "kind": "metadata",
       "ref": "rhead:metadata:browser-tabs",
@@ -33,7 +33,7 @@
       }
     },
     {
-      "version": "1.0.0",
+      "version": "1.1.0",
       "id": "b2",
       "kind": "heading",
       "ref": "rmain:heading:browser-tabs",
@@ -52,7 +52,7 @@
       }
     },
     {
-      "version": "1.0.0",
+      "version": "1.1.0",
       "id": "b3",
       "kind": "text",
       "ref": "rmain:text:browser-tabs-highlights-overview-policies-and-lo",
@@ -70,7 +70,7 @@
       }
     },
     {
-      "version": "1.0.0",
+      "version": "1.1.0",
       "id": "b4",
       "kind": "list",
       "ref": "rmain:list:overview-tab-policies-tab-logs-tab",
@@ -90,7 +90,7 @@
       }
     },
     {
-      "version": "1.0.0",
+      "version": "1.1.0",
       "id": "b5",
       "kind": "button",
       "ref": "rmain:button:switch-to-overview",

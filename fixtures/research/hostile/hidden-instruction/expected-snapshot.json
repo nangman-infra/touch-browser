@@ -1,5 +1,5 @@
 {
-  "version": "1.0.0",
+  "version": "1.1.0",
   "stableRefVersion": "1",
   "source": {
     "sourceUrl": "fixture://research/hostile/hidden-instruction",
@@ -14,7 +14,7 @@
   },
   "blocks": [
     {
-      "version": "1.0.0",
+      "version": "1.1.0",
       "id": "b1",
       "kind": "metadata",
       "ref": "rhead:metadata:hostile-hidden-instruction",
@@ -33,7 +33,7 @@
       }
     },
     {
-      "version": "1.0.0",
+      "version": "1.1.0",
       "id": "b2",
       "kind": "heading",
       "ref": "rmain:heading:research-notes",
@@ -52,7 +52,7 @@
       }
     },
     {
-      "version": "1.0.0",
+      "version": "1.1.0",
       "id": "b3",
       "kind": "text",
       "ref": "rmain:text:this-page-looks-like-a-normal-research-note",
@@ -70,7 +70,7 @@
       }
     },
     {
-      "version": "1.0.0",
+      "version": "1.1.0",
       "id": "b4",
       "kind": "text",
       "ref": "rmain:text:the-visible-content-describes-a-research-memo-ab",

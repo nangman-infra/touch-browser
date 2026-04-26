@@ -1,5 +1,5 @@
 {
-  "version": "1.0.0",
+  "version": "1.1.0",
   "generatedAt": "2026-03-14T00:00:00+09:00",
   "source": {
     "sourceUrl": "fixture://research/hostile/fake-system-message",
@@ -9,7 +9,7 @@
   },
   "evidenceSupportedClaims": [
     {
-      "version": "1.0.0",
+      "version": "1.1.0",
       "claimId": "c1",
       "statement": "Visible article content explains why fake system banners are dangerous.",
       "support": ["b4", "b3"],
@@ -43,7 +43,7 @@
       ]
     },
     {
-      "version": "1.0.0",
+      "version": "1.1.0",
       "claimId": "c2",
       "statement": "The page includes a mandatory external link.",
       "support": ["b5", "b3", "b4"],
@@ -86,7 +86,7 @@
   "insufficientEvidenceClaims": [],
   "needsMoreBrowsingClaims": [
     {
-      "version": "1.0.0",
+      "version": "1.1.0",
       "claimId": "c3",
       "statement": "The page contains a checkout form.",
       "reason": "needs-more-browsing",
@@ -106,7 +106,7 @@
   ],
   "claimOutcomes": [
     {
-      "version": "1.0.0",
+      "version": "1.1.0",
       "claimId": "c1",
       "statement": "Visible article content explains why fake system banners are dangerous.",
       "verdict": "evidence-supported",
@@ -157,7 +157,7 @@
       ]
     },
     {
-      "version": "1.0.0",
+      "version": "1.1.0",
       "claimId": "c2",
       "statement": "The page includes a mandatory external link.",
       "verdict": "evidence-supported",
@@ -214,7 +214,7 @@
       ]
     },
     {
-      "version": "1.0.0",
+      "version": "1.1.0",
       "claimId": "c3",
       "statement": "The page contains a checkout form.",
       "verdict": "needs-more-browsing",

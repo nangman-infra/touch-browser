@@ -1,5 +1,5 @@
 {
-  "version": "1.0.0",
+  "version": "1.1.0",
   "generatedAt": "2026-03-14T00:00:00+09:00",
   "source": {
     "sourceUrl": "fixture://research/static-docs/cache-strategy",
@@ -9,7 +9,7 @@
   },
   "evidenceSupportedClaims": [
     {
-      "version": "1.0.0",
+      "version": "1.1.0",
       "claimId": "c1",
       "statement": "The acquisition layer stores requested URLs and final redirected URLs as cache aliases.",
       "support": ["b3", "b4", "b2"],
@@ -49,7 +49,7 @@
       ]
     },
     {
-      "version": "1.0.0",
+      "version": "1.1.0",
       "claimId": "c2",
       "statement": "The docs recommend rejecting unsupported content types before snapshot compilation.",
       "support": ["b4", "b3", "b5"],
@@ -91,7 +91,7 @@
   ],
   "insufficientEvidenceClaims": [
     {
-      "version": "1.0.0",
+      "version": "1.1.0",
       "claimId": "c3",
       "statement": "The runtime requires a permanent browser daemon to read static pages.",
       "reason": "insufficient-support-score",
@@ -111,7 +111,7 @@
   ],
   "claimOutcomes": [
     {
-      "version": "1.0.0",
+      "version": "1.1.0",
       "claimId": "c1",
       "statement": "The acquisition layer stores requested URLs and final redirected URLs as cache aliases.",
       "verdict": "evidence-supported",
@@ -168,7 +168,7 @@
       ]
     },
     {
-      "version": "1.0.0",
+      "version": "1.1.0",
       "claimId": "c2",
       "statement": "The docs recommend rejecting unsupported content types before snapshot compilation.",
       "verdict": "evidence-supported",
@@ -225,7 +225,7 @@
       ]
     },
     {
-      "version": "1.0.0",
+      "version": "1.1.0",
       "claimId": "c3",
       "statement": "The runtime requires a permanent browser daemon to read static pages.",
       "verdict": "insufficient-evidence",

@@ -1,5 +1,5 @@
 {
-  "version": "1.0.0",
+  "version": "1.1.0",
   "generatedAt": "2026-03-14T00:00:00+09:00",
   "source": {
     "sourceUrl": "fixture://research/navigation/browser-mfa-challenge",
@@ -9,7 +9,7 @@
   },
   "evidenceSupportedClaims": [
     {
-      "version": "1.0.0",
+      "version": "1.1.0",
       "claimId": "c1",
       "statement": "The page asks for a verification code.",
       "support": ["b3", "b7", "b2"],
@@ -51,7 +51,7 @@
   ],
   "insufficientEvidenceClaims": [
     {
-      "version": "1.0.0",
+      "version": "1.1.0",
       "claimId": "c2",
       "statement": "The page already shows a signed-in dashboard.",
       "reason": "insufficient-support-score",
@@ -64,7 +64,7 @@
   ],
   "claimOutcomes": [
     {
-      "version": "1.0.0",
+      "version": "1.1.0",
       "claimId": "c1",
       "statement": "The page asks for a verification code.",
       "verdict": "evidence-supported",
@@ -121,7 +121,7 @@
       ]
     },
     {
-      "version": "1.0.0",
+      "version": "1.1.0",
       "claimId": "c2",
       "statement": "The page already shows a signed-in dashboard.",
       "verdict": "insufficient-evidence",

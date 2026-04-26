@@ -1,5 +1,5 @@
 {
-  "version": "1.0.0",
+  "version": "1.1.0",
   "generatedAt": "2026-03-14T00:00:00+09:00",
   "source": {
     "sourceUrl": "fixture://research/static-docs/troubleshooting",
@@ -9,7 +9,7 @@
   },
   "evidenceSupportedClaims": [
     {
-      "version": "1.0.0",
+      "version": "1.1.0",
       "claimId": "c1",
       "statement": "If stable refs go stale after a page change, capture a new semantic snapshot before acting again.",
       "support": ["b6", "b7", "b5"],
@@ -49,7 +49,7 @@
       ]
     },
     {
-      "version": "1.0.0",
+      "version": "1.1.0",
       "claimId": "c2",
       "statement": "Memory compaction keeps the working set bounded during long research sessions.",
       "support": ["b7", "b8", "b6"],
@@ -91,7 +91,7 @@
   ],
   "insufficientEvidenceClaims": [
     {
-      "version": "1.0.0",
+      "version": "1.1.0",
       "claimId": "c3",
       "statement": "The troubleshooting guide documents a checkout recovery flow.",
       "reason": "insufficient-support-score",
@@ -104,7 +104,7 @@
   ],
   "claimOutcomes": [
     {
-      "version": "1.0.0",
+      "version": "1.1.0",
       "claimId": "c1",
       "statement": "If stable refs go stale after a page change, capture a new semantic snapshot before acting again.",
       "verdict": "evidence-supported",
@@ -161,7 +161,7 @@
       ]
     },
     {
-      "version": "1.0.0",
+      "version": "1.1.0",
       "claimId": "c2",
       "statement": "Memory compaction keeps the working set bounded during long research sessions.",
       "verdict": "evidence-supported",
@@ -218,7 +218,7 @@
       ]
     },
     {
-      "version": "1.0.0",
+      "version": "1.1.0",
       "claimId": "c3",
       "statement": "The troubleshooting guide documents a checkout recovery flow.",
       "verdict": "insufficient-evidence",

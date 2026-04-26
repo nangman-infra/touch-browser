@@ -1,5 +1,5 @@
 {
-  "version": "1.0.0",
+  "version": "1.1.0",
   "stableRefVersion": "1",
   "source": {
     "sourceUrl": "fixture://research/static-docs/compaction-playbook",
@@ -14,7 +14,7 @@
   },
   "blocks": [
     {
-      "version": "1.0.0",
+      "version": "1.1.0",
       "id": "b1",
       "kind": "metadata",
       "ref": "rhead:metadata:compaction-playbook",
@@ -33,7 +33,7 @@
       }
     },
     {
-      "version": "1.0.0",
+      "version": "1.1.0",
       "id": "b2",
       "kind": "heading",
       "ref": "rmain:heading:compaction-playbook",
@@ -52,7 +52,7 @@
       }
     },
     {
-      "version": "1.0.0",
+      "version": "1.1.0",
       "id": "b3",
       "kind": "text",
       "ref": "rmain:text:compaction-playbook-keeps-working-sets-small-by-",
@@ -70,7 +70,7 @@
       }
     },
     {
-      "version": "1.0.0",
+      "version": "1.1.0",
       "id": "b4",
       "kind": "list",
       "ref": "rmain:list:recent-refs-remain-in-the-active-working-set-uns",
@@ -90,7 +90,7 @@
       }
     },
     {
-      "version": "1.0.0",
+      "version": "1.1.0",
       "id": "b5",
       "kind": "link",
       "ref": "rmain:link:compaction-playbook",

@@ -2,6 +2,7 @@
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "policy-report.schema.json",
   "title": "PolicyReport",
+  "description": "Policy report for contract 1.1.0 and later. Consumers must treat pageRisk and actionRisk as the authoritative split between read-only page review and interaction-time supervision.",
   "type": "object",
   "additionalProperties": false,
   "required": [

@@ -1,5 +1,5 @@
 {
-  "version": "1.0.0",
+  "version": "1.1.0",
   "generatedAt": "2026-03-14T00:00:00+09:00",
   "source": {
     "sourceUrl": "fixture://research/hostile/credential-warning",
@@ -9,7 +9,7 @@
   },
   "evidenceSupportedClaims": [
     {
-      "version": "1.0.0",
+      "version": "1.1.0",
       "claimId": "c1",
       "statement": "Visible guidance explains that fake credential prompts attempt to bypass agent policy.",
       "support": ["b3", "b2"],
@@ -45,7 +45,7 @@
   ],
   "insufficientEvidenceClaims": [
     {
-      "version": "1.0.0",
+      "version": "1.1.0",
       "claimId": "c3",
       "statement": "The page contains a support pricing table.",
       "reason": "insufficient-support-score",
@@ -57,7 +57,7 @@
   ],
   "needsMoreBrowsingClaims": [
     {
-      "version": "1.0.0",
+      "version": "1.1.0",
       "claimId": "c2",
       "statement": "The page includes an external credential submission link.",
       "reason": "needs-more-browsing",
@@ -71,7 +71,7 @@
   ],
   "claimOutcomes": [
     {
-      "version": "1.0.0",
+      "version": "1.1.0",
       "claimId": "c1",
       "statement": "Visible guidance explains that fake credential prompts attempt to bypass agent policy.",
       "verdict": "evidence-supported",
@@ -121,7 +121,7 @@
       ]
     },
     {
-      "version": "1.0.0",
+      "version": "1.1.0",
       "claimId": "c2",
       "statement": "The page includes an external credential submission link.",
       "verdict": "needs-more-browsing",
@@ -159,7 +159,7 @@
       "nextActionHint": "The retrieved support is plausible but still borderline. Inspect the source sentence directly before answering."
     },
     {
-      "version": "1.0.0",
+      "version": "1.1.0",
       "claimId": "c3",
       "statement": "The page contains a support pricing table.",
       "verdict": "insufficient-evidence",

@@ -1,5 +1,5 @@
 {
-  "version": "1.0.0",
+  "version": "1.1.0",
   "stableRefVersion": "1",
   "source": {
     "sourceUrl": "fixture://research/navigation/docs-switcher",
@@ -14,7 +14,7 @@
   },
   "blocks": [
     {
-      "version": "1.0.0",
+      "version": "1.1.0",
       "id": "b1",
       "kind": "metadata",
       "ref": "rhead:metadata:docs-switcher",
@@ -33,7 +33,7 @@
       }
     },
     {
-      "version": "1.0.0",
+      "version": "1.1.0",
       "id": "b2",
       "kind": "heading",
       "ref": "rmain:heading:docs-switcher",
@@ -52,7 +52,7 @@
       }
     },
     {
-      "version": "1.0.0",
+      "version": "1.1.0",
       "id": "b3",
       "kind": "text",
       "ref": "rmain:text:docs-switcher-links-architecture-policy-and-repl",
@@ -70,7 +70,7 @@
       }
     },
     {
-      "version": "1.0.0",
+      "version": "1.1.0",
       "id": "b4",
       "kind": "list",
       "ref": "rmain:list:architecture-reference-policy-reference-replay-r",
@@ -90,7 +90,7 @@
       }
     },
     {
-      "version": "1.0.0",
+      "version": "1.1.0",
       "id": "b5",
       "kind": "link",
       "ref": "rmain:link:architecture",
@@ -110,7 +110,7 @@
       }
     },
     {
-      "version": "1.0.0",
+      "version": "1.1.0",
       "id": "b6",
       "kind": "link",
       "ref": "rmain:link:policy",
@@ -130,7 +130,7 @@
       }
     },
     {
-      "version": "1.0.0",
+      "version": "1.1.0",
       "id": "b7",
       "kind": "link",
       "ref": "rmain:link:replay",

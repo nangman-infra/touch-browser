@@ -1,5 +1,5 @@
 {
-  "version": "1.0.0",
+  "version": "1.1.0",
   "stableRefVersion": "1",
   "source": {
     "sourceUrl": "fixture://research/static-docs/getting-started",
@@ -14,7 +14,7 @@
   },
   "blocks": [
     {
-      "version": "1.0.0",
+      "version": "1.1.0",
       "id": "b1",
       "kind": "metadata",
       "ref": "rhead:metadata:touch-browser-docs-getting-started",
@@ -33,7 +33,7 @@
       }
     },
     {
-      "version": "1.0.0",
+      "version": "1.1.0",
       "id": "b2",
       "kind": "link",
       "ref": "rnav:link:docs",
@@ -53,7 +53,7 @@
       }
     },
     {
-      "version": "1.0.0",
+      "version": "1.1.0",
       "id": "b3",
       "kind": "link",
       "ref": "rnav:link:pricing",
@@ -73,7 +73,7 @@
       }
     },
     {
-      "version": "1.0.0",
+      "version": "1.1.0",
       "id": "b4",
       "kind": "link",
       "ref": "rnav:link:api",
@@ -93,7 +93,7 @@
       }
     },
     {
-      "version": "1.0.0",
+      "version": "1.1.0",
       "id": "b5",
       "kind": "heading",
       "ref": "rmain:heading:getting-started",
@@ -112,7 +112,7 @@
       }
     },
     {
-      "version": "1.0.0",
+      "version": "1.1.0",
       "id": "b6",
       "kind": "text",
       "ref": "rmain:text:touch-browser-compiles-web-pages-into-semantic-s",
@@ -130,7 +130,7 @@
       }
     },
     {
-      "version": "1.0.0",
+      "version": "1.1.0",
       "id": "b7",
       "kind": "heading",
       "ref": "rmain:heading:quickstart",
@@ -149,7 +149,7 @@
       }
     },
     {
-      "version": "1.0.0",
+      "version": "1.1.0",
       "id": "b8",
       "kind": "list",
       "ref": "rmain:list:1-install-the-runtime-2-open-a-research-url-3-ca",

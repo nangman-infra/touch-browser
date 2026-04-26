@@ -1,5 +1,5 @@
 {
-  "version": "1.0.0",
+  "version": "1.1.0",
   "generatedAt": "2026-03-14T00:00:00+09:00",
   "source": {
     "sourceUrl": "fixture://research/navigation/docs-switcher",
@@ -9,7 +9,7 @@
   },
   "evidenceSupportedClaims": [
     {
-      "version": "1.0.0",
+      "version": "1.1.0",
       "claimId": "c1",
       "statement": "Docs Switcher links architecture, policy, and replay references from one index.",
       "support": ["b3", "b4", "b2"],
@@ -49,7 +49,7 @@
       ]
     },
     {
-      "version": "1.0.0",
+      "version": "1.1.0",
       "claimId": "c2",
       "statement": "Replay reference",
       "support": ["b4", "b7", "b3"],
@@ -92,7 +92,7 @@
   "insufficientEvidenceClaims": [],
   "needsMoreBrowsingClaims": [
     {
-      "version": "1.0.0",
+      "version": "1.1.0",
       "claimId": "c3",
       "statement": "The docs switcher submits a purchase form.",
       "reason": "needs-more-browsing",
@@ -112,7 +112,7 @@
   ],
   "claimOutcomes": [
     {
-      "version": "1.0.0",
+      "version": "1.1.0",
       "claimId": "c1",
       "statement": "Docs Switcher links architecture, policy, and replay references from one index.",
       "verdict": "evidence-supported",
@@ -169,7 +169,7 @@
       ]
     },
     {
-      "version": "1.0.0",
+      "version": "1.1.0",
       "claimId": "c2",
       "statement": "Replay reference",
       "verdict": "evidence-supported",
@@ -226,7 +226,7 @@
       ]
     },
     {
-      "version": "1.0.0",
+      "version": "1.1.0",
       "claimId": "c3",
       "statement": "The docs switcher submits a purchase form.",
       "verdict": "needs-more-browsing",

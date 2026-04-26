@@ -2,6 +2,67 @@
 
 All notable changes to this project are documented here.
 
+## [0.5.0] - 2026-04-26
+
+Release: https://github.com/nangman-infra/touch-browser/releases/tag/v0.5.0
+
+Compare: https://github.com/nangman-infra/touch-browser/compare/v0.4.0...v0.5.0
+
+### Changed
+
+- Raised the shared contract boundary to `1.1.0` so downstream consumers get an explicit migration signal for the split `pageRisk` / `actionRisk` policy shape.
+- Promoted public-web QA from optional local-only coverage to GitHub workflow jobs on `main`, nightly schedule, and standalone release gating.
+- Bumped the Rust workspace, CLI runtime, MCP npm package, MCP server descriptor, workflow client metadata, and standalone lifecycle expectations to `0.5.0`.
+
+### Fixed
+
+- Changed CLI telemetry to enterprise-safer defaults by making the default mode `redacted`, scrubbing persisted URLs down to origin-only, dropping claim payload persistence, and allowing `TOUCH_BROWSER_TELEMETRY_MODE=off|redacted|full`.
+
+### Release Verification
+
+- Local contract validation passed.
+- Local CLI telemetry tests passed.
+- Local public-web QA gate passed for MDN, Chrome Developers, IANA, and the multi-page follow flow.
+- Local `cargo test -p touch-browser-cli` passed.
+- Local `pnpm run quality:lint` passed.
+
+## [0.4.0] - 2026-04-26
+
+Release: https://github.com/nangman-infra/touch-browser/releases/tag/v0.4.0
+
+Compare: https://github.com/nangman-infra/touch-browser/compare/v0.3.0...v0.4.0
+
+### Added
+
+- Added a real CLI E2E QA site regression gate for the fixture-backed multi-page follow flow.
+- Added a public-web QA regression manifest with pinned expectations for MDN reference, Chrome Developers blog, IANA docs, and the multi-page follow workflow.
+- Added an opt-in public-web CLI E2E regression path so real sites can be re-validated with `TOUCH_BROWSER_RUN_PUBLIC_WEB_QA=1`.
+- Added a dedicated `v0.4.0` GitHub release-notes entry so release messaging can be kept in-repo instead of being reconstructed after the fact.
+
+### Changed
+
+- Split policy reporting into `pageRisk` and `actionRisk`, so read-only page review can stay separate from interaction-time supervision requirements.
+- Updated checkpoint severity to reflect the more severe of page risk and action risk instead of only the top-level page decision.
+- Upgraded the QA site regression surface from manifest pinning only to executable CLI gate coverage.
+- Hardened Playwright navigation-action gate timing by raising the browser-backed follow timeout to a realistic CI-safe threshold.
+- Bumped the Rust workspace, CLI runtime, MCP npm package, MCP server descriptor, workflow client metadata, and standalone lifecycle expectations to `0.4.0`.
+
+### Fixed
+
+- Fixed policy fixtures, contract examples, and regression tests so they match the split `pageRisk` / `actionRisk` model.
+- Fixed false-high read-only risk on pages that merely contain login UI by reserving higher interaction risk for actual click/type/submit paths.
+- Fixed human-facing `needs-more-browsing` explanations so unresolved claims now describe why the current page is too broad, indirect, or non-normative.
+- Fixed search-session recovery so `runtime.search.openResult` can reopen results from the saved search tab even after the active tab changes.
+- Reduced main-only extraction noise for `developer.mozilla.org` and `developer.chrome.com`, especially around language selectors, cookie/utility chrome, and footer clutter.
+- Fixed standalone vs source CLI surface drift by re-verifying `capabilities`, `status`, and `--version` in release smoke coverage.
+
+### Release Verification
+
+- Local `pnpm run quality:ci` passed before tagging.
+- GitHub Actions `Quality Checks` passed for `355f5fb` and `4880a88`.
+- SonarQube quality gate is `OK` with `new_violations=0`, `new_coverage=81.2`, and `new_duplicated_lines_density=2.5596`.
+- npm registry `latest` points to `@nangman-infra/touch-browser-mcp@0.4.0`.
+
 ## [0.2.1] - 2026-04-22
 
 Release: https://github.com/nangman-infra/touch-browser/releases/tag/v0.2.1

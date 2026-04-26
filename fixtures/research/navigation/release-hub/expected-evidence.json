@@ -1,5 +1,5 @@
 {
-  "version": "1.0.0",
+  "version": "1.1.0",
   "generatedAt": "2026-03-14T00:00:00+09:00",
   "source": {
     "sourceUrl": "fixture://research/navigation/release-hub",
@@ -9,7 +9,7 @@
   },
   "evidenceSupportedClaims": [
     {
-      "version": "1.0.0",
+      "version": "1.1.0",
       "claimId": "c1",
       "statement": "Release Hub groups stable, beta, and archived release tracks.",
       "support": ["b3", "b4", "b2"],
@@ -49,7 +49,7 @@
       ]
     },
     {
-      "version": "1.0.0",
+      "version": "1.1.0",
       "claimId": "c2",
       "statement": "Stable track",
       "support": ["b4", "b3", "b2"],
@@ -91,7 +91,7 @@
   ],
   "insufficientEvidenceClaims": [
     {
-      "version": "1.0.0",
+      "version": "1.1.0",
       "claimId": "c3",
       "statement": "The release hub contains a credential reset form.",
       "reason": "insufficient-support-score",
@@ -104,7 +104,7 @@
   ],
   "claimOutcomes": [
     {
-      "version": "1.0.0",
+      "version": "1.1.0",
       "claimId": "c1",
       "statement": "Release Hub groups stable, beta, and archived release tracks.",
       "verdict": "evidence-supported",
@@ -161,7 +161,7 @@
       ]
     },
     {
-      "version": "1.0.0",
+      "version": "1.1.0",
       "claimId": "c2",
       "statement": "Stable track",
       "verdict": "evidence-supported",
@@ -218,7 +218,7 @@
       ]
     },
     {
-      "version": "1.0.0",
+      "version": "1.1.0",
       "claimId": "c3",
       "statement": "The release hub contains a credential reset form.",
       "verdict": "insufficient-evidence",

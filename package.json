@@ -14,6 +14,7 @@
     "quality:test:rust": "pnpm run test:rust",
     "quality:test:adapter": "pnpm run test:adapter:gate",
     "quality:test:evals": "pnpm run test:evals:ci",
+    "quality:test:evals:public-web": "TOUCH_BROWSER_RUN_PUBLIC_WEB_QA=1 pnpm exec vitest run --config evals/vitest.gate.config.ts evals/tests/runtime/gate/qa-site-regression-e2e.test.ts",
     "architecture:check": "node scripts/check-architecture-boundaries.mjs",
     "contracts:check": "node scripts/validate-contract-layout.mjs",
     "contracts:manifest": "node scripts/generate-contract-manifest.mjs",

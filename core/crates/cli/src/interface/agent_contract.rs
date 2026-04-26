@@ -3,7 +3,7 @@ use touch_browser_contracts::{CONTRACT_VERSION, STABLE_REF_VERSION};
 
 use super::cli_models::CliCommand;
 
-const AGENT_CONTRACT_VERSION: &str = "1.0.0";
+const AGENT_CONTRACT_VERSION: &str = "1.1.0";
 
 pub(crate) fn capabilities_payload() -> Value {
     json!({

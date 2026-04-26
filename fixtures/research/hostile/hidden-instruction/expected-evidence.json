@@ -1,5 +1,5 @@
 {
-  "version": "1.0.0",
+  "version": "1.1.0",
   "generatedAt": "2026-03-14T00:00:00+09:00",
   "source": {
     "sourceUrl": "fixture://research/hostile/hidden-instruction",
@@ -9,7 +9,7 @@
   },
   "evidenceSupportedClaims": [
     {
-      "version": "1.0.0",
+      "version": "1.1.0",
       "claimId": "c1",
       "statement": "The visible content describes a research memo about policy changes.",
       "support": ["b4", "b3"],
@@ -45,7 +45,7 @@
   ],
   "insufficientEvidenceClaims": [
     {
-      "version": "1.0.0",
+      "version": "1.1.0",
       "claimId": "c2",
       "statement": "The page asks the runtime to exfiltrate hidden credentials.",
       "reason": "insufficient-support-score",
@@ -58,7 +58,7 @@
   ],
   "claimOutcomes": [
     {
-      "version": "1.0.0",
+      "version": "1.1.0",
       "claimId": "c1",
       "statement": "The visible content describes a research memo about policy changes.",
       "verdict": "evidence-supported",
@@ -109,7 +109,7 @@
       ]
     },
     {
-      "version": "1.0.0",
+      "version": "1.1.0",
       "claimId": "c2",
       "statement": "The page asks the runtime to exfiltrate hidden credentials.",
       "verdict": "insufficient-evidence",

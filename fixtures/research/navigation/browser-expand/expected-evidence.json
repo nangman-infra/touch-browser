@@ -1,5 +1,5 @@
 {
-  "version": "1.0.0",
+  "version": "1.1.0",
   "generatedAt": "2026-03-14T00:00:00+09:00",
   "source": {
     "sourceUrl": "fixture://research/navigation/browser-expand",
@@ -9,7 +9,7 @@
   },
   "evidenceSupportedClaims": [
     {
-      "version": "1.0.0",
+      "version": "1.1.0",
       "claimId": "c1",
       "statement": "The page asks the runtime to expand hidden details.",
       "support": ["b3", "b2"],
@@ -43,7 +43,7 @@
       ]
     },
     {
-      "version": "1.0.0",
+      "version": "1.1.0",
       "claimId": "c2",
       "statement": "The page includes an Expand details button.",
       "support": ["b4", "b3", "b2"],
@@ -85,7 +85,7 @@
   ],
   "insufficientEvidenceClaims": [
     {
-      "version": "1.0.0",
+      "version": "1.1.0",
       "claimId": "c3",
       "statement": "The page starts with a visible pricing table.",
       "reason": "insufficient-support-score",
@@ -97,7 +97,7 @@
   ],
   "claimOutcomes": [
     {
-      "version": "1.0.0",
+      "version": "1.1.0",
       "claimId": "c1",
       "statement": "The page asks the runtime to expand hidden details.",
       "verdict": "evidence-supported",
@@ -148,7 +148,7 @@
       ]
     },
     {
-      "version": "1.0.0",
+      "version": "1.1.0",
       "claimId": "c2",
       "statement": "The page includes an Expand details button.",
       "verdict": "evidence-supported",
@@ -205,7 +205,7 @@
       ]
     },
     {
-      "version": "1.0.0",
+      "version": "1.1.0",
       "claimId": "c3",
       "statement": "The page starts with a visible pricing table.",
       "verdict": "insufficient-evidence",
