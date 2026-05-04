@@ -1,6 +1,6 @@
 use std::collections::BTreeMap;
 
-use serde::{Deserialize, Serialize};
+use serde::{de, Deserialize, Deserializer, Serialize, Serializer};
 use serde_json::Value;
 
 pub const CONTRACTS_CRATE: &str = "touch-browser-contracts";
@@ -145,6 +145,8 @@ pub enum SourceType {
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
 #[serde(rename_all = "lowercase")]
 pub enum SourceRisk {
+    #[serde(rename = "trusted-internal")]
+    TrustedInternal,
     Low,
     Medium,
     Hostile,
@@ -457,7 +459,7 @@ mod tests {
     use super::{
         EvidenceBlock, EvidenceCitation, EvidenceClaimOutcome, EvidenceClaimVerdict,
         EvidenceConfidenceBand, EvidenceMatchSignals, EvidenceSupportRole, EvidenceSupportSnippet,
-        RiskClass, SnapshotBlockKind, SourceRisk, SourceType, CONTRACT_VERSION,
+        PolicySignalKind, RiskClass, SnapshotBlockKind, SourceRisk, SourceType, CONTRACT_VERSION,
     };
 
     #[test]
@@ -493,6 +495,34 @@ mod tests {
             serde_json::to_value(RiskClass::High).expect("serialize risk"),
             serde_json::json!("high")
         );
+    }
+
+    #[test]
+    fn source_risk_supports_trusted_internal_wire_value() {
+        let risk: SourceRisk = serde_json::from_value(serde_json::json!("trusted-internal"))
+            .expect("trusted internal source risk should deserialize");
+        assert_eq!(risk, SourceRisk::TrustedInternal);
+        assert_eq!(
+            serde_json::to_value(SourceRisk::TrustedInternal).expect("serialize source risk"),
+            serde_json::json!("trusted-internal")
+        );
+    }
+
+    #[test]
+    fn policy_signal_kind_accepts_custom_namespace() {
+        let kind: PolicySignalKind = serde_json::from_value(serde_json::json!("custom:corp-trust"))
+            .expect("custom policy signal should deserialize");
+        assert_eq!(
+            kind,
+            PolicySignalKind::Custom("custom:corp-trust".to_string())
+        );
+        assert_eq!(
+            serde_json::to_value(&kind).expect("serialize policy signal kind"),
+            serde_json::json!("custom:corp-trust")
+        );
+
+        let invalid = serde_json::from_value::<PolicySignalKind>(serde_json::json!("corp-trust"));
+        assert!(invalid.is_err());
     }
 
     #[test]
@@ -764,8 +794,7 @@ pub enum PolicyDecision {
     Block,
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
-#[serde(rename_all = "kebab-case")]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub enum PolicySignalKind {
     HostileSource,
     UntrustedSystemLanguage,
@@ -777,6 +806,73 @@ pub enum PolicySignalKind {
     MfaChallenge,
     SensitiveAuthFlow,
     HighRiskWrite,
+    Custom(String),
+}
+
+impl PolicySignalKind {
+    pub fn as_wire_str(&self) -> &str {
+        match self {
+            Self::HostileSource => "hostile-source",
+            Self::UntrustedSystemLanguage => "untrusted-system-language",
+            Self::SuspiciousCta => "suspicious-cta",
+            Self::ExternalActionable => "external-actionable",
+            Self::HostileFormControl => "hostile-form-control",
+            Self::DomainNotAllowlisted => "domain-not-allowlisted",
+            Self::BotChallenge => "bot-challenge",
+            Self::MfaChallenge => "mfa-challenge",
+            Self::SensitiveAuthFlow => "sensitive-auth-flow",
+            Self::HighRiskWrite => "high-risk-write",
+            Self::Custom(value) => value.as_str(),
+        }
+    }
+
+    fn from_wire_str(value: &str) -> Result<Self, String> {
+        match value {
+            "hostile-source" => Ok(Self::HostileSource),
+            "untrusted-system-language" => Ok(Self::UntrustedSystemLanguage),
+            "suspicious-cta" => Ok(Self::SuspiciousCta),
+            "external-actionable" => Ok(Self::ExternalActionable),
+            "hostile-form-control" => Ok(Self::HostileFormControl),
+            "domain-not-allowlisted" => Ok(Self::DomainNotAllowlisted),
+            "bot-challenge" => Ok(Self::BotChallenge),
+            "mfa-challenge" => Ok(Self::MfaChallenge),
+            "sensitive-auth-flow" => Ok(Self::SensitiveAuthFlow),
+            "high-risk-write" => Ok(Self::HighRiskWrite),
+            custom if valid_custom_signal_kind(custom) => Ok(Self::Custom(custom.to_string())),
+            _ => Err(format!(
+                "unknown policy signal kind `{value}`; use a built-in kind or custom:<key>"
+            )),
+        }
+    }
+}
+
+impl Serialize for PolicySignalKind {
+    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
+    where
+        S: Serializer,
+    {
+        serializer.serialize_str(self.as_wire_str())
+    }
+}
+
+impl<'de> Deserialize<'de> for PolicySignalKind {
+    fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
+    where
+        D: Deserializer<'de>,
+    {
+        let value = String::deserialize(deserializer)?;
+        Self::from_wire_str(&value).map_err(de::Error::custom)
+    }
+}
+
+fn valid_custom_signal_kind(value: &str) -> bool {
+    let Some(key) = value.strip_prefix("custom:") else {
+        return false;
+    };
+    !key.is_empty()
+        && key
+            .bytes()
+            .all(|byte| byte.is_ascii_alphanumeric() || matches!(byte, b'.' | b'_' | b'-' | b':'))
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]

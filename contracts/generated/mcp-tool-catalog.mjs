@@ -40,12 +40,50 @@ export const toolCatalog = [
     }
   },
   {
-    "name": "tb_session_create",
-    "title": "Create Browser Session",
-    "description": "Create a headless research session for public docs and reference workflows.",
+    "name": "tb_cancel",
+    "title": "Cancel Runtime Work",
+    "description": "Best-effort cancellation and daemon reset for long-running MCP browser work. MCP hosts should prefer notifications/cancelled for an in-flight request.",
     "inputSchema": {
       "type": "object",
       "properties": {
+        "reason": {
+          "type": "string",
+          "description": "Optional cancellation reason for logs or host UI."
+        }
+      }
+    },
+    "outputSchema": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "cancelled": {
+          "type": "boolean"
+        },
+        "reason": {
+          "type": "string"
+        },
+        "restartedOnNextCall": {
+          "type": "boolean"
+        }
+      },
+      "required": [
+        "cancelled",
+        "reason",
+        "restartedOnNextCall"
+      ]
+    }
+  },
+  {
+    "name": "tb_session_create",
+    "title": "Create Browser Session",
+    "description": "Create a headless research session for public docs and reference workflows. The caller may provide sessionId as a correlation id; otherwise the daemon generates one. The returned active tab is empty until tb_open or tb_search_open_top opens a page.",
+    "inputSchema": {
+      "type": "object",
+      "properties": {
+        "sessionId": {
+          "type": "string",
+          "description": "Optional caller-provided session identifier for external correlation. Use 1-128 ASCII letters, digits, hyphen, underscore, or colon."
+        },
         "allowDomains": {
           "type": "array",
           "items": {
@@ -91,13 +129,13 @@ export const toolCatalog = [
   {
     "name": "tb_open",
     "title": "Open Target",
-    "description": "Open a public web document or official reference page headlessly, either statelessly or inside a daemon session/tab. Use this for direct URLs after narrowing scope.",
+    "description": "Open a public web document or official reference page headlessly, either statelessly or inside a daemon session/tab. target is required for stateless use; with sessionId it can be omitted to reopen the active tab URL.",
     "inputSchema": {
       "type": "object",
       "properties": {
         "target": {
           "type": "string",
-          "description": "The URL or public web target to open."
+          "description": "The URL or public web target to open. Required unless sessionId points at an opened active tab."
         },
         "browser": {
           "type": "boolean",
@@ -105,7 +143,7 @@ export const toolCatalog = [
         },
         "budget": {
           "type": "number",
-          "description": "The processing budget to spend on this operation."
+          "description": "Token budget for snapshot and semantic processing. Default is 512."
         },
         "sourceRisk": {
           "type": "string",
@@ -135,9 +173,7 @@ export const toolCatalog = [
           "description": "A specific session tab to reuse for this open request."
         }
       },
-      "required": [
-        "target"
-      ]
+      "required": []
     },
     "outputSchema": {
       "type": "object",
@@ -368,7 +404,7 @@ export const toolCatalog = [
         },
         "budget": {
           "type": "number",
-          "description": "The processing budget to spend on this operation."
+          "description": "Token budget for search-result snapshot and semantic processing. Default is 2048 for search."
         }
       },
       "required": [
@@ -1077,20 +1113,20 @@ export const toolCatalog = [
   {
     "name": "tb_extract",
     "title": "Extract Evidence",
-    "description": "Extract evidence-supported and insufficient-evidence claims from the current target or daemon tab. Use this after tb_read_view confirms the tab scope on public docs or reference pages.",
+    "description": "Extract claim outcomes from a target or opened daemon tab. In a session, omit target to use the active opened tab; claims is always required.",
     "inputSchema": {
       "type": "object",
       "properties": {
         "target": {
           "type": "string",
-          "description": "The URL or target whose evidence should be extracted."
+          "description": "The URL or target whose evidence should be extracted. Required for stateless extraction; optional when sessionId points at an opened active tab."
         },
         "claims": {
           "type": "array",
           "items": {
             "type": "string"
           },
-          "description": "A list of claims to verify against the target and support with citations when possible."
+          "description": "Required list of claims to verify against the target or active opened tab and support with citations when possible."
         },
         "browser": {
           "type": "boolean",
@@ -1098,7 +1134,7 @@ export const toolCatalog = [
         },
         "budget": {
           "type": "number",
-          "description": "The processing budget to spend on this operation."
+          "description": "Token budget for snapshot and semantic processing. Default is 512."
         },
         "mainOnly": {
           "type": "boolean",
@@ -1712,13 +1748,13 @@ export const toolCatalog = [
   {
     "name": "tb_read_view",
     "title": "Read View",
-    "description": "Return a readable Markdown view of a target or daemon tab for scope checking on public docs and reference pages. Inspect mainContentQuality and mainContentReason before extracting claims.",
+    "description": "Return a readable Markdown view of a target or opened daemon tab for scope checking. In a session, omit target to use the active opened tab.",
     "inputSchema": {
       "type": "object",
       "properties": {
         "target": {
           "type": "string",
-          "description": "The URL or target to convert into a readable view."
+          "description": "The URL or target to convert into a readable view. Required for stateless reads; optional when sessionId points at an opened active tab."
         },
         "browser": {
           "type": "boolean",
@@ -1726,7 +1762,7 @@ export const toolCatalog = [
         },
         "budget": {
           "type": "number",
-          "description": "The processing budget to spend on this operation."
+          "description": "Token budget for snapshot and semantic processing. Default is 512."
         },
         "mainOnly": {
           "type": "boolean",
@@ -3514,7 +3550,7 @@ export const toolCatalog = [
   {
     "name": "tb_session_synthesize",
     "title": "Synthesize Session",
-    "description": "Aggregate visited tabs inside a daemon session into a citation-ready synthesis report.",
+    "description": "Aggregate opened tabs inside a daemon session into a citation-ready synthesis report. Requires sessionId and at least one opened tab.",
     "inputSchema": {
       "type": "object",
       "properties": {

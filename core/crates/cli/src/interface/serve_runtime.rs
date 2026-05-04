@@ -303,6 +303,233 @@ mod tests {
         daemon_state.cleanup().expect("cleanup");
     }
 
+    #[test]
+    fn session_tools_explain_that_empty_tabs_must_be_opened_first() {
+        let mut daemon_state = ServeDaemonState::new().expect("daemon state");
+        let created = serve_dispatch(
+            ServeJsonRpcRequest {
+                jsonrpc: "2.0".to_string(),
+                id: json!(1),
+                method: "runtime.session.create".to_string(),
+                params: json!({}),
+            },
+            &mut daemon_state,
+        );
+        let session_id = created["result"]["sessionId"]
+            .as_str()
+            .expect("session id")
+            .to_string();
+
+        let extract_response = serve_dispatch(
+            ServeJsonRpcRequest {
+                jsonrpc: "2.0".to_string(),
+                id: json!(2),
+                method: "runtime.session.extract".to_string(),
+                params: json!({
+                    "sessionId": session_id.clone(),
+                    "claims": ["example.com is maintained for documentation purposes."]
+                }),
+            },
+            &mut daemon_state,
+        );
+        let extract_message = extract_response["error"]["message"]
+            .as_str()
+            .expect("extract error message");
+        assert_eq!(extract_response["error"]["code"], json!(-32602));
+        assert!(extract_message.contains("has not been opened yet"));
+        assert!(extract_message.contains("tb_open"));
+        assert!(extract_message.contains("tb_search_open_top"));
+
+        let synthesize_response = serve_dispatch(
+            ServeJsonRpcRequest {
+                jsonrpc: "2.0".to_string(),
+                id: json!(3),
+                method: "runtime.session.synthesize".to_string(),
+                params: json!({
+                    "sessionId": session_id
+                }),
+            },
+            &mut daemon_state,
+        );
+        let synthesize_message = synthesize_response["error"]["message"]
+            .as_str()
+            .expect("synthesize error message");
+        assert_eq!(synthesize_response["error"]["code"], json!(-32602));
+        assert!(synthesize_message.contains("has no opened tabs"));
+        assert!(synthesize_message.contains("tb_open"));
+        assert!(synthesize_message.contains("tb_search_open_top"));
+
+        daemon_state.cleanup().expect("cleanup");
+    }
+
+    #[test]
+    fn runtime_session_create_accepts_user_supplied_session_id() {
+        let mut daemon_state = ServeDaemonState::new().expect("daemon state");
+        let created = serve_dispatch(
+            ServeJsonRpcRequest {
+                jsonrpc: "2.0".to_string(),
+                id: json!(1),
+                method: "runtime.session.create".to_string(),
+                params: json!({
+                    "sessionId": "task:alpha_001",
+                    "allowDomains": ["example.com"]
+                }),
+            },
+            &mut daemon_state,
+        );
+
+        assert_eq!(created["result"]["sessionId"], json!("task:alpha_001"));
+        assert_eq!(created["result"]["allowDomains"], json!(["example.com"]));
+
+        let duplicate = serve_dispatch(
+            ServeJsonRpcRequest {
+                jsonrpc: "2.0".to_string(),
+                id: json!(2),
+                method: "runtime.session.create".to_string(),
+                params: json!({
+                    "sessionId": "task:alpha_001"
+                }),
+            },
+            &mut daemon_state,
+        );
+        assert_eq!(duplicate["error"]["code"], json!(-32602));
+        assert!(duplicate["error"]["message"]
+            .as_str()
+            .expect("duplicate error")
+            .contains("already exists"));
+
+        let invalid = serve_dispatch(
+            ServeJsonRpcRequest {
+                jsonrpc: "2.0".to_string(),
+                id: json!(3),
+                method: "runtime.session.create".to_string(),
+                params: json!({
+                    "sessionId": "../bad"
+                }),
+            },
+            &mut daemon_state,
+        );
+        assert_eq!(invalid["error"]["code"], json!(-32602));
+        assert!(invalid["error"]["message"]
+            .as_str()
+            .expect("invalid error")
+            .contains("ASCII letters"));
+
+        daemon_state.cleanup().expect("cleanup");
+    }
+
+    #[test]
+    fn runtime_session_open_can_reuse_active_tab_url_when_target_is_omitted() {
+        let mut daemon_state = ServeDaemonState::new().expect("daemon state");
+        let created = serve_dispatch(
+            ServeJsonRpcRequest {
+                jsonrpc: "2.0".to_string(),
+                id: json!(1),
+                method: "runtime.session.create".to_string(),
+                params: json!({}),
+            },
+            &mut daemon_state,
+        );
+        let session_id = created["result"]["sessionId"]
+            .as_str()
+            .expect("session id")
+            .to_string();
+
+        let opened = serve_dispatch(
+            ServeJsonRpcRequest {
+                jsonrpc: "2.0".to_string(),
+                id: json!(2),
+                method: "runtime.session.open".to_string(),
+                params: json!({
+                    "sessionId": session_id.clone(),
+                    "target": "fixture://research/static-docs/getting-started",
+                    "browser": true
+                }),
+            },
+            &mut daemon_state,
+        );
+        assert_eq!(opened["result"]["result"]["status"], json!("succeeded"));
+
+        let reopened = serve_dispatch(
+            ServeJsonRpcRequest {
+                jsonrpc: "2.0".to_string(),
+                id: json!(3),
+                method: "runtime.session.open".to_string(),
+                params: json!({
+                    "sessionId": session_id
+                }),
+            },
+            &mut daemon_state,
+        );
+
+        assert_eq!(reopened["result"]["result"]["status"], json!("succeeded"));
+        assert_eq!(
+            reopened["result"]["result"]["output"]["source"]["sourceUrl"],
+            json!("fixture://research/static-docs/getting-started")
+        );
+
+        daemon_state.cleanup().expect("cleanup");
+    }
+
+    #[test]
+    fn runtime_session_extract_keeps_claim_outcomes_on_active_tab_path() {
+        let mut daemon_state = ServeDaemonState::new().expect("daemon state");
+        let created = serve_dispatch(
+            ServeJsonRpcRequest {
+                jsonrpc: "2.0".to_string(),
+                id: json!(1),
+                method: "runtime.session.create".to_string(),
+                params: json!({}),
+            },
+            &mut daemon_state,
+        );
+        let session_id = created["result"]["sessionId"]
+            .as_str()
+            .expect("session id")
+            .to_string();
+
+        let opened = serve_dispatch(
+            ServeJsonRpcRequest {
+                jsonrpc: "2.0".to_string(),
+                id: json!(2),
+                method: "runtime.session.open".to_string(),
+                params: json!({
+                    "sessionId": session_id.clone(),
+                    "target": "fixture://research/static-docs/getting-started",
+                    "browser": true
+                }),
+            },
+            &mut daemon_state,
+        );
+        assert_eq!(opened["result"]["result"]["status"], json!("succeeded"));
+
+        let extracted = serve_dispatch(
+            ServeJsonRpcRequest {
+                jsonrpc: "2.0".to_string(),
+                id: json!(3),
+                method: "runtime.session.extract".to_string(),
+                params: json!({
+                    "sessionId": session_id,
+                    "claims": [
+                        "Touch Browser compiles web pages into semantic state for research agents."
+                    ]
+                }),
+            },
+            &mut daemon_state,
+        );
+
+        assert_eq!(
+            extracted["result"]["result"]["extract"]["status"],
+            json!("succeeded")
+        );
+        assert_eq!(
+            extracted["result"]["result"]["extract"]["output"]["claimOutcomes"][0]["statement"],
+            json!("Touch Browser compiles web pages into semantic state for research agents.")
+        );
+
+        daemon_state.cleanup().expect("cleanup");
+    }
+
     fn create_session_with_latest_search(
         daemon_state: &mut ServeDaemonState,
         runtime_session_id: &str,

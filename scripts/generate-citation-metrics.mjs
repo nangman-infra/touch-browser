@@ -65,7 +65,7 @@ function analyzeFixture(fixture, evidence, snapshot) {
   );
   const expectedUnsupportedIds = new Set(
     fixture.expectations.claimChecks
-      .filter((claim) => claim.expectedStatus === "unsupported")
+      .filter((claim) => claim.expectedStatus !== "supported")
       .map((claim) => claim.id),
   );
   const actualSupported = evidence.evidenceSupportedClaims ?? [];

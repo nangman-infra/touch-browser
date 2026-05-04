@@ -32,6 +32,24 @@ export function createBridgeServeClient({
         return await currentClient().call(method, params);
       });
     },
+    async cancel({ reason = "cancelled by MCP client" } = {}) {
+      readyPromise = undefined;
+      if (!client) {
+        return {
+          cancelled: false,
+          reason,
+          restartedOnNextCall: true,
+        };
+      }
+      const current = client;
+      client = undefined;
+      await current.close().catch(() => {});
+      return {
+        cancelled: true,
+        reason,
+        restartedOnNextCall: true,
+      };
+    },
     async close() {
       readyPromise = undefined;
       if (!client) {

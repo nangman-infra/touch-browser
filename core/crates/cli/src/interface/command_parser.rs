@@ -28,6 +28,9 @@ pub(crate) fn parse_command(args: &[String]) -> Result<CliCommand, CliError> {
         "uninstall" => Ok(CliCommand::Uninstall(
             install_command_parser::parse_uninstall_options(&args[1..])?,
         )),
+        "quick" => Ok(CliCommand::Quick(
+            session_command_parser::parse_quick_options(&args[1..])?,
+        )),
         "open" => Ok(CliCommand::Open(
             session_command_parser::parse_target_options(&args[1..])?,
         )),

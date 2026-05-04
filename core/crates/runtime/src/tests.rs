@@ -476,6 +476,7 @@ fn fixture_catalog() -> FixtureCatalog {
         let html_path = repo_root().join(metadata.html_path);
         let html = fs::read_to_string(html_path).expect("fixture html should be readable");
         let risk = match metadata.risk.as_str() {
+            "trusted-internal" => SourceRisk::TrustedInternal,
             "low" => SourceRisk::Low,
             "medium" => SourceRisk::Medium,
             "hostile" => SourceRisk::Hostile,

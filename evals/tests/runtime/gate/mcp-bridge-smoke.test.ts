@@ -16,6 +16,10 @@ type BridgeServeClient = {
     method: string,
     params?: Record<string, unknown>,
   ): Promise<T>;
+  cancel(options?: { reason?: string }): Promise<{
+    cancelled: boolean;
+    restartedOnNextCall: boolean;
+  }>;
   close(): Promise<void>;
 };
 
@@ -221,6 +225,11 @@ describe("mcp bridge smoke", () => {
           tool.name === "tb_telemetry_summary",
       ),
     ).toBe(true);
+    expect(
+      tools.tools.some(
+        (tool: { readonly name: string }) => tool.name === "tb_cancel",
+      ),
+    ).toBe(true);
 
     const status = await call<{
       structuredContent: {
@@ -233,6 +242,69 @@ describe("mcp bridge smoke", () => {
     });
     expect(status.structuredContent.status).toBe("ready");
     expect(status.structuredContent.daemon).toBe(true);
+  }, 40_000);
+
+  it("emits MCP progress notifications when progressToken is provided", async () => {
+    const child = spawnShellCommand("node integrations/mcp/bridge/index.mjs", {
+      cwd: repoRoot,
+      stdio: ["pipe", "pipe", "pipe"],
+    }) as ChildProcessWithoutNullStreams;
+    clients.push(child);
+
+    const responsesPromise = waitForJsonResponses(child, 5);
+
+    child.stdin.write(
+      `${JSON.stringify({
+        jsonrpc: "2.0",
+        id: 1,
+        method: "initialize",
+        params: {
+          protocolVersion: "2025-06-18",
+          capabilities: {},
+          clientInfo: {
+            name: "vitest",
+            version: "0.0.0",
+          },
+        },
+      })}\n`,
+    );
+    child.stdin.write(
+      `${JSON.stringify({
+        jsonrpc: "2.0",
+        id: 2,
+        method: "tools/call",
+        params: {
+          _meta: {
+            progressToken: "progress-test",
+          },
+          name: "tb_status",
+          arguments: {},
+        },
+      })}\n`,
+    );
+
+    const responses = await responsesPromise;
+    const progress = responses.filter(
+      (payload) => payload.method === "notifications/progress",
+    ) as Array<{
+      readonly params: {
+        readonly progressToken: string;
+        readonly progress: number;
+        readonly total: number;
+      };
+    }>;
+
+    expect(progress.map((payload) => payload.params.progress)).toEqual([
+      1, 2, 3,
+    ]);
+    expect(
+      progress.every(
+        (payload) =>
+          payload.params.progressToken === "progress-test" &&
+          payload.params.total === 3,
+      ),
+    ).toBe(true);
+    expect(responses.at(-1)?.id).toBe(2);
   }, 40_000);
 
   it("serializes initialize before tools/list when requests arrive back-to-back", async () => {
@@ -423,6 +495,29 @@ describe("mcp bridge smoke", () => {
     serve.child.kill("SIGTERM");
 
     await new Promise((resolve) => setTimeout(resolve, 300));
+
+    const secondStatus = await serve.call<{ status: string }>(
+      "runtime.status",
+      {},
+    );
+    expect(secondStatus.status).toBe("ready");
+    expect(serve.child.pid).not.toBe(firstPid);
+  }, 20_000);
+
+  it("cancels the current serve daemon and restarts on the next call", async () => {
+    const serve = createBridgeServeClient({
+      cwd: repoRoot,
+      serveCommand: "target/debug/touch-browser serve",
+    });
+    serveClients.push(serve);
+
+    const firstStatus = await serve.ensureReady<{ status: string }>();
+    expect(firstStatus.status).toBe("ready");
+    const firstPid = serve.child.pid;
+
+    const cancelled = await serve.cancel({ reason: "vitest cancel" });
+    expect(cancelled.cancelled).toBe(true);
+    expect(cancelled.restartedOnNextCall).toBe(true);
 
     const secondStatus = await serve.call<{ status: string }>(
       "runtime.status",

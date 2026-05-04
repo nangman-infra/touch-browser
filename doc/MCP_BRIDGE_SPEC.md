@@ -100,6 +100,7 @@ Current tool set:
 - `tb_telemetry_summary`
 - `tb_telemetry_recent`
 - `tb_session_synthesize`
+- `tb_cancel`
 - `tb_session_close`
 
 ## 3. Intended Use
@@ -109,6 +110,8 @@ Current tool set:
 - `tb_read_view` is the readable scope-checking surface; inspect `mainContentQuality` and `mainContentReason` before extracting
 - `tb_extract` is the evidence retrieval surface for four-state claim outcomes and citations
 - `tb_session_synthesize` combines multi-page session traces into a single report
+- `tb_session_create` accepts an optional caller-provided `sessionId` so external task/correlation ids can map directly to browser sessions
+- `tb_cancel` closes the current daemon child process as a best-effort reset; MCP clients should use `notifications/cancelled` for in-flight request cancellation
 - supervised tools remain available for allowlisted, review-gated browser sessions, but MCP itself stays headless and does not accept `headed`
 
 Recommended AI loop:
@@ -132,6 +135,7 @@ Relevant tool inputs:
 - `tb_search_open_top`: `sessionId`, `tabId`, `limit`
 - `tb_read_view`: `target`, `mainOnly`, `browser`, `budget`, `sessionFile`, `allowDomains`
 - `tb_extract`: `target`, `claims`, `verifierCommand`, `browser`, `budget`, `sessionFile`, `allowDomains`
+- `tb_cancel`: `reason`
 
 Serve-to-MCP mapping:
 
@@ -144,6 +148,12 @@ Serve-to-MCP mapping:
 | `runtime.search.openTop` | `tb_search_open_top` |
 | `runtime.session.open` | `tb_tab_open` |
 | `runtime.session.synthesize` | `tb_session_synthesize` |
+
+Progress and cancellation:
+
+- if a `tools/call` request includes `_meta.progressToken`, the bridge emits `notifications/progress` with increasing progress values while the tool call runs
+- the bridge handles `notifications/cancelled` by closing the current `touch-browser serve` child and freeing daemon resources; the next request starts a fresh daemon
+- progress and cancellation follow the MCP `2025-06-18` utility semantics: progress tokens are opaque request metadata, and cancellation is a fire-and-forget notification that may race with completion
 
 ## 4. Validation
 

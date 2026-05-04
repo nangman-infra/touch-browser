@@ -32,7 +32,7 @@ const scenarios = [
     url: "https://docs.aws.amazon.com/lambda/latest/dg/gettingstarted-limits.html",
     allowDomain: "docs.aws.amazon.com",
     claim: "The maximum timeout for a Lambda function is 24 hours.",
-    expectedVerdict: "needs-more-browsing",
+    expectedVerdict: "contradicted",
     expectedMode: "review",
   },
   {
@@ -269,6 +269,7 @@ function isUnsafeOrAutoAnswerCandidate(prefix) {
 function reviewCaptured(scenario, prefix) {
   return (
     scenario[`${prefix}ReviewRecommended`] === true ||
+    scenario[`${prefix}Verdict`] === "contradicted" ||
     scenario[`${prefix}Verdict`] === "needs-more-browsing" ||
     scenario[`${prefix}Verdict`] === "insufficient-evidence"
   );

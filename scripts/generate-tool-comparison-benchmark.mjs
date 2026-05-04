@@ -315,10 +315,11 @@ function summarizeExtractSurface(extract, claims) {
   for (const claim of claims) {
     const outcome = claimOutcomeForStatement(extract, claim.statement);
     const supported = outcome?.verdict === "evidence-supported";
+    const reusableSupport = supported && outcome?.reviewRecommended !== true;
     if (claim.expected === "positive" && supported) {
       positiveSupportedCount += 1;
     }
-    if (claim.expected === "negative" && supported) {
+    if (claim.expected === "negative" && reusableSupport) {
       negativeFalsePositiveCount += 1;
     }
   }

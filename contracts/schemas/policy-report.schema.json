@@ -21,7 +21,7 @@
     },
     "sourceRisk": {
       "type": "string",
-      "enum": ["low", "medium", "hostile"]
+      "enum": ["trusted-internal", "low", "medium", "hostile"]
     },
     "riskClass": {
       "type": "string",
@@ -44,17 +44,24 @@
         "properties": {
           "kind": {
             "type": "string",
-            "enum": [
-              "hostile-source",
-              "untrusted-system-language",
-              "suspicious-cta",
-              "external-actionable",
-              "hostile-form-control",
-              "domain-not-allowlisted",
-              "bot-challenge",
-              "mfa-challenge",
-              "sensitive-auth-flow",
-              "high-risk-write"
+            "anyOf": [
+              {
+                "enum": [
+                  "hostile-source",
+                  "untrusted-system-language",
+                  "suspicious-cta",
+                  "external-actionable",
+                  "hostile-form-control",
+                  "domain-not-allowlisted",
+                  "bot-challenge",
+                  "mfa-challenge",
+                  "sensitive-auth-flow",
+                  "high-risk-write"
+                ]
+              },
+              {
+                "pattern": "^custom:[A-Za-z0-9._:-]+$"
+              }
             ]
           },
           "origin": {

@@ -700,6 +700,14 @@ function buildOutputSchemas() {
     tb_telemetry_summary: telemetrySummarySchema,
     tb_telemetry_recent: telemetryRecentSchema,
     tb_session_synthesize: sessionSynthesizeSchema,
+    tb_cancel: objectSchema({
+      properties: {
+        cancelled: booleanSchema(),
+        reason: stringSchema(),
+        restartedOnNextCall: booleanSchema(),
+      },
+      required: ["cancelled", "reason", "restartedOnNextCall"],
+    }),
     tb_session_close: sessionCloseSchema,
   };
 }

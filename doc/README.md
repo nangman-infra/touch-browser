@@ -27,6 +27,7 @@ This directory is the usage and operations index for the uploaded repository.
 | inspect the markdown-baseline comparison benchmark | [TOOL_COMPARISON_BENCHMARK_SPEC.md](TOOL_COMPARISON_BENCHMARK_SPEC.md) |
 | inspect adversarial contradiction and unresolved benchmark results | [ADVERSARIAL_BENCHMARK_SPEC.md](ADVERSARIAL_BENCHMARK_SPEC.md) |
 | inspect evidence operating rules for `high` / `review` / verifier handoff | [EVIDENCE_OPERATING_MODEL.md](EVIDENCE_OPERATING_MODEL.md) |
+| inspect touch-connect and A2A artifact integration boundaries | [PORTFOLIO_INTEGRATION_SPEC.md](PORTFOLIO_INTEGRATION_SPEC.md) |
 | inspect live JS-rendered page coverage | [JS_RENDERER_BENCHMARK_SPEC.md](JS_RENDERER_BENCHMARK_SPEC.md) |
 | inspect AWS Docs page-type quality and latency coverage | [AWS_PAGE_TYPE_BENCHMARK_SPEC.md](AWS_PAGE_TYPE_BENCHMARK_SPEC.md) |
 
@@ -46,6 +47,7 @@ This directory is the usage and operations index for the uploaded repository.
 | link integrity benchmark | [DOC_LINK_INTEGRITY_SPEC.md](DOC_LINK_INTEGRITY_SPEC.md) |
 | tool comparison benchmark | [TOOL_COMPARISON_BENCHMARK_SPEC.md](TOOL_COMPARISON_BENCHMARK_SPEC.md) |
 | adversarial benchmark | [ADVERSARIAL_BENCHMARK_SPEC.md](ADVERSARIAL_BENCHMARK_SPEC.md) |
+| evidence-grounded web research benchmark | [EVIDENCE_GROUNDED_WEB_RESEARCH_BENCHMARK_SPEC.md](EVIDENCE_GROUNDED_WEB_RESEARCH_BENCHMARK_SPEC.md) |
 
 ## Readiness
 

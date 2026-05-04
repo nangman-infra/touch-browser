@@ -23,6 +23,7 @@ pub(crate) enum CliCommand {
     Mcp,
     Update(UpdateOptions),
     Uninstall(UninstallOptions),
+    Quick(ExtractOptions),
     Open(TargetOptions),
     Snapshot(TargetOptions),
     CompactView(TargetOptions),

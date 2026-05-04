@@ -46,6 +46,7 @@ pub(crate) fn dispatch(command: CliCommand) -> Result<Value, CliError> {
         )),
         CliCommand::Update(options) => handle_update(&ctx, options),
         CliCommand::Uninstall(options) => handle_uninstall(&ctx, options),
+        CliCommand::Quick(options) => handle_quick(&ctx, options),
         CliCommand::Open(options) | CliCommand::Snapshot(options) => handle_open(&ctx, options),
         CliCommand::CompactView(options) => handle_compact_view(&ctx, options),
         CliCommand::ReadView(options) => handle_read_view(&ctx, options),
@@ -201,6 +202,14 @@ fn handle_open(
     options: TargetOptions,
 ) -> Result<Value, CliError> {
     serialize_output(application::research_commands::handle_open(ctx, options)?)
+}
+
+fn handle_quick(
+    ctx: &application::context::CliAppContext<'_>,
+    mut options: ExtractOptions,
+) -> Result<Value, CliError> {
+    options.browser = !super::cli_support::is_fixture_target(&options.target);
+    handle_extract(ctx, options)
 }
 
 fn handle_compact_view(

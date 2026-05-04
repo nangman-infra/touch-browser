@@ -80,6 +80,7 @@ fn default_aliases(source_uri: &str) -> Vec<String> {
 
 fn parse_fixture_risk(value: &str) -> Result<SourceRisk, CliError> {
     match value {
+        "trusted-internal" => Ok(SourceRisk::TrustedInternal),
         "low" => Ok(SourceRisk::Low),
         "medium" => Ok(SourceRisk::Medium),
         "hostile" => Ok(SourceRisk::Hostile),

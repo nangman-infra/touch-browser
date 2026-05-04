@@ -20,6 +20,11 @@ let initialized = false;
 let requestQueue = Promise.resolve();
 
 input.on("line", (line) => {
+  const cancellation = parseCancellationNotification(line);
+  if (cancellation) {
+    void serve.cancel(cancellation);
+    return;
+  }
   requestQueue = requestQueue.then(
     () => processLine(line),
     () => processLine(line),
@@ -95,7 +100,11 @@ async function handleRequest(request) {
           "MCP bridge has not been initialized.",
         );
       }
-      return await handleToolCall(request.id, request.params ?? {}, serve);
+      return await handleToolCall(request.id, request.params ?? {}, serve, {
+        emitProgress: createProgressEmitter(
+          request.params?._meta?.progressToken,
+        ),
+      });
     default:
       return errorResponse(
         request.id ?? null,
@@ -107,4 +116,57 @@ async function handleRequest(request) {
 
 function writeMessage(payload) {
   process.stdout.write(`${JSON.stringify(payload)}\n`);
+}
+
+function createProgressEmitter(progressToken) {
+  if (typeof progressToken !== "string" && typeof progressToken !== "number") {
+    return () => {};
+  }
+
+  let lastProgress = 0;
+  return (progress, total, message) => {
+    if (progress <= lastProgress) {
+      return;
+    }
+    lastProgress = progress;
+    const params = {
+      progressToken,
+      progress,
+    };
+    if (typeof total === "number") {
+      params.total = total;
+    }
+    if (message) {
+      params.message = message;
+    }
+    writeMessage({
+      jsonrpc: "2.0",
+      method: "notifications/progress",
+      params,
+    });
+  };
+}
+
+function parseCancellationNotification(line) {
+  const trimmed = line.trim();
+  if (!trimmed) {
+    return null;
+  }
+
+  let request;
+  try {
+    request = JSON.parse(trimmed);
+  } catch {
+    return null;
+  }
+
+  if (request?.method !== "notifications/cancelled") {
+    return null;
+  }
+
+  const reason =
+    typeof request.params?.reason === "string" && request.params.reason.trim()
+      ? request.params.reason.trim()
+      : "cancelled by MCP client";
+  return { reason };
 }

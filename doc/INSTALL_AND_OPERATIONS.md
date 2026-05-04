@@ -65,6 +65,12 @@ touch-browser telemetry-summary
 touch-browser update --check
 ```
 
+`build:standalone-bundle` uses the slim release profile by default. The slim
+profile omits prebundled Playwright Chromium and semantic model caches; semantic
+and NLI models are downloaded lazily on first use. Use
+`pnpm run build:standalone-bundle:full -- <version>` only when the bundle must
+carry warm model caches for offline operation.
+
 ### Build from source
 
 Prerequisites:

@@ -373,6 +373,7 @@ fn command_name(command: &CliCommand) -> &'static str {
         CliCommand::Mcp => "mcp",
         CliCommand::Update(_) => "update",
         CliCommand::Uninstall(_) => "uninstall",
+        CliCommand::Quick(_) => "quick",
         CliCommand::Open(_) => "open",
         CliCommand::Snapshot(_) => "snapshot",
         CliCommand::CompactView(_) => "compact-view",
@@ -525,7 +526,9 @@ fn add_next_actions(command: &CliCommand, output: &mut Value) {
         CliCommand::SessionRead(_) | CliCommand::SessionCompact(_) => {
             session_read_next_actions(output)
         }
-        CliCommand::Extract(_) | CliCommand::SessionExtract(_) => extract_next_actions(output),
+        CliCommand::Quick(_) | CliCommand::Extract(_) | CliCommand::SessionExtract(_) => {
+            extract_next_actions(output)
+        }
         CliCommand::Policy(_) | CliCommand::SessionPolicy(_) => policy_next_actions(output),
         CliCommand::SessionSynthesize(_) => synthesize_next_actions(output),
         CliCommand::SessionCheckpoint(_) => vec![next_action(
@@ -719,7 +722,7 @@ fn command_session_file(command: &CliCommand) -> Option<String> {
         | CliCommand::CompactView(options)
         | CliCommand::ReadView(options)
         | CliCommand::Policy(options) => options.session_file.as_ref(),
-        CliCommand::Extract(options) => options.session_file.as_ref(),
+        CliCommand::Quick(options) | CliCommand::Extract(options) => options.session_file.as_ref(),
         CliCommand::SessionSnapshot(options)
         | CliCommand::SessionCompact(options)
         | CliCommand::SessionCheckpoint(options)
@@ -1054,7 +1057,7 @@ fn command_target(command: &CliCommand) -> Option<&str> {
         | CliCommand::CompactView(options)
         | CliCommand::ReadView(options)
         | CliCommand::Policy(options) => Some(&options.target),
-        CliCommand::Extract(options) => Some(&options.target),
+        CliCommand::Quick(options) | CliCommand::Extract(options) => Some(&options.target),
         _ => None,
     }
 }

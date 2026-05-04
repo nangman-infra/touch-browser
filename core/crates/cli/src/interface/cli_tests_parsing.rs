@@ -1,4 +1,5 @@
 use super::*;
+use crate::interface::deps::SourceRisk;
 
 #[test]
 fn preprocesses_help_and_json_error_flags() {
@@ -98,6 +99,35 @@ fn parses_extract_command_with_multiple_claims() {
                 "The Starter plan costs $29 per month.".to_string(),
                 "There is an Enterprise plan.".to_string(),
             ],
+            verifier_command: None,
+        })
+    );
+}
+
+#[test]
+fn parses_quick_command_as_browser_backed_extract() {
+    let command = parse_command(&[
+        "quick".to_string(),
+        "https://www.iana.org/help/example-domains".to_string(),
+        "--source-risk".to_string(),
+        "trusted-internal".to_string(),
+        "--claim".to_string(),
+        "example.com is maintained for documentation purposes.".to_string(),
+    ])
+    .expect("quick command should parse");
+
+    assert_eq!(
+        command,
+        CliCommand::Quick(ExtractOptions {
+            target: "https://www.iana.org/help/example-domains".to_string(),
+            budget: DEFAULT_REQUESTED_TOKENS,
+            source_risk: Some(SourceRisk::TrustedInternal),
+            source_label: None,
+            allowlisted_domains: Vec::new(),
+            browser: true,
+            headed: false,
+            session_file: None,
+            claims: vec!["example.com is maintained for documentation purposes.".to_string()],
             verifier_command: None,
         })
     );

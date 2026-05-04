@@ -22,6 +22,34 @@ Evidence-first, not fact-final:
 - `touch-browser` helps an AI collect page-local evidence and trace where it came from
 - a higher-level model or human still decides what is true across pages or across the wider world
 
+## 60 Second Proof
+
+After installing, paste this proof path to see the product difference from a raw fetch:
+
+```bash
+touch-browser quick https://www.iana.org/help/example-domains \
+  --claim "As described in RFC 2606 and RFC 6761, a number of domains such as example.com and example.org are maintained for documentation purposes."
+```
+
+What to look for in the `session-extract` JSON:
+
+```json
+{
+  "verdict": "evidence-supported",
+  "confidenceBand": "high",
+  "reviewRecommended": false,
+  "primarySupportSnippet": {
+    "snippet": "..."
+  },
+  "citation": {
+    "url": "https://www.iana.org/help/example-domains",
+    "retrievedAt": "..."
+  }
+}
+```
+
+The important signal is not that the page was fetched. It is that the claim was routed into a verdict, a confidence band, a reusable snippet, and a source citation.
+
 ## What `extract` Returns
 
 Abbreviated `claimOutcome` shape from the current extractor:
@@ -51,6 +79,18 @@ The extractor returns four verdicts:
 - `needs-more-browsing`: the current page is not specific enough yet, so the next step is another page
 
 `confidenceBand`, `reviewRecommended`, `supportSnippets`, `verdictExplanation`, and `matchSignals` are there so an agent can decide what to do next without blindly trusting the first match.
+
+### Reading a `claimOutcome`
+
+Use this order when deciding what to do:
+
+1. Read `verdict`.
+2. If `reviewRecommended` is `true`, do not reuse the claim without a human or second-pass verifier.
+3. If you need one quote-like evidence line, use `primarySupportSnippet`.
+4. If you need the reason for the verdict, read `verdictExplanation`.
+5. If the verdict is not enough to answer, follow `nextActionHint`.
+
+`claimOutcomes` is the per-call decision log for every submitted claim. `evidenceSupportedClaims`, `contradictedClaims`, `insufficientEvidenceClaims`, and `needsMoreBrowsingClaims` are status-grouped views of the same extraction result. `session-synthesize` aggregates those grouped views across opened tabs in a session.
 
 ## MCP Package
 
@@ -84,7 +124,7 @@ Tagged `v*` pushes now build standalone macOS and Linux bundles in the `Standalo
 - `bin/touch-browser`
 - the optimized Rust binary under `runtime/touch-browser-bin`
 - a bundled Node runtime and Playwright adapter
-- the default semantic runner scripts and model cache
+- the default semantic runner scripts with lazy semantic/NLI model download
 
 Browser actions keep the Playwright adapter as the zero-config compatibility
 default. For new CLI deployments, the main recommended browser engine is the
@@ -104,15 +144,20 @@ cross-origin nested shadow interactions. It still requires Chrome or Chromium.
 Set `TOUCH_BROWSER_CDP_BROWSER=/absolute/path/to/chrome` when it is not
 installed in a standard location.
 
-For local size checks, a slim bundle profile skips prebundled Playwright
-Chromium and semantic model caches:
+The slim bundle profile is now the default release profile. It skips prebundled
+Playwright Chromium and semantic model caches, then downloads semantic/NLI
+models lazily on first use:
 
 ```bash
-pnpm run build:standalone-bundle:slim -- local-dev
+pnpm run build:standalone-bundle -- local-dev
 ```
 
-The full bundle remains the release default because it preserves the bundled
-Playwright compatibility path while shipping the recommended Rust CDP engine.
+Use the full profile only when an offline bundle must include warm model caches
+and prebundled Playwright Chromium:
+
+```bash
+pnpm run build:standalone-bundle:full -- local-dev
+```
 
 When a tagged release is published, download the matching tarball from [GitHub Releases](https://github.com/nangman-infra/touch-browser/releases), unpack it, and run:
 
@@ -200,6 +245,21 @@ Use `TOUCH_BROWSER_EVIDENCE_EMBEDDING_MODEL_PATH` or `TOUCH_BROWSER_EVIDENCE_NLI
 | Give support snippets and verdict explanations | no | yes |
 | Tell the agent to escalate instead of answering | no | yes |
 
+## Latest Generated Proof Baselines
+
+These are the latest local benchmark rerun signals from `2026-05-05`, not a promise about every future public page:
+
+| Benchmark | Current generated signal |
+| --- | --- |
+| Public web benchmark | `4/4` task-proof claims evidence-supported on IANA and RFC Editor pages |
+| Real-user research benchmark | average supported claim rate `1.00` across `3` MCP-driven public-doc scenarios |
+| Adversarial benchmark | verified exact verdict accuracy `1.00`, raw exact verdict accuracy `0.80`, unsafe auto-answer count `0` |
+| Citation metrics | classification, citation, unsupported-claim, and support-ref precision/recall `1.00` across `34` fixtures |
+| Tool comparison benchmark | extract false-positive rate `0.17` vs markdown-baseline false-positive rate `0.33` on plausible negative claims |
+| Evidence-grounded web research benchmark | current seed `61` claim/fixture units with status `seed-validated`, target corpus `1000` claims |
+
+See [benchmarks/README.md](benchmarks/README.md) for the benchmark map and generated report locations.
+
 ## Product Surface
 
 Primary surface:
@@ -249,6 +309,13 @@ The MCP package is intentionally narrower than the full CLI:
 
 - scope is public docs and research web
 - recommended loop is `tb_search -> tb_search_open_top -> tb_read_view -> tb_extract`
+- `tb_session_create` accepts an optional caller-provided `sessionId` for external correlation
+- `tb_open` needs `target` for stateless use; with `sessionId`, it can omit `target` to reopen the active tab URL
+- `tb_read_view`, `tb_extract`, and `tb_policy` can omit `target` when `sessionId` points at an opened active tab
+- `tb_extract` always needs `claims`
+- `tb_session_synthesize` needs `sessionId` and at least one opened tab
+- long-running MCP calls emit `notifications/progress` when the host provides `_meta.progressToken`
+- `tb_cancel` can reset the daemon; use MCP `notifications/cancelled` for an in-flight request
 - `engine` is not exposed over MCP
 - `headed` is not exposed over MCP
 - if the page indicates challenge, auth, MFA, or other supervised recovery, stop and hand off to a human instead of retrying with different browser settings

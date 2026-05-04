@@ -231,6 +231,12 @@ pub(crate) fn parse_extract_options(args: &[String]) -> Result<ExtractOptions, C
     })
 }
 
+pub(crate) fn parse_quick_options(args: &[String]) -> Result<ExtractOptions, CliError> {
+    let mut options = parse_extract_options(args)?;
+    options.browser = true;
+    Ok(options)
+}
+
 pub(crate) fn parse_session_file_options(
     args: &[String],
     command_name: &str,
@@ -589,11 +595,12 @@ pub(crate) fn parse_memory_steps(args: &[String]) -> Result<usize, CliError> {
 
 pub(crate) fn parse_source_risk(value: &str) -> Result<SourceRisk, CliError> {
     match value {
+        "trusted-internal" => Ok(SourceRisk::TrustedInternal),
         "low" => Ok(SourceRisk::Low),
         "medium" => Ok(SourceRisk::Medium),
         "hostile" => Ok(SourceRisk::Hostile),
         _ => Err(CliError::Usage(format!(
-            "Unknown source risk `{value}`. Expected low|medium|hostile."
+            "Unknown source risk `{value}`. Expected trusted-internal|low|medium|hostile."
         ))),
     }
 }

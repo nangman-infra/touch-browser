@@ -65,6 +65,7 @@ fn main() {
 
 fn parse_risk(value: &str) -> SourceRisk {
     match value {
+        "trusted-internal" => SourceRisk::TrustedInternal,
         "low" => SourceRisk::Low,
         "medium" => SourceRisk::Medium,
         "hostile" => SourceRisk::Hostile,

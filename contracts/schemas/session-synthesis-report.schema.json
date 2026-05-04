@@ -104,7 +104,7 @@
         },
         "sourceRisk": {
           "type": "string",
-          "enum": ["low", "medium", "hostile"]
+          "enum": ["trusted-internal", "low", "medium", "hostile"]
         },
         "sourceLabel": {
           "type": "string",

@@ -268,6 +268,9 @@ fn command_examples(command_name: &str) -> Option<&'static str> {
         "extract" => Some(
             "  touch-browser extract https://www.iana.org/help/example-domains --claim \"example.com is maintained for documentation purposes.\"",
         ),
+        "quick" => Some(
+            "  touch-browser quick https://www.iana.org/help/example-domains --claim \"example.com is maintained for documentation purposes.\"",
+        ),
         "search" => Some(
             "  touch-browser search \"IANA example domains\" --engine brave --session-file /tmp/tb-search.json\n  touch-browser search-open-top --engine brave --session-file /tmp/tb-search.json --limit 3",
         ),

@@ -172,14 +172,12 @@ fn resolved_embedding_model_root() -> Option<PathBuf> {
 
     if let Some(model_path) = env::var_os("TOUCH_BROWSER_EVIDENCE_EMBEDDING_MODEL_PATH") {
         let model_root = PathBuf::from(model_path);
-        return model_root.is_dir().then_some(model_root);
+        return (model_root.is_dir() || embedding_lazy_download_enabled()).then_some(model_root);
     }
 
     let home = env::var_os("HOME").map(PathBuf::from)?;
     let default_root = default_embedding_model_root_from_home(&home);
-    default_root
-        .join(".ready.json")
-        .is_file()
+    (default_root.join(".ready.json").is_file() || embedding_lazy_download_enabled())
         .then_some(default_root)
 }
 
@@ -202,11 +200,15 @@ fn embedding_runner_command() -> Option<String> {
     }
 
     default_embedding_runner_script().map(|path| {
-        format!(
+        let mut command = format!(
             "{} {}",
             shell_escape_text(&runner_node_executable()),
             shell_escape(&path)
-        )
+        );
+        if embedding_lazy_download_enabled() {
+            command.push_str(" --allow-download");
+        }
+        command
     })
 }
 
@@ -249,14 +251,12 @@ fn resolved_nli_model_root() -> Option<PathBuf> {
 
     if let Some(model_path) = env::var_os("TOUCH_BROWSER_EVIDENCE_NLI_MODEL_PATH") {
         let model_root = PathBuf::from(model_path);
-        return model_root.is_dir().then_some(model_root);
+        return (model_root.is_dir() || nli_lazy_download_enabled()).then_some(model_root);
     }
 
     let home = env::var_os("HOME").map(PathBuf::from)?;
     let default_root = home.join(".touch-browser/models/evidence/nli");
-    default_root
-        .join(".ready.json")
-        .is_file()
+    (default_root.join(".ready.json").is_file() || nli_lazy_download_enabled())
         .then_some(default_root)
 }
 
@@ -275,12 +275,30 @@ fn nli_runner_command() -> Option<String> {
     }
 
     default_nli_runner_script().map(|path| {
-        format!(
+        let mut command = format!(
             "{} {}",
             shell_escape_text(&runner_node_executable()),
             shell_escape(&path)
-        )
+        );
+        if nli_lazy_download_enabled() {
+            command.push_str(" --allow-download");
+        }
+        command
     })
+}
+
+fn embedding_lazy_download_enabled() -> bool {
+    env::var("TOUCH_BROWSER_EVIDENCE_EMBEDDING_LAZY_DOWNLOAD")
+        .ok()
+        .as_deref()
+        == Some("1")
+}
+
+fn nli_lazy_download_enabled() -> bool {
+    env::var("TOUCH_BROWSER_EVIDENCE_NLI_LAZY_DOWNLOAD")
+        .ok()
+        .as_deref()
+        == Some("1")
 }
 
 fn default_nli_runner_script() -> Option<PathBuf> {
@@ -593,9 +611,9 @@ mod tests {
     use super::{
         apply_nli_reranking, canonical_or_raw, cosine_similarity,
         default_embedding_model_root_from_home, default_embedding_runner_script,
-        default_nli_runner_script, embedding_request_texts, repo_root_for_runner,
-        run_embedding_batch_with_backend, run_nli_batch_with_backend, runner_node_executable,
-        vector_is_zero, NliScore,
+        default_nli_runner_script, embedding_request_texts, nli_runner_command,
+        repo_root_for_runner, resolved_embedding_model_root, run_embedding_batch_with_backend,
+        run_nli_batch_with_backend, runner_node_executable, vector_is_zero, NliScore,
     };
     use crate::scoring::{semantic_similarity_bonus, CandidateMatchSignals, ScoredCandidate};
 
@@ -672,6 +690,59 @@ mod tests {
         );
 
         restore_env("TOUCH_BROWSER_RESOURCE_ROOT", previous);
+    }
+
+    #[test]
+    fn lazy_embedding_download_allows_missing_ready_marker() {
+        let _guard = env_lock()
+            .lock()
+            .unwrap_or_else(|poisoned| poisoned.into_inner());
+        let model_root = temporary_directory("lazy-embedding-model");
+        fs::remove_dir_all(&model_root).expect("model root should be removable");
+        let previous_model_path = std::env::var_os("TOUCH_BROWSER_EVIDENCE_EMBEDDING_MODEL_PATH");
+        let previous_lazy = std::env::var_os("TOUCH_BROWSER_EVIDENCE_EMBEDDING_LAZY_DOWNLOAD");
+        std::env::set_var("TOUCH_BROWSER_EVIDENCE_EMBEDDING_MODEL_PATH", &model_root);
+        std::env::set_var("TOUCH_BROWSER_EVIDENCE_EMBEDDING_LAZY_DOWNLOAD", "1");
+
+        assert_eq!(resolved_embedding_model_root(), Some(model_root));
+
+        restore_env(
+            "TOUCH_BROWSER_EVIDENCE_EMBEDDING_MODEL_PATH",
+            previous_model_path,
+        );
+        restore_env(
+            "TOUCH_BROWSER_EVIDENCE_EMBEDDING_LAZY_DOWNLOAD",
+            previous_lazy,
+        );
+    }
+
+    #[test]
+    fn lazy_nli_download_adds_allow_download_to_default_runner() {
+        let _guard = env_lock()
+            .lock()
+            .unwrap_or_else(|poisoned| poisoned.into_inner());
+        let runtime_root = temporary_directory("lazy-nli-runtime");
+        let runner_script = runtime_root.join("scripts/evidence-nli-runner.mjs");
+        fs::create_dir_all(
+            runner_script
+                .parent()
+                .expect("runner script parent should exist"),
+        )
+        .expect("runner script parent should be created");
+        fs::write(&runner_script, "export {};\n").expect("runner script should be written");
+        let previous_runtime_root = std::env::var_os("TOUCH_BROWSER_RESOURCE_ROOT");
+        let previous_runner = std::env::var_os("TOUCH_BROWSER_EVIDENCE_NLI_RUNNER");
+        let previous_lazy = std::env::var_os("TOUCH_BROWSER_EVIDENCE_NLI_LAZY_DOWNLOAD");
+        std::env::set_var("TOUCH_BROWSER_RESOURCE_ROOT", &runtime_root);
+        std::env::remove_var("TOUCH_BROWSER_EVIDENCE_NLI_RUNNER");
+        std::env::set_var("TOUCH_BROWSER_EVIDENCE_NLI_LAZY_DOWNLOAD", "1");
+
+        let command = nli_runner_command().expect("default nli runner should resolve");
+        assert!(command.contains("--allow-download"));
+
+        restore_env("TOUCH_BROWSER_RESOURCE_ROOT", previous_runtime_root);
+        restore_env("TOUCH_BROWSER_EVIDENCE_NLI_RUNNER", previous_runner);
+        restore_env("TOUCH_BROWSER_EVIDENCE_NLI_LAZY_DOWNLOAD", previous_lazy);
     }
 
     #[test]

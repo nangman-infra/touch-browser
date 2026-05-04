@@ -33,7 +33,7 @@ function sanitizeMcpArgs(args) {
   return rest;
 }
 
-export async function handleToolCall(id, params, serve) {
+export async function handleToolCall(id, params, serve, callbacks = {}) {
   const toolName = params?.name;
   const rawArgs = params?.arguments ?? {};
   const rejected = rejectManagedMcpArguments(id, toolName, rawArgs);
@@ -42,6 +42,13 @@ export async function handleToolCall(id, params, serve) {
   }
   const args = sanitizeMcpArgs(rawArgs);
   let result;
+  const emitProgress =
+    typeof callbacks.emitProgress === "function"
+      ? callbacks.emitProgress
+      : () => {};
+
+  emitProgress(1, 3, `${toolName}: starting`);
+  emitProgress(2, 3, `${toolName}: running touch-browser`);
 
   switch (toolName) {
     case "tb_status":
@@ -143,9 +150,19 @@ export async function handleToolCall(id, params, serve) {
     case "tb_session_close":
       result = await serve.call("runtime.session.close", args);
       break;
+    case "tb_cancel":
+      result = await serve.cancel({
+        reason:
+          typeof args.reason === "string" && args.reason.trim()
+            ? args.reason.trim()
+            : "cancelled by tb_cancel",
+      });
+      break;
     default:
       return errorResponse(id, -32602, `Unknown tool: ${toolName}`);
   }
+
+  emitProgress(3, 3, `${toolName}: completed`);
 
   return successResponse(id, {
     content: [

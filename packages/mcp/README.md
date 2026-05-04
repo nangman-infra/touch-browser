@@ -11,6 +11,30 @@ It is designed for public docs and research web workflows:
 
 This package does not expose `headed` or search-engine controls over MCP.
 
+## First MCP Loop
+
+Use this tool order for a direct URL:
+
+1. `tb_session_create`
+2. `tb_open` with `sessionId` and `target`
+3. `tb_read_view` with `sessionId`
+4. `tb_extract` with `sessionId` and `claims`
+5. `tb_session_synthesize` with `sessionId`
+6. `tb_session_close` with `sessionId`
+
+Argument model:
+
+- `tb_session_create` accepts an optional caller-provided `sessionId` for external correlation.
+- `tb_open` requires `target` for stateless use; with `sessionId`, it can omit `target` to reopen the active tab URL.
+- `tb_read_view`, `tb_extract`, and `tb_policy` can omit `target` when `sessionId` points at an opened active tab.
+- `tb_extract` always requires `claims`.
+- `tb_session_synthesize` requires `sessionId` and at least one opened tab.
+- `tb_cancel` is a best-effort daemon reset; MCP hosts should use `notifications/cancelled` for an in-flight call.
+
+If a session has no opened tab yet, call `tb_open` or `tb_search_open_top` first.
+
+Long-running calls emit MCP `notifications/progress` when the host provides `_meta.progressToken`.
+
 ## Host Config
 
 Run directly through `npx`:

@@ -43,9 +43,13 @@ pub(crate) fn serve_session_create(
     let headed = json_bool(params, "headed").unwrap_or(false);
     ensure_research_headed_allowed(headed, "runtime.session.create")?;
     let headless = !headed;
+    let requested_session_id = optional_json_string(params, "sessionId");
     let allowlisted_domains = json_string_array(params, "allowDomains")?;
-    let (session_id, active_tab_id) =
-        daemon_state.create_session(headless, allowlisted_domains.clone())?;
+    let (session_id, active_tab_id) = daemon_state.create_session_with_requested_id(
+        requested_session_id,
+        headless,
+        allowlisted_domains.clone(),
+    )?;
     presenters::present_session_created(session_id, active_tab_id, headless, allowlisted_domains, 1)
 }
 
@@ -55,7 +59,10 @@ pub(crate) fn serve_session_open(
 ) -> Result<Value, CliError> {
     let session_id = required_json_string(params, "sessionId")?;
     let tab_id = optional_json_string(params, "tabId");
-    let target = required_json_string(params, "target")?;
+    let target = match optional_json_string(params, "target") {
+        Some(target) => target,
+        None => current_opened_tab_url(daemon_state, &session_id, tab_id.as_deref())?,
+    };
     let source_risk = optional_json_string(params, "sourceRisk")
         .map(|value| parse_source_risk(&value))
         .transpose()?;
@@ -80,6 +87,23 @@ pub(crate) fn serve_session_open(
             browser,
         },
     )
+}
+
+fn current_opened_tab_url(
+    daemon_state: &ServeDaemonState,
+    session_id: &str,
+    tab_id: Option<&str>,
+) -> Result<String, CliError> {
+    let (_, session_file) = daemon_state.opened_tab_file(session_id, tab_id)?;
+    load_browser_cli_session(&session_file)?
+        .session
+        .state
+        .current_url
+        .ok_or_else(|| {
+            CliError::Usage(format!(
+                "Serve session `{session_id}` has no current URL to reopen. Pass `target`, or open a tab first with `tb_open` or `tb_search_open_top`."
+            ))
+        })
 }
 
 pub(crate) fn serve_session_snapshot(
@@ -265,7 +289,7 @@ pub(crate) fn serve_session_synthesize(
 
     if tab_reports.is_empty() {
         return Err(CliError::Usage(format!(
-            "Serve session `{session_id}` has no opened tabs to synthesize."
+            "Serve session `{session_id}` has no opened tabs to synthesize. Open a tab first with `tb_open` or `tb_search_open_top`, then retry `tb_session_synthesize`."
         )));
     }
 

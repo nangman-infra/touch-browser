@@ -63,13 +63,27 @@ impl ServeDaemonState {
         Ok(())
     }
 
-    pub(crate) fn create_session(
+    pub(crate) fn create_session_with_requested_id(
         &mut self,
+        requested_session_id: Option<String>,
         headless: bool,
         allowlisted_domains: Vec<String>,
     ) -> Result<(String, String), CliError> {
-        self.next_session_seq += 1;
-        let session_id = format!("srvsess-{:04}", self.next_session_seq);
+        let session_id = match requested_session_id {
+            Some(session_id) => {
+                validate_requested_session_id(&session_id)?;
+                if self.sessions.contains_key(&session_id) {
+                    return Err(CliError::Usage(format!(
+                        "Serve session `{session_id}` already exists. Choose a unique sessionId."
+                    )));
+                }
+                session_id
+            }
+            None => {
+                self.next_session_seq += 1;
+                format!("srvsess-{:04}", self.next_session_seq)
+            }
+        };
         self.sessions.insert(
             session_id.clone(),
             ServeRuntimeSession {
@@ -173,7 +187,7 @@ impl ServeDaemonState {
 
         if !tab.session_file.is_file() {
             return Err(CliError::Usage(format!(
-                "Serve session `{session_id}` tab `{tab_id}` has not been opened yet."
+                "Serve session `{session_id}` tab `{tab_id}` has not been opened yet. Open a tab first with `tb_open` or `tb_search_open_top`, then retry this session tool."
             )));
         }
 
@@ -384,4 +398,24 @@ impl ServeDaemonState {
             removed_tabs,
         })
     }
+}
+
+fn validate_requested_session_id(session_id: &str) -> Result<(), CliError> {
+    if session_id.is_empty() || session_id.len() > 128 {
+        return Err(CliError::Usage(
+            "sessionId must be 1 to 128 characters long.".to_string(),
+        ));
+    }
+
+    if !session_id
+        .bytes()
+        .all(|byte| byte.is_ascii_alphanumeric() || matches!(byte, b'-' | b'_' | b':'))
+    {
+        return Err(CliError::Usage(
+            "sessionId may contain only ASCII letters, digits, hyphen, underscore, and colon."
+                .to_string(),
+        ));
+    }
+
+    Ok(())
 }
