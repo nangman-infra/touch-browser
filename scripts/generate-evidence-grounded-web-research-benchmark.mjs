@@ -108,7 +108,9 @@ function numberAt(value, pathSegments) {
     current = current?.[segment];
   }
   if (typeof current !== "number") {
-    throw new Error(`Expected numeric report field: ${pathSegments.join(".")}`);
+    throw new TypeError(
+      `Expected numeric report field: ${pathSegments.join(".")}`,
+    );
   }
   return current;
 }
