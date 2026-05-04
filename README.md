@@ -22,16 +22,24 @@ Evidence-first, not fact-final:
 - `touch-browser` helps an AI collect page-local evidence and trace where it came from
 - a higher-level model or human still decides what is true across pages or across the wider world
 
-## 60 Second Proof
+## Start Here: 60 Second Proof
 
-After installing, paste this proof path to see the product difference from a raw fetch:
+After installing, run one command to see the product difference from a raw fetch:
 
 ```bash
 touch-browser quick https://www.iana.org/help/example-domains \
   --claim "As described in RFC 2606 and RFC 6761, a number of domains such as example.com and example.org are maintained for documentation purposes."
 ```
 
-What to look for in the `session-extract` JSON:
+Decision path for the output:
+
+1. Check `verdict`.
+2. Check `reviewRecommended`.
+3. Quote `primarySupportSnippet` when you need one evidence line.
+4. Read `verdictExplanation` when the verdict is not obvious.
+5. Use `citation.url` and `citation.retrievedAt` when handing evidence to another system.
+
+Expected shape:
 
 ```json
 {
@@ -49,6 +57,8 @@ What to look for in the `session-extract` JSON:
 ```
 
 The important signal is not that the page was fetched. It is that the claim was routed into a verdict, a confidence band, a reusable snippet, and a source citation.
+
+MCP hosts do not expose the `quick` CLI command directly. For MCP, use the same idea as a tool loop: `tb_session_create` -> `tb_open` -> `tb_extract`.
 
 ## What `extract` Returns
 
@@ -80,15 +90,17 @@ The extractor returns four verdicts:
 
 `confidenceBand`, `reviewRecommended`, `supportSnippets`, `verdictExplanation`, and `matchSignals` are there so an agent can decide what to do next without blindly trusting the first match.
 
-### Reading a `claimOutcome`
+### Decision Tree: Reading a `claimOutcome`
 
-Use this order when deciding what to do:
+First-time users should ignore most fields at first and use this order:
 
 1. Read `verdict`.
 2. If `reviewRecommended` is `true`, do not reuse the claim without a human or second-pass verifier.
 3. If you need one quote-like evidence line, use `primarySupportSnippet`.
 4. If you need the reason for the verdict, read `verdictExplanation`.
 5. If the verdict is not enough to answer, follow `nextActionHint`.
+
+Use `matchSignals` only when you are debugging or comparing evidence quality. It is not the first field to read.
 
 `claimOutcomes` is the per-call decision log for every submitted claim. `evidenceSupportedClaims`, `contradictedClaims`, `insufficientEvidenceClaims`, and `needsMoreBrowsingClaims` are status-grouped views of the same extraction result. `session-synthesize` aggregates those grouped views across opened tabs in a session.
 
@@ -146,7 +158,9 @@ installed in a standard location.
 
 The slim bundle profile is now the default release profile. It skips prebundled
 Playwright Chromium and semantic model caches, then downloads semantic/NLI
-models lazily on first use:
+models lazily on first use. This reduces release asset and model-cache weight.
+It does not make first launch instant, because the npm path can still download
+the standalone runtime and install browser dependencies:
 
 ```bash
 pnpm run build:standalone-bundle -- local-dev
@@ -245,7 +259,7 @@ Use `TOUCH_BROWSER_EVIDENCE_EMBEDDING_MODEL_PATH` or `TOUCH_BROWSER_EVIDENCE_NLI
 | Give support snippets and verdict explanations | no | yes |
 | Tell the agent to escalate instead of answering | no | yes |
 
-## Latest Generated Proof Baselines
+## Why Trust This?
 
 These are the latest local benchmark rerun signals from `2026-05-05`, not a promise about every future public page:
 

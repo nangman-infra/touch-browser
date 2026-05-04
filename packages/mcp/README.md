@@ -11,6 +11,24 @@ It is designed for public docs and research web workflows:
 
 This package does not expose `headed` or search-engine controls over MCP.
 
+## What To Check First
+
+For a direct URL, the MCP equivalent of the CLI `touch-browser quick` path is:
+
+1. `tb_session_create`
+2. `tb_open`
+3. `tb_extract`
+
+Read claim outcomes in this order:
+
+1. `verdict`
+2. `reviewRecommended`
+3. `primarySupportSnippet`
+4. `verdictExplanation`
+5. `citation`
+
+Use `matchSignals` for debugging or quality comparison, not as the first field a new user needs to read.
+
 ## First MCP Loop
 
 Use this tool order for a direct URL:
@@ -66,6 +84,8 @@ On first launch, the package downloads the matching standalone `touch-browser` b
 ```
 
 and then starts `touch-browser mcp`.
+
+The published standalone bundle uses the slim release profile by default. That keeps semantic model caches lazy, but the first run can still take time because the runtime bundle and browser dependencies may need to be downloaded.
 
 ## Maintenance Commands
 

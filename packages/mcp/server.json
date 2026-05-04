@@ -2,7 +2,7 @@
   "$schema": "https://static.modelcontextprotocol.io/schemas/2025-12-11/server.schema.json",
   "name": "io.github.nangman-infra/touch-browser",
   "title": "touch-browser",
-  "description": "Evidence-first MCP server for public docs and research web workflows.",
+  "description": "Evidence-first MCP server that opens public docs, verifies claims, and returns verdicts, snippets, citations, and confidence signals.",
   "version": "0.6.0",
   "websiteUrl": "https://github.com/nangman-infra/touch-browser",
   "repository": {
