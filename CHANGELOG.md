@@ -2,6 +2,40 @@
 
 All notable changes to this project are documented here.
 
+## [0.6.0] - 2026-05-05
+
+Release: https://github.com/nangman-infra/touch-browser/releases/tag/v0.6.0
+
+Compare: https://github.com/nangman-infra/touch-browser/compare/v0.5.0...v0.6.0
+
+### Added
+
+- Added `touch-browser quick` as the 60-second evidence check path for URL or fixture-backed claims.
+- Added `tb_cancel`, MCP progress notifications, caller-provided `tb_session_create.sessionId`, and active-tab fallback behavior for `tb_open` when a session already has an opened tab.
+- Added the `trusted-internal` source-risk tier and `custom:<key>` policy-signal namespace for enterprise policy integration.
+- Added the Evidence-Grounded Web Research Benchmark seed, generator, and runtime benchmark gate.
+- Added touch-connect and A2A integration specs for EvidenceReport handoff as `application/vnd.touch-browser.evidence-report+json`.
+
+### Changed
+
+- Made slim standalone bundles the default release profile, with semantic model downloads deferred until first embedding or NLI use.
+- Clarified `claimOutcomes` versus session-level `evidenceSupportedClaims`, claim outcome reading order, verifier semantics, budget units, and memory crate boundaries in the docs.
+- Published the current checked benchmark numbers in the README and benchmark docs so evidence quality is visible before adoption.
+- Bumped the Rust workspace, CLI runtime, MCP npm package, MCP server descriptors, workflow client metadata, Glama Docker install pin, and standalone lifecycle expectations to `0.6.0`.
+
+### Fixed
+
+- Improved empty-session runtime errors so agents are told to open a tab first with `tb_open` or `tb_search_open_top`.
+- Fixed benchmark accounting for citation unsupported cases, tool-comparison false positives, and adversarial contradiction routing.
+- Fixed the evidence-grounded benchmark generator to use a typed error for numeric report-field validation.
+
+### Release Verification
+
+- Local `pnpm run quality:ci` passed before tagging.
+- Local public-web QA gate passed before tagging.
+- Local MCP package dry run passed before tagging.
+- GitHub Actions `Quality Checks`, `Public Web QA`, and `SonarQube Scan` passed on `main` before tagging.
+
 ## [0.5.0] - 2026-04-26
 
 Release: https://github.com/nangman-infra/touch-browser/releases/tag/v0.5.0
