@@ -42,6 +42,7 @@ impl PolicyKernel {
 
         let page_decision = page_policy_decision(&signals, source_risk.clone());
         let action_decision = action_policy_decision(&blocked_refs, &signals, source_risk.clone());
+        let top_level_decision = more_severe_policy_decision(&page_decision, &action_decision);
         let page_risk = PolicyRiskSummary {
             decision: page_decision.clone(),
             risk_class: risk_class_for(&page_decision),
@@ -52,9 +53,9 @@ impl PolicyKernel {
         };
 
         PolicyReport {
-            decision: page_decision,
+            decision: top_level_decision.clone(),
             source_risk,
-            risk_class: page_risk.risk_class.clone(),
+            risk_class: risk_class_for(&top_level_decision),
             blocked_refs,
             signals,
             allowlisted_domains: normalized_allowlist,
@@ -354,6 +355,14 @@ fn risk_class_for(decision: &PolicyDecision) -> RiskClass {
     }
 }
 
+fn more_severe_policy_decision(left: &PolicyDecision, right: &PolicyDecision) -> PolicyDecision {
+    match (left, right) {
+        (PolicyDecision::Block, _) | (_, PolicyDecision::Block) => PolicyDecision::Block,
+        (PolicyDecision::Review, _) | (_, PolicyDecision::Review) => PolicyDecision::Review,
+        _ => PolicyDecision::Allow,
+    }
+}
+
 fn normalize_allowlist(allowlisted_domains: &[String]) -> Vec<String> {
     let mut domains = allowlisted_domains
         .iter()
@@ -642,7 +651,7 @@ mod tests {
             read_snapshot("fixtures/research/hostile/fake-system-message/expected-snapshot.json");
         let report = PolicyKernel.evaluate_snapshot(&snapshot, SourceRisk::Hostile);
 
-        assert_eq!(report.decision, PolicyDecision::Review);
+        assert_eq!(report.decision, PolicyDecision::Block);
         assert_eq!(report.page_risk.decision, PolicyDecision::Review);
         assert_eq!(report.action_risk.decision, PolicyDecision::Block);
         assert!(report
@@ -680,7 +689,7 @@ mod tests {
             &["trusted.example".to_string()],
         );
 
-        assert_eq!(report.decision, PolicyDecision::Review);
+        assert_eq!(report.decision, PolicyDecision::Block);
         assert_eq!(report.page_risk.decision, PolicyDecision::Review);
         assert_eq!(report.action_risk.decision, PolicyDecision::Block);
         assert_eq!(
@@ -740,7 +749,7 @@ mod tests {
         );
         let report = PolicyKernel.evaluate_snapshot(&snapshot, SourceRisk::Low);
 
-        assert_eq!(report.decision, PolicyDecision::Allow);
+        assert_eq!(report.decision, PolicyDecision::Review);
         assert_eq!(report.page_risk.decision, PolicyDecision::Allow);
         assert_eq!(report.action_risk.decision, PolicyDecision::Review);
         assert!(report.signals.iter().any(|signal| {

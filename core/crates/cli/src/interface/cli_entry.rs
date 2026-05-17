@@ -133,6 +133,7 @@ fn output_indicates_command_failure(output: &Value) -> bool {
         || status_is_terminal_failure(output.pointer("/open/status"))
         || status_is_terminal_failure(output.pointer("/extract/status"))
         || status_is_terminal_failure(output.pointer("/result/status"))
+        || status_is_terminal_failure(output.pointer("/result/action/status"))
         || status_is_terminal_failure(output.pointer("/action/status"))
 }
 
@@ -271,6 +272,7 @@ fn command_examples(command_name: &str) -> Option<&'static str> {
         "quick" => Some(
             "  touch-browser quick https://www.iana.org/help/example-domains --claim \"example.com is maintained for documentation purposes.\"",
         ),
+        "doctor" => Some("  touch-browser doctor\n  touch-browser doctor --agent-json"),
         "search" => Some(
             "  touch-browser search \"IANA example domains\" --engine brave --session-file /tmp/tb-search.json\n  touch-browser search-open-top --engine brave --session-file /tmp/tb-search.json --limit 3",
         ),
@@ -405,6 +407,9 @@ mod tests {
         })));
         assert!(output_indicates_command_failure(&json!({
             "result": { "status": "failed" }
+        })));
+        assert!(output_indicates_command_failure(&json!({
+            "result": { "action": { "status": "rejected" } }
         })));
         assert!(output_indicates_command_failure(&json!({
             "action": { "status": "rejected" }

@@ -76,6 +76,7 @@
     "mcp:bridge": "node integrations/mcp/bridge/index.mjs",
     "mcp:package:check": "npm pack --dry-run ./packages/mcp",
     "mcp:package:publish": "npm publish ./packages/mcp --access public",
+    "release:installed-smoke": "node scripts/verify-installed-smoke.mjs",
     "verifier:example": "node scripts/example-verifier.mjs",
     "demo:gif": "python3 demo/generate-terminal-demo.py",
     "setup:models": "bash scripts/setup-models.sh",

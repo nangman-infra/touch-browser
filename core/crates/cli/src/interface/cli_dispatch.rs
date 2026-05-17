@@ -1,7 +1,14 @@
+use std::{
+    env,
+    path::{Path, PathBuf},
+    process::{Command, Stdio},
+};
+
 use serde::Serialize;
-use serde_json::Value;
+use serde_json::{json, Value};
 
 use super::agent_contract;
+use super::cli_support::{data_root, node_executable, repo_root, resource_root};
 use super::deps::{
     application, infrastructure, ApproveOptions, CliCommand, CliError, ClickOptions, ExpandOptions,
     ExtractOptions, FollowOptions, PaginateOptions, SearchOpenResultOptions, SearchOpenTopOptions,
@@ -38,6 +45,7 @@ pub(crate) fn dispatch(command: CliCommand) -> Result<Value, CliError> {
     let ctx = default_app_context();
     match command {
         CliCommand::Capabilities => Ok(agent_contract::capabilities_payload()),
+        CliCommand::Doctor => handle_doctor(),
         CliCommand::Search(options) => handle_search(&ctx, options),
         CliCommand::SearchOpenResult(options) => handle_search_open_result(&ctx, options),
         CliCommand::SearchOpenTop(options) => handle_search_open_top(&ctx, options),
@@ -79,6 +87,245 @@ pub(crate) fn dispatch(command: CliCommand) -> Result<Value, CliError> {
             "serve is handled directly and should not be dispatched.".to_string(),
         )),
     }
+}
+
+fn handle_doctor() -> Result<Value, CliError> {
+    let current_exe = env::current_exe().ok();
+    let repo_root = repo_root();
+    let resource_root = resource_root();
+    let data_root = data_root();
+    let node = node_executable();
+    let mcp_bridge = resolve_doctor_mcp_bridge(&resource_root, &repo_root);
+    let node_version = command_stdout(&node, &["--version"], Some(&resource_root));
+    let playwright_probe = probe_playwright_chromium(&node, &resource_root);
+
+    let checks = vec![
+        doctor_check(
+            "current-executable",
+            current_exe.as_ref().is_some_and(|path| path.is_file()),
+            current_exe.as_ref().map(|path| path.display().to_string()),
+            "touch-browser binary is resolvable.",
+            "Could not resolve the running touch-browser executable.",
+        ),
+        doctor_check(
+            "resource-root",
+            resource_root.is_dir(),
+            Some(resource_root.display().to_string()),
+            "runtime resource root exists.",
+            "Runtime resource root is missing.",
+        ),
+        doctor_check(
+            "data-root-parent",
+            data_root
+                .parent()
+                .is_some_and(|parent| parent.exists() && parent.is_dir()),
+            Some(data_root.display().to_string()),
+            "data root parent exists.",
+            "Data root parent does not exist; create it or set TOUCH_BROWSER_DATA_ROOT.",
+        ),
+        doctor_check(
+            "node",
+            node_version.is_ok(),
+            Some(node.clone()),
+            node_version.as_deref().unwrap_or("node is runnable."),
+            node_version
+                .as_ref()
+                .err()
+                .map(String::as_str)
+                .unwrap_or("node is not runnable."),
+        ),
+        doctor_check(
+            "playwright-chromium",
+            playwright_probe.ok,
+            playwright_probe.path.clone(),
+            playwright_probe
+                .detail
+                .as_deref()
+                .unwrap_or("Playwright Chromium is installed."),
+            playwright_probe
+                .detail
+                .as_deref()
+                .unwrap_or("Playwright Chromium is not installed."),
+        ),
+        doctor_check(
+            "mcp-bridge",
+            mcp_bridge.as_ref().is_some_and(|path| path.is_file()),
+            mcp_bridge.as_ref().map(|path| path.display().to_string()),
+            "MCP bridge entrypoint exists.",
+            "MCP bridge entrypoint is missing.",
+        ),
+        doctor_check(
+            "semantic-model-paths",
+            semantic_model_paths_ready(&resource_root),
+            Some(resource_root.display().to_string()),
+            "semantic model paths are available or lazy downloads are enabled.",
+            "semantic model paths are missing and lazy downloads are disabled.",
+        ),
+    ];
+
+    let failed = checks
+        .iter()
+        .filter(|check| check.get("status").and_then(Value::as_str) == Some("error"))
+        .count();
+    let status = if failed == 0 {
+        "ready"
+    } else {
+        "attention-required"
+    };
+
+    Ok(json!({
+        "status": status,
+        "version": env!("CARGO_PKG_VERSION"),
+        "contractVersion": touch_browser_contracts::CONTRACT_VERSION,
+        "runtime": {
+            "currentExecutable": current_exe.map(|path| path.display().to_string()),
+            "repoRoot": repo_root.display().to_string(),
+            "resourceRoot": resource_root.display().to_string(),
+            "dataRoot": data_root.display().to_string(),
+            "nodeExecutable": node,
+            "mcpBridge": mcp_bridge.map(|path| path.display().to_string())
+        },
+        "checks": checks,
+        "summary": {
+            "failedChecks": failed,
+            "ready": failed == 0
+        },
+        "nextActions": doctor_next_actions(failed)
+    }))
+}
+
+fn doctor_check(
+    name: &str,
+    ok: bool,
+    path: Option<String>,
+    ok_detail: &str,
+    error_detail: &str,
+) -> Value {
+    json!({
+        "name": name,
+        "status": if ok { "ok" } else { "error" },
+        "path": path,
+        "detail": if ok { ok_detail } else { error_detail }
+    })
+}
+
+fn doctor_next_actions(failed: usize) -> Value {
+    if failed == 0 {
+        json!([
+            {
+                "action": "quick",
+                "command": "touch-browser quick https://www.iana.org/help/example-domains --claim \"example.com is maintained for documentation purposes.\"",
+                "actor": "ai",
+                "canAutoRun": true,
+                "headedRequired": false,
+                "reason": "Run the first evidence proof path after preflight passes."
+            }
+        ])
+    } else {
+        json!([
+            {
+                "action": "repair-local-runtime",
+                "command": "pnpm install && pnpm exec playwright install chromium",
+                "actor": "human",
+                "canAutoRun": false,
+                "headedRequired": false,
+                "reason": "Install missing local runtime dependencies before browser-backed use."
+            }
+        ])
+    }
+}
+
+fn command_stdout(command: &str, args: &[&str], cwd: Option<&Path>) -> Result<String, String> {
+    let mut process = Command::new(command);
+    process
+        .args(args)
+        .stdin(Stdio::null())
+        .stderr(Stdio::piped());
+    if let Some(cwd) = cwd {
+        process.current_dir(cwd);
+    }
+    let output = process
+        .output()
+        .map_err(|error| format!("failed to run `{command}`: {error}"))?;
+    if !output.status.success() {
+        return Err(String::from_utf8_lossy(&output.stderr).trim().to_string());
+    }
+    Ok(String::from_utf8_lossy(&output.stdout).trim().to_string())
+}
+
+struct PlaywrightProbe {
+    ok: bool,
+    path: Option<String>,
+    detail: Option<String>,
+}
+
+fn probe_playwright_chromium(node: &str, cwd: &Path) -> PlaywrightProbe {
+    let script = r#"
+const { chromium } = require("playwright");
+const path = chromium.executablePath();
+console.log(JSON.stringify({ path }));
+"#;
+    match command_stdout(node, &["-e", script], Some(cwd)) {
+        Ok(stdout) => {
+            let path = serde_json::from_str::<Value>(&stdout)
+                .ok()
+                .and_then(|value| {
+                    value
+                        .get("path")
+                        .and_then(Value::as_str)
+                        .map(str::to_string)
+                });
+            let ok = path.as_ref().is_some_and(|path| Path::new(path).is_file());
+            PlaywrightProbe {
+                ok,
+                path,
+                detail: Some(if ok {
+                    "Playwright Chromium executable exists.".to_string()
+                } else {
+                    "Playwright resolved Chromium, but the executable file is missing.".to_string()
+                }),
+            }
+        }
+        Err(error) => PlaywrightProbe {
+            ok: false,
+            path: None,
+            detail: Some(error),
+        },
+    }
+}
+
+fn resolve_doctor_mcp_bridge(resource_root: &Path, repo_root: &Path) -> Option<PathBuf> {
+    [
+        resource_root.join("integrations/mcp/bridge/index.mjs"),
+        resource_root.join("scripts/touch-browser-mcp-bridge.mjs"),
+        repo_root.join("integrations/mcp/bridge/index.mjs"),
+        repo_root.join("scripts/touch-browser-mcp-bridge.mjs"),
+    ]
+    .into_iter()
+    .find(|path| path.is_file())
+}
+
+fn semantic_model_paths_ready(resource_root: &Path) -> bool {
+    lazy_download_enabled("TOUCH_BROWSER_EVIDENCE_EMBEDDING_LAZY_DOWNLOAD")
+        && lazy_download_enabled("TOUCH_BROWSER_EVIDENCE_NLI_LAZY_DOWNLOAD")
+        || model_path_ready(
+            "TOUCH_BROWSER_EVIDENCE_EMBEDDING_MODEL_PATH",
+            resource_root.join("models/evidence/embedding"),
+        ) && model_path_ready(
+            "TOUCH_BROWSER_EVIDENCE_NLI_MODEL_PATH",
+            resource_root.join("models/evidence/nli"),
+        )
+}
+
+fn lazy_download_enabled(name: &str) -> bool {
+    env::var(name).map_or(true, |value| value != "0")
+}
+
+fn model_path_ready(env_name: &str, fallback: PathBuf) -> bool {
+    env::var_os(env_name)
+        .map(PathBuf::from)
+        .unwrap_or(fallback)
+        .is_dir()
 }
 
 pub(crate) fn run_serve() -> Result<(), CliError> {

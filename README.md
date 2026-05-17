@@ -24,6 +24,14 @@ Evidence-first, not fact-final:
 
 ## Start Here: 60 Second Proof
 
+Before the first browser-backed run, check the local runtime:
+
+```bash
+touch-browser doctor
+```
+
+`doctor` verifies the installed executable, runtime resources, data root, Node runtime, Playwright Chromium, MCP bridge entrypoint, and semantic model readiness. If it reports `attention-required`, repair those local dependencies before judging browser behavior.
+
 After installing, run one command to see the product difference from a raw fetch:
 
 ```bash
@@ -156,18 +164,18 @@ cross-origin nested shadow interactions. It still requires Chrome or Chromium.
 Set `TOUCH_BROWSER_CDP_BROWSER=/absolute/path/to/chrome` when it is not
 installed in a standard location.
 
-The slim bundle profile is now the default release profile. It skips prebundled
-Playwright Chromium and semantic model caches, then downloads semantic/NLI
-models lazily on first use. This reduces release asset and model-cache weight.
-It does not make first launch instant, because the npm path can still download
-the standalone runtime and install browser dependencies:
+The slim bundle profile is now the default release profile. It includes
+Playwright Chromium for zero-config browser actions, skips semantic model
+caches, and downloads semantic/NLI models lazily on first use. This keeps the
+installed browser path usable on first run while still reducing model-cache
+weight:
 
 ```bash
 pnpm run build:standalone-bundle -- local-dev
 ```
 
-Use the full profile only when an offline bundle must include warm model caches
-and prebundled Playwright Chromium:
+Use the full profile only when an offline bundle must also include warm model
+caches:
 
 ```bash
 pnpm run build:standalone-bundle:full -- local-dev

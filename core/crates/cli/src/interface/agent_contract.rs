@@ -303,6 +303,11 @@ fn stable_commands() -> Value {
             "autoRunnable": true
         },
         {
+            "name": "doctor",
+            "aiPurpose": "preflight local runtime, browser, model, and MCP bridge dependencies",
+            "autoRunnable": true
+        },
+        {
             "name": "search",
             "aiPurpose": "discover candidate sources",
             "autoRunnable": true,
@@ -367,6 +372,7 @@ fn agent_contract_value(command: &str, format: &str) -> Value {
 fn command_name(command: &CliCommand) -> &'static str {
     match command {
         CliCommand::Capabilities => "capabilities",
+        CliCommand::Doctor => "doctor",
         CliCommand::Search(_) => "search",
         CliCommand::SearchOpenResult(_) => "search-open-result",
         CliCommand::SearchOpenTop(_) => "search-open-top",
@@ -499,7 +505,7 @@ fn add_reuse_summary(output: &mut Value) {
 
 fn add_next_actions(command: &CliCommand, output: &mut Value) {
     let actions = match command {
-        CliCommand::Capabilities => vec![
+        CliCommand::Capabilities | CliCommand::Doctor => vec![
             next_action(
                 "search",
                 Some("touch-browser search <query> --session-file <path>"),

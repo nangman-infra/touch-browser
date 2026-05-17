@@ -871,8 +871,8 @@ fn dispatches_hostile_policy_command() {
     }))
     .expect("policy command should succeed");
 
-    assert_eq!(output["policy"]["decision"], "review");
-    assert_eq!(output["policy"]["riskClass"], "high");
+    assert_eq!(output["policy"]["decision"], "block");
+    assert_eq!(output["policy"]["riskClass"], "blocked");
     assert_eq!(output["policy"]["pageRisk"]["decision"], "review");
     assert_eq!(output["policy"]["actionRisk"]["decision"], "block");
 }
@@ -892,10 +892,23 @@ fn dispatches_split_policy_risk_for_login_fixture() {
     }))
     .expect("policy command should succeed");
 
-    assert_eq!(output["policy"]["decision"], "allow");
-    assert_eq!(output["policy"]["riskClass"], "low");
+    assert_eq!(output["policy"]["decision"], "review");
+    assert_eq!(output["policy"]["riskClass"], "high");
     assert_eq!(output["policy"]["pageRisk"]["decision"], "allow");
     assert_eq!(output["policy"]["actionRisk"]["decision"], "review");
+}
+
+#[test]
+fn dispatches_doctor_preflight() {
+    let output = dispatch(CliCommand::Doctor).expect("doctor should succeed");
+
+    assert_eq!(output["version"], env!("CARGO_PKG_VERSION"));
+    assert!(output["checks"].as_array().is_some_and(|checks| {
+        checks
+            .iter()
+            .any(|check| check["name"] == "current-executable")
+    }));
+    assert!(output["summary"]["failedChecks"].as_u64().is_some());
 }
 
 #[test]

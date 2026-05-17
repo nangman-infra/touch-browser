@@ -42,6 +42,7 @@ Evidence extraction is intentionally phrased as support retrieval, not final tru
 | Command | Description |
 | --- | --- |
 | `touch-browser capabilities` / `touch-browser status` | Return the AI-facing runtime capability contract, supported surfaces, safety boundaries, output rules, and first-call guidance. |
+| `touch-browser doctor` | Run a local preflight for the installed/runtime executable, resource root, data root, Node runtime, Playwright Chromium, MCP bridge entrypoint, and semantic model path or lazy-download readiness. |
 | `touch-browser search <query> [--engine google\|brave] [--headed] [--profile-dir <path>] [--budget <tokens>] [--session-file <path>]` | Open a Google or Brave search results page inside the browser runtime with a persistent embedded browser-backed search profile and return `ready`, `challenge`, or `no-results` status plus structured result items and next-action hints. If `--profile-dir` is omitted, touch-browser reuses the engine trust profile under the active data root: `~/.touch-browser/browser-search/profiles/<engine>-default` in an installed bundle, or `output/browser-search/profiles/<engine>-default` in a repo checkout. If `--session-file` is omitted, touch-browser stores the search session under the active data root: `~/.touch-browser/browser-search/<engine>.search-session.json` in an installed bundle, or `output/browser-search/<engine>.search-session.json` in a repo checkout. Profile health metadata is written next to the saved search sessions as `<engine>.profile-state.json`. |
 | `touch-browser search-open-result --rank <number> [--engine google\|brave] [--session-file <path>] [--headed]` | Open one saved search result from the current engine search session or an explicit persisted browser search session when the latest saved search is `ready`. |
 | `touch-browser search-open-top [--limit <count>] [--engine google\|brave] [--session-file <path>] [--headed]` | Open the top recommended ranked results into separate persisted browser sessions derived from the saved search session. |
@@ -157,6 +158,7 @@ Primary shapes:
 
 - `search` -> `search` + `result` + optional persisted `sessionFile`
 - `capabilities` / `status` -> AI-facing capability contract, supported command list, safety boundaries, and output rules
+- `doctor` -> local preflight check list with `status`, runtime paths, dependency readiness, and repair next actions
 - `open` and `snapshot` -> `ActionResult`
 - `read-view` and `session-read` -> Markdown rendering plus metadata when consumed as JSON
 - `compact-view` and `session-compact` -> compact snapshot payload plus `refIndex`
@@ -188,6 +190,7 @@ Evidence output terminology:
 - each `nextActionHint` also includes `actor`, `canAutoRun`, and `headedRequired` so touch-browser can separate AI-owned follow-up from human checkpoints
 - search output also includes `status` and optional `statusDetail` so challenge pages and empty result pages are explicit instead of masquerading as normal zero-result searches
 - MCP narrows this broader contract further: it strips `engine` and `headed`, stays on the public docs/research web surface, and treats headed-required states as supervised recovery handoff points
+- policy `decision` and `riskClass` summarize the more severe of `pageRisk` and `actionRisk`; callers that need the read-only/action split should still inspect both nested summaries
 
 ## 7. Validation
 
@@ -236,6 +239,7 @@ Eval and smoke validation covers:
 - contract schema validation for evidence and session synthesis payloads
 - MCP bridge smoke
 - serve and MCP interface compatibility
+- installed or bundled CLI smoke for `--version`, `doctor`, `status`, `quick`, browser-backed open, and rejected high-risk action exit behavior
 - session synthesis artifacts
 - reference workflow artifacts
 - example verifier hook at [scripts/example-verifier.mjs](../scripts/example-verifier.mjs)

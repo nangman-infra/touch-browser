@@ -72,6 +72,15 @@ fn parses_capabilities_and_status_commands() {
         CliCommand::Capabilities,
     );
 }
+
+#[test]
+fn parses_doctor_command() {
+    assert_eq!(
+        parse_command(&["doctor".to_string()]).expect("doctor should parse"),
+        CliCommand::Doctor,
+    );
+}
+
 #[test]
 fn parses_extract_command_with_multiple_claims() {
     let command = parse_command(&[

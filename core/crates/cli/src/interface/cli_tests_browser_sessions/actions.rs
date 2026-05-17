@@ -645,7 +645,8 @@ fn checkpoint_uses_action_risk_severity_for_high_risk_write_pages() {
     }))
     .expect("checkpoint should succeed");
 
-    assert_eq!(checkpoint["policy"]["decision"], "allow");
+    assert_eq!(checkpoint["policy"]["decision"], "review");
+    assert_eq!(checkpoint["policy"]["riskClass"], "high");
     assert_eq!(checkpoint["policy"]["actionRisk"]["decision"], "review");
     assert_eq!(
         checkpoint["checkpoint"]["approvalPanel"]["severity"],

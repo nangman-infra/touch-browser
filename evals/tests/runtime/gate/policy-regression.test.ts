@@ -55,9 +55,9 @@ describe("policy regression scenarios", () => {
       "rmain:link:https-malicious-example-submit",
     );
     expect(output.policy).toMatchObject({
-      decision: "review",
+      decision: "block",
       sourceRisk: "hostile",
-      riskClass: "high",
+      riskClass: "blocked",
       pageRisk: {
         decision: "review",
         riskClass: "high",
@@ -133,7 +133,7 @@ describe("policy regression scenarios", () => {
     ).toBe(true);
   });
 
-  it("marks the checkout checkpoint as page-allow and action-review", async () => {
+  it("marks the checkout checkpoint as page-allow and top-level action-review", async () => {
     const registry = await loadContractSchemas();
     const validate = requireValidator(registry, "policy-report.schema.json");
     const output = await readJsonFile<{
@@ -144,9 +144,9 @@ describe("policy regression scenarios", () => {
 
     expect(validate(output.policy)).toBe(true);
     expect(output.policy).toMatchObject({
-      decision: "allow",
+      decision: "review",
       sourceRisk: "low",
-      riskClass: "low",
+      riskClass: "high",
       pageRisk: {
         decision: "allow",
         riskClass: "low",

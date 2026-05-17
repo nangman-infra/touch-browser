@@ -17,6 +17,7 @@ use touch_browser_storage_sqlite::{PilotTelemetryEvent, PilotTelemetrySummary};
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub(crate) enum CliCommand {
     Capabilities,
+    Doctor,
     Search(SearchOptions),
     SearchOpenResult(SearchOpenResultOptions),
     SearchOpenTop(SearchOpenTopOptions),

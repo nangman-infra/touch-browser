@@ -353,9 +353,9 @@ describe("contract schemas", () => {
         registry,
         "policy-report.schema.json",
       )({
-        decision: "review",
+        decision: "block",
         sourceRisk: "hostile",
-        riskClass: "high",
+        riskClass: "blocked",
         blockedRefs: ["rmain:link:https-malicious-example-submit"],
         signals: [
           {

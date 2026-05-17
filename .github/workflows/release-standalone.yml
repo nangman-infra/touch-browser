@@ -75,6 +75,9 @@ jobs:
       - name: Build standalone bundle
         run: bash scripts/build-standalone-bundle.sh "${GITHUB_REF_NAME}"
 
+      - name: Run installed standalone smoke
+        run: pnpm run release:installed-smoke
+
       - name: Upload standalone assets
         uses: actions/upload-artifact@v7
         with:
