@@ -140,7 +140,7 @@ function resolveBundleCommand() {
 }
 
 function checkoutDataUrl() {
-  return `data:text/html;charset=utf-8,${encodeURIComponent(`<!doctype html>
+  const html = `<!doctype html>
       <html>
         <head><title>Installed Smoke Checkout</title></head>
         <body>
@@ -153,7 +153,8 @@ function checkoutDataUrl() {
             </form>
           </main>
         </body>
-      </html>`)}`;
+      </html>`;
+  return `data:text/html;charset=utf-8,${encodeURIComponent(html)}`;
 }
 
 function runText(args) {
