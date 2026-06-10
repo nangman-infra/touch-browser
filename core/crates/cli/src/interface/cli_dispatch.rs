@@ -45,6 +45,7 @@ pub(crate) fn dispatch(command: CliCommand) -> Result<Value, CliError> {
     let ctx = default_app_context();
     match command {
         CliCommand::Capabilities => Ok(agent_contract::capabilities_payload()),
+        CliCommand::Quickstart => Ok(agent_contract::quickstart_payload()),
         CliCommand::Doctor => handle_doctor(),
         CliCommand::Search(options) => handle_search(&ctx, options),
         CliCommand::SearchOpenResult(options) => handle_search_open_result(&ctx, options),

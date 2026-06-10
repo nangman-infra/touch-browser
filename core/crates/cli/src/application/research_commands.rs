@@ -8,14 +8,14 @@ use super::{
         plan_memory_turn, repo_root, slot_timestamp, succeed_action, summarize_turns,
         verify_action_result_if_requested, ActionCommand, ActionFailureKind, ActionName,
         ActionResult, ActionStatus, BrowserCliSession, BrowserOrigin, BrowserSessionContext,
-        CaptureSurface, ClaimInput, CliError, CompactSnapshotOutput, ExtractCommandOutput,
-        ExtractOptions, MemorySummaryOutput, PolicyCommandOutput, ReadViewOutput,
-        ReplayCommandOutput, ReplayTranscript, RiskClass, SearchActionActor, SearchActionHint,
-        SearchCommandOutput, SearchEngine, SearchNextCommands, SearchOpenResultCommandOutput,
-        SearchOpenResultOptions, SearchOpenTopCommandOutput, SearchOpenTopItem,
-        SearchOpenTopOptions, SearchOptions, SearchRecovery, SearchRecoveryAttempt, SearchReport,
-        SearchReportStatus, SearchResultItem, SourceRisk, TargetOptions, CONTRACT_VERSION,
-        DEFAULT_OPENED_AT,
+        CaptureDiagnostics, CaptureSurface, ClaimInput, CliError, CompactSnapshotOutput,
+        ExtractCommandOutput, ExtractCommandSummary, ExtractOptions, MemorySummaryOutput,
+        PolicyCommandOutput, ReadViewOutput, ReplayCommandOutput, ReplayTranscript, RiskClass,
+        SearchActionActor, SearchActionHint, SearchCommandOutput, SearchEngine, SearchNextCommands,
+        SearchOpenResultCommandOutput, SearchOpenResultOptions, SearchOpenTopCommandOutput,
+        SearchOpenTopItem, SearchOpenTopOptions, SearchOptions, SearchRecovery,
+        SearchRecoveryAttempt, SearchReport, SearchReportStatus, SearchResultItem, SessionState,
+        SourceRisk, TargetOptions, CONTRACT_VERSION, DEFAULT_OPENED_AT,
     },
     search_support::{
         build_search_report, build_search_url, derived_search_result_session_file,
@@ -107,7 +107,7 @@ fn persist_browser_context(
     latest_search: Option<SearchReport>,
 ) -> Result<BrowserCliSession, CliError> {
     let ports = ctx.ports;
-    if session_file.exists() {
+    if session_file_has_content(session_file)? {
         let mut persisted = ports.session_store.load_session(session_file)?;
         let timestamp = ports.browser.next_session_timestamp(&persisted.session);
         context.runtime.open_snapshot(
@@ -156,6 +156,90 @@ fn persist_browser_context(
     );
     ports.session_store.save_session(session_file, &persisted)?;
     Ok(persisted)
+}
+
+fn session_file_has_content(session_file: &Path) -> Result<bool, CliError> {
+    if !session_file.exists() {
+        return Ok(false);
+    }
+    let raw = fs::read_to_string(session_file).map_err(|source| CliError::IoPath {
+        path: session_file.display().to_string(),
+        source,
+    })?;
+    Ok(!raw.trim().is_empty())
+}
+
+fn extract_command_output(
+    open: ActionResult,
+    extract: ActionResult,
+    diagnostics: Option<CaptureDiagnostics>,
+    session_state: SessionState,
+) -> ExtractCommandOutput {
+    let summary = extract_command_summary(&open, &extract);
+    ExtractCommandOutput {
+        status: extract.status.clone(),
+        summary,
+        open,
+        extract,
+        diagnostics,
+        session_state,
+    }
+}
+
+fn extract_command_summary(open: &ActionResult, extract: &ActionResult) -> ExtractCommandSummary {
+    let outcomes = extract
+        .output
+        .as_ref()
+        .unwrap_or(&serde_json::Value::Null)
+        .get("claimOutcomes")
+        .and_then(serde_json::Value::as_array)
+        .cloned()
+        .unwrap_or_default();
+    let supported_claims = outcomes
+        .iter()
+        .filter(|outcome| {
+            outcome.get("verdict").and_then(serde_json::Value::as_str) == Some("evidence-supported")
+        })
+        .count();
+    let reusable_claims = outcomes
+        .iter()
+        .filter(|outcome| {
+            outcome.get("verdict").and_then(serde_json::Value::as_str) == Some("evidence-supported")
+                && outcome
+                    .get("confidenceBand")
+                    .and_then(serde_json::Value::as_str)
+                    == Some("high")
+                && outcome
+                    .get("reviewRecommended")
+                    .and_then(serde_json::Value::as_bool)
+                    .map(|review| !review)
+                    .unwrap_or(false)
+        })
+        .count();
+    let review_recommended_claims = outcomes
+        .iter()
+        .filter(|outcome| {
+            outcome
+                .get("reviewRecommended")
+                .and_then(serde_json::Value::as_bool)
+                .unwrap_or(false)
+        })
+        .count();
+    let verdicts = outcomes
+        .iter()
+        .filter_map(|outcome| outcome.get("verdict").and_then(serde_json::Value::as_str))
+        .map(str::to_string)
+        .collect();
+
+    ExtractCommandSummary {
+        open_status: open.status.clone(),
+        extract_status: extract.status.clone(),
+        claim_count: outcomes.len(),
+        supported_claims,
+        reusable_claims,
+        review_recommended_claims,
+        verdicts,
+    }
 }
 
 fn target_requires_browser_session(options: &TargetOptions) -> bool {
@@ -1206,15 +1290,15 @@ pub(crate) fn handle_extract(
             None
         };
 
-        return Ok(ExtractCommandOutput {
-            open: open_result,
-            extract: extract_result,
-            diagnostics: Some(diagnostics),
-            session_state: persisted
+        return Ok(extract_command_output(
+            open_result,
+            extract_result,
+            Some(diagnostics),
+            persisted
                 .as_ref()
                 .map(|persisted| persisted.session.state.clone())
                 .unwrap_or(session.state),
-        });
+        ));
     }
 
     if is_fixture_target(&options.target) {
@@ -1272,12 +1356,12 @@ pub(crate) fn handle_extract(
             )
         };
 
-        return Ok(ExtractCommandOutput {
-            open: open_result,
-            extract: extract_result,
-            diagnostics: None,
-            session_state: session.state,
-        });
+        return Ok(extract_command_output(
+            open_result,
+            extract_result,
+            None,
+            session.state,
+        ));
     }
 
     let mut acquisition = ports.acquisition.create_engine()?;
@@ -1333,12 +1417,12 @@ pub(crate) fn handle_extract(
         &extract_timestamp,
     )?;
 
-    Ok(ExtractCommandOutput {
-        open: open_result,
-        extract: extract_result,
-        diagnostics: Some(diagnostics),
-        session_state: session.state,
-    })
+    Ok(extract_command_output(
+        open_result,
+        extract_result,
+        Some(diagnostics),
+        session.state,
+    ))
 }
 
 fn handle_browser_extract_with_fallback(
@@ -1444,15 +1528,15 @@ fn handle_browser_extract_with_fallback(
         None
     };
 
-    Ok(ExtractCommandOutput {
-        open: open_result,
-        extract: extract_result,
-        diagnostics: Some(diagnostics),
-        session_state: persisted
+    Ok(extract_command_output(
+        open_result,
+        extract_result,
+        Some(diagnostics),
+        persisted
             .as_ref()
             .map(|persisted| persisted.session.state.clone())
             .unwrap_or(session.state),
-    })
+    ))
 }
 
 pub(crate) fn handle_policy(

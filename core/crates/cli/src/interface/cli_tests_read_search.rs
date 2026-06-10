@@ -707,7 +707,26 @@ fn dispatches_capabilities_for_ai_agents() {
     assert_eq!(output["intendedCaller"], "ai-agent");
     assert_eq!(output["agentContract"]["command"], "capabilities");
     assert_eq!(output["commands"][0]["name"], "capabilities");
-    assert_eq!(output["nextActions"][0]["action"], "search");
+    assert_eq!(output["commands"][2]["name"], "quickstart");
+    assert_eq!(
+        output["beginnerQuickStart"]["recommendedFlow"][0]["name"],
+        "doctor"
+    );
+    assert_eq!(output["nextActions"][0]["action"], "quickstart");
+}
+
+#[test]
+fn dispatches_quickstart_for_beginner_flow() {
+    let output = dispatch(CliCommand::Quickstart).expect("quickstart should succeed");
+
+    assert_eq!(output["status"], "ready");
+    assert_eq!(output["agentContract"]["command"], "quickstart");
+    assert_eq!(output["audience"], "beginner-local-user");
+    assert_eq!(
+        output["beginnerQuickStart"]["recommendedFlow"][1]["name"],
+        "quick"
+    );
+    assert_eq!(output["nextActions"][0]["action"], "doctor");
 }
 
 #[test]

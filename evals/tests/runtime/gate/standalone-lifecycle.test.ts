@@ -81,14 +81,14 @@ describe("standalone lifecycle smoke", () => {
       const versionText = (
         await runShell(`${shellQuote(commandPath)} --version`, env)
       ).trim();
-      expect(versionText).toBe("touch-browser 0.6.0");
+      expect(versionText).toBe("touch-browser 0.7.0");
 
       const status = JSON.parse(
         await runShell(`${shellQuote(commandPath)} status`, env),
       );
       expect(status.status).toBe("ready");
       expect(status.result.recommendedFirstCall).toBe(
-        "touch-browser capabilities --agent-json",
+        "touch-browser quickstart",
       );
 
       const capabilities = JSON.parse(

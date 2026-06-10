@@ -231,6 +231,13 @@ pub(crate) fn load_browser_cli_session(path: &Path) -> Result<BrowserCliSession,
         path: path.display().to_string(),
         source,
     })?;
+    if raw.trim().is_empty() {
+        return Err(CliError::Usage(format!(
+            "Session file `{}` is empty. Open a page first with `touch-browser open <url> --browser --session-file {}` or use a path that does not exist yet for a new session.",
+            path.display(),
+            path.display()
+        )));
+    }
     serde_json::from_str(&raw).map_err(|source| CliError::JsonPath {
         path: path.display().to_string(),
         source,

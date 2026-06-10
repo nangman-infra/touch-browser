@@ -19,6 +19,7 @@ pub(crate) fn capabilities_payload() -> Value {
             "truthDecisionOwner": "higher-level-model-or-human",
             "autoReuseRule": "Only reuse evidence-supported claims when confidenceBand=high and reviewRecommended=false."
         },
+        "beginnerQuickStart": beginner_quick_start(),
         "surfaces": [
             {
                 "name": "search",
@@ -79,9 +80,17 @@ pub(crate) fn capabilities_payload() -> Value {
         },
         "result": {
             "status": "ready",
-            "recommendedFirstCall": "touch-browser capabilities --agent-json"
+            "recommendedFirstCall": "touch-browser quickstart"
         },
         "nextActions": [
+            {
+                "action": "quickstart",
+                "command": "touch-browser quickstart",
+                "actor": "human-or-ai",
+                "canAutoRun": true,
+                "headedRequired": false,
+                "reason": "Show the safest local first-use flow and success signals."
+            },
             {
                 "action": "search",
                 "command": "touch-browser search <query> --session-file <path>",
@@ -102,6 +111,96 @@ pub(crate) fn capabilities_payload() -> Value {
     })
 }
 
+pub(crate) fn quickstart_payload() -> Value {
+    json!({
+        "status": "ready",
+        "version": env!("CARGO_PKG_VERSION"),
+        "contractVersion": CONTRACT_VERSION,
+        "agentContract": agent_contract_value("quickstart", "full-json"),
+        "audience": "beginner-local-user",
+        "beginnerQuickStart": beginner_quick_start(),
+        "decisionRules": [
+            {
+                "rule": "Use evidence only when reusable.",
+                "successSignal": "claimOutcomes[].verdict=evidence-supported, confidenceBand=high, reviewRecommended=false, reuseAllowed=true"
+            },
+            {
+                "rule": "When the URL is unknown, search first.",
+                "successSignal": "search.status=ready and search.results has useful candidate URLs"
+            },
+            {
+                "rule": "Before clicking, typing, or submitting, check policy.",
+                "successSignal": "policy.decision=allow or the command asks for explicit human acknowledgement"
+            }
+        ],
+        "commonPitfalls": [
+            "Do not pre-create an empty --session-file for a new open; pass a path that does not exist or let touch-browser overwrite an empty file.",
+            "For rendered apps, prefer read-view --browser --main-only before extracting claims.",
+            "A medium confidence claim is not ready for automatic reuse; browse more or ask for human review."
+        ],
+        "nextActions": [
+            {
+                "action": "doctor",
+                "command": "touch-browser doctor",
+                "actor": "human-or-ai",
+                "canAutoRun": true,
+                "headedRequired": false,
+                "reason": "Confirm local dependencies before browsing."
+            },
+            {
+                "action": "quick",
+                "command": "touch-browser quick https://www.iana.org/help/example-domains --claim \"example.com is maintained for documentation purposes.\"",
+                "actor": "human-or-ai",
+                "canAutoRun": true,
+                "headedRequired": false,
+                "reason": "Run one safe evidence check and inspect status, summary, and reuseSummary."
+            }
+        ]
+    })
+}
+
+fn beginner_quick_start() -> Value {
+    json!({
+        "recommendedFlow": [
+            {
+                "step": 1,
+                "name": "doctor",
+                "command": "touch-browser doctor",
+                "successSignal": "status=ready and summary.failedChecks=0"
+            },
+            {
+                "step": 2,
+                "name": "quick",
+                "command": "touch-browser quick https://www.iana.org/help/example-domains --claim \"example.com is maintained for documentation purposes.\"",
+                "successSignal": "status=succeeded and summary.reusableClaims>=1"
+            },
+            {
+                "step": 3,
+                "name": "search",
+                "command": "touch-browser search \"MDN Array map JavaScript reference\" --engine brave --session-file /tmp/tb-search.json",
+                "successSignal": "search.status=ready and search.results is not empty"
+            },
+            {
+                "step": 4,
+                "name": "read-view",
+                "command": "touch-browser read-view <url> --browser --main-only",
+                "successSignal": "markdown text contains the main article content"
+            },
+            {
+                "step": 5,
+                "name": "extract",
+                "command": "touch-browser extract <url> --claim \"<specific claim>\" --browser",
+                "successSignal": "summary.supportedClaims shows how many claims were supported"
+            }
+        ],
+        "safeDefaults": {
+            "firstCommand": "touch-browser doctor",
+            "firstEvidenceCommand": "touch-browser quick https://www.iana.org/help/example-domains --claim \"example.com is maintained for documentation purposes.\"",
+            "firstSessionFile": "/tmp/tb-session.json"
+        }
+    })
+}
+
 pub(crate) fn enrich_output(command: &CliCommand, mut output: Value) -> Value {
     let command_name = command_name(command);
     if let Some(session_file) = command_session_file(command) {
@@ -109,6 +208,7 @@ pub(crate) fn enrich_output(command: &CliCommand, mut output: Value) -> Value {
     }
     decorate_extract_reports(&mut output);
     add_reuse_summary(&mut output);
+    add_beginner_summary(&mut output);
     add_next_actions(command, &mut output);
     insert_top_level(
         &mut output,
@@ -233,6 +333,11 @@ fn add_compact_opened_sessions(compact: &mut Value, output: &Value) {
 
 fn add_compact_command_artifacts(command: &CliCommand, compact: &mut Value, output: &Value) {
     match command {
+        CliCommand::Quickstart => {
+            copy_field(output, compact, "beginnerQuickStart");
+            copy_field(output, compact, "decisionRules");
+            copy_field(output, compact, "commonPitfalls");
+        }
         CliCommand::MemorySummary { .. } => {
             copy_field(output, compact, "requestedActions");
             copy_field(output, compact, "actionCount");
@@ -270,10 +375,19 @@ fn compact_capabilities(output: Value) -> Value {
         "stableRefVersion": output.get("stableRefVersion").cloned(),
         "intendedCaller": output.get("intendedCaller").cloned(),
         "runtimeBoundary": output.get("runtimeBoundary").cloned(),
+        "beginnerQuickStart": output.get("beginnerQuickStart").cloned(),
         "commands": output.get("commands").cloned(),
         "safety": output.get("safety").cloned(),
         "outputContract": output.get("outputContract").cloned(),
         "nextActions": [
+            {
+                "action": "quickstart",
+                "command": "touch-browser quickstart",
+                "actor": "human-or-ai",
+                "canAutoRun": true,
+                "headedRequired": false,
+                "reason": "Show the safest local first-use flow and success signals."
+            },
             {
                 "action": "search",
                 "command": "touch-browser search <query> --session-file <path>",
@@ -306,6 +420,13 @@ fn stable_commands() -> Value {
             "name": "doctor",
             "aiPurpose": "preflight local runtime, browser, model, and MCP bridge dependencies",
             "autoRunnable": true
+        },
+        {
+            "name": "quickstart",
+            "aliases": ["getting-started", "guide"],
+            "aiPurpose": "show beginner-safe first-use commands, success signals, and common pitfalls",
+            "autoRunnable": true,
+            "next": ["doctor", "quick", "search", "read-view", "extract"]
         },
         {
             "name": "search",
@@ -372,6 +493,7 @@ fn agent_contract_value(command: &str, format: &str) -> Value {
 fn command_name(command: &CliCommand) -> &'static str {
     match command {
         CliCommand::Capabilities => "capabilities",
+        CliCommand::Quickstart => "quickstart",
         CliCommand::Doctor => "doctor",
         CliCommand::Search(_) => "search",
         CliCommand::SearchOpenResult(_) => "search-open-result",
@@ -503,9 +625,98 @@ fn add_reuse_summary(output: &mut Value) {
     );
 }
 
+fn add_beginner_summary(output: &mut Value) {
+    let has_summary = output.get("summary").is_some();
+
+    if let Some(report) = primary_evidence_report(output) {
+        let outcomes = report
+            .get("claimOutcomes")
+            .and_then(Value::as_array)
+            .cloned()
+            .unwrap_or_default();
+        if outcomes.is_empty() {
+            return;
+        }
+        insert_top_level(output, "claimOutcomes", Value::Array(outcomes.clone()));
+        if has_summary {
+            return;
+        }
+        let supported = outcomes
+            .iter()
+            .filter(|outcome| {
+                outcome.get("verdict").and_then(Value::as_str) == Some("evidence-supported")
+            })
+            .count();
+        let review_recommended = outcomes
+            .iter()
+            .filter(|outcome| {
+                outcome
+                    .get("reviewRecommended")
+                    .and_then(Value::as_bool)
+                    .unwrap_or(false)
+            })
+            .count();
+        insert_top_level(
+            output,
+            "summary",
+            json!({
+                "status": output.get("status").cloned().unwrap_or_else(|| json!("succeeded")),
+                "claimCount": outcomes.len(),
+                "supportedClaims": supported,
+                "reviewRecommendedClaims": review_recommended
+            }),
+        );
+        return;
+    }
+
+    if let Some(snapshot) = primary_snapshot(output) {
+        if has_summary {
+            return;
+        }
+        let source = snapshot.get("source");
+        let block_count = snapshot
+            .get("blocks")
+            .and_then(Value::as_array)
+            .map(Vec::len)
+            .unwrap_or(0);
+        insert_top_level(
+            output,
+            "summary",
+            json!({
+                "status": output.get("status").cloned().unwrap_or_else(|| json!("succeeded")),
+                "pageTitle": source
+                    .and_then(|source| source.get("title"))
+                    .cloned()
+                    .unwrap_or(Value::Null),
+                "sourceType": source
+                    .and_then(|source| source.get("sourceType"))
+                    .cloned()
+                    .unwrap_or(Value::Null),
+                "sourceUrl": source
+                    .and_then(|source| source.get("sourceUrl"))
+                    .cloned()
+                    .unwrap_or(Value::Null),
+                "blockCount": block_count,
+                "recommendedNextStep": output
+                    .get("diagnostics")
+                    .and_then(|diagnostics| diagnostics.get("recommendedNextStep"))
+                    .cloned()
+                    .unwrap_or_else(|| json!("read-view-or-extract"))
+            }),
+        );
+    }
+}
+
 fn add_next_actions(command: &CliCommand, output: &mut Value) {
     let actions = match command {
-        CliCommand::Capabilities | CliCommand::Doctor => vec![
+        CliCommand::Capabilities | CliCommand::Quickstart | CliCommand::Doctor => vec![
+            next_action(
+                "quickstart",
+                Some("touch-browser quickstart"),
+                true,
+                false,
+                "Review the safest first-use workflow and success signals.",
+            ),
             next_action(
                 "search",
                 Some("touch-browser search <query> --session-file <path>"),

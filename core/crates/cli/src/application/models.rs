@@ -7,8 +7,8 @@ use super::presentation_support::{
 };
 use serde::{Deserialize, Serialize};
 use touch_browser_contracts::{
-    ActionResult, CaptureDiagnostics, CompactRefIndexEntry, PolicyProfile, PolicyReport,
-    ReplayTranscript, SearchEngine, SearchReport, SearchResultItem, SessionState,
+    ActionResult, ActionStatus, CaptureDiagnostics, CompactRefIndexEntry, PolicyProfile,
+    PolicyReport, ReplayTranscript, SearchEngine, SearchReport, SearchResultItem, SessionState,
     SessionSynthesisReport, SnapshotDocument, SourceRisk,
 };
 use touch_browser_memory::MemorySessionSummary;
@@ -17,6 +17,7 @@ use touch_browser_storage_sqlite::{PilotTelemetryEvent, PilotTelemetrySummary};
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub(crate) enum CliCommand {
     Capabilities,
+    Quickstart,
     Doctor,
     Search(SearchOptions),
     SearchOpenResult(SearchOpenResultOptions),
@@ -353,11 +354,25 @@ pub(crate) struct UninstallResultValue {
 #[derive(Debug, Serialize)]
 #[serde(rename_all = "camelCase")]
 pub(crate) struct ExtractCommandOutput {
+    pub(crate) status: ActionStatus,
+    pub(crate) summary: ExtractCommandSummary,
     pub(crate) open: ActionResult,
     pub(crate) extract: ActionResult,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub(crate) diagnostics: Option<CaptureDiagnostics>,
     pub(crate) session_state: SessionState,
+}
+
+#[derive(Debug, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub(crate) struct ExtractCommandSummary {
+    pub(crate) open_status: ActionStatus,
+    pub(crate) extract_status: ActionStatus,
+    pub(crate) claim_count: usize,
+    pub(crate) supported_claims: usize,
+    pub(crate) reusable_claims: usize,
+    pub(crate) review_recommended_claims: usize,
+    pub(crate) verdicts: Vec<String>,
 }
 
 #[derive(Debug, Serialize)]

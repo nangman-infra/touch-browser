@@ -160,6 +160,10 @@ fn dispatches_browser_backed_extract() {
     });
     let output = dispatch(command.clone()).expect("browser-backed extract should succeed");
 
+    assert_eq!(output["status"], "succeeded");
+    assert_eq!(output["summary"]["claimCount"], 1);
+    assert_eq!(output["summary"]["supportedClaims"], 1);
+    assert_eq!(output["summary"]["reusableClaims"], 1);
     assert_eq!(
         output["open"]["output"]["source"]["sourceType"],
         "playwright"
@@ -174,6 +178,7 @@ fn dispatches_browser_backed_extract() {
         enriched["extract"]["output"]["claimOutcomes"][0]["reuseAllowed"],
         true
     );
+    assert_eq!(enriched["claimOutcomes"][0]["reuseAllowed"], true);
     assert_eq!(enriched["reuseSummary"]["allClaimsReusable"], true);
     assert_eq!(
         enriched["nextActions"][0]["action"],
@@ -483,6 +488,35 @@ fn missing_session_file_error_includes_path() {
     let message = error.to_string();
     assert!(message.contains(&missing.display().to_string()));
     assert!(message.contains("No such file or directory"));
+}
+
+#[test]
+fn browser_open_treats_empty_session_file_as_new_session() {
+    let session_file = temp_session_path("empty-session-open");
+    fs::write(&session_file, "").expect("empty session file should be writable");
+
+    let output = dispatch(CliCommand::Open(TargetOptions {
+        target: "fixture://research/static-docs/getting-started".to_string(),
+        budget: DEFAULT_REQUESTED_TOKENS,
+        source_risk: None,
+        source_label: None,
+        allowlisted_domains: Vec::new(),
+        browser: true,
+        headed: false,
+        main_only: false,
+        session_file: Some(session_file.clone()),
+    }))
+    .expect("browser open should overwrite an empty session file");
+
+    assert_eq!(output["status"], "succeeded");
+    let persisted =
+        load_browser_cli_session(&session_file).expect("empty session file should become valid");
+    assert_eq!(
+        persisted.session.state.current_url.as_deref(),
+        Some("fixture://research/static-docs/getting-started")
+    );
+
+    let _ = fs::remove_file(session_file);
 }
 
 #[test]

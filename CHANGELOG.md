@@ -2,6 +2,36 @@
 
 All notable changes to this project are documented here.
 
+## [0.7.0] - 2026-06-10
+
+Release: https://github.com/nangman-infra/touch-browser/releases/tag/v0.7.0
+
+Compare: https://github.com/nangman-infra/touch-browser/compare/v0.6.0...v0.7.0
+
+### Added
+
+- Added `touch-browser quickstart` as the beginner-safe local first-use guide with concrete success signals, safe defaults, and common pitfalls.
+- Added `beginnerQuickStart` to `capabilities` / `status`, including the recommended local workflow from `doctor` through `quick`, `search`, `read-view`, and `extract`.
+- Added top-level beginner-oriented `summary` fields for `open`, `quick`, and `extract`, plus top-level `claimOutcomes` for evidence commands.
+
+### Changed
+
+- Changed the recommended first call from `touch-browser capabilities --agent-json` to `touch-browser quickstart`.
+- Bumped the Rust workspace, CLI runtime, MCP npm package, MCP server descriptors, workflow metadata, Glama Docker install pin, and standalone lifecycle expectations to `0.7.0`.
+- Updated README and CLI surface docs so the visible first-use path matches the runtime output contract.
+
+### Fixed
+
+- Fixed the local-user footgun where passing a pre-created empty `--session-file` to browser-backed `open`, `quick`, or `extract` failed with a raw JSON EOF error.
+- Improved empty persisted-session read errors so users get an actionable command for opening a page first.
+
+### Release Verification
+
+- Local `cargo fmt --all --check` passed.
+- Local `cargo test -p touch-browser-cli --lib` passed.
+- Local `pnpm run quality:lint`, `pnpm run quality:typecheck`, `cargo clippy --workspace --all-targets -- -D warnings`, `pnpm run quality:test:contracts`, `pnpm run quality:test:rust`, `pnpm run quality:test:adapter`, and `pnpm run quality:test:evals` passed.
+- Local CLI smoke passed for `quickstart`, `status --agent-json`, `quick`, browser-backed `open` summary output, empty session-file recovery, and `quickstart --help`.
+
 ## [0.6.0] - 2026-05-05
 
 Release: https://github.com/nangman-infra/touch-browser/releases/tag/v0.6.0

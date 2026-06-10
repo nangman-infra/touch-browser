@@ -27,10 +27,11 @@ Evidence-first, not fact-final:
 Before the first browser-backed run, check the local runtime:
 
 ```bash
+touch-browser quickstart
 touch-browser doctor
 ```
 
-`doctor` verifies the installed executable, runtime resources, data root, Node runtime, Playwright Chromium, MCP bridge entrypoint, and semantic model readiness. If it reports `attention-required`, repair those local dependencies before judging browser behavior.
+`quickstart` shows the safe local first-use flow, success signals, and common pitfalls. `doctor` verifies the installed executable, runtime resources, data root, Node runtime, Playwright Chromium, MCP bridge entrypoint, and semantic model readiness. If it reports `attention-required`, repair those local dependencies before judging browser behavior.
 
 After installing, run one command to see the product difference from a raw fetch:
 
@@ -41,26 +42,38 @@ touch-browser quick https://www.iana.org/help/example-domains \
 
 Decision path for the output:
 
-1. Check `verdict`.
-2. Check `reviewRecommended`.
-3. Quote `primarySupportSnippet` when you need one evidence line.
-4. Read `verdictExplanation` when the verdict is not obvious.
-5. Use `citation.url` and `citation.retrievedAt` when handing evidence to another system.
+1. Check top-level `status`.
+2. Check `summary.reusableClaims` and `reuseSummary.allClaimsReusable`.
+3. Check each `claimOutcomes[].verdict`.
+4. Check `claimOutcomes[].reviewRecommended`.
+5. Quote `claimOutcomes[].primarySupportSnippet` when you need one evidence line.
+6. Use `claimOutcomes[].citation.url` and `citation.retrievedAt` when handing evidence to another system.
 
 Expected shape:
 
 ```json
 {
-  "verdict": "evidence-supported",
-  "confidenceBand": "high",
-  "reviewRecommended": false,
-  "primarySupportSnippet": {
-    "snippet": "..."
+  "status": "succeeded",
+  "summary": {
+    "claimCount": 1,
+    "supportedClaims": 1,
+    "reusableClaims": 1
   },
-  "citation": {
-    "url": "https://www.iana.org/help/example-domains",
-    "retrievedAt": "..."
-  }
+  "claimOutcomes": [
+    {
+      "verdict": "evidence-supported",
+      "confidenceBand": "high",
+      "reviewRecommended": false,
+      "reuseAllowed": true,
+      "primarySupportSnippet": {
+        "snippet": "..."
+      },
+      "citation": {
+        "url": "https://www.iana.org/help/example-domains",
+        "retrievedAt": "..."
+      }
+    }
+  ]
 }
 ```
 

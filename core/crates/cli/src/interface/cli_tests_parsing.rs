@@ -74,6 +74,18 @@ fn parses_capabilities_and_status_commands() {
 }
 
 #[test]
+fn parses_quickstart_command() {
+    assert_eq!(
+        parse_command(&["quickstart".to_string()]).expect("quickstart should parse"),
+        CliCommand::Quickstart,
+    );
+    assert_eq!(
+        parse_command(&["guide".to_string()]).expect("guide alias should parse"),
+        CliCommand::Quickstart,
+    );
+}
+
+#[test]
 fn parses_doctor_command() {
     assert_eq!(
         parse_command(&["doctor".to_string()]).expect("doctor should parse"),
