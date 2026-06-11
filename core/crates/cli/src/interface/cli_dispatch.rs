@@ -371,11 +371,39 @@ fn handle_update(
         &current_install,
         options.version.as_deref(),
     )?;
-    let update_available = release.version != current_install.version;
+    let runtime_version = env!("CARGO_PKG_VERSION").to_string();
+    let installed_version = current_install.version.clone();
+    let target_is_older_than_runtime =
+        release_version_order(&release.version, &runtime_version) == Some(std::cmp::Ordering::Less);
+    let update_available =
+        release.version != current_install.version && !target_is_older_than_runtime;
+    let version_alignment = if target_is_older_than_runtime {
+        "runtime-newer-than-latest-release".to_string()
+    } else if same_release_version(&runtime_version, &release.version)
+        && same_release_version(&installed_version, &release.version)
+    {
+        "aligned".to_string()
+    } else if same_release_version(&runtime_version, &release.version) {
+        "runtime-current-install-metadata-differs".to_string()
+    } else if same_release_version(&installed_version, &release.version) {
+        "install-current-runtime-differs".to_string()
+    } else {
+        "update-available".to_string()
+    };
+    let next_command = if update_available && !options.check {
+        "already-installed".to_string()
+    } else if update_available {
+        format!("touch-browser update --version {}", release.version)
+    } else {
+        "no-update-needed".to_string()
+    };
 
     let result = if options.check || !update_available {
         application::models::UpdateResultValue {
             current_version: current_install.version.clone(),
+            runtime_version: runtime_version.clone(),
+            installed_version: installed_version.clone(),
+            latest_version: release.version.clone(),
             target_version: release.version.clone(),
             update_available,
             checked_only: true,
@@ -384,11 +412,16 @@ fn handle_update(
             asset_name: release.tarball_asset.name.clone(),
             command_link: current_install.command_link.clone(),
             managed_bundle_root: current_install.managed_bundle_root.clone(),
+            version_alignment: version_alignment.clone(),
+            next_command: next_command.clone(),
         }
     } else {
         let installed = infrastructure::installation::install_release(&current_install, &release)?;
         application::models::UpdateResultValue {
             current_version: current_install.version,
+            runtime_version: runtime_version.clone(),
+            installed_version,
+            latest_version: release.version.clone(),
             target_version: installed.manifest.version.clone(),
             update_available: true,
             checked_only: false,
@@ -397,11 +430,16 @@ fn handle_update(
             asset_name: installed.release.tarball_asset.name.clone(),
             command_link: installed.manifest.command_link.clone(),
             managed_bundle_root: installed.manifest.managed_bundle_root.clone(),
+            version_alignment: "installed-target-release".to_string(),
+            next_command: format!("{} --version", installed.manifest.command_link),
         }
     };
 
     serialize_output(application::models::UpdateCommandOutput {
         current_version: result.current_version.clone(),
+        runtime_version: result.runtime_version.clone(),
+        installed_version: result.installed_version.clone(),
+        latest_version: result.latest_version.clone(),
         target_version: result.target_version.clone(),
         update_available: result.update_available,
         checked_only: result.checked_only,
@@ -410,8 +448,29 @@ fn handle_update(
         asset_name: result.asset_name.clone(),
         command_link: result.command_link.clone(),
         managed_bundle_root: result.managed_bundle_root.clone(),
+        version_alignment: result.version_alignment.clone(),
+        next_command: result.next_command.clone(),
         result,
     })
+}
+
+fn same_release_version(left: &str, right: &str) -> bool {
+    left.trim_start_matches('v') == right.trim_start_matches('v')
+}
+
+fn release_version_order(left: &str, right: &str) -> Option<std::cmp::Ordering> {
+    let left = parse_release_version(left)?;
+    let right = parse_release_version(right)?;
+    Some(left.cmp(&right))
+}
+
+fn parse_release_version(value: &str) -> Option<(u64, u64, u64)> {
+    let normalized = value.trim().trim_start_matches('v');
+    let mut parts = normalized.split('.');
+    let major = parts.next()?.parse().ok()?;
+    let minor = parts.next()?.parse().ok()?;
+    let patch = parts.next()?.parse().ok()?;
+    Some((major, minor, patch))
 }
 
 fn handle_uninstall(

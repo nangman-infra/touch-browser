@@ -677,6 +677,74 @@ fn search_open_top_inherits_external_profile_directory() {
 }
 
 #[test]
+fn search_open_top_reports_failed_candidates_without_losing_successes() {
+    let session_file = temp_session_path("search-open-top-partial-failure");
+    let mut persisted = load_search_browser_session(
+        &session_file,
+        "fixture://research/navigation/browser-pagination",
+    );
+    persisted.latest_search = Some(fixture_search_report(
+        2,
+        vec![
+            SearchResultItem {
+                rank: 1,
+                title: "Missing fixture".to_string(),
+                url: "fixture://research/navigation/does-not-exist".to_string(),
+                domain: "fixture.local".to_string(),
+                snippet: Some("Broken candidate".to_string()),
+                stable_ref: None,
+                official_likely: false,
+                selection_score: Some(0.1),
+                recommended_surface: Some("read-view".to_string()),
+            },
+            SearchResultItem {
+                rank: 2,
+                title: "Browser Pagination".to_string(),
+                url: "fixture://research/navigation/browser-pagination".to_string(),
+                domain: "fixture.local".to_string(),
+                snippet: Some("Working candidate".to_string()),
+                stable_ref: None,
+                official_likely: true,
+                selection_score: Some(1.0),
+                recommended_surface: Some("read-view".to_string()),
+            },
+        ],
+        vec![1, 2],
+    ));
+    save_browser_cli_session(&session_file, &persisted)
+        .expect("session should save with mixed search results");
+
+    let output = dispatch(CliCommand::SearchOpenTop(SearchOpenTopOptions {
+        engine: SearchEngine::Google,
+        session_file: Some(session_file.clone()),
+        limit: 2,
+        headed: false,
+    }))
+    .expect("search-open-top should report partial failures without failing the command");
+
+    assert_eq!(output["openedCount"], 1);
+    assert_eq!(output["failedCount"], 1);
+    assert_eq!(output["opened"][0]["rank"], 2);
+    assert_eq!(output["failed"][0]["rank"], 1);
+    assert_eq!(output["failed"][0]["status"], "failed");
+    assert_eq!(output["failed"][0]["retryable"], true);
+    assert!(output["failed"][0]["nextCommand"]
+        .as_str()
+        .expect("next command")
+        .contains("touch-browser open"));
+
+    let result_session_file = derived_search_result_session_file(&session_file, 2);
+    dispatch(CliCommand::SessionClose(SessionFileOptions {
+        session_file: result_session_file,
+    }))
+    .expect("child session close should succeed");
+    dispatch(CliCommand::SessionClose(SessionFileOptions {
+        session_file,
+    }))
+    .expect("search session close should succeed");
+}
+
+#[test]
 fn dispatches_fixture_open_with_policy() {
     let command = CliCommand::Open(TargetOptions {
         target: "fixture://research/static-docs/getting-started".to_string(),

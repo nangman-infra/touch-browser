@@ -292,6 +292,8 @@ pub(crate) struct SearchOpenTopCommandOutput {
     pub(crate) search_session_file: String,
     pub(crate) opened_count: usize,
     pub(crate) opened: Vec<SearchOpenTopItem>,
+    pub(crate) failed_count: usize,
+    pub(crate) failed: Vec<SearchOpenTopFailureItem>,
 }
 
 #[derive(Debug, Clone, Serialize)]
@@ -307,8 +309,22 @@ pub(crate) struct SearchOpenTopItem {
 
 #[derive(Debug, Clone, Serialize)]
 #[serde(rename_all = "camelCase")]
+pub(crate) struct SearchOpenTopFailureItem {
+    pub(crate) rank: usize,
+    pub(crate) selected_result: SearchResultItem,
+    pub(crate) status: String,
+    pub(crate) message: String,
+    pub(crate) retryable: bool,
+    pub(crate) next_command: String,
+}
+
+#[derive(Debug, Clone, Serialize)]
+#[serde(rename_all = "camelCase")]
 pub(crate) struct UpdateCommandOutput {
     pub(crate) current_version: String,
+    pub(crate) runtime_version: String,
+    pub(crate) installed_version: String,
+    pub(crate) latest_version: String,
     pub(crate) target_version: String,
     pub(crate) update_available: bool,
     pub(crate) checked_only: bool,
@@ -317,6 +333,8 @@ pub(crate) struct UpdateCommandOutput {
     pub(crate) asset_name: String,
     pub(crate) command_link: String,
     pub(crate) managed_bundle_root: String,
+    pub(crate) version_alignment: String,
+    pub(crate) next_command: String,
     pub(crate) result: UpdateResultValue,
 }
 
@@ -324,6 +342,9 @@ pub(crate) struct UpdateCommandOutput {
 #[serde(rename_all = "camelCase")]
 pub(crate) struct UpdateResultValue {
     pub(crate) current_version: String,
+    pub(crate) runtime_version: String,
+    pub(crate) installed_version: String,
+    pub(crate) latest_version: String,
     pub(crate) target_version: String,
     pub(crate) update_available: bool,
     pub(crate) checked_only: bool,
@@ -332,6 +353,8 @@ pub(crate) struct UpdateResultValue {
     pub(crate) asset_name: String,
     pub(crate) command_link: String,
     pub(crate) managed_bundle_root: String,
+    pub(crate) version_alignment: String,
+    pub(crate) next_command: String,
 }
 
 #[derive(Debug, Clone, Serialize)]

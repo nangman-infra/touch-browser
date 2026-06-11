@@ -13,9 +13,9 @@ use super::{
         PolicyCommandOutput, ReadViewOutput, ReplayCommandOutput, ReplayTranscript, RiskClass,
         SearchActionActor, SearchActionHint, SearchCommandOutput, SearchEngine, SearchNextCommands,
         SearchOpenResultCommandOutput, SearchOpenResultOptions, SearchOpenTopCommandOutput,
-        SearchOpenTopItem, SearchOpenTopOptions, SearchOptions, SearchRecovery,
-        SearchRecoveryAttempt, SearchReport, SearchReportStatus, SearchResultItem, SessionState,
-        SourceRisk, TargetOptions, CONTRACT_VERSION, DEFAULT_OPENED_AT,
+        SearchOpenTopFailureItem, SearchOpenTopItem, SearchOpenTopOptions, SearchOptions,
+        SearchRecovery, SearchRecoveryAttempt, SearchReport, SearchReportStatus, SearchResultItem,
+        SessionState, SourceRisk, TargetOptions, CONTRACT_VERSION, DEFAULT_OPENED_AT,
     },
     search_support::{
         build_search_report, build_search_url, derived_search_result_session_file,
@@ -703,74 +703,94 @@ pub(crate) fn handle_search_open_top(
             .collect::<Vec<_>>()
     };
 
-    let opened = selected_ranks
-        .into_iter()
-        .filter_map(|rank| {
-            latest_search
-                .results
-                .iter()
-                .find(|result| result.rank == rank)
-                .cloned()
-        })
-        .map(|selected| {
-            let result_session_file =
-                derived_search_result_session_file(&search_session_file, selected.rank);
-            let opened_at = current_timestamp();
-            let context = ports.browser.open_browser_session(
-                &selected.url,
-                persisted.requested_budget,
-                Some(SourceRisk::Low),
-                None,
-                options.headed,
-                persisted.browser_context_dir.clone(),
-                persisted.browser_profile_dir.clone(),
-                "scliopen001",
-                &opened_at,
-            )?;
-            let refreshed = persist_browser_context(
-                ctx,
-                &result_session_file,
-                &context,
-                &selected.url,
-                options.headed,
-                &persisted.allowlisted_domains,
-                None,
-            )?;
-            let diagnostics = browser_capture_diagnostics(
-                &context.snapshot,
-                persisted.requested_budget,
-                false,
-                None,
-                &context.load_diagnostics,
-                CaptureSurface::Open,
-            );
-            let mut opened = succeed_action(
-                ActionName::Open,
-                "snapshot-document",
-                context.snapshot,
-                "Opened browser-backed document.",
-                current_policy_with_allowlist(
-                    &refreshed.session,
-                    ctx.policy_kernel,
-                    &refreshed.allowlisted_domains,
-                ),
-            )?;
-            opened.diagnostics = Some(diagnostics.clone());
+    let mut opened = Vec::new();
+    let mut failed = Vec::new();
 
-            Ok::<SearchOpenTopItem, CliError>(SearchOpenTopItem {
-                rank: selected.rank,
-                selected_result: selected,
-                session_file: result_session_file.display().to_string(),
-                result: opened,
-                diagnostics: Some(diagnostics),
-            })
-        })
-        .collect::<Result<Vec<_>, _>>()?;
+    for selected in selected_ranks.into_iter().filter_map(|rank| {
+        latest_search
+            .results
+            .iter()
+            .find(|result| result.rank == rank)
+            .cloned()
+    }) {
+        let result_session_file =
+            derived_search_result_session_file(&search_session_file, selected.rank);
+        let opened_at = current_timestamp();
+        let open_result = ports.browser.open_browser_session(
+            &selected.url,
+            persisted.requested_budget,
+            Some(SourceRisk::Low),
+            None,
+            options.headed,
+            persisted.browser_context_dir.clone(),
+            persisted.browser_profile_dir.clone(),
+            "scliopen001",
+            &opened_at,
+        );
+
+        match open_result {
+            Ok(context) => {
+                let refreshed = persist_browser_context(
+                    ctx,
+                    &result_session_file,
+                    &context,
+                    &selected.url,
+                    options.headed,
+                    &persisted.allowlisted_domains,
+                    None,
+                )?;
+                let diagnostics = browser_capture_diagnostics(
+                    &context.snapshot,
+                    persisted.requested_budget,
+                    false,
+                    None,
+                    &context.load_diagnostics,
+                    CaptureSurface::Open,
+                );
+                let mut result = succeed_action(
+                    ActionName::Open,
+                    "snapshot-document",
+                    context.snapshot,
+                    "Opened browser-backed document.",
+                    current_policy_with_allowlist(
+                        &refreshed.session,
+                        ctx.policy_kernel,
+                        &refreshed.allowlisted_domains,
+                    ),
+                )?;
+                result.diagnostics = Some(diagnostics.clone());
+
+                opened.push(SearchOpenTopItem {
+                    rank: selected.rank,
+                    selected_result: selected,
+                    session_file: result_session_file.display().to_string(),
+                    result,
+                    diagnostics: Some(diagnostics),
+                });
+            }
+            Err(error) => {
+                failed.push(SearchOpenTopFailureItem {
+                    rank: selected.rank,
+                    selected_result: selected.clone(),
+                    status: "failed".to_string(),
+                    message: error.to_string(),
+                    retryable: true,
+                    next_command: format!(
+                        "touch-browser open {} --browser --session-file {}",
+                        shell_quote(&selected.url),
+                        shell_quote(&result_session_file.display().to_string())
+                    ),
+                });
+            }
+        }
+    }
 
     Ok(SearchOpenTopCommandOutput {
         search_session_file: search_session_file.display().to_string(),
         opened_count: opened.len(),
+        failed_count: failed.len(),
         opened,
+        failed,
     })
 }
 

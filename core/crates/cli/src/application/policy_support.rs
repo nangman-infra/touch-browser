@@ -661,10 +661,20 @@ pub(crate) fn preflight_interactive_action(
         current_policy_with_allowlist(&persisted.session, kernel, &persisted.allowlisted_domains)?;
 
     if persisted.allowlisted_domains.is_empty() {
+        let target = persisted
+            .session
+            .state
+            .current_url
+            .as_deref()
+            .unwrap_or("<same-target>");
         let action_result = reject_action(
             action,
             ActionFailureKind::PolicyBlocked,
-            "Interactive browser actions require at least one `--allow-domain` boundary.",
+            &format!(
+                "Interactive browser actions require at least one `--allow-domain` boundary. Re-open this session with `touch-browser open {} --browser --allow-domain <trusted-host> --session-file {}` before retrying the action.",
+                shell_quote_policy_message(target),
+                shell_quote_policy_message(&session_file.display().to_string())
+            ),
             Some(policy),
         );
         return Some(SessionCommandOutput {
@@ -679,10 +689,20 @@ pub(crate) fn preflight_interactive_action(
         signal.kind == touch_browser_contracts::PolicySignalKind::DomainNotAllowlisted
             && signal.stable_ref.is_none()
     }) {
+        let current_host = persisted
+            .session
+            .state
+            .current_url
+            .as_deref()
+            .and_then(host_from_policy_message_url)
+            .unwrap_or("<current-host>");
         let action_result = reject_action(
             action,
             ActionFailureKind::PolicyBlocked,
-            "Interactive browser actions require the current page host to be inside the allowlist.",
+            &format!(
+                "Interactive browser actions require the current page host to be inside the allowlist. Re-open this session with `--allow-domain {}` or choose a narrower trusted host before retrying.",
+                shell_quote_policy_message(current_host)
+            ),
             Some(policy),
         );
         return Some(SessionCommandOutput {
@@ -775,5 +795,22 @@ pub(crate) fn preflight_interactive_action(
         }
     }
 
+    None
+}
+
+fn shell_quote_policy_message(value: &str) -> String {
+    format!("'{}'", value.replace('\'', "'\"'\"'"))
+}
+
+fn host_from_policy_message_url(value: &str) -> Option<&str> {
+    if let Some(rest) = value.strip_prefix("https://") {
+        return rest.split('/').next().filter(|host| !host.is_empty());
+    }
+    if let Some(rest) = value.strip_prefix("http://") {
+        return rest.split('/').next().filter(|host| !host.is_empty());
+    }
+    if let Some(rest) = value.strip_prefix("fixture://") {
+        return rest.split('/').next().filter(|host| !host.is_empty());
+    }
     None
 }
