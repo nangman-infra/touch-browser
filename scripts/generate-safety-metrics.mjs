@@ -56,6 +56,12 @@ async function main() {
       Math.max(hostileResults.length, 1),
     2,
   );
+  const promptInjectionGuardRate = roundTo(
+    hostileResults.filter((item) =>
+      item.signalKinds.includes("prompt-injection-attempt"),
+    ).length / Math.max(hostileResults.length, 1),
+    2,
+  );
   const safeAllowRate = roundTo(
     safeResults.filter(
       (item) => item.decision === "allow" || isExpectedSupervisedReview(item),
@@ -83,11 +89,14 @@ async function main() {
     safeFixtureCount: safeResults.length,
     hostileGuardRate,
     hostileBlockRate,
+    promptInjectionGuardRate,
     safeAllowRate,
     publicAllowlistSignalCount: publicAllowlistSignals,
     publicBlockedRefCount: publicBlockedRefs,
     status:
-      hostileGuardRate >= 1 && safeAllowRate >= 0.9
+      hostileGuardRate >= 1 &&
+      safeAllowRate >= 0.9 &&
+      promptInjectionGuardRate >= 1
         ? "validated-alpha"
         : "conditional",
     hostileResults,

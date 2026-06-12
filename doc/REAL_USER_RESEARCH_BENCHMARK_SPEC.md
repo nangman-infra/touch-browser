@@ -39,7 +39,7 @@ Run:
 The current scenarios use official public documentation sources:
 
 - IANA reserved and example domain documentation: [IANA Reserved Domains](https://www.iana.org/domains/reserved), [IANA Example Domains](https://www.iana.org/help/example-domains)
-- RFC Editor standards pages: [RFC 9309](https://www.rfc-editor.org/rfc/rfc9309.html), [RFC 2606](https://www.rfc-editor.org/rfc/rfc2606.html), [RFC 6761](https://www.rfc-editor.org/rfc/rfc6761.html)
+- RFC Editor standards pages: [RFC 9309](https://www.rfc-editor.org/info/rfc9309), [RFC 2606](https://www.rfc-editor.org/info/rfc2606), [RFC 6761](https://www.rfc-editor.org/info/rfc6761)
 - MDN Web API docs: [Fetch API](https://developer.mozilla.org/en-US/docs/Web/API/Fetch_API), [AbortController](https://developer.mozilla.org/en-US/docs/Web/API/AbortController)
 - Node.js docs: [Path](https://nodejs.org/api/path.html), [URL](https://nodejs.org/api/url.html)
 

@@ -2,6 +2,7 @@ use std::{
     collections::{BTreeMap, BTreeSet},
     env, fs,
     path::PathBuf,
+    sync::atomic::{AtomicU64, Ordering},
     time::{SystemTime, UNIX_EPOCH},
 };
 
@@ -11,6 +12,8 @@ use crate::interface::deps::{
 };
 
 use super::presenters;
+
+static SERVE_DAEMON_STATE_SEQ: AtomicU64 = AtomicU64::new(0);
 
 #[derive(Debug)]
 pub(crate) struct ServeDaemonState {
@@ -42,8 +45,9 @@ impl ServeDaemonState {
             .duration_since(UNIX_EPOCH)
             .expect("current time should be after unix epoch")
             .as_nanos();
+        let sequence = SERVE_DAEMON_STATE_SEQ.fetch_add(1, Ordering::Relaxed);
         let root_dir = env::temp_dir().join(format!(
-            "touch-browser-serve-{}-{nonce}",
+            "touch-browser-serve-{}-{nonce}-{sequence}",
             std::process::id()
         ));
         fs::create_dir_all(&root_dir)?;

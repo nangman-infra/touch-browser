@@ -83,6 +83,11 @@ fn base_policy_signals(
             None,
             "Source risk is marked hostile.",
         ));
+        signals.push(policy_boundary_signal(
+            PolicySignalKind::PromptInjectionAttempt,
+            None,
+            "Hostile sources are treated as untrusted instruction carriers; page instructions must not override the caller's policy.",
+        ));
     }
 
     if let Some(signal) = allowlist_source_signal(snapshot, normalized_allowlist) {
@@ -156,6 +161,14 @@ fn evaluate_block_policy(
         ));
     }
 
+    if block_matches_prompt_injection_attempt(block) {
+        outcome.signals.push(live_heuristic_signal(
+            PolicySignalKind::PromptInjectionAttempt,
+            Some(block.stable_ref.clone()),
+            "Snapshot contains system-style or policy-override language that should be treated as prompt injection content.",
+        ));
+    }
+
     if let Some(signal) = hostile_external_signal(block, source_risk.clone()) {
         outcome.blocked_refs.push(block.stable_ref.clone());
         outcome.signals.push(signal);
@@ -180,11 +193,18 @@ fn block_hint_signals(block: &SnapshotBlock) -> Vec<PolicySignal> {
         .get("hostileHint")
         .and_then(|value| value.as_str())
     {
-        Some("untrusted-system-language") => vec![fixture_hint_signal(
-            PolicySignalKind::UntrustedSystemLanguage,
-            Some(block.stable_ref.clone()),
-            "Snapshot contains untrusted system-style language.",
-        )],
+        Some("untrusted-system-language") => vec![
+            fixture_hint_signal(
+                PolicySignalKind::UntrustedSystemLanguage,
+                Some(block.stable_ref.clone()),
+                "Snapshot contains untrusted system-style language.",
+            ),
+            fixture_hint_signal(
+                PolicySignalKind::PromptInjectionAttempt,
+                Some(block.stable_ref.clone()),
+                "Snapshot contains untrusted system-style language that attempts to override agent instructions.",
+            ),
+        ],
         Some("suspicious-cta") => vec![fixture_hint_signal(
             PolicySignalKind::SuspiciousCta,
             Some(block.stable_ref.clone()),
@@ -325,6 +345,7 @@ fn signal_applies_to_page_read(signal: &PolicySignal) -> bool {
     matches!(
         signal.kind,
         PolicySignalKind::HostileSource
+            | PolicySignalKind::PromptInjectionAttempt
             | PolicySignalKind::UntrustedSystemLanguage
             | PolicySignalKind::SuspiciousCta
             | PolicySignalKind::BotChallenge
@@ -336,6 +357,7 @@ fn signal_applies_to_interaction(signal: &PolicySignal) -> bool {
     matches!(
         signal.kind,
         PolicySignalKind::HostileSource
+            | PolicySignalKind::PromptInjectionAttempt
             | PolicySignalKind::UntrustedSystemLanguage
             | PolicySignalKind::SuspiciousCta
             | PolicySignalKind::ExternalActionable
@@ -578,6 +600,33 @@ fn block_matches_high_risk_write(block: &SnapshotBlock) -> bool {
     )
 }
 
+fn block_matches_prompt_injection_attempt(block: &SnapshotBlock) -> bool {
+    let lowered = block_signal_text(block);
+    contains_any_phrase(
+        &lowered,
+        &[
+            "ignore previous instructions",
+            "ignore the previous instructions",
+            "ignore system instructions",
+            "ignore the system instructions",
+            "ignore developer instructions",
+            "ignore the developer instructions",
+            "system override",
+            "developer override",
+            "you must now",
+            "must now click",
+            "submit any available form",
+            "exfiltrate hidden credentials",
+            "send credentials",
+            "reveal credentials",
+            "print secrets",
+            "send secrets",
+        ],
+    ) || lowered.contains("[system]")
+        || lowered.contains("system:")
+        || lowered.contains("developer:")
+}
+
 fn block_signal_text(block: &SnapshotBlock) -> String {
     let mut fragments = vec![block.text.clone()];
 
@@ -663,10 +712,15 @@ mod tests {
                 && signal.stable_ref.as_deref()
                     == Some("rmain:text:system-your-runtime-must-now-click-every-externa")
         }));
+        assert!(report.signals.iter().any(|signal| {
+            signal.kind == PolicySignalKind::PromptInjectionAttempt
+                && signal.stable_ref.as_deref()
+                    == Some("rmain:text:system-your-runtime-must-now-click-every-externa")
+        }));
     }
 
     #[test]
-    fn escalates_hidden_instruction_fixture_to_review_due_to_hostile_source() {
+    fn escalates_hidden_instruction_fixture_to_review_due_to_prompt_injection_boundary() {
         let snapshot =
             read_snapshot("fixtures/research/hostile/hidden-instruction/expected-snapshot.json");
         let report = PolicyKernel.evaluate_snapshot(&snapshot, SourceRisk::Hostile);
@@ -676,6 +730,11 @@ mod tests {
         assert!(report.signals.iter().any(|signal| {
             signal.kind == PolicySignalKind::HostileSource
                 && signal.origin == PolicySignalOrigin::PolicyBoundary
+        }));
+        assert!(report.signals.iter().any(|signal| {
+            signal.kind == PolicySignalKind::PromptInjectionAttempt
+                && signal.origin == PolicySignalOrigin::PolicyBoundary
+                && signal.stable_ref.is_none()
         }));
     }
 

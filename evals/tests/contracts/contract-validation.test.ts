@@ -365,6 +365,12 @@ describe("contract schemas", () => {
             detail:
               "External actionable element is blocked on hostile sources.",
           },
+          {
+            kind: "prompt-injection-attempt",
+            origin: "policy-boundary",
+            detail:
+              "Hostile sources are treated as untrusted instruction carriers.",
+          },
         ],
         pageRisk: {
           decision: "review",

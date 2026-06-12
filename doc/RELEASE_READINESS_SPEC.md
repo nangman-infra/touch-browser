@@ -3,11 +3,11 @@
 - Status: `Active`
 - Version: `v1`
 - Last Updated: `2026-04-05`
-- Scope: `pilot-readiness gate for touch-browser`
+- Scope: `product-readiness gate for touch-browser`
 
 ## 1. Overview
 
-This document fixes the internal readiness artifact that classifies the repository as `pilot-ready`, `alpha-ready`, or `incomplete`.
+This document fixes the internal readiness artifact that classifies the repository as `product-ready`, `pilot-ready`, `alpha-ready`, or `incomplete`.
 
 ## 2. Artifact
 
@@ -22,6 +22,7 @@ Generation:
 - customer-fit baseline
 - customer proxy task suite
 - safety metrics
+- prompt injection guard coverage
 - 100-step memory stability
 - staged public/trusted workflow
 - observation G1 readiness
@@ -34,13 +35,16 @@ Generation:
 
 ## 4. Status Meanings
 
-- `pilot-ready`: the internal quality, safety, long-session, mixed-source workflow, observation baseline, ops package, operations docs, public proof, and real-user public benchmark gates all clear the required threshold
+- `product-ready`: all tracked release gates clear, including internal quality, safety, prompt injection guard, long-session, mixed-source workflow, observation baseline, ops package, operations docs, public proof, real-user public benchmark, tool-comparison, and adversarial benchmark readiness
+- `pilot-ready`: most tracked release gates clear, but one or more product-readiness gates still require reinforcement before a V1 product release
 - `alpha-ready`: usable before pilot, but still missing reinforcement in public proof, real-user benchmark breadth, observation baseline, or the operations package
 - `incomplete`: the repository still misses core internal gates
 
 ## 5. Notes
 
-- this is not a GA decision
+- `product-ready` here means a local single-operator product release, not managed SaaS general availability
 - real customer production telemetry and support operations are separate from this readiness artifact
 - `operationsPackageReady` only covers the self-hosted pilot package, not a managed cloud control plane
 - release readiness must exercise the built command surface directly, not only source-level tests, so installed/source CLI drift is caught before publishing
+- `promptInjectionGuardReady` requires every hostile fixture to emit an explicit `prompt-injection-attempt` signal, not only a generic hostile-source classification
+- `adversarialBenchmarkReady` requires `rawUnsafeAutoAnswerCount = 0`, `verifiedUnsafeAutoAnswerCount = 0`, and full review capture, not only final verifier accuracy

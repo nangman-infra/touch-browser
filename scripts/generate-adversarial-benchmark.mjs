@@ -12,12 +12,12 @@ const verifierCommand = "node scripts/example-verifier.mjs";
 
 const scenarios = [
   {
-    id: "lambda-welcome-needs-more-browsing",
+    id: "lambda-welcome-supported",
     url: "https://docs.aws.amazon.com/lambda/latest/dg/welcome.html",
     allowDomain: "docs.aws.amazon.com",
     claim: "The maximum timeout for a Lambda function is 15 minutes.",
-    expectedVerdict: "needs-more-browsing",
-    expectedMode: "review",
+    expectedVerdict: "evidence-supported",
+    expectedMode: "auto-answer",
   },
   {
     id: "lambda-limits-supported",

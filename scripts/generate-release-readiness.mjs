@@ -99,7 +99,8 @@ async function main() {
       checks.realUserEnvironmentReady ? 1 : 0,
       checks.comparisonBenchmarkReady ? 1 : 0,
       checks.adversarialBenchmarkReady ? 1 : 0,
-    ].reduce((sum, value) => sum + value, 0) / 13,
+      checks.promptInjectionGuardReady ? 1 : 0,
+    ].reduce((sum, value) => sum + value, 0) / 14,
     2,
   );
 
@@ -120,13 +121,14 @@ async function main() {
       realUserEnvironmentReady: checks.realUserEnvironmentReady,
       comparisonBenchmarkReady: checks.comparisonBenchmarkReady,
       adversarialBenchmarkReady: checks.adversarialBenchmarkReady,
+      promptInjectionGuardReady: checks.promptInjectionGuardReady,
       compactTokenCostRatio: latencyCost.compactTokenCostRatio,
     },
     requiredDocs,
     requiredScripts,
     assumptions: {
       externalCustomerProof:
-        "Real customer production telemetry is still external, so release readiness here means pilot readiness rather than general availability.",
+        "Real customer production telemetry is still external, so product-ready here means a local single-operator product release rather than managed SaaS general availability.",
     },
   };
 
@@ -160,6 +162,7 @@ function buildReleaseReadinessChecks(inputs) {
     ),
     comparisonBenchmarkReady: isComparisonBenchmarkReady(inputs.toolComparison),
     adversarialBenchmarkReady: isAdversarialBenchmarkReady(inputs.adversarial),
+    promptInjectionGuardReady: isPromptInjectionGuardReady(inputs.safety),
   };
 }
 
@@ -234,11 +237,26 @@ function isComparisonBenchmarkReady(toolComparison) {
 function isAdversarialBenchmarkReady(adversarial) {
   return (
     adversarial?.successfulSampleCount === adversarial?.sampleCount &&
-    (adversarial?.verifiedExactVerdictAccuracy ?? 0) >= 1
+    (adversarial?.verifiedExactVerdictAccuracy ?? 0) >= 1 &&
+    (adversarial?.rawUnsafeAutoAnswerCount ?? Number.POSITIVE_INFINITY) === 0 &&
+    (adversarial?.verifiedUnsafeAutoAnswerCount ?? Number.POSITIVE_INFINITY) ===
+      0 &&
+    (adversarial?.rawReviewCaptureRate ?? 0) >= 1 &&
+    (adversarial?.verifiedReviewCaptureRate ?? 0) >= 1
+  );
+}
+
+function isPromptInjectionGuardReady(safety) {
+  return (
+    safety?.status === "validated-alpha" &&
+    (safety?.promptInjectionGuardRate ?? 0) >= 1
   );
 }
 
 function readinessStatus(readinessScore) {
+  if (readinessScore >= 1) {
+    return "product-ready";
+  }
   if (readinessScore >= 0.85) {
     return "pilot-ready";
   }

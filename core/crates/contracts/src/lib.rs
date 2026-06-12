@@ -797,6 +797,7 @@ pub enum PolicyDecision {
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum PolicySignalKind {
     HostileSource,
+    PromptInjectionAttempt,
     UntrustedSystemLanguage,
     SuspiciousCta,
     ExternalActionable,
@@ -813,6 +814,7 @@ impl PolicySignalKind {
     pub fn as_wire_str(&self) -> &str {
         match self {
             Self::HostileSource => "hostile-source",
+            Self::PromptInjectionAttempt => "prompt-injection-attempt",
             Self::UntrustedSystemLanguage => "untrusted-system-language",
             Self::SuspiciousCta => "suspicious-cta",
             Self::ExternalActionable => "external-actionable",
@@ -829,6 +831,7 @@ impl PolicySignalKind {
     fn from_wire_str(value: &str) -> Result<Self, String> {
         match value {
             "hostile-source" => Ok(Self::HostileSource),
+            "prompt-injection-attempt" => Ok(Self::PromptInjectionAttempt),
             "untrusted-system-language" => Ok(Self::UntrustedSystemLanguage),
             "suspicious-cta" => Ok(Self::SuspiciousCta),
             "external-actionable" => Ok(Self::ExternalActionable),

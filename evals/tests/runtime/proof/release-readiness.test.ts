@@ -6,7 +6,7 @@ import { scenarioFixturesRoot } from "../support/paths.js";
 const reportPath = `${scenarioFixturesRoot}/release-readiness/report.json`;
 
 describe("release readiness", () => {
-  it("tracks pilot readiness against internal quality, safety, and operations gates", async () => {
+  it("tracks product readiness against internal quality, safety, and operations gates", async () => {
     const report = await readJsonFile<{
       readonly readinessScore: number;
       readonly status: string;
@@ -21,12 +21,13 @@ describe("release readiness", () => {
         readonly scriptsReady: boolean;
         readonly publicProofReady: boolean;
         readonly realUserEnvironmentReady: boolean;
+        readonly promptInjectionGuardReady: boolean;
         readonly compactTokenCostRatio: number;
       };
     }>(reportPath);
 
-    expect(report.readinessScore).toBeGreaterThanOrEqual(0.7);
-    expect(["pilot-ready", "alpha-ready"]).toContain(report.status);
+    expect(report.readinessScore).toBe(1);
+    expect(report.status).toBe("product-ready");
     expect(report.checks.coreReady).toBe(true);
     expect(report.checks.longSessionReady).toBe(true);
     expect(report.checks.mixedSourceReady).toBe(true);
@@ -37,6 +38,7 @@ describe("release readiness", () => {
     expect(report.checks.scriptsReady).toBe(true);
     expect(report.checks.publicProofReady).toBe(true);
     expect(report.checks.realUserEnvironmentReady).toBe(true);
+    expect(report.checks.promptInjectionGuardReady).toBe(true);
     expect(report.checks.compactTokenCostRatio).toBeLessThan(0.7);
   });
 });

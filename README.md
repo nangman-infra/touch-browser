@@ -3,7 +3,7 @@
 ![Terminal demo](demo/terminal-demo.gif)
 
 [![License: MPL-2.0](https://img.shields.io/badge/license-MPL--2.0-brightgreen.svg)](LICENSE)
-[![Status: pilot-ready](https://img.shields.io/badge/status-pilot--ready-2d7d46.svg)](doc/RELEASE_READINESS_SPEC.md)
+[![Status: product-ready](https://img.shields.io/badge/status-product--ready-2d7d46.svg)](doc/RELEASE_READINESS_SPEC.md)
 
 Ask a claim. Get page-grounded evidence, verdicts, and citations.
 

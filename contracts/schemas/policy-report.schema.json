@@ -48,6 +48,7 @@
               {
                 "enum": [
                   "hostile-source",
+                  "prompt-injection-attempt",
                   "untrusted-system-language",
                   "suspicious-cta",
                   "external-actionable",

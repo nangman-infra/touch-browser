@@ -72,9 +72,9 @@ Current sample set:
 
 - `https://www.iana.org/domains/reserved`
 - `https://www.iana.org/domains/example`
-- `https://www.rfc-editor.org/rfc/rfc9309.html`
-- `https://www.rfc-editor.org/rfc/rfc2606.html`
-- `https://www.rfc-editor.org/rfc/rfc6761.html`
+- `https://www.rfc-editor.org/info/rfc9309`
+- `https://www.rfc-editor.org/info/rfc2606`
+- `https://www.rfc-editor.org/info/rfc6761`
 
 These are intentionally official, public, document-style sources where content quality matters more than consumer search ranking.
 

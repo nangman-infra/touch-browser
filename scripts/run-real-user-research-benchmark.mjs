@@ -33,19 +33,19 @@ const scenarios = [
       },
       {
         id: "robots-exclusion",
-        target: "https://www.rfc-editor.org/rfc/rfc9309.html",
+        target: "https://www.rfc-editor.org/info/rfc9309",
         allowDomain: "www.rfc-editor.org",
         claim: "RFC 9309 specifies the Robots Exclusion Protocol.",
       },
       {
         id: "reserved-top-level-names",
-        target: "https://www.rfc-editor.org/rfc/rfc2606.html",
+        target: "https://www.rfc-editor.org/info/rfc2606",
         allowDomain: "www.rfc-editor.org",
         claim: "RFC 2606 is titled Reserved Top Level DNS Names.",
       },
       {
         id: "special-use-domains",
-        target: "https://www.rfc-editor.org/rfc/rfc6761.html",
+        target: "https://www.rfc-editor.org/info/rfc6761",
         allowDomain: "www.rfc-editor.org",
         claim: "RFC 6761 is titled Special-Use Domain Names.",
       },

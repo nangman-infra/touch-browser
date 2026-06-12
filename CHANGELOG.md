@@ -2,6 +2,34 @@
 
 All notable changes to this project are documented here.
 
+## [1.0.0] - 2026-06-12
+
+Release: https://github.com/nangman-infra/touch-browser/releases/tag/v1.0.0
+
+Compare: https://github.com/nangman-infra/touch-browser/compare/v0.7.1...v1.0.0
+
+### Added
+
+- Added explicit `prompt-injection-attempt` policy signals for hostile pages, fake system/developer instructions, credential exfiltration prompts, and hidden instruction fixtures.
+- Added prompt-injection guard coverage to the release readiness gate.
+
+### Changed
+
+- Promoted the internal readiness artifact to `product-ready` only when every tracked release gate passes.
+- Tightened adversarial benchmark readiness so unsafe auto-answer counts must stay at zero and review capture must be complete.
+- Bumped the Rust workspace, MCP npm package, MCP server descriptors, bridge metadata, workflow metadata, Glama Docker install pin, and standalone lifecycle expectations to `1.0.0`.
+- Aligned the AWS Lambda adversarial sample with the current official overview page wording.
+
+### Release Verification
+
+- Local safety, adversarial, and release-readiness fixture generation passed.
+- Local quality CI gate passed.
+- Local public-web release gate passed.
+- Local proof gate passed after regenerating proof artifacts.
+- Local MCP package dry run passed.
+- Local `v1.0.0` standalone bundle build and installed smoke passed.
+- npm publishing is intentionally separate from this release because npm authentication was unavailable in the release environment.
+
 ## [0.7.0] - 2026-06-10
 
 Release: https://github.com/nangman-infra/touch-browser/releases/tag/v0.7.0

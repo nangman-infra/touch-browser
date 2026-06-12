@@ -16,7 +16,7 @@ This benchmark exists to answer a different question from the broad public-web a
 The benchmark intentionally uses claims that often fool lexical matching:
 
 - exact numeric mismatches such as `15 minutes` vs `24 hours`
-- overview-page claims that should trigger `needs-more-browsing` instead of a premature answer
+- overview-page claims that should trigger `needs-more-browsing` when the overview page does not directly support the exact claim
 - explicit contradictions on official public sources
 
 Generated report:
@@ -62,6 +62,7 @@ Current generated baseline on `2026-04-10` should satisfy all of the following:
 - raw explainability coverage: `1.00`
 - verified explainability coverage: `1.00`
 - overview claims that need a more specific source page stay in `needs-more-browsing`
+- overview claims that now directly state the exact claim may be promoted to `evidence-supported`; the scenario must be updated instead of treating stale benchmark expectations as product failures
 - false numeric limit claims on exact limits pages are at least `review`/`needs-more-browsing` unless the extracted block is explicit enough to justify `contradicted`
 - implicit non-availability pages such as IANA example domains stay on the `review` path unless the page states the negative claim explicitly
 - explicit public contradictions remain covered by targeted unit and fixture tests where the contradictory sentence is unambiguous

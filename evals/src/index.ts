@@ -76,7 +76,7 @@ export function evalHarnessStatus(): EvalHarnessStatus {
 
   const runtimeReady =
     release !== null &&
-    ["pilot-ready", "alpha-ready"].includes(release.status) &&
+    ["product-ready", "pilot-ready", "alpha-ready"].includes(release.status) &&
     proxy !== null &&
     ["proxy-validated", "core-proxy-validated"].includes(proxy.status) &&
     reference?.status === "ok";
