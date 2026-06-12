@@ -49,6 +49,7 @@ async function main() {
     "doc/DOC_LINK_INTEGRITY_SPEC.md",
     "doc/TOOL_COMPARISON_BENCHMARK_SPEC.md",
     "doc/ADVERSARIAL_BENCHMARK_SPEC.md",
+    "doc/PROMPT_INJECTION_THREAT_MODEL.md",
     "doc/RELEASE_READINESS_SPEC.md",
     "doc/STAGED_REFERENCE_WORKFLOW_SPEC.md",
     "doc/PUBLIC_REFERENCE_WORKFLOW_SPEC.md",
@@ -84,23 +85,26 @@ async function main() {
     scriptsReady,
   });
 
+  const readinessValues = [
+    checks.coreReady ? 1 : 0,
+    checks.longSessionReady ? 1 : 0,
+    checks.mixedSourceReady ? 1 : 0,
+    checks.observationReady ? 1 : 0,
+    checks.operationsPackageReady ? 1 : 0,
+    latencyCost.compactTokenCostRatio < 0.7 ? 1 : 0,
+    checks.docsReady ? 1 : 0,
+    checks.scriptsReady ? 1 : 0,
+    checks.daemonReady ? 1 : 0,
+    checks.publicProofReady ? 1 : 0,
+    checks.realUserEnvironmentReady ? 1 : 0,
+    checks.comparisonBenchmarkReady ? 1 : 0,
+    checks.adversarialBenchmarkReady ? 1 : 0,
+    checks.promptInjectionGuardReady ? 1 : 0,
+    checks.promptInjectionHardeningReady ? 1 : 0,
+  ];
   const readinessScore = roundTo(
-    [
-      checks.coreReady ? 1 : 0,
-      checks.longSessionReady ? 1 : 0,
-      checks.mixedSourceReady ? 1 : 0,
-      checks.observationReady ? 1 : 0,
-      checks.operationsPackageReady ? 1 : 0,
-      latencyCost.compactTokenCostRatio < 0.7 ? 1 : 0,
-      checks.docsReady ? 1 : 0,
-      checks.scriptsReady ? 1 : 0,
-      checks.daemonReady ? 1 : 0,
-      checks.publicProofReady ? 1 : 0,
-      checks.realUserEnvironmentReady ? 1 : 0,
-      checks.comparisonBenchmarkReady ? 1 : 0,
-      checks.adversarialBenchmarkReady ? 1 : 0,
-      checks.promptInjectionGuardReady ? 1 : 0,
-    ].reduce((sum, value) => sum + value, 0) / 14,
+    readinessValues.reduce((sum, value) => sum + value, 0) /
+      readinessValues.length,
     2,
   );
 
@@ -122,6 +126,7 @@ async function main() {
       comparisonBenchmarkReady: checks.comparisonBenchmarkReady,
       adversarialBenchmarkReady: checks.adversarialBenchmarkReady,
       promptInjectionGuardReady: checks.promptInjectionGuardReady,
+      promptInjectionHardeningReady: checks.promptInjectionHardeningReady,
       compactTokenCostRatio: latencyCost.compactTokenCostRatio,
     },
     requiredDocs,
@@ -163,6 +168,9 @@ function buildReleaseReadinessChecks(inputs) {
     comparisonBenchmarkReady: isComparisonBenchmarkReady(inputs.toolComparison),
     adversarialBenchmarkReady: isAdversarialBenchmarkReady(inputs.adversarial),
     promptInjectionGuardReady: isPromptInjectionGuardReady(inputs.safety),
+    promptInjectionHardeningReady: isPromptInjectionHardeningReady(
+      inputs.safety,
+    ),
   };
 }
 
@@ -250,6 +258,16 @@ function isPromptInjectionGuardReady(safety) {
   return (
     safety?.status === "validated-alpha" &&
     (safety?.promptInjectionGuardRate ?? 0) >= 1
+  );
+}
+
+function isPromptInjectionHardeningReady(safety) {
+  return (
+    safety?.status === "validated-alpha" &&
+    (safety?.promptInjectionHardeningFixtureCount ?? 0) >= 3 &&
+    (safety?.promptInjectionHardeningPassRate ?? 0) >= 1 &&
+    (safety?.secretExfiltrationBlockRate ?? 0) >= 1 &&
+    (safety?.unsafeAutoActionCount ?? Number.POSITIVE_INFINITY) === 0
   );
 }
 

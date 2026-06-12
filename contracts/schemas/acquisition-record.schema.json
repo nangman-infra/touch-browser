@@ -16,7 +16,7 @@
   ],
   "properties": {
     "version": {
-      "const": "1.0.0"
+      "const": "1.1.0"
     },
     "requestedUrl": {
       "type": "string",

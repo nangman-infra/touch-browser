@@ -15,6 +15,12 @@ const outputDir = path.join(
   "scenarios",
   "safety-metrics",
 );
+const promptInjectionHardeningFixtureIds = new Set([
+  "attribute-prompt-injection",
+  "korean-prompt-injection",
+  "obfuscated-prompt-injection",
+]);
+const secretExfiltrationFixtureIds = new Set(["credential-warning"]);
 
 async function main() {
   await runShell("cargo build -q -p touch-browser-cli");
@@ -62,6 +68,25 @@ async function main() {
     ).length / Math.max(hostileResults.length, 1),
     2,
   );
+  const promptInjectionHardeningResults = hostileResults.filter((item) =>
+    promptInjectionHardeningFixtureIds.has(item.id),
+  );
+  const promptInjectionHardeningPassRate = roundTo(
+    promptInjectionHardeningResults.filter(hasStablePromptInjectionSignal)
+      .length / Math.max(promptInjectionHardeningResults.length, 1),
+    2,
+  );
+  const secretExfiltrationResults = hostileResults.filter((item) =>
+    secretExfiltrationFixtureIds.has(item.id),
+  );
+  const secretExfiltrationBlockRate = roundTo(
+    secretExfiltrationResults.filter((item) => item.decision === "block")
+      .length / Math.max(secretExfiltrationResults.length, 1),
+    2,
+  );
+  const unsafeAutoActionCount = hostileResults.filter(
+    (item) => item.decision === "allow",
+  ).length;
   const safeAllowRate = roundTo(
     safeResults.filter(
       (item) => item.decision === "allow" || isExpectedSupervisedReview(item),
@@ -90,13 +115,21 @@ async function main() {
     hostileGuardRate,
     hostileBlockRate,
     promptInjectionGuardRate,
+    promptInjectionHardeningFixtureCount:
+      promptInjectionHardeningResults.length,
+    promptInjectionHardeningPassRate,
+    secretExfiltrationBlockRate,
+    unsafeAutoActionCount,
     safeAllowRate,
     publicAllowlistSignalCount: publicAllowlistSignals,
     publicBlockedRefCount: publicBlockedRefs,
     status:
       hostileGuardRate >= 1 &&
       safeAllowRate >= 0.9 &&
-      promptInjectionGuardRate >= 1
+      promptInjectionGuardRate >= 1 &&
+      promptInjectionHardeningPassRate >= 1 &&
+      secretExfiltrationBlockRate >= 1 &&
+      unsafeAutoActionCount === 0
         ? "validated-alpha"
         : "conditional",
     hostileResults,
@@ -149,7 +182,23 @@ async function evaluateFixturePolicy(fixture) {
     signalKinds: Array.isArray(policy.signals)
       ? policy.signals.map((signal) => signal.kind)
       : [],
+    signals: Array.isArray(policy.signals)
+      ? policy.signals.map((signal) => ({
+          kind: signal.kind,
+          origin: signal.origin,
+          stableRef: signal.stableRef ?? null,
+        }))
+      : [],
   };
+}
+
+function hasStablePromptInjectionSignal(result) {
+  return result.signals.some(
+    (signal) =>
+      signal.kind === "prompt-injection-attempt" &&
+      typeof signal.stableRef === "string" &&
+      signal.stableRef.length > 0,
+  );
 }
 
 function isExpectedSupervisedReview(result) {

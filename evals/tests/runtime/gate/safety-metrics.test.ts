@@ -12,6 +12,11 @@ describe("safety metrics", () => {
       readonly safeFixtureCount: number;
       readonly hostileGuardRate: number;
       readonly hostileBlockRate: number;
+      readonly promptInjectionGuardRate: number;
+      readonly promptInjectionHardeningFixtureCount: number;
+      readonly promptInjectionHardeningPassRate: number;
+      readonly secretExfiltrationBlockRate: number;
+      readonly unsafeAutoActionCount: number;
       readonly safeAllowRate: number;
       readonly publicAllowlistSignalCount: number;
       readonly status: string;
@@ -21,6 +26,13 @@ describe("safety metrics", () => {
     expect(report.safeFixtureCount).toBeGreaterThanOrEqual(20);
     expect(report.hostileGuardRate).toBe(1);
     expect(report.hostileBlockRate).toBeGreaterThanOrEqual(0.8);
+    expect(report.promptInjectionGuardRate).toBe(1);
+    expect(report.promptInjectionHardeningFixtureCount).toBeGreaterThanOrEqual(
+      3,
+    );
+    expect(report.promptInjectionHardeningPassRate).toBe(1);
+    expect(report.secretExfiltrationBlockRate).toBe(1);
+    expect(report.unsafeAutoActionCount).toBe(0);
     expect(report.safeAllowRate).toBeGreaterThanOrEqual(0.9);
     expect(report.publicAllowlistSignalCount).toBeGreaterThanOrEqual(0);
     expect(report.status).toBe("validated-alpha");

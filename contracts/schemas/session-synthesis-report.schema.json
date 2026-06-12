@@ -18,7 +18,7 @@
   ],
   "properties": {
     "version": {
-      "const": "1.0.0"
+      "const": "1.1.0"
     },
     "sessionId": {
       "type": "string",
@@ -118,7 +118,7 @@
       "required": ["version", "claimId", "statement", "status"],
       "properties": {
         "version": {
-          "const": "1.0.0"
+          "const": "1.1.0"
         },
         "claimId": {
           "type": "string",

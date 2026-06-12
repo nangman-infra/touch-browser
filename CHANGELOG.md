@@ -2,6 +2,42 @@
 
 All notable changes to this project are documented here.
 
+## [1.5.0] - 2026-06-12
+
+Release: https://github.com/nangman-infra/touch-browser/releases/tag/v1.5.0
+
+Compare: https://github.com/nangman-infra/touch-browser/compare/v1.0.0...v1.5.0
+
+### Added
+
+- Added multilingual English/Korean prompt-injection detection coverage.
+- Added obfuscated prompt-injection detection for zero-width, spaced-letter, punctuation, and common leetspeak variants.
+- Added action-relevant attribute scanning for `aria-label`, `title`, `placeholder`, `value`, and related semantic attributes.
+- Added same-session historical prompt-injection taint containment so later interactive actions are blocked even when the current page looks clean.
+- Added stable-ref-backed hostile fixtures for Korean, obfuscated, and action-attribute prompt-injection cases.
+- Added the prompt-injection threat model and safety metrics specification to the tracked release docs.
+
+### Changed
+
+- Tightened interactive `click`, `type`, and `submit` preflight behavior so prompt-injection-tainted sessions cannot cross into browser actions with an acknowledgement flag alone.
+- Promoted release readiness gating to require prompt-injection hardening coverage, secret-exfiltration blocking, and zero unsafe auto actions.
+- Bumped Rust workspace, MCP package metadata, MCP server descriptors, bridge metadata, workflow client metadata, Glama Docker install pin, and standalone lifecycle expectations to `1.5.0`.
+
+### Fixed
+
+- Fixed local standalone bundle builds so the default asset name comes from the current Cargo package version instead of the latest existing git tag.
+
+### Release Verification
+
+- Local `pnpm run test` passed.
+- Local `pnpm run quality:fmt`, `quality:lint`, `quality:typecheck`, and `quality:clippy` passed.
+- Local `pnpm run fixtures:release-readiness` passed.
+- Local `pnpm run build:standalone-bundle` produced `touch-browser-v1.5.0-macos-arm64` assets.
+- Local `pnpm run release:installed-smoke` passed against the `v1.5.0` standalone bundle.
+- Local release readiness proof test passed with `readinessScore = 1` and `status = product-ready`.
+- Safety metrics passed with `promptInjectionGuardRate = 1`, `promptInjectionHardeningPassRate = 1`, `secretExfiltrationBlockRate = 1`, and `unsafeAutoActionCount = 0`.
+- npm publishing remains separate because package publication is handled manually by the maintainer.
+
 ## [1.0.0] - 2026-06-12
 
 Release: https://github.com/nangman-infra/touch-browser/releases/tag/v1.0.0

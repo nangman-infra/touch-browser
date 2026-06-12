@@ -14,7 +14,7 @@
   ],
   "properties": {
     "version": {
-      "const": "1.0.0"
+      "const": "1.1.0"
     },
     "generatedAt": {
       "type": "string",
@@ -75,7 +75,7 @@
         "required": ["version", "claimId", "statement", "verdict"],
         "properties": {
           "version": {
-            "const": "1.0.0"
+            "const": "1.1.0"
           },
           "claimId": {
             "type": "string",
@@ -333,7 +333,7 @@
       "required": ["version", "verifier", "generatedAt", "outcomes"],
       "properties": {
         "version": {
-          "const": "1.0.0"
+          "const": "1.1.0"
         },
         "verifier": {
           "type": "string",
@@ -351,7 +351,7 @@
             "required": ["version", "claimId", "statement", "verdict"],
             "properties": {
               "version": {
-                "const": "1.0.0"
+                "const": "1.1.0"
               },
               "claimId": {
                 "type": "string",

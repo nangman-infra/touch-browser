@@ -45,14 +45,14 @@ describe("standalone lifecycle smoke", () => {
       const arch = currentArchSlug();
       const releaseA = createFakeStandaloneBundle({
         bundleWorkspace,
-        version: "v0.1.0",
+        version: "v1.5.0",
         platform,
         arch,
         binaryPath,
       });
       const releaseB = createFakeStandaloneBundle({
         bundleWorkspace,
-        version: "v0.1.1",
+        version: "v1.5.1",
         platform,
         arch,
         binaryPath,
@@ -81,7 +81,7 @@ describe("standalone lifecycle smoke", () => {
       const versionText = (
         await runShell(`${shellQuote(commandPath)} --version`, env)
       ).trim();
-      expect(versionText).toBe("touch-browser 1.0.0");
+      expect(versionText).toBe("touch-browser 1.5.0");
 
       const status = JSON.parse(
         await runShell(`${shellQuote(commandPath)} status`, env),
@@ -109,15 +109,15 @@ describe("standalone lifecycle smoke", () => {
 
       const preflight = JSON.parse(
         await runShell(
-          `${shellQuote(commandPath)} update --check --version 0.1.1`,
+          `${shellQuote(commandPath)} update --check --version 1.5.1`,
           env,
         ),
       );
-      expect(preflight.currentVersion).toBe("v0.1.0");
-      expect(preflight.targetVersion).toBe("v0.1.1");
+      expect(preflight.currentVersion).toBe("v1.5.0");
+      expect(preflight.targetVersion).toBe("v1.5.1");
       expect(preflight.updateAvailable).toBe(true);
 
-      await runShell(`${shellQuote(commandPath)} update --version 0.1.1`, env);
+      await runShell(`${shellQuote(commandPath)} update --version 1.5.1`, env);
 
       const installManifest = JSON.parse(
         readFileSync(
@@ -125,14 +125,14 @@ describe("standalone lifecycle smoke", () => {
           "utf8",
         ),
       );
-      expect(installManifest.version).toBe("v0.1.1");
+      expect(installManifest.version).toBe("v1.5.1");
       expect(installManifest.managedBundleRoot).toContain(releaseB.bundleName);
 
       const postUpdate = JSON.parse(
         await runShell(`${shellQuote(commandPath)} update --check`, env),
       );
-      expect(postUpdate.currentVersion).toBe("v0.1.1");
-      expect(postUpdate.targetVersion).toBe("v0.1.1");
+      expect(postUpdate.currentVersion).toBe("v1.5.1");
+      expect(postUpdate.targetVersion).toBe("v1.5.1");
       expect(postUpdate.updateAvailable).toBe(false);
 
       mkdirSync(path.join(dataRoot, "browser-search"), { recursive: true });

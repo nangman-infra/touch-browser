@@ -22,6 +22,7 @@ describe("release readiness", () => {
         readonly publicProofReady: boolean;
         readonly realUserEnvironmentReady: boolean;
         readonly promptInjectionGuardReady: boolean;
+        readonly promptInjectionHardeningReady: boolean;
         readonly compactTokenCostRatio: number;
       };
     }>(reportPath);
@@ -39,6 +40,7 @@ describe("release readiness", () => {
     expect(report.checks.publicProofReady).toBe(true);
     expect(report.checks.realUserEnvironmentReady).toBe(true);
     expect(report.checks.promptInjectionGuardReady).toBe(true);
+    expect(report.checks.promptInjectionHardeningReady).toBe(true);
     expect(report.checks.compactTokenCostRatio).toBeLessThan(0.7);
   });
 });

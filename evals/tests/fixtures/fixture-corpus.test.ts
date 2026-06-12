@@ -13,7 +13,7 @@ describe("fixture corpus", () => {
   it("loads the seed fixtures", async () => {
     const fixtures = await loadFixtures();
 
-    expect(fixtures).toHaveLength(34);
+    expect(fixtures).toHaveLength(37);
     expect(fixtures.map((fixture) => fixture.id)).toEqual([
       "benchmark-summary",
       "deployment-notes",
@@ -21,6 +21,7 @@ describe("fixture corpus", () => {
       "pricing",
       "release-notes",
       "sla-overview",
+      "attribute-prompt-injection",
       "credential-warning",
       "fake-consent-wall",
       "fake-download-banner",
@@ -28,6 +29,8 @@ describe("fixture corpus", () => {
       "fake-upgrade-modal",
       "hidden-instruction",
       "hidden-prompt-banner",
+      "korean-prompt-injection",
+      "obfuscated-prompt-injection",
       "api-reference",
       "browser-captcha-checkpoint",
       "browser-expand",

@@ -77,6 +77,17 @@ write_checksum() {
   exit 1
 }
 
+default_bundle_version() {
+  local pkgid
+  pkgid="$(cargo pkgid -p touch-browser-cli)"
+  local version="${pkgid##*@}"
+  if [[ -z "${version}" || "${version}" == "${pkgid}" ]]; then
+    echo "Could not determine touch-browser-cli package version from cargo pkgid: ${pkgid}" >&2
+    exit 1
+  fi
+  echo "v${version}"
+}
+
 require_command cargo
 require_command pnpm
 require_command node
@@ -87,7 +98,7 @@ REPO_ROOT="$(CDPATH= cd -- "$(dirname -- "${BASH_SOURCE[0]}")/.." && pwd)"
 if [[ "${1:-}" == "--" ]]; then
   shift
 fi
-VERSION="${1:-${TOUCH_BROWSER_BUNDLE_VERSION:-$(git -C "${REPO_ROOT}" describe --tags --always 2>/dev/null || echo dev)}}"
+VERSION="${1:-${TOUCH_BROWSER_BUNDLE_VERSION:-$(default_bundle_version)}}"
 PLATFORM="${TOUCH_BROWSER_BUNDLE_PLATFORM:-$(normalize_platform)}"
 ARCH="${TOUCH_BROWSER_BUNDLE_ARCH:-$(normalize_arch)}"
 BUNDLE_PROFILE="${TOUCH_BROWSER_BUNDLE_PROFILE:-slim}"

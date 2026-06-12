@@ -50,6 +50,7 @@ pub(crate) fn semantic_attributes(
         "script" => insert_script_attributes(node, &mut attributes),
         "h1" | "h2" | "h3" | "h4" | "h5" | "h6" => insert_heading_attributes(tag, &mut attributes),
         "a" => insert_link_attributes(node, &mut attributes),
+        "button" => insert_action_attributes(node, &mut attributes),
         "ul" | "ol" => insert_list_attributes(node, tag, &mut attributes)?,
         "table" => insert_table_attributes(node, &mut attributes)?,
         "form" => insert_form_attributes(node, &mut attributes)?,
@@ -557,6 +558,17 @@ fn insert_link_attributes(node: &NodeRef, attributes: &mut BTreeMap<String, Valu
         if let Some(href) = attrs.get("href") {
             attributes.insert("href".to_string(), json!(href));
             attributes.insert("external".to_string(), json!(is_external_href(href)));
+        }
+    }
+}
+
+fn insert_action_attributes(node: &NodeRef, attributes: &mut BTreeMap<String, Value>) {
+    if let Some(element) = node.as_element() {
+        let attrs = element.attributes.borrow();
+        for key in ["aria-label", "title", "name", "value"] {
+            if let Some(value) = attrs.get(key) {
+                attributes.insert(key.to_string(), json!(value));
+            }
         }
     }
 }

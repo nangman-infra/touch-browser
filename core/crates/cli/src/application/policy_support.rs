@@ -10,6 +10,10 @@ use super::deps::{
     PolicyReport, ReadOnlySession, SessionCommandOutput, SnapshotBlock, SnapshotDocument,
     SourceRisk, CONTRACT_VERSION,
 };
+use touch_browser_contracts::{
+    PolicyDecision, PolicyRiskSummary, PolicySignal, PolicySignalKind, PolicySignalOrigin,
+    RiskClass,
+};
 
 fn current_snapshot_ref_is_sensitive(session: &ReadOnlySession, target_ref: &str) -> bool {
     let Some(block) = session.snapshots.iter().rev().find_map(|record| {
@@ -58,6 +62,67 @@ pub(crate) fn current_policy_with_allowlist(
             allowlisted_domains,
         )
     })
+}
+
+#[derive(Debug, Clone)]
+struct SessionPromptInjectionTaint {
+    source_url: String,
+    stable_ref: Option<String>,
+    detail: String,
+}
+
+fn historical_prompt_injection_taint(
+    session: &ReadOnlySession,
+    kernel: &PolicyKernel,
+    allowlisted_domains: &[String],
+) -> Option<SessionPromptInjectionTaint> {
+    let current_snapshot_id = session
+        .current_snapshot_record()
+        .map(|record| record.snapshot_id.as_str());
+
+    session
+        .snapshots
+        .iter()
+        .rev()
+        .filter(|record| Some(record.snapshot_id.as_str()) != current_snapshot_id)
+        .find_map(|record| {
+            let report = kernel.evaluate_snapshot_with_allowlist(
+                &record.snapshot,
+                record.source_risk.clone(),
+                allowlisted_domains,
+            );
+            report
+                .signals
+                .iter()
+                .find(|signal| signal.kind == PolicySignalKind::PromptInjectionAttempt)
+                .map(|signal| SessionPromptInjectionTaint {
+                    source_url: record.snapshot.source.source_url.clone(),
+                    stable_ref: signal.stable_ref.clone(),
+                    detail: signal.detail.clone(),
+                })
+        })
+}
+
+fn policy_with_historical_prompt_injection_taint(
+    mut policy: PolicyReport,
+    taint: &SessionPromptInjectionTaint,
+) -> PolicyReport {
+    policy.decision = PolicyDecision::Block;
+    policy.risk_class = RiskClass::Blocked;
+    policy.action_risk = PolicyRiskSummary {
+        decision: PolicyDecision::Block,
+        risk_class: RiskClass::Blocked,
+    };
+    policy.signals.push(PolicySignal {
+        kind: PolicySignalKind::PromptInjectionAttempt,
+        origin: PolicySignalOrigin::PolicyBoundary,
+        stable_ref: taint.stable_ref.clone(),
+        detail: format!(
+            "Historical prompt-injection taint from {}: {}",
+            taint.source_url, taint.detail
+        ),
+    });
+    policy
 }
 
 pub(crate) fn succeed_action<T: Serialize>(
@@ -719,6 +784,42 @@ pub(crate) fn preflight_interactive_action(
             ActionFailureKind::PolicyBlocked,
             "Interactive browser actions are blocked on hostile sources.",
             Some(policy),
+        );
+        return Some(SessionCommandOutput {
+            action: action_result.clone(),
+            result: action_result,
+            session_state: persisted.session.state.clone(),
+            session_file: session_file.display().to_string(),
+        });
+    }
+
+    if policy.signals.iter().any(|signal| {
+        signal.kind == touch_browser_contracts::PolicySignalKind::PromptInjectionAttempt
+    }) {
+        let action_result = reject_action(
+            action,
+            ActionFailureKind::PolicyBlocked,
+            "Interactive browser actions are blocked when the current page contains prompt-injection instructions.",
+            Some(policy),
+        );
+        return Some(SessionCommandOutput {
+            action: action_result.clone(),
+            result: action_result,
+            session_state: persisted.session.state.clone(),
+            session_file: session_file.display().to_string(),
+        });
+    }
+
+    if let Some(taint) = historical_prompt_injection_taint(
+        &persisted.session,
+        kernel,
+        &persisted.allowlisted_domains,
+    ) {
+        let action_result = reject_action(
+            action,
+            ActionFailureKind::PolicyBlocked,
+            "Interactive browser actions are blocked because this browser session previously observed prompt-injection instructions.",
+            Some(policy_with_historical_prompt_injection_taint(policy, &taint)),
         );
         return Some(SessionCommandOutput {
             action: action_result.clone(),

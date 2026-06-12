@@ -152,7 +152,7 @@ describe("contract schemas", () => {
         registry,
         "acquisition-record.schema.json",
       )({
-        version: "1.0.0",
+        version: "1.1.0",
         requestedUrl: "https://example.com/docs#getting-started",
         finalUrl: "https://example.com/docs",
         sourceType: "http",
@@ -171,7 +171,7 @@ describe("contract schemas", () => {
         registry,
         "snapshot-document.schema.json",
       )({
-        version: "1.0.0",
+        version: "1.1.0",
         stableRefVersion: "1",
         source: {
           sourceUrl: "fixture://research/static-docs/getting-started",
@@ -186,7 +186,7 @@ describe("contract schemas", () => {
         },
         blocks: [
           {
-            version: "1.0.0",
+            version: "1.1.0",
             id: "b1",
             kind: "metadata",
             ref: "rhead:metadata:touch-browser-docs-getting-started",
@@ -213,7 +213,7 @@ describe("contract schemas", () => {
         registry,
         "snapshot-block.schema.json",
       )({
-        version: "1.0.0",
+        version: "1.1.0",
         id: "b17",
         kind: "link",
         ref: "rnav:docs",
@@ -236,7 +236,7 @@ describe("contract schemas", () => {
         registry,
         "evidence-block.schema.json",
       )({
-        version: "1.0.0",
+        version: "1.1.0",
         claimId: "c12",
         statement: "The page offers monthly plans.",
         support: ["b21", "b22"],
@@ -256,7 +256,7 @@ describe("contract schemas", () => {
         registry,
         "unsupported-claim.schema.json",
       )({
-        version: "1.0.0",
+        version: "1.1.0",
         claimId: "c99",
         statement: "The page contains an Enterprise plan.",
         reason: "no-supporting-block",
@@ -269,7 +269,7 @@ describe("contract schemas", () => {
         registry,
         "evidence-report.schema.json",
       )({
-        version: "1.0.0",
+        version: "1.1.0",
         generatedAt: "2026-03-14T12:00:00+09:00",
         source: {
           sourceUrl: "fixture://research/citation-heavy/pricing",
@@ -279,7 +279,7 @@ describe("contract schemas", () => {
         },
         evidenceSupportedClaims: [
           {
-            version: "1.0.0",
+            version: "1.1.0",
             claimId: "c1",
             statement: "The Starter plan costs $29 per month.",
             support: ["b3", "b4"],
@@ -295,7 +295,7 @@ describe("contract schemas", () => {
         ],
         contradictedClaims: [
           {
-            version: "1.0.0",
+            version: "1.1.0",
             claimId: "c3",
             statement: "The Starter plan costs $99 per day.",
             reason: "numeric-mismatch",
@@ -304,7 +304,7 @@ describe("contract schemas", () => {
         ],
         insufficientEvidenceClaims: [
           {
-            version: "1.0.0",
+            version: "1.1.0",
             claimId: "c2",
             statement: "There is an Enterprise plan.",
             reason: "no-supporting-block",
@@ -312,7 +312,7 @@ describe("contract schemas", () => {
         ],
         needsMoreBrowsingClaims: [
           {
-            version: "1.0.0",
+            version: "1.1.0",
             claimId: "c4",
             statement: "The plan is available in all regions.",
             reason: "needs-more-browsing",
@@ -322,7 +322,7 @@ describe("contract schemas", () => {
         ],
         claimOutcomes: [
           {
-            version: "1.0.0",
+            version: "1.1.0",
             claimId: "c1",
             statement: "The Starter plan costs $29 per month.",
             verdict: "evidence-supported",
@@ -337,7 +337,7 @@ describe("contract schemas", () => {
             },
           },
           {
-            version: "1.0.0",
+            version: "1.1.0",
             claimId: "c4",
             statement: "The plan is available in all regions.",
             verdict: "needs-more-browsing",
@@ -388,7 +388,7 @@ describe("contract schemas", () => {
         registry,
         "action-command.schema.json",
       )({
-        version: "1.0.0",
+        version: "1.1.0",
         action: "open",
         targetUrl: "https://example.com/docs",
         riskClass: "low",
@@ -401,7 +401,7 @@ describe("contract schemas", () => {
         registry,
         "action-result.schema.json",
       )({
-        version: "1.0.0",
+        version: "1.1.0",
         action: "open",
         status: "succeeded",
         payloadType: "snapshot-document",
@@ -434,7 +434,7 @@ describe("contract schemas", () => {
         registry,
         "session-state.schema.json",
       )({
-        version: "1.0.0",
+        version: "1.1.0",
         sessionId: "sresearch001",
         mode: "read-only",
         status: "active",
@@ -453,7 +453,7 @@ describe("contract schemas", () => {
         registry,
         "replay-transcript.schema.json",
       )({
-        version: "1.0.0",
+        version: "1.1.0",
         sessionId: "sresearch001",
         entries: [
           {
@@ -462,7 +462,7 @@ describe("contract schemas", () => {
             kind: "observation",
             payloadType: "acquisition-record",
             payload: {
-              version: "1.0.0",
+              version: "1.1.0",
               requestedUrl: "https://example.com/docs#getting-started",
               finalUrl: "https://example.com/docs",
               sourceType: "http",
@@ -523,7 +523,7 @@ describe("contract schemas", () => {
     );
     expect(
       invalidSnapshot({
-        version: "1.0.0",
+        version: "1.1.0",
         id: "block-1",
         kind: "link",
         ref: "r1",
@@ -543,7 +543,7 @@ describe("contract schemas", () => {
     );
     expect(
       invalidAction({
-        version: "1.0.0",
+        version: "1.1.0",
         action: "open",
         riskClass: "low",
         reason: "Missing target URL",
