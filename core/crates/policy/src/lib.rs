@@ -574,7 +574,7 @@ fn block_matches_high_risk_write(block: &SnapshotBlock) -> bool {
     }
 
     let lowered = block_signal_text(block);
-    contains_any_phrase(
+    contains_any_word_phrase(
         &lowered,
         &[
             "checkout",
@@ -693,6 +693,16 @@ fn contains_any_phrase(haystack: &str, needles: &[&str]) -> bool {
 
         let compact_needle = normalize_phrase_compact(needle);
         compact_needle.len() >= 8 && compact_haystack.contains(&compact_needle)
+    })
+}
+
+fn contains_any_word_phrase(haystack: &str, needles: &[&str]) -> bool {
+    let normalized_haystack = normalize_phrase_words(haystack);
+    let padded_haystack = format!(" {normalized_haystack} ");
+
+    needles.iter().any(|needle| {
+        let normalized_needle = normalize_phrase_words(needle);
+        !normalized_needle.is_empty() && padded_haystack.contains(&format!(" {normalized_needle} "))
     })
 }
 
@@ -904,6 +914,31 @@ mod tests {
             signal.kind == PolicySignalKind::HighRiskWrite
                 && signal.origin == PolicySignalOrigin::LiveHeuristic
         }));
+    }
+
+    #[test]
+    fn allows_check_out_learning_link_without_checkout_write_signal() {
+        let snapshot = synthetic_snapshot(vec![synthetic_block(
+            SnapshotBlockKind::Link,
+            "rnav:link:learning-path",
+            "Check out the video course from Scrimba, our partner",
+            BTreeMap::from([
+                (
+                    "href".to_string(),
+                    json!("https://scrimba.com/frontend-path-c0j?via=mdn-learn-navbar"),
+                ),
+                ("tagName".to_string(), json!("a")),
+                ("zone".to_string(), json!("nav")),
+            ]),
+        )]);
+
+        let report = PolicyKernel.evaluate_snapshot(&snapshot, SourceRisk::Low);
+
+        assert_eq!(report.decision, PolicyDecision::Allow);
+        assert!(report
+            .signals
+            .iter()
+            .all(|signal| signal.kind != PolicySignalKind::HighRiskWrite));
     }
 
     #[test]
