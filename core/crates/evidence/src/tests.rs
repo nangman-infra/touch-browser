@@ -529,21 +529,42 @@ fn moon_landing_snapshot(blocks: Vec<SnapshotBlock>) -> SnapshotDocument {
 }
 
 fn rfc2606_reserved_tlds_snapshot() -> SnapshotDocument {
+    let url = "https://www.rfc-editor.org/rfc/rfc2606.html";
     snapshot_document(
-        "https://www.rfc-editor.org/rfc/rfc2606.html",
+        url,
         SourceType::Http,
         "RFC 2606",
         1024,
         256,
-        vec![text_block(
-            "https://www.rfc-editor.org/rfc/rfc2606.html",
-            SourceType::Http,
-            "b1",
-            "rbody:text:rfc-2606-reserved-top-level-dns-names-june-1999",
-            SnapshotBlockRole::Content,
-            "RFC 2606 Reserved Top Level DNS Names June 1999. RFC 2606 reserves the .test, .example, .invalid, and .localhost top-level domain names. IANA has agreed to the four top level domain name reservations specified in this document and will reserve them for the uses indicated.",
-            "html > body > pre",
-        )],
+        vec![
+            text_block(
+                url,
+                SourceType::Http,
+                "b1",
+                "rmain:text:network-working-group-d-eastlake-request-for-com",
+                SnapshotBlockRole::Content,
+                "Abstract To reduce the likelihood of conflict and confusion, a few top level domain names are reserved for use in private testing, as examples in documentation, and the like.",
+                "html > body > pre",
+            ),
+            text_block(
+                url,
+                SourceType::Http,
+                "b16",
+                "rmain:text:rfc-2606-reserved-top-level-dns-names-june-1999",
+                SnapshotBlockRole::Content,
+                "RFC 2606 Reserved Top Level DNS Names June 1999. TLDs for Testing, & Documentation Examples. To safely satisfy these needs, four domain names are reserved as listed and described below. .test .example .invalid .localhost. \".test\" is recommended for use in testing of current or new DNS related code. \".example\" is recommended for use in documentation or as examples. \".invalid\" is intended for use in online construction of domain names that are sure to be invalid. The \".localhost\" TLD has traditionally been statically defined in host DNS implementations.",
+                "html > body > pre",
+            ),
+            text_block(
+                url,
+                SourceType::Http,
+                "b20",
+                "rmain:text:rfc-2606-reserved-top-level-dns-names-june-1999-2",
+                SnapshotBlockRole::Content,
+                "RFC 2606 Reserved Top Level DNS Names June 1999. IANA Considerations IANA has agreed to the four top level domain name reservations specified in this document and will reserve them for the uses indicated.",
+                "html > body > pre",
+            ),
+        ],
     )
 }
 
@@ -751,6 +772,13 @@ fn supports_rfc_tld_claim_when_all_domain_literals_are_present() {
     );
 
     assert_supported_only(&report);
+    assert_eq!(
+        report.claim_outcomes[0]
+            .primary_support_snippet
+            .as_ref()
+            .map(|snippet| snippet.block_id.as_str()),
+        Some("b16")
+    );
 }
 
 #[test]

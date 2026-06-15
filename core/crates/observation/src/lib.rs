@@ -209,7 +209,7 @@ fn collect_candidates(
             continue;
         }
 
-        let zone = semantic_zone(&node, &tag);
+        let zone = effective_semantic_zone(&node, &tag, &text);
         let kind = semantic_kind(&tag);
         let role = semantic_role(&node, &tag, zone);
         let slug = candidate_slug(&node, &tag, &text);
@@ -251,6 +251,15 @@ fn collect_candidates(
 
     candidates.sort_by_key(|candidate| candidate.order);
     Ok(candidates)
+}
+
+fn effective_semantic_zone(node: &NodeRef, tag: &str, text: &str) -> &'static str {
+    let zone = semantic_zone(node, tag);
+    if zone == "body" && tag == "pre" && !text.trim().is_empty() {
+        "main"
+    } else {
+        zone
+    }
 }
 
 #[cfg(test)]

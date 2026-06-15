@@ -53,6 +53,7 @@ pub(crate) fn analyze_claim<'a>(
     let scoring_context = build_scoring_context(blocks, matching_profile.claim_tokens);
     let mut scored = score_candidates(
         blocks,
+        &claim.statement,
         &analysis.normalized_claim,
         matching_profile.claim_tokens,
         &analysis.claim_qualifier_tokens,
@@ -144,7 +145,7 @@ pub(crate) fn analyze_claim<'a>(
         return resolution;
     }
 
-    supported_resolution(effective_score, top_support, checked_refs)
+    supported_resolution(claim, effective_score, top_support, checked_refs)
 }
 
 fn guard_claim_tokens(

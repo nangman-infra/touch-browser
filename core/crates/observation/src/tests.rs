@@ -306,10 +306,18 @@ Reserved Top Level DNS Names
         pre_body.kind,
         touch_browser_contracts::SnapshotBlockKind::Text
     );
+    assert!(
+        pre_body.stable_ref.starts_with("rmain:text:"),
+        "document-like top-level pre blocks should be promoted to the main reading region"
+    );
     assert!(pre_body.text.contains(".test"));
     assert!(pre_body.text.contains(".example"));
     assert!(pre_body.text.contains(".invalid"));
     assert!(pre_body.text.contains(".localhost"));
+    assert!(matches!(
+        pre_body.attributes.get("zone"),
+        Some(serde_json::Value::String(zone)) if zone == "main"
+    ));
     assert!(matches!(
         pre_body.attributes.get("tagName"),
         Some(serde_json::Value::String(tag)) if tag == "pre"

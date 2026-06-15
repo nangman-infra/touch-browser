@@ -126,6 +126,9 @@
         "supported": true,
         "contradicted": false,
         "needsMoreBrowsing": true,
+        "diagnostics": {
+          "minMainBlockCount": 1
+        },
         "policy": {
           "pageDecision": "allow",
           "actionDecision": "allow"

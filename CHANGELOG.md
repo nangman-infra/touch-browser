@@ -2,6 +2,39 @@
 
 All notable changes to this project are documented here.
 
+## [1.5.4] - 2026-06-16
+
+Release: https://github.com/nangman-infra/touch-browser/releases/tag/v1.5.4
+
+Compare: https://github.com/nangman-infra/touch-browser/compare/v1.5.3...v1.5.4
+
+### Fixed
+
+- Promoted document-like top-level `<pre>` blocks to the main reading region so RFC pages without `<main>` or `<article>` no longer report `mainBlockCount = 0`.
+- Tightened DNS literal support ordering so claims about multiple reserved TLDs use the block that directly lists those literals as primary support.
+- Strengthened the live RFC 2606 public-web QA gate to require at least one main-region block, not just the expected verdict labels.
+- Updated the RFC 2606 evidence regression fixture to mirror the live page shape with separate TLD-list and IANA-considerations blocks.
+
+### Changed
+
+- Bumped Rust workspace, MCP package metadata, MCP server descriptors, bridge metadata, workflow client metadata, Glama Docker install pin, and standalone lifecycle expectations to `1.5.4`.
+
+### Release Verification
+
+- Local `cargo fmt --check` passed.
+- Local `cargo test -p touch-browser-observation -- --nocapture` passed.
+- Local `cargo test -p touch-browser-evidence -- --nocapture` passed.
+- Local `pnpm run quality:ci` passed.
+- Local `pnpm run architecture:check` passed.
+- Local `pnpm run fixtures:release-readiness` passed.
+- Local release readiness proof test passed with `readinessScore = 1` and `status = product-ready`.
+- Local `pnpm run mcp:package:check` passed for `@nangman-infra/touch-browser-mcp@1.5.4`.
+- Local `pnpm run quality:test:evals:public-web` passed against fixture, MDN, Chrome Developers, IANA, and RFC 2606 coverage.
+- Local `pnpm run build:standalone-bundle` produced `touch-browser-v1.5.4-macos-arm64` assets.
+- Local `pnpm run release:installed-smoke` passed against the `v1.5.4` standalone bundle.
+- Local live RFC 2606 regression check returns `mainBlockCount = 4`, `qualityLabel = high`, `evidence-supported`, `high`, `reuseAllowed = true`, and primary support `b16` for `.test/.example/.invalid/.localhost`; `.prod` remains `needs-more-browsing`, `reuseAllowed = false`.
+- npm publishing remains separate because package publication is handled manually by the maintainer.
+
 ## [1.5.3] - 2026-06-15
 
 Release: https://github.com/nangman-infra/touch-browser/releases/tag/v1.5.3

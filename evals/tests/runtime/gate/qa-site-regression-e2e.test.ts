@@ -42,6 +42,9 @@ type QaSiteScenario = {
     supported: boolean;
     contradicted: boolean;
     needsMoreBrowsing: boolean;
+    diagnostics?: {
+      minMainBlockCount?: number;
+    };
     policy: {
       pageDecision: PolicyDecision;
       actionDecision: PolicyDecision;
@@ -50,6 +53,9 @@ type QaSiteScenario = {
 };
 
 type ExtractResult = {
+  diagnostics?: {
+    mainBlockCount?: number;
+  };
   extract: {
     output: {
       claimOutcomes: Array<{
@@ -235,6 +241,12 @@ function assertScenarioExtract(site: QaSiteScenario, extract: ExtractResult) {
   expect(
     (extract.extract.output.needsMoreBrowsingClaims ?? []).length > 0,
   ).toBe(site.expected.needsMoreBrowsing);
+
+  if (typeof site.expected.diagnostics?.minMainBlockCount === "number") {
+    expect(extract.diagnostics?.mainBlockCount ?? 0).toBeGreaterThanOrEqual(
+      site.expected.diagnostics.minMainBlockCount,
+    );
+  }
 }
 
 async function runTouchBrowserJson<T>(args: string[]): Promise<T> {

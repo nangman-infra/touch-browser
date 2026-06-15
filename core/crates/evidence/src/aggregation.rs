@@ -9,7 +9,10 @@ use touch_browser_contracts::{
 use crate::{
     analyzer::ClaimResolution,
     normalization::ClaimAnalysisInput,
-    scoring::{is_narrative_aggregate_block, round_confidence, ScoredCandidate, ScoringContext},
+    scoring::{
+        domain_literal_match_coverage, is_narrative_aggregate_block, round_confidence,
+        ScoredCandidate, ScoringContext,
+    },
     semantic_matching::score_nli_pairs,
     ClaimRequest,
 };
@@ -360,13 +363,15 @@ pub(crate) fn guarded_resolution<'a>(
 }
 
 pub(crate) fn supported_resolution<'a>(
+    claim: &ClaimRequest,
     effective_score: f64,
     top_support: Vec<ScoredCandidate<'a>>,
     checked_refs: Vec<String>,
 ) -> ClaimResolution<'a> {
+    let support = prioritize_direct_literal_support(&claim.statement, top_support);
     let confidence = round_confidence(
         effective_score.max(
-            top_support
+            support
                 .iter()
                 .map(|candidate| candidate.score)
                 .fold(0.0, f64::max),
@@ -375,13 +380,45 @@ pub(crate) fn supported_resolution<'a>(
 
     ClaimResolution {
         verdict: EvidenceClaimVerdict::EvidenceSupported,
-        support: top_support,
+        support,
         confidence: Some(confidence),
         reason: None,
         checked_refs,
         guard_failures: Vec::new(),
         next_action_hint: None,
     }
+}
+
+fn prioritize_direct_literal_support<'a>(
+    raw_claim: &str,
+    support: Vec<ScoredCandidate<'a>>,
+) -> Vec<ScoredCandidate<'a>> {
+    let Some((_, total_literals)) = domain_literal_match_coverage(raw_claim, raw_claim) else {
+        return support;
+    };
+    let Some((best_index, _)) = support
+        .iter()
+        .enumerate()
+        .filter_map(|(index, candidate)| {
+            let (matched, total) = domain_literal_match_coverage(raw_claim, &candidate.block.text)?;
+            (total == total_literals && matched == total).then_some((index, candidate.score))
+        })
+        .max_by(|left, right| {
+            left.1
+                .partial_cmp(&right.1)
+                .unwrap_or(std::cmp::Ordering::Equal)
+        })
+    else {
+        return support;
+    };
+    if best_index == 0 {
+        return support;
+    }
+
+    let mut reordered = support;
+    let primary = reordered.remove(best_index);
+    reordered.insert(0, primary);
+    reordered
 }
 
 fn support_requires_additional_confirmation(

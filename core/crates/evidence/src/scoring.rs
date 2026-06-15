@@ -40,6 +40,7 @@ pub(crate) struct CandidateMatchSignals {
 }
 
 struct CandidateScoringInput<'a> {
+    raw_claim: &'a str,
     normalized_claim: &'a str,
     claim_tokens: &'a [String],
     claim_qualifier_tokens: &'a [String],
@@ -49,6 +50,7 @@ struct CandidateScoringInput<'a> {
 
 pub(crate) fn score_candidates<'a>(
     blocks: &'a [SnapshotBlock],
+    raw_claim: &str,
     normalized_claim: &str,
     claim_tokens: &[String],
     claim_qualifier_tokens: &[String],
@@ -56,6 +58,7 @@ pub(crate) fn score_candidates<'a>(
     scoring_context: &ScoringContext,
 ) -> Vec<ScoredCandidate<'a>> {
     let input = CandidateScoringInput {
+        raw_claim,
         normalized_claim,
         claim_tokens,
         claim_qualifier_tokens,
@@ -361,6 +364,8 @@ fn score_block_candidates<'a>(
             let control_bonus = ui_control_bonus(blocks, index, input.claim_tokens, block);
             let structural_adjustment = block_structural_adjustment(block);
             let reference_index_adjustment = reference_index_adjustment(block);
+            let literal_alignment_bonus =
+                domain_literal_alignment_bonus(input.raw_claim, &search_text);
             let qualifier_adjustment =
                 qualifier_alignment_adjustment(input.claim_qualifier_tokens, &search_text);
             let qualified_numeric_limit_adjustment = qualified_numeric_limit_adjustment(
@@ -384,6 +389,7 @@ fn score_block_candidates<'a>(
                 + control_bonus
                 + structural_adjustment
                 + reference_index_adjustment
+                + literal_alignment_bonus
                 + qualifier_adjustment
                 + qualified_numeric_limit_adjustment
                 + version_noise_penalty
@@ -504,6 +510,63 @@ fn qualified_numeric_limit_adjustment(
         SnapshotBlockKind::List => -0.05,
         _ => 0.0,
     }
+}
+
+fn domain_literal_alignment_bonus(raw_claim: &str, support_text: &str) -> f64 {
+    let Some((matched, total)) = domain_literal_match_coverage(raw_claim, support_text) else {
+        return 0.0;
+    };
+    if matched == total {
+        0.18
+    } else if matched > 0 {
+        (matched as f64 / total as f64) * 0.06
+    } else {
+        0.0
+    }
+}
+
+pub(crate) fn domain_literal_match_coverage(
+    raw_claim: &str,
+    support_text: &str,
+) -> Option<(usize, usize)> {
+    let claim_literals = extract_dot_prefixed_domain_literals(raw_claim);
+    if claim_literals.len() < 2 {
+        return None;
+    }
+
+    let support_literals = extract_dot_prefixed_domain_literals(support_text);
+    let matched = claim_literals
+        .iter()
+        .filter(|literal| support_literals.contains(*literal))
+        .count();
+
+    Some((matched, claim_literals.len()))
+}
+
+fn extract_dot_prefixed_domain_literals(text: &str) -> BTreeSet<String> {
+    text.split_whitespace()
+        .filter_map(normalize_dot_prefixed_domain_literal)
+        .collect()
+}
+
+fn normalize_dot_prefixed_domain_literal(raw: &str) -> Option<String> {
+    let token = raw
+        .trim_matches(|character: char| {
+            matches!(
+                character,
+                '"' | '\'' | '`' | ',' | ';' | ':' | '(' | ')' | '[' | ']' | '{' | '}'
+            )
+        })
+        .trim_end_matches(['.', '!', '?'])
+        .to_ascii_lowercase();
+    let label = token.strip_prefix('.')?;
+    if label.len() < 2 || label.len() > 63 {
+        return None;
+    }
+    label
+        .chars()
+        .all(|character| character.is_ascii_alphanumeric() || character == '-')
+        .then_some(token)
 }
 
 pub(crate) fn semantic_similarity_bonus(semantic_similarity: f64, lexical_overlap: f64) -> f64 {
