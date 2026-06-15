@@ -97,6 +97,42 @@
       }
     },
     {
+      "id": "rfc2606-preformatted-body",
+      "label": "RFC 2606 preformatted body",
+      "target": "https://www.rfc-editor.org/rfc/rfc2606.html",
+      "mode": "stateless-extract",
+      "budget": 12000,
+      "claims": [
+        {
+          "statement": "RFC 2606 reserves the .test, .example, .invalid, and .localhost top-level domain names.",
+          "expectedVerdict": "evidence-supported"
+        },
+        {
+          "statement": "RFC 2606 reserves the .prod top-level domain name.",
+          "expectedVerdict": "needs-more-browsing"
+        }
+      ],
+      "readView": {
+        "mustContain": [
+          "To safely satisfy these needs, four domain names are reserved",
+          ".localhost"
+        ],
+        "mustNotContain": [
+          "Page not found",
+          "502 Bad Gateway"
+        ]
+      },
+      "expected": {
+        "supported": true,
+        "contradicted": false,
+        "needsMoreBrowsing": true,
+        "policy": {
+          "pageDecision": "allow",
+          "actionDecision": "allow"
+        }
+      }
+    },
+    {
       "id": "multi-page-follow-flow",
       "label": "Multi-page follow flow",
       "target": "fixture://research/navigation/browser-follow",

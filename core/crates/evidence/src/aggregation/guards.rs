@@ -142,6 +142,11 @@ pub(super) fn assess_support_guards(
     apply_guard_check(
         &mut contradiction_reason,
         &mut guard_failures,
+        literal_support_guard_check(&claim.statement, &aggregated_text, top_support),
+    );
+    apply_guard_check(
+        &mut contradiction_reason,
+        &mut guard_failures,
         numeric_guard_check(
             &claim.statement,
             &aggregated_text,
@@ -372,6 +377,139 @@ fn support_contains_claim_anchor(
             .iter()
             .any(|support_token| tokens_match(claim_token, support_token))
     })
+}
+
+fn literal_support_guard_check(
+    claim_text: &str,
+    aggregated_text: &str,
+    top_support: &[ScoredCandidate<'_>],
+) -> GuardCheck {
+    let claim_literals = domain_literals_requiring_exact_support(claim_text);
+    if claim_literals.is_empty() {
+        return GuardCheck {
+            contradiction_reason: None,
+            failure: None,
+        };
+    }
+
+    let support_literals =
+        extract_domain_literals(&literal_guard_support_text(aggregated_text, top_support));
+    let missing_literals = claim_literals
+        .iter()
+        .filter(|literal| !support_literals.contains(*literal))
+        .cloned()
+        .collect::<Vec<_>>();
+
+    if missing_literals.is_empty() {
+        return GuardCheck {
+            contradiction_reason: None,
+            failure: None,
+        };
+    }
+
+    GuardCheck {
+        contradiction_reason: None,
+        failure: Some(EvidenceGuardFailure {
+            kind: EvidenceGuardKind::Predicate,
+            detail: format!(
+                "The claim requires exact domain literal support for {:?}, but those literals were not found in the retrieved support.",
+                missing_literals
+            ),
+        }),
+    }
+}
+
+fn literal_guard_support_text(
+    aggregated_text: &str,
+    top_support: &[ScoredCandidate<'_>],
+) -> String {
+    let mut parts = vec![aggregated_text.to_string()];
+    let mut seen_blocks = BTreeSet::new();
+
+    for candidate in top_support {
+        if seen_blocks.insert(candidate.block.id.clone()) {
+            parts.push(block_search_text(candidate.block));
+        }
+    }
+
+    parts.join(" ")
+}
+
+fn domain_literals_requiring_exact_support(text: &str) -> Vec<String> {
+    let tokens = tokenize_all(text);
+    if !tokens
+        .iter()
+        .any(|token| DOMAIN_CONTEXT_TOKENS.contains(&token.as_str()))
+    {
+        return Vec::new();
+    }
+
+    extract_domain_literals(text).into_iter().collect()
+}
+
+fn extract_domain_literals(text: &str) -> BTreeSet<String> {
+    text.split_whitespace()
+        .filter_map(normalize_domain_literal)
+        .collect()
+}
+
+fn normalize_domain_literal(raw: &str) -> Option<String> {
+    let token = raw
+        .trim_matches(|character: char| {
+            matches!(
+                character,
+                '"' | '\'' | '`' | ',' | ';' | ':' | '(' | ')' | '[' | ']' | '{' | '}'
+            )
+        })
+        .trim_end_matches(['.', '!', '?'])
+        .to_ascii_lowercase();
+
+    if token.starts_with('.') {
+        let label = token.trim_start_matches('.');
+        if is_dns_label(label)
+            && label
+                .chars()
+                .any(|character| character.is_ascii_alphabetic())
+        {
+            return Some(format!(".{label}"));
+        }
+        return None;
+    }
+
+    let hostname = token
+        .strip_prefix("https://")
+        .or_else(|| token.strip_prefix("http://"))
+        .unwrap_or(&token)
+        .split('/')
+        .next()
+        .unwrap_or("");
+
+    if !hostname.contains('.') {
+        return None;
+    }
+
+    let labels = hostname.split('.').collect::<Vec<_>>();
+    if labels.len() < 2 || labels.iter().any(|label| !is_dns_label(label)) {
+        return None;
+    }
+    if !hostname
+        .chars()
+        .any(|character| character.is_ascii_alphabetic())
+    {
+        return None;
+    }
+
+    Some(hostname.to_string())
+}
+
+fn is_dns_label(label: &str) -> bool {
+    !label.is_empty()
+        && label.len() <= 63
+        && !label.starts_with('-')
+        && !label.ends_with('-')
+        && label
+            .chars()
+            .all(|character| character.is_ascii_alphanumeric() || character == '-')
 }
 
 fn qualifier_guard_check(
@@ -1701,6 +1839,17 @@ const UNIVERSAL_SCOPE_TOKENS: &[&str] =
 const EXCLUSIVE_SCOPE_TOKENS: &[&str] = &["only", "exclusive", "solely"];
 const LIMITED_SCOPE_TOKENS: &[&str] = &[
     "selected", "some", "certain", "regional", "region", "varies", "subset", "specific",
+];
+const DOMAIN_CONTEXT_TOKENS: &[&str] = &[
+    "dns",
+    "domain",
+    "domains",
+    "hostname",
+    "hostnames",
+    "tld",
+    "tlds",
+    "zone",
+    "zones",
 ];
 const PREVIEW_STATUS_TOKENS: &[&str] = &["preview", "beta", "alpha", "experimental", "prelaunch"];
 const GA_STATUS_TOKENS: &[&str] = &["launched", "generally", "ga"];

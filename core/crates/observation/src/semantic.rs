@@ -190,6 +190,7 @@ fn is_semantic_tag(tag: &str) -> bool {
             | "a"
             | "ul"
             | "ol"
+            | "pre"
             | "table"
             | "form"
             | "button"

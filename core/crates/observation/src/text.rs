@@ -26,6 +26,7 @@ pub(crate) fn extract_semantic_text(
         "h1" | "h2" | "h3" | "h4" | "h5" | "h6" | "p" | "a" | "button" | "form" => {
             Ok(extract_visible_text(node, hidden_rules))
         }
+        "pre" => Ok(extract_preformatted_text(node, hidden_rules)),
         "ul" | "ol" => extract_list_text(node, tag == "ol", hidden_rules),
         "table" => extract_table_text(node, hidden_rules),
         "input" => Ok(extract_input_label(node)),
@@ -140,6 +141,77 @@ fn extract_visible_text(node: &NodeRef, hidden_rules: &HiddenRules) -> String {
         .collect::<Vec<_>>()
         .join(" ");
     normalize_text(&text)
+}
+
+fn extract_preformatted_text(node: &NodeRef, hidden_rules: &HiddenRules) -> String {
+    let raw = node
+        .descendants()
+        .filter_map(|descendant| {
+            let text_node = descendant.as_text()?;
+            if has_hidden_ancestor_within(&descendant, node, hidden_rules) {
+                return None;
+            }
+            Some(text_node.borrow().to_string())
+        })
+        .collect::<Vec<_>>()
+        .join(" ");
+
+    if !is_document_like_preformatted_text(&raw) {
+        return String::new();
+    }
+
+    normalize_text(&raw)
+}
+
+fn is_document_like_preformatted_text(text: &str) -> bool {
+    let normalized = normalize_text(text);
+    let normalized_lower = normalized.to_ascii_lowercase();
+    let char_count = normalized.chars().count();
+    let word_count = normalized.split_whitespace().count();
+    if char_count < 160 || word_count < 24 {
+        return false;
+    }
+
+    let line_count = text.lines().filter(|line| !line.trim().is_empty()).count();
+    let prose_markers = [
+        " this ",
+        " these ",
+        " there ",
+        " document ",
+        " documents ",
+        " reserved ",
+        " recommended ",
+        " specified ",
+        " examples ",
+        " introduction ",
+        " security considerations ",
+        " references ",
+    ]
+    .iter()
+    .filter(|marker| normalized_lower.contains(marker.trim_start()))
+    .count();
+    let sentence_marks = normalized
+        .chars()
+        .filter(|character| matches!(character, '.' | ';' | ':'))
+        .count();
+    let alpha_count = normalized
+        .chars()
+        .filter(|character| character.is_ascii_alphabetic())
+        .count();
+    let symbol_count = normalized
+        .chars()
+        .filter(|character| {
+            matches!(
+                character,
+                '{' | '}' | '[' | ']' | '(' | ')' | '=' | ';' | '<' | '>' | '|'
+            )
+        })
+        .count();
+
+    line_count >= 4
+        && prose_markers >= 2
+        && sentence_marks >= 2
+        && alpha_count >= symbol_count.saturating_mul(2)
 }
 
 fn extract_script_semantic_text(node: &NodeRef) -> String {

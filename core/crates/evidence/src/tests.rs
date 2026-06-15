@@ -528,6 +528,25 @@ fn moon_landing_snapshot(blocks: Vec<SnapshotBlock>) -> SnapshotDocument {
     }
 }
 
+fn rfc2606_reserved_tlds_snapshot() -> SnapshotDocument {
+    snapshot_document(
+        "https://www.rfc-editor.org/rfc/rfc2606.html",
+        SourceType::Http,
+        "RFC 2606",
+        1024,
+        256,
+        vec![text_block(
+            "https://www.rfc-editor.org/rfc/rfc2606.html",
+            SourceType::Http,
+            "b1",
+            "rbody:text:rfc-2606-reserved-top-level-dns-names-june-1999",
+            SnapshotBlockRole::Content,
+            "RFC 2606 Reserved Top Level DNS Names June 1999. RFC 2606 reserves the .test, .example, .invalid, and .localhost top-level domain names. IANA has agreed to the four top level domain name reservations specified in this document and will reserve them for the uses indicated.",
+            "html > body > pre",
+        )],
+    )
+}
+
 fn lambda_limits_live_like_snapshot() -> SnapshotDocument {
     snapshot_document(
         "https://docs.aws.example/lambda/limits",
@@ -716,6 +735,45 @@ fn supports_negative_availability_claim_when_page_matches_negative_polarity() {
     );
 
     assert_supported_only(&report);
+}
+
+#[test]
+fn supports_rfc_tld_claim_when_all_domain_literals_are_present() {
+    let report = extract_report(
+        rfc2606_reserved_tlds_snapshot(),
+        vec![claim(
+            "c1",
+            "RFC 2606 reserves the .test, .example, .invalid, and .localhost top-level domain names.",
+        )],
+        "2026-06-15T00:00:00+09:00",
+        SourceRisk::Low,
+        Some("RFC 2606".to_string()),
+    );
+
+    assert_supported_only(&report);
+}
+
+#[test]
+fn rejects_rfc_tld_claim_when_domain_literal_is_missing_from_support() {
+    let report = extract_report(
+        rfc2606_reserved_tlds_snapshot(),
+        vec![claim(
+            "c1",
+            "RFC 2606 reserves the .prod top-level domain name.",
+        )],
+        "2026-06-15T00:00:00+09:00",
+        SourceRisk::Low,
+        Some("RFC 2606".to_string()),
+    );
+
+    assert_needs_more_browsing_only(&report, UnsupportedClaimReason::NeedsMoreBrowsing);
+    assert!(report.claim_outcomes[0]
+        .guard_failures
+        .iter()
+        .any(|failure| {
+            failure.kind == touch_browser_contracts::EvidenceGuardKind::Predicate
+                && failure.detail.contains(".prod")
+        }));
 }
 
 #[test]

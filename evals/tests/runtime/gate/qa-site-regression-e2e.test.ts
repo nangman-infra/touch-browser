@@ -24,6 +24,7 @@ type QaSiteScenario = {
   label: string;
   target: string;
   mode: "stateless-extract" | "session-follow";
+  budget?: number;
   verifierCommand?: string;
   claims: Array<{
     statement: string;
@@ -162,6 +163,7 @@ describe("qa site regression cli e2e", () => {
           "read-view",
           site.target,
           "--main-only",
+          ...budgetArgs(site),
         ]);
 
         for (const fragment of site.readView?.mustContain ?? []) {
@@ -174,6 +176,7 @@ describe("qa site regression cli e2e", () => {
         const extract = await runTouchBrowserJson<ExtractResult>([
           "extract",
           site.target,
+          ...budgetArgs(site),
           ...site.claims.flatMap((claim) => ["--claim", claim.statement]),
           ...(site.verifierCommand
             ? ["--verifier-command", site.verifierCommand]
@@ -197,6 +200,12 @@ describe("qa site regression cli e2e", () => {
     );
   }
 });
+
+function budgetArgs(site: QaSiteScenario): string[] {
+  return typeof site.budget === "number"
+    ? ["--budget", String(site.budget)]
+    : [];
+}
 
 function assertScenarioExtract(site: QaSiteScenario, extract: ExtractResult) {
   expect(extract.extract.policy.pageRisk.decision).toBe(

@@ -21,6 +21,7 @@ describe("qa site regression manifest", () => {
         label: string;
         target: string;
         mode: "stateless-extract" | "session-follow";
+        budget?: number;
         verifierCommand?: string;
         claims: Array<{
           statement: string;
@@ -55,12 +56,16 @@ describe("qa site regression manifest", () => {
       "mdn-reference",
       "chrome-developers-blog",
       "iana-docs",
+      "rfc2606-preformatted-body",
       "multi-page-follow-flow",
     ]);
 
     for (const site of manifest.sites) {
       expect(site.label.length).toBeGreaterThan(0);
       expect(site.target.length).toBeGreaterThan(0);
+      if (site.budget !== undefined) {
+        expect(site.budget).toBeGreaterThan(0);
+      }
       expect(["stateless-extract", "session-follow"]).toContain(site.mode);
       expect(site.claims.length).toBeGreaterThan(0);
       for (const claim of site.claims) {

@@ -260,6 +260,94 @@ fn captures_selectors_as_semantic_option_blocks() {
 }
 
 #[test]
+fn captures_preformatted_rfc_body_as_semantic_text() {
+    let compiler = ObservationCompiler;
+    let html = r##"
+            <html>
+              <head><title>RFC 2606</title></head>
+              <body>
+                <pre>Network Working Group                                     D. Eastlake
+Request for Comments: 2606                                  A. Panitz
+
+Reserved Top Level DNS Names
+
+2. TLDs for Testing, &amp; Documentation Examples
+
+   To safely satisfy these needs, four domain names are reserved as
+   listed and described below.
+
+                   .test
+                .example
+                .invalid
+              .localhost
+
+   ".example" is recommended for use in documentation or as examples.
+                </pre>
+              </body>
+            </html>
+        "##;
+
+    let snapshot = compiler
+        .compile(&ObservationInput::new(
+            "https://www.rfc-editor.org/rfc/rfc2606.html",
+            SourceType::Http,
+            html,
+            512,
+        ))
+        .expect("compile should work");
+
+    let pre_body = snapshot
+        .blocks
+        .iter()
+        .find(|block| block.text.contains("four domain names are reserved"))
+        .expect("preformatted RFC prose should be captured as semantic text");
+
+    assert_eq!(
+        pre_body.kind,
+        touch_browser_contracts::SnapshotBlockKind::Text
+    );
+    assert!(pre_body.text.contains(".test"));
+    assert!(pre_body.text.contains(".example"));
+    assert!(pre_body.text.contains(".invalid"));
+    assert!(pre_body.text.contains(".localhost"));
+    assert!(matches!(
+        pre_body.attributes.get("tagName"),
+        Some(serde_json::Value::String(tag)) if tag == "pre"
+    ));
+}
+
+#[test]
+fn ignores_short_code_pre_blocks_as_semantic_text() {
+    let compiler = ObservationCompiler;
+    let html = r##"
+            <html>
+              <head><title>Code example</title></head>
+              <body>
+                <main>
+                  <p>Use this short example to configure the client.</p>
+                  <pre>const client = createClient({ timeout: 30 });
+client.start();</pre>
+                </main>
+              </body>
+            </html>
+        "##;
+
+    let snapshot = compiler
+        .compile(&ObservationInput::new(
+            "https://docs.example.test/client",
+            SourceType::Http,
+            html,
+            512,
+        ))
+        .expect("compile should work");
+
+    assert!(!snapshot
+        .blocks
+        .iter()
+        .any(|block| block.text.contains("createClient")));
+}
+
+#[test]
 fn keeps_main_intro_text_when_header_links_are_dense() {
     let compiler = ObservationCompiler;
     let header_links = (0..80)
