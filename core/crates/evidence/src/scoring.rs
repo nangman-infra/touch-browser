@@ -519,7 +519,7 @@ pub(crate) fn semantic_similarity_bonus(semantic_similarity: f64, lexical_overla
 
 fn contextual_search_text(blocks: &[SnapshotBlock], index: usize, primary_text: &str) -> String {
     let block = &blocks[index];
-    if !allows_context_expansion(block) {
+    if !allows_context_expansion(block) || is_reference_index_block(block) {
         return candidate_search_text(block, primary_text);
     }
 
@@ -538,6 +538,9 @@ fn contextual_search_text(blocks: &[SnapshotBlock], index: usize, primary_text: 
 
     for neighbor_index in contextual_neighbor_indices(blocks, index) {
         let neighbor = &blocks[neighbor_index];
+        if is_reference_index_block(neighbor) {
+            continue;
+        }
         if seen_blocks.insert(neighbor.id.clone()) {
             parts.push(block_search_text(neighbor));
         }
@@ -682,30 +685,91 @@ pub(crate) fn is_reference_index_block(block: &SnapshotBlock) -> bool {
         .map(str::trim)
         .filter(|line| !line.is_empty())
         .collect::<Vec<_>>();
-    if lines.len() < 8 {
+
+    if lines.len() >= 8 {
+        let short_lines = lines
+            .iter()
+            .filter(|line| line.chars().count() <= 36)
+            .count();
+        let function_links = lines
+            .iter()
+            .filter(|line| line.contains("()") && line.chars().count() <= 48)
+            .count();
+        let alphabet_markers = lines
+            .iter()
+            .filter(|line| is_alphabet_index_marker(line))
+            .count();
+
+        if function_links >= 6 || (alphabet_markers >= 3 && short_lines * 2 >= lines.len()) {
+            return true;
+        }
+    }
+
+    is_dense_compact_reference_index(&block.text)
+}
+
+fn is_dense_compact_reference_index(text: &str) -> bool {
+    let tokens = text
+        .split_whitespace()
+        .map(|token| token.trim_matches(reference_index_token_trim))
+        .filter(|token| !token.is_empty())
+        .collect::<Vec<_>>();
+    if tokens.len() < 10 {
         return false;
     }
 
-    let short_lines = lines
+    let function_references = tokens
         .iter()
-        .filter(|line| line.chars().count() <= 36)
+        .filter(|token| is_compact_function_reference(token))
         .count();
-    let function_links = lines
+    let alphabet_markers = tokens
         .iter()
-        .filter(|line| line.contains("()") && line.chars().count() <= 48)
+        .filter(|token| is_alphabet_index_marker(token))
         .count();
-    let alphabet_markers = lines
+    let compact_reference_items = tokens
         .iter()
-        .filter(|line| {
-            line.chars().count() == 1
-                && line
-                    .chars()
-                    .next()
-                    .is_some_and(|character| character.is_ascii_uppercase())
-        })
+        .filter(|token| is_compact_function_reference(token) || is_alphabet_index_marker(token))
+        .count();
+    let sentence_punctuation = text
+        .chars()
+        .filter(|character| matches!(character, '.' | '!' | '?'))
         .count();
 
-    function_links >= 6 || (alphabet_markers >= 3 && short_lines * 2 >= lines.len())
+    function_references >= 8
+        && (alphabet_markers >= 2 || function_references >= 12)
+        && compact_reference_items * 2 >= tokens.len()
+        && sentence_punctuation <= 1
+}
+
+fn is_compact_function_reference(token: &str) -> bool {
+    let Some(name) = token.strip_suffix("()") else {
+        return false;
+    };
+
+    !name.is_empty()
+        && name.chars().count() <= 48
+        && name
+            .chars()
+            .all(|character| character.is_ascii_alphanumeric() || character == '_')
+        && name
+            .chars()
+            .next()
+            .is_some_and(|character| character.is_ascii_alphabetic() || character == '_')
+}
+
+fn is_alphabet_index_marker(token: &str) -> bool {
+    token.chars().count() == 1
+        && token
+            .chars()
+            .next()
+            .is_some_and(|character| character.is_ascii_uppercase())
+}
+
+fn reference_index_token_trim(character: char) -> bool {
+    matches!(
+        character,
+        ',' | ';' | ':' | '[' | ']' | '{' | '}' | '<' | '>' | '"' | '\''
+    )
 }
 
 fn reference_index_adjustment(block: &SnapshotBlock) -> f64 {

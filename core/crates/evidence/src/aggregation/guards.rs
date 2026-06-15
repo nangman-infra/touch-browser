@@ -137,7 +137,7 @@ pub(super) fn assess_support_guards(
     apply_guard_check(
         &mut contradiction_reason,
         &mut guard_failures,
-        reference_index_support_guard_check(top_support),
+        reference_index_support_guard_check(top_support, claim_anchor_tokens),
     );
     apply_guard_check(
         &mut contradiction_reason,
@@ -315,7 +315,10 @@ fn anchor_guard_check(claim_anchor_tokens: &[String], aggregated_tokens: &[Strin
     }
 }
 
-fn reference_index_support_guard_check(top_support: &[ScoredCandidate<'_>]) -> GuardCheck {
+fn reference_index_support_guard_check(
+    top_support: &[ScoredCandidate<'_>],
+    claim_anchor_tokens: &[String],
+) -> GuardCheck {
     if top_support.is_empty() {
         return GuardCheck {
             contradiction_reason: None,
@@ -325,7 +328,9 @@ fn reference_index_support_guard_check(top_support: &[ScoredCandidate<'_>]) -> G
 
     let has_direct_non_index_support = top_support.iter().any(|candidate| {
         !is_reference_index_block(candidate.block)
-            && (candidate.exact_support || matches!(candidate.block.kind, SnapshotBlockKind::Text))
+            && (candidate.exact_support
+                || (matches!(candidate.block.kind, SnapshotBlockKind::Text)
+                    && support_contains_claim_anchor(candidate, claim_anchor_tokens)))
     });
     if has_direct_non_index_support {
         return GuardCheck {
@@ -351,6 +356,22 @@ fn reference_index_support_guard_check(top_support: &[ScoredCandidate<'_>]) -> G
         contradiction_reason: None,
         failure: None,
     }
+}
+
+fn support_contains_claim_anchor(
+    candidate: &ScoredCandidate<'_>,
+    claim_anchor_tokens: &[String],
+) -> bool {
+    if claim_anchor_tokens.is_empty() {
+        return false;
+    }
+
+    let support_tokens = tokenize_significant(&block_search_text(candidate.block));
+    claim_anchor_tokens.iter().any(|claim_token| {
+        support_tokens
+            .iter()
+            .any(|support_token| tokens_match(claim_token, support_token))
+    })
 }
 
 fn qualifier_guard_check(

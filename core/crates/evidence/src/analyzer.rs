@@ -294,6 +294,41 @@ mod tests {
     }
 
     #[test]
+    fn analyzer_rejects_reference_index_terms_leaking_into_unrelated_body_context() {
+        let mut snapshot = python_builtins_snapshot(false);
+        snapshot.blocks.push(SnapshotBlock {
+            version: "1.0.0".to_string(),
+            id: "b3".to_string(),
+            kind: SnapshotBlockKind::Text,
+            stable_ref: "rmain:text:absolute-value".to_string(),
+            role: SnapshotBlockRole::Content,
+            text: "Return the absolute value of a number. The argument may be an integer, a floating-point number, or an object implementing __abs__().".to_string(),
+            attributes: Default::default(),
+            evidence: SnapshotEvidence {
+                source_url: "https://docs.python.org/3/library/functions.html#abs".to_string(),
+                source_type: SourceType::Http,
+                dom_path_hint: Some("html > body > main > dl > dd".to_string()),
+                byte_range_start: None,
+                byte_range_end: None,
+            },
+        });
+
+        let resolution = analyze_claim(
+            &ClaimRequest::new(
+                "c1",
+                "Python enumerate() returns tuples containing a count and values from the iterable.",
+            ),
+            &snapshot.blocks,
+        );
+
+        assert_ne!(resolution.verdict, EvidenceClaimVerdict::EvidenceSupported);
+        assert!(
+            resolution.confidence.is_none(),
+            "reference index terms must not make an unrelated function body reusable"
+        );
+    }
+
+    #[test]
     fn analyzer_prefers_enumerate_body_over_reference_index() {
         let snapshot = python_builtins_snapshot(true);
         let report = EvidenceExtractor
@@ -503,31 +538,12 @@ mod tests {
             SnapshotBlock {
                 version: "1.0.0".to_string(),
                 id: "b2".to_string(),
-                kind: SnapshotBlockKind::List,
-                stable_ref: "rmain:index:built-in-functions".to_string(),
+                kind: SnapshotBlockKind::Table,
+                stable_ref: String::new(),
                 role: SnapshotBlockRole::Content,
                 text: [
-                    "A",
-                    "abs()",
-                    "aiter()",
-                    "all()",
-                    "anext()",
-                    "any()",
-                    "ascii()",
-                    "B",
-                    "bin()",
-                    "bool()",
-                    "breakpoint()",
-                    "bytearray()",
-                    "bytes()",
-                    "E",
-                    "enumerate()",
-                    "eval()",
-                    "exec()",
-                    "F",
-                    "filter()",
-                    "float()",
-                    "format()",
+                    "A abs() aiter() all() anext() any() ascii()",
+                    "B bin() bool() breakpoint() bytearray() bytes() E enumerate() eval() exec() F filter() float() format()",
                 ]
                 .join("\n"),
                 attributes: Default::default(),
