@@ -543,7 +543,7 @@ pub(crate) fn domain_literal_match_coverage(
     Some((matched, claim_literals.len()))
 }
 
-fn extract_dot_prefixed_domain_literals(text: &str) -> BTreeSet<String> {
+pub(crate) fn extract_dot_prefixed_domain_literals(text: &str) -> BTreeSet<String> {
     text.split_whitespace()
         .filter_map(normalize_dot_prefixed_domain_literal)
         .collect()

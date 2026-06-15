@@ -3,7 +3,7 @@ import { createMcpClient } from "./mcp-client.mjs";
 
 const bridgeCommand = "node integrations/mcp/bridge/index.mjs";
 
-export function createWorkflowClient({ name, version = "1.5.4" }) {
+export function createWorkflowClient({ name, version = "1.5.5" }) {
   return createMcpClient({
     cwd: repoRoot,
     bridgeCommand,

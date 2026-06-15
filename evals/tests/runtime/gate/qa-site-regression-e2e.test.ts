@@ -29,6 +29,7 @@ type QaSiteScenario = {
   claims: Array<{
     statement: string;
     expectedVerdict: ClaimVerdict;
+    requiredSupportSnippetContains?: string[];
   }>;
   readView?: {
     mustContain: string[];
@@ -62,6 +63,12 @@ type ExtractResult = {
         statement: string;
         verdict: ClaimVerdict;
         verdictExplanation?: string;
+        primarySupportSnippet?: {
+          snippet: string;
+        };
+        supportSnippets?: Array<{
+          snippet: string;
+        }>;
       }>;
       evidenceSupportedClaims?: Array<{ statement: string }>;
       contradictedClaims?: Array<{ statement: string }>;
@@ -224,12 +231,26 @@ function assertScenarioExtract(site: QaSiteScenario, extract: ExtractResult) {
   const claimOutcomes = new Map(
     extract.extract.output.claimOutcomes.map((outcome) => [
       outcome.statement,
-      outcome.verdict,
+      outcome,
     ]),
   );
 
   for (const claim of site.claims) {
-    expect(claimOutcomes.get(claim.statement)).toBe(claim.expectedVerdict);
+    const outcome = claimOutcomes.get(claim.statement);
+    expect(outcome?.verdict).toBe(claim.expectedVerdict);
+
+    if ((claim.requiredSupportSnippetContains ?? []).length > 0) {
+      const snippets = [
+        outcome?.primarySupportSnippet?.snippet,
+        ...(outcome?.supportSnippets ?? []).map((snippet) => snippet.snippet),
+      ]
+        .filter((snippet): snippet is string => typeof snippet === "string")
+        .join("\n");
+
+      for (const fragment of claim.requiredSupportSnippetContains ?? []) {
+        expect(snippets).toContain(fragment);
+      }
+    }
   }
 
   expect(

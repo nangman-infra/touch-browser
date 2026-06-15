@@ -105,7 +105,13 @@
       "claims": [
         {
           "statement": "RFC 2606 reserves the .test, .example, .invalid, and .localhost top-level domain names.",
-          "expectedVerdict": "evidence-supported"
+          "expectedVerdict": "evidence-supported",
+          "requiredSupportSnippetContains": [
+            ".test",
+            ".example",
+            ".invalid",
+            ".localhost"
+          ]
         },
         {
           "statement": "RFC 2606 reserves the .prod top-level domain name.",

@@ -779,6 +779,17 @@ fn supports_rfc_tld_claim_when_all_domain_literals_are_present() {
             .map(|snippet| snippet.block_id.as_str()),
         Some("b16")
     );
+    let primary_snippet = report.claim_outcomes[0]
+        .primary_support_snippet
+        .as_ref()
+        .map(|snippet| snippet.snippet.as_str())
+        .expect("primary snippet should be present");
+    for literal in [".test", ".example", ".invalid", ".localhost"] {
+        assert!(
+            primary_snippet.contains(literal),
+            "primary snippet should show {literal}: {primary_snippet}"
+        );
+    }
 }
 
 #[test]

@@ -18,7 +18,7 @@ pub(crate) fn build_claim_outcome(
     claim: &ClaimRequest,
 ) -> EvidenceClaimOutcome {
     let resolution = analyze_claim(claim, &input.snapshot.blocks);
-    let support_snippets = build_support_snippets(&resolution.support);
+    let support_snippets = build_support_snippets(&resolution.support, &claim.statement);
     let match_signals = resolution.support.first().map(build_match_signals);
     let confidence_band = resolution.confidence.map(confidence_band_for_score);
     let review_recommended = matches!(confidence_band, Some(EvidenceConfidenceBand::Review))
@@ -80,6 +80,7 @@ pub(crate) fn build_claim_outcome(
 
 fn build_support_snippets(
     support: &[crate::scoring::ScoredCandidate<'_>],
+    raw_claim: &str,
 ) -> Vec<EvidenceSupportSnippet> {
     let mut seen = BTreeSet::new();
     support
@@ -89,7 +90,7 @@ fn build_support_snippets(
         .map(|(index, candidate)| EvidenceSupportSnippet {
             block_id: candidate.block.id.clone(),
             stable_ref: candidate.block.stable_ref.clone(),
-            snippet: truncate_snippet(&visible_candidate_text(candidate)),
+            snippet: truncate_snippet(&visible_candidate_text(candidate, raw_claim)),
             support_role: if index == 0 {
                 EvidenceSupportRole::Primary
             } else {
@@ -99,12 +100,82 @@ fn build_support_snippets(
         .collect()
 }
 
-fn visible_candidate_text(candidate: &crate::scoring::ScoredCandidate<'_>) -> String {
-    crate::segmentation::segment_block_text(&candidate.block.text)
+fn visible_candidate_text(
+    candidate: &crate::scoring::ScoredCandidate<'_>,
+    raw_claim: &str,
+) -> String {
+    let segments = crate::segmentation::segment_block_text(&candidate.block.text);
+
+    if let Some(literal_focused_text) =
+        literal_focused_candidate_text(raw_claim, &candidate.block.text, &segments)
+    {
+        return literal_focused_text;
+    }
+
+    segments
         .get(candidate.candidate_index)
         .filter(|segment| !segment.trim().is_empty())
         .cloned()
         .unwrap_or_else(|| candidate.block.text.clone())
+}
+
+fn literal_focused_candidate_text(
+    raw_claim: &str,
+    block_text: &str,
+    segments: &[String],
+) -> Option<String> {
+    let claim_literals = crate::scoring::extract_dot_prefixed_domain_literals(raw_claim);
+    if claim_literals.len() < 2 {
+        return None;
+    }
+
+    segments
+        .iter()
+        .find(|segment| segment_contains_all_domain_literals(segment, &claim_literals))
+        .cloned()
+        .or_else(|| focused_domain_literal_window(block_text, &claim_literals))
+}
+
+fn segment_contains_all_domain_literals(segment: &str, claim_literals: &BTreeSet<String>) -> bool {
+    let support_literals = crate::scoring::extract_dot_prefixed_domain_literals(segment);
+    claim_literals
+        .iter()
+        .all(|literal| support_literals.contains(literal))
+}
+
+fn focused_domain_literal_window(text: &str, claim_literals: &BTreeSet<String>) -> Option<String> {
+    let collapsed = text.split_whitespace().collect::<Vec<_>>().join(" ");
+    let lower = collapsed.to_ascii_lowercase();
+    let mut positions = Vec::new();
+
+    for literal in claim_literals {
+        let position = lower.find(literal)?;
+        positions.push((position, position + literal.len()));
+    }
+
+    let start = positions.iter().map(|(start, _)| *start).min()?;
+    let end = positions.iter().map(|(_, end)| *end).max()?;
+    Some(window_at_word_boundaries(&collapsed, start, end))
+}
+
+fn window_at_word_boundaries(text: &str, start: usize, end: usize) -> String {
+    let mut left = start.saturating_sub(120);
+    while left > 0 && !text.is_char_boundary(left) {
+        left -= 1;
+    }
+    while left > 0 && !text.as_bytes()[left].is_ascii_whitespace() {
+        left -= 1;
+    }
+
+    let mut right = (end + 180).min(text.len());
+    while right < text.len() && !text.is_char_boundary(right) {
+        right += 1;
+    }
+    while right < text.len() && !text.as_bytes()[right - 1].is_ascii_whitespace() {
+        right += 1;
+    }
+
+    text[left..right].trim().to_string()
 }
 
 fn build_match_signals(candidate: &crate::scoring::ScoredCandidate<'_>) -> EvidenceMatchSignals {

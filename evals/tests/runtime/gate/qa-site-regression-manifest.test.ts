@@ -30,6 +30,7 @@ describe("qa site regression manifest", () => {
             | "contradicted"
             | "insufficient-evidence"
             | "needs-more-browsing";
+          requiredSupportSnippetContains?: string[];
         }>;
         readView?: {
           mustContain: string[];
@@ -76,6 +77,14 @@ describe("qa site regression manifest", () => {
           "insufficient-evidence",
           "needs-more-browsing",
         ]).toContain(claim.expectedVerdict);
+        if (claim.requiredSupportSnippetContains !== undefined) {
+          expect(claim.requiredSupportSnippetContains.length).toBeGreaterThan(
+            0,
+          );
+          for (const fragment of claim.requiredSupportSnippetContains) {
+            expect(fragment.length).toBeGreaterThan(0);
+          }
+        }
       }
       if (site.readView) {
         expect(site.readView.mustContain.length).toBeGreaterThan(0);

@@ -43,6 +43,10 @@ fn is_period_boundary(text: &str, index: usize) -> bool {
         .chars()
         .find(|character| !character.is_whitespace());
 
+    if is_dot_prefixed_literal_start(previous, next) {
+        return false;
+    }
+
     if immediate_next.is_some_and(char::is_whitespace) {
         return true;
     }
@@ -51,6 +55,13 @@ fn is_period_boundary(text: &str, index: usize) -> bool {
         (previous, next),
         (Some(left), Some(right)) if left.is_alphanumeric() && right.is_alphanumeric()
     )
+}
+
+fn is_dot_prefixed_literal_start(previous: Option<char>, next: Option<char>) -> bool {
+    let left_allows_literal = previous.is_none_or(|character| {
+        character.is_whitespace() || matches!(character, '(' | '[' | '{' | '"' | '\'')
+    });
+    left_allows_literal && next.is_some_and(|character| character.is_ascii_alphanumeric())
 }
 
 fn split_clause_boundaries(text: &str) -> Vec<String> {
@@ -120,6 +131,19 @@ mod tests {
             vec![
                 "Node.js is an asynchronous runtime".to_string(),
                 "example.com is reserved".to_string(),
+            ]
+        );
+    }
+
+    #[test]
+    fn does_not_split_dot_prefixed_domain_literals() {
+        assert_eq!(
+            segment_block_text(
+                "To safely satisfy these needs, four domain names are reserved. .test .example .invalid .localhost are listed below.",
+            ),
+            vec![
+                "To safely satisfy these needs, four domain names are reserved".to_string(),
+                ".test .example .invalid .localhost are listed below".to_string(),
             ]
         );
     }
