@@ -276,6 +276,50 @@ mod tests {
     }
 
     #[test]
+    fn analyzer_rejects_reference_index_as_behavior_support() {
+        let snapshot = python_builtins_snapshot(false);
+        let resolution = analyze_claim(
+            &ClaimRequest::new(
+                "c1",
+                "Python enumerate() returns tuples containing a count and values from the iterable.",
+            ),
+            &snapshot.blocks,
+        );
+
+        assert_ne!(resolution.verdict, EvidenceClaimVerdict::EvidenceSupported);
+        assert!(
+            resolution.confidence.is_none(),
+            "reference index blocks must not produce reusable confidence"
+        );
+    }
+
+    #[test]
+    fn analyzer_prefers_enumerate_body_over_reference_index() {
+        let snapshot = python_builtins_snapshot(true);
+        let report = EvidenceExtractor
+            .extract(&EvidenceInput::new(
+                snapshot,
+                vec![ClaimRequest::new(
+                    "c1",
+                    "Python enumerate() returns tuples containing a count and values from the iterable.",
+                )],
+                "2026-06-15T00:00:00+09:00",
+                SourceRisk::Low,
+                Some("Python Built-in Functions".to_string()),
+            ))
+            .expect("extract should succeed");
+
+        assert_eq!(report.supported_claims.len(), 1);
+        assert_eq!(
+            report.supported_claims[0]
+                .primary_support_snippet
+                .as_ref()
+                .map(|snippet| snippet.stable_ref.as_str()),
+            Some("rmain:text:enumerate")
+        );
+    }
+
+    #[test]
     fn analyzer_rejects_thread_usage_claim_from_contrastive_os_thread_language() {
         let snapshot = SnapshotDocument {
             version: "1.0.0".to_string(),
@@ -431,6 +475,107 @@ mod tests {
         );
 
         assert_eq!(resolution.verdict, EvidenceClaimVerdict::EvidenceSupported);
+    }
+
+    fn python_builtins_snapshot(include_enumerate_body: bool) -> SnapshotDocument {
+        let mut blocks = vec![
+            SnapshotBlock {
+                version: "1.0.0".to_string(),
+                id: "b1".to_string(),
+                kind: SnapshotBlockKind::Heading,
+                stable_ref: "rmain:heading:built-in-functions".to_string(),
+                role: SnapshotBlockRole::Content,
+                text: "Built-in Functions".to_string(),
+                attributes: [(
+                    "level".to_string(),
+                    serde_json::Value::Number(serde_json::Number::from(1)),
+                )]
+                .into_iter()
+                .collect(),
+                evidence: SnapshotEvidence {
+                    source_url: "https://docs.python.org/3/library/functions.html".to_string(),
+                    source_type: SourceType::Http,
+                    dom_path_hint: Some("html > body > main > h1".to_string()),
+                    byte_range_start: None,
+                    byte_range_end: None,
+                },
+            },
+            SnapshotBlock {
+                version: "1.0.0".to_string(),
+                id: "b2".to_string(),
+                kind: SnapshotBlockKind::List,
+                stable_ref: "rmain:index:built-in-functions".to_string(),
+                role: SnapshotBlockRole::Content,
+                text: [
+                    "A",
+                    "abs()",
+                    "aiter()",
+                    "all()",
+                    "anext()",
+                    "any()",
+                    "ascii()",
+                    "B",
+                    "bin()",
+                    "bool()",
+                    "breakpoint()",
+                    "bytearray()",
+                    "bytes()",
+                    "E",
+                    "enumerate()",
+                    "eval()",
+                    "exec()",
+                    "F",
+                    "filter()",
+                    "float()",
+                    "format()",
+                ]
+                .join("\n"),
+                attributes: Default::default(),
+                evidence: SnapshotEvidence {
+                    source_url: "https://docs.python.org/3/library/functions.html".to_string(),
+                    source_type: SourceType::Http,
+                    dom_path_hint: Some("html > body > main > table".to_string()),
+                    byte_range_start: None,
+                    byte_range_end: None,
+                },
+            },
+        ];
+
+        if include_enumerate_body {
+            blocks.push(SnapshotBlock {
+                version: "1.0.0".to_string(),
+                id: "b3".to_string(),
+                kind: SnapshotBlockKind::Text,
+                stable_ref: "rmain:text:enumerate".to_string(),
+                role: SnapshotBlockRole::Content,
+                text: "enumerate(iterable, start=0). Return an enumerate object. The __next__() method of the iterator returned by enumerate() returns a tuple containing a count and the values obtained from iterating over iterable.".to_string(),
+                attributes: Default::default(),
+                evidence: SnapshotEvidence {
+                    source_url: "https://docs.python.org/3/library/functions.html#enumerate".to_string(),
+                    source_type: SourceType::Http,
+                    dom_path_hint: Some("html > body > main > dl > dd".to_string()),
+                    byte_range_start: None,
+                    byte_range_end: None,
+                },
+            });
+        }
+
+        SnapshotDocument {
+            version: "1.0.0".to_string(),
+            stable_ref_version: "1".to_string(),
+            source: SnapshotSource {
+                source_url: "https://docs.python.org/3/library/functions.html".to_string(),
+                source_type: SourceType::Http,
+                title: Some("Built-in Functions".to_string()),
+            },
+            budget: touch_browser_contracts::SnapshotBudget {
+                requested_tokens: 512,
+                estimated_tokens: 64,
+                emitted_tokens: 64,
+                truncated: false,
+            },
+            blocks,
+        }
     }
 
     #[test]

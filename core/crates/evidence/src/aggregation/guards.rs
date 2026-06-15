@@ -12,7 +12,7 @@ use crate::{
         claim_mentions_version_or_release, normalize_text, token_overlap_ratio, tokenize_all,
         tokenize_significant, tokens_match,
     },
-    scoring::{block_search_text, ScoredCandidate},
+    scoring::{block_search_text, is_reference_index_block, ScoredCandidate},
     ClaimRequest,
 };
 
@@ -133,6 +133,11 @@ pub(super) fn assess_support_guards(
         &mut contradiction_reason,
         &mut guard_failures,
         anchor_guard_check(claim_anchor_tokens, &aggregated_tokens),
+    );
+    apply_guard_check(
+        &mut contradiction_reason,
+        &mut guard_failures,
+        reference_index_support_guard_check(top_support),
     );
     apply_guard_check(
         &mut contradiction_reason,
@@ -307,6 +312,44 @@ fn anchor_guard_check(claim_anchor_tokens: &[String], aggregated_tokens: &[Strin
                 anchor_coverage, required
             ),
         }),
+    }
+}
+
+fn reference_index_support_guard_check(top_support: &[ScoredCandidate<'_>]) -> GuardCheck {
+    if top_support.is_empty() {
+        return GuardCheck {
+            contradiction_reason: None,
+            failure: None,
+        };
+    }
+
+    let has_direct_non_index_support = top_support.iter().any(|candidate| {
+        !is_reference_index_block(candidate.block)
+            && (candidate.exact_support || matches!(candidate.block.kind, SnapshotBlockKind::Text))
+    });
+    if has_direct_non_index_support {
+        return GuardCheck {
+            contradiction_reason: None,
+            failure: None,
+        };
+    }
+
+    if top_support
+        .iter()
+        .any(|candidate| is_reference_index_block(candidate.block))
+    {
+        return GuardCheck {
+            contradiction_reason: None,
+            failure: Some(EvidenceGuardFailure {
+                kind: EvidenceGuardKind::Predicate,
+                detail: "The retrieved support is a reference index or table of contents; it identifies a related topic but does not state the claimed behavior.".to_string(),
+            }),
+        };
+    }
+
+    GuardCheck {
+        contradiction_reason: None,
+        failure: None,
     }
 }
 

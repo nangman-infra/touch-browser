@@ -2,6 +2,34 @@
 
 All notable changes to this project are documented here.
 
+## [1.5.1] - 2026-06-15
+
+Release: https://github.com/nangman-infra/touch-browser/releases/tag/v1.5.1
+
+Compare: https://github.com/nangman-infra/touch-browser/compare/v1.5.0...v1.5.1
+
+### Fixed
+
+- Fixed evidence false positives where reference index, table-of-contents, or dense function-list blocks could be selected as high-confidence primary support for behavior claims.
+- Added a Python `enumerate()` regression case that rejects the built-ins index as behavior evidence while still preferring the actual `enumerate()` reference body when present.
+
+### Changed
+
+- Bumped Rust workspace, MCP package metadata, MCP server descriptors, bridge metadata, workflow client metadata, Glama Docker install pin, and standalone lifecycle expectations to `1.5.1`.
+
+### Release Verification
+
+- Local `cargo test -p touch-browser-evidence analyzer_ -- --nocapture` passed.
+- Local `pnpm run architecture:check` passed.
+- Local `pnpm run fixtures:release-readiness` passed.
+- Local release readiness proof test passed with `readinessScore = 1` and `status = product-ready`.
+- Local `pnpm run mcp:package:check` passed for `@nangman-infra/touch-browser-mcp@1.5.1`.
+- Local `pnpm run quality:ci` passed.
+- Local `pnpm run quality:test:evals:public-web` passed against fixture, MDN, Chrome Developers, and IANA coverage.
+- Local `pnpm run build:standalone-bundle` produced `touch-browser-v1.5.1-macos-arm64` assets.
+- Local `pnpm run release:installed-smoke` passed against the `v1.5.1` standalone bundle.
+- npm publishing remains separate because package publication is handled manually by the maintainer.
+
 ## [1.5.0] - 2026-06-12
 
 Release: https://github.com/nangman-infra/touch-browser/releases/tag/v1.5.0

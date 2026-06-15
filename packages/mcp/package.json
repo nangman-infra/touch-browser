@@ -1,6 +1,6 @@
 {
   "name": "@nangman-infra/touch-browser-mcp",
-  "version": "1.5.0",
+  "version": "1.5.1",
   "description": "Headless MCP entrypoint for touch-browser public docs and research web workflows.",
   "license": "MPL-2.0",
   "type": "module",

@@ -360,6 +360,7 @@ fn score_block_candidates<'a>(
             let kind_bonus = kind_score_bonus(&block.kind);
             let control_bonus = ui_control_bonus(blocks, index, input.claim_tokens, block);
             let structural_adjustment = block_structural_adjustment(block);
+            let reference_index_adjustment = reference_index_adjustment(block);
             let qualifier_adjustment =
                 qualifier_alignment_adjustment(input.claim_qualifier_tokens, &search_text);
             let qualified_numeric_limit_adjustment = qualified_numeric_limit_adjustment(
@@ -382,6 +383,7 @@ fn score_block_candidates<'a>(
                 + kind_bonus
                 + control_bonus
                 + structural_adjustment
+                + reference_index_adjustment
                 + qualifier_adjustment
                 + qualified_numeric_limit_adjustment
                 + version_noise_penalty
@@ -655,6 +657,63 @@ fn block_structural_adjustment(block: &SnapshotBlock) -> f64 {
     };
 
     role_adjustment + region_adjustment
+}
+
+pub(crate) fn is_reference_index_block(block: &SnapshotBlock) -> bool {
+    if !matches!(
+        block.kind,
+        SnapshotBlockKind::List | SnapshotBlockKind::Table | SnapshotBlockKind::Metadata
+    ) {
+        return false;
+    }
+
+    let stable_ref = block.stable_ref.to_ascii_lowercase();
+    if stable_ref.contains(":toc")
+        || stable_ref.contains(":index")
+        || stable_ref.contains(":nav")
+        || stable_ref.contains(":sidebar")
+    {
+        return true;
+    }
+
+    let lines = block
+        .text
+        .lines()
+        .map(str::trim)
+        .filter(|line| !line.is_empty())
+        .collect::<Vec<_>>();
+    if lines.len() < 8 {
+        return false;
+    }
+
+    let short_lines = lines
+        .iter()
+        .filter(|line| line.chars().count() <= 36)
+        .count();
+    let function_links = lines
+        .iter()
+        .filter(|line| line.contains("()") && line.chars().count() <= 48)
+        .count();
+    let alphabet_markers = lines
+        .iter()
+        .filter(|line| {
+            line.chars().count() == 1
+                && line
+                    .chars()
+                    .next()
+                    .is_some_and(|character| character.is_ascii_uppercase())
+        })
+        .count();
+
+    function_links >= 6 || (alphabet_markers >= 3 && short_lines * 2 >= lines.len())
+}
+
+fn reference_index_adjustment(block: &SnapshotBlock) -> f64 {
+    if is_reference_index_block(block) {
+        -0.30
+    } else {
+        0.0
+    }
 }
 
 fn search_term_from_attribute_value(value: &serde_json::Value) -> Option<String> {
